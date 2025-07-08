@@ -1,0 +1,12 @@
+{
+  "task.maidspell.spell_combat": "Spell Combat",
+  "task.maidspell.spell_combat.desc": "Maid uses equipped spell books to cast spells in combat. Supports spell books in offhand, mainhand or backpack.",
+  "task.maidspell.spell_combat.condition.spell_book": "Requires spell book (offhand, mainhand or backpack)",
+  "item.maidspell.spell_book": "Spell Book",
+  "item.touhou_little_maid_spell.spell_enhancement_core": "Spell Enhancement Core",
+  "item.maidspell.spell_enhancement_core.desc1": "Magical Resonance Device",
+  "item.maidspell.spell_enhancement_core.desc2": "Synchronizes master's spell attributes",
+  "item.maidspell.spell_enhancement_core.desc3": "Provides spell enhancement for maid",
+  "item.maidspell.spell_enhancement_core.usage": "Equip in maid's bauble slot to use",
+  "itemGroup.touhou_little_maid_spell": "Touhou Little Maid: Spell"
+} 

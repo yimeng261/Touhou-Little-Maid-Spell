@@ -1,0 +1,19 @@
+{
+  "commands.maid.player_only": "此命令只能由玩家使用",
+  "commands.maid.no_maids_found": "在 %.1f 格范围内未找到女仆",
+  "commands.maid.use_success": "成功让 %d 个女仆使用主手物品",
+  "commands.maid.use_no_items": "没有女仆持有物品或不属于你",
+  "commands.maid.release_success": "成功让 %d 个女仆释放主手物品",
+  "commands.maid.release_no_items": "没有女仆正在使用物品或不属于你",
+  "commands.maid.testblade_success": "成功测试 %d 个女仆的拔刀剑功能",
+  "commands.maid.testblade_no_items": "没有女仆持有拔刀剑或不属于你",
+  
+  "task.maidspell.spell_combat.name": "法术战斗",
+  "task.maidspell.spell_combat.desc": "女仆使用装备的法术书在战斗中施法。支持副手、主手或背包中的法术书。",
+  
+  "slashblade.debug.maid_using": "女仆 %s 正在尝试使用拔刀剑: %s",
+  "slashblade.debug.input_state": "女仆INPUT_STATE能力: %s",
+  "slashblade.debug.blade_state": "拔刀剑状态 - 损坏: %s, 封印: %s, 类型: %s",
+  "slashblade.debug.skill_info": "技能: %s, 消耗: %s, 当前魂: %s",
+  "slashblade.debug.maid_start_using": "女仆 %s 开始使用物品: %s"
+} 

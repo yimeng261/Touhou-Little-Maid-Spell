@@ -1,0 +1,19 @@
+{
+  "commands.maid.player_only": "This command can only be used by players",
+  "commands.maid.no_maids_found": "No maids found within %.1f blocks",
+  "commands.maid.use_success": "Successfully made %d maid(s) use their main hand item",
+  "commands.maid.use_no_items": "No maids have items to use or are not owned by you",
+  "commands.maid.release_success": "Successfully made %d maid(s) release their main hand item",
+  "commands.maid.release_no_items": "No maids are currently using items or are not owned by you",
+  "commands.maid.testblade_success": "Successfully tested SlashBlade functionality for %d maid(s)",
+  "commands.maid.testblade_no_items": "No maids have SlashBlades or are not owned by you",
+  
+  "task.maidspell.spell_combat.name": "Spell Combat",
+  "task.maidspell.spell_combat.desc": "Maid uses equipped spell books to cast spells in combat. Supports spell books in offhand, mainhand or backpack.",
+  
+  "slashblade.debug.maid_using": "Maid %s is trying to use SlashBlade: %s",
+  "slashblade.debug.input_state": "Maid INPUT_STATE capability: %s",
+  "slashblade.debug.blade_state": "SlashBlade state - broken: %s, sealed: %s, type: %s",
+  "slashblade.debug.skill_info": "Skill: %s, cost: %s, current soul: %s",
+  "slashblade.debug.maid_start_using": "Maid %s started using item: %s"
+} 

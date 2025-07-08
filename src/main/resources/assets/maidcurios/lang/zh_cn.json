@@ -1,0 +1,11 @@
+{
+  "task.maidspell.spell_combat": "法术战斗",
+  "task.maidspell.spell_combat.desc": "女仆使用装备的法术书进行法术攻击。支持副手、主手或背包中的法术书。",
+  "task.maidspell.spell_combat.condition.spell_book": "需要装备法术书（副手、主手或背包）",
+  "item.maidspell.spell_book": "法术书",
+  "item.touhou_little_maid_spell.spell_enhancement_core": "法术强化核心",
+  "item.maidspell.spell_enhancement_core.desc1": "魔力共鸣装置",
+  "item.maidspell.spell_enhancement_core.desc2": "同步主人的法术属性",
+  "item.maidspell.spell_enhancement_core.desc3": "为女仆提供法术强化",
+  "itemGroup.touhou_little_maid_spell": "东方女仆：法术"
+}

@@ -1,0 +1,7 @@
+{
+  "comment": "Spell Combat Task Icon - 法术战斗任务图标",
+  "instructions": "这个文件需要一个16x16像素的PNG图标文件 (spell_combat.png)",
+  "suggested_design": "建议使用法术书和剑的组合图标，表示法术与近战的结合",
+  "icon_source": "可以从Iron's Spells n Spellbooks或Minecraft原版资源中获取灵感",
+  "fallback": "如果没有图标文件，游戏会使用默认图标"
+} 
