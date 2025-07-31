@@ -2,7 +2,7 @@ package com.github.yimeng261.maidspell.inventory;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHandler;
-import com.github.yimeng261.maidspell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 
 /**
  * 支持女仆实体关联的饰品物品处理器

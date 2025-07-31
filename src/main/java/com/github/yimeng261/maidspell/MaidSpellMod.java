@@ -44,6 +44,7 @@ public class MaidSpellMod {
         MaidSpellCreativeTab.register(modBus);
         
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+
         
     }
 

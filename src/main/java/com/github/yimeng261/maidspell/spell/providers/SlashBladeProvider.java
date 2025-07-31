@@ -1,8 +1,8 @@
-package com.github.yimeng261.maidspell.providers;
+package com.github.yimeng261.maidspell.spell.providers;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
-import com.github.yimeng261.maidspell.data.MaidSlashBladeData;
+import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import mods.flammpfeil.slashblade.registry.SlashArtsRegistry;
@@ -315,19 +315,19 @@ public class SlashBladeProvider implements ISpellBookProvider {
      */
     private void forceLookAtTarget(EntityMaid maid, LivingEntity target) {
         if (target == null || maid == null) return;
-        
+
         double dx = target.getX() - maid.getX();
         double dy = target.getEyeY() - maid.getEyeY();
         double dz = target.getZ() - maid.getZ();
-        
+
         double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-        
+
         // 计算Yaw（水平旋转）
         float yaw = (float) (Math.atan2(dz, dx) * 180.0 / Math.PI) - 90.0f;
-        
+
         // 计算Pitch（垂直旋转）
         float pitch = (float) (-(Math.atan2(dy, horizontalDistance) * 180.0 / Math.PI));
-        
+
         // 设置女仆的朝向
         maid.setYRot(yaw);
         maid.setXRot(pitch);

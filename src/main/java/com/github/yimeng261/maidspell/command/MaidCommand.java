@@ -17,8 +17,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 
 // SlashBlade相关导入
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
-import mods.flammpfeil.slashblade.item.SwordType;
 
 import java.util.List;
 
@@ -228,15 +226,15 @@ public class MaidCommand {
                         // === 使用SlashBladeProvider进行完整测试 ===
                         try {
                             // 获取SpellBookManager
-                            com.github.yimeng261.maidspell.manager.SpellBookManager manager = 
-                                com.github.yimeng261.maidspell.manager.SpellBookManager.getOrCreateManager(maid);
+                            com.github.yimeng261.maidspell.spell.manager.SpellBookManager manager =
+                                com.github.yimeng261.maidspell.spell.manager.SpellBookManager.getOrCreateManager(maid);
                             
                             if (manager != null) {
                                 // 找到SlashBladeProvider
-                                com.github.yimeng261.maidspell.providers.SlashBladeProvider slashBladeProvider = null;
+                                com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider slashBladeProvider = null;
                                 for (com.github.yimeng261.maidspell.api.ISpellBookProvider provider : manager.getProviders()) {
-                                    if (provider instanceof com.github.yimeng261.maidspell.providers.SlashBladeProvider) {
-                                        slashBladeProvider = (com.github.yimeng261.maidspell.providers.SlashBladeProvider) provider;
+                                    if (provider instanceof com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider) {
+                                        slashBladeProvider = (com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider) provider;
                                         break;
                                     }
                                 }

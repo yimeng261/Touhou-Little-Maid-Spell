@@ -2,8 +2,7 @@ package com.github.yimeng261.maidspell.inventory;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.handler.MaidBackpackHandler;
-import com.github.yimeng261.maidspell.manager.BaubleStateManager;
-import com.github.yimeng261.maidspell.manager.SpellBookManager;
+import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 

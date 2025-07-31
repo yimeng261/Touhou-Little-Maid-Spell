@@ -3,9 +3,7 @@ package com.github.yimeng261.maidspell.event;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidEquipEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.manager.BaubleStateManager;
-import com.github.yimeng261.maidspell.manager.SpellBookManager;
-import com.github.yimeng261.maidspell.inventory.SpellBookAwareMaidBackpackHandler;
+import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
@@ -18,13 +16,14 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 
 // SlashBlade相关导入
 import mods.flammpfeil.slashblade.capability.inputstate.InputStateCapabilityProvider;
+
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * 女仆法术事件处理器
@@ -121,7 +120,12 @@ public class MaidSpellEventHandler {
             }else if(entity instanceof Player){
                 event.setCanceled(true);
             }
+
+            Global.damageProcess.forEach(func -> {
+                func.apply(event);
+            });
         }
+
 
     }
 
@@ -187,7 +191,7 @@ public class MaidSpellEventHandler {
             }
             
             // 清理特定模组的数据
-            com.github.yimeng261.maidspell.data.MaidSlashBladeData.remove(maid.getUUID());
+            com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData.remove(maid.getUUID());
             
             // 移除女仆的管理器
             SpellBookManager.removeManager(maid);
