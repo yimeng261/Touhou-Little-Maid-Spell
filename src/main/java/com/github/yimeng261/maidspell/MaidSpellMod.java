@@ -4,7 +4,6 @@ import com.github.yimeng261.maidspell.task.SpellCombatTask;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
-import com.github.yimeng261.maidspell.command.CommandRegistry;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
@@ -33,10 +32,7 @@ public class MaidSpellMod {
         
         // 手动注册事件处理器，确保事件能被正确监听
         forgeBus.register(MaidSpellEventHandler.class);
-        
-        // 注册命令
-        forgeBus.register(CommandRegistry.class);
-        
+
         // 注册物品（只在铁魔法模组存在时）
         MaidSpellItems.register(modBus);
         

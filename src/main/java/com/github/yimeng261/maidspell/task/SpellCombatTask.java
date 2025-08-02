@@ -1,6 +1,6 @@
 package com.github.yimeng261.maidspell.task;
 
-import com.github.yimeng261.maidspell.manager.SpellBookManager;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
@@ -17,10 +17,8 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.*;
-import net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
-import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -46,7 +44,11 @@ public class SpellCombatTask implements IRangedAttackTask {
     private static final Logger LOGGER = LogUtils.getLogger();
     public static final ResourceLocation UID = new ResourceLocation("maidspell", "spell_combat");
     private static final MutableComponent NAME = Component.translatable("task.maidspell.spell_combat");
-    private static final float SPELL_RANGE = 20f; // 法术攻击范围 - 设置为5格以确保3格内攻击
+    private static float SPELL_RANGE;
+
+    public static void setSpellRange(Float range){
+        SPELL_RANGE = range;
+    }
 
     @Override
     public ResourceLocation getUid() {
@@ -60,7 +62,6 @@ public class SpellCombatTask implements IRangedAttackTask {
 
     @Override
     public ItemStack getIcon() {
-        // 使用附魔书作为法术战斗任务的图标
         return Items.ENCHANTED_BOOK.getDefaultInstance();
     }
 
@@ -185,16 +186,14 @@ public class SpellCombatTask implements IRangedAttackTask {
         @Override
         protected void start(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
             // 创建SpellCaster并设置初始目标
-            if (hasSpellBook(maid)) {
-                currentSpellCaster = new SimplifiedSpellCaster(maid);
-                
-                // 立即设置当前目标
-                LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-                if (validateTarget(target)) {
-                    currentSpellCaster.setTarget(target);
-                }
-                    
+            currentSpellCaster = new SimplifiedSpellCaster(maid);
+
+            // 立即设置当前目标
+            LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+            if (validateTarget(target)) {
+                currentSpellCaster.setTarget(target);
             }
+
         }
 
         private boolean validateTarget(LivingEntity target) {

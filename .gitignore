@@ -1,0 +1,34 @@
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# idea
+out
+*.ipr
+*.iws
+*.iml
+.idea
+
+# gradle
+build
+.gradle
+
+#mods source code
+Ars-Nouveau-1.20
+Psi-1.20
+SlashBlade_Resharped
+TouhouLittleMaid-1.20
+Goety-2-1.20
+irons-spells-n-spellbooks-1.20.1
+
+
+# other
+eclipse
+run
+
+# Files from Forge MDK
+forge*changelog.txt

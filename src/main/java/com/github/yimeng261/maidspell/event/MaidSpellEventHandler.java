@@ -3,9 +3,9 @@ package com.github.yimeng261.maidspell.event;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidEquipEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.manager.BaubleStateManager;
-import com.github.yimeng261.maidspell.manager.SpellBookManager;
-import com.github.yimeng261.maidspell.inventory.SpellBookAwareMaidBackpackHandler;
+import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
@@ -18,13 +18,16 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 
 // SlashBlade相关导入
 import mods.flammpfeil.slashblade.capability.inputstate.InputStateCapabilityProvider;
+
+import java.lang.reflect.InvocationTargetException;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * 女仆法术事件处理器
@@ -81,8 +84,6 @@ public class MaidSpellEventHandler {
                 if (manager != null) {
                     // 更新法术书
                     manager.updateSpellBooks();
-                    LOGGER.debug("=== MaidSpell Event === Maid {} hand equipment changed in slot {}, updated spell books", 
-                        maid.getName().getString(), slot.name());
                 }
             } catch (Exception e) {
                 LOGGER.error("Error handling maid equip event for maid {}: {}", 
@@ -115,14 +116,23 @@ public class MaidSpellEventHandler {
     public static void onEntityHurt(LivingHurtEvent event) {
         Entity entity = event.getEntity();
         Entity source = event.getSource().getEntity();
-        if(source instanceof EntityMaid){
-            if(entity instanceof EntityMaid){
-                event.setCanceled(true);
-            }else if(entity instanceof Player){
-                event.setCanceled(true);
-            }
+        if(source instanceof EntityMaid maid){
+            Global.common_damageProcessors.forEach(function -> function.apply(event, maid));
+
+            BaubleStateManager.getBaubles(maid).forEach(bauble->{
+                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_damageProcessors.computeIfAbsent(bauble.getDescriptionId(), k-> (livingHurtEvent, entityMaid) -> null);
+                func.apply(event, maid);
+            });
         }
 
+        if(entity instanceof EntityMaid maid){
+            Global.common_hurtProcessors.forEach(function -> function.apply(event, maid));
+
+            BaubleStateManager.getBaubles(maid).forEach(bauble->{
+                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_hurtProcessors.computeIfAbsent(bauble.getDescriptionId(), k-> (livingHurtEvent, entityMaid) -> null);
+                func.apply(event, maid);
+            });
+        }
     }
 
     /**
@@ -187,7 +197,7 @@ public class MaidSpellEventHandler {
             }
             
             // 清理特定模组的数据
-            com.github.yimeng261.maidspell.data.MaidSlashBladeData.remove(maid.getUUID());
+            com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData.remove(maid.getUUID());
             
             // 移除女仆的管理器
             SpellBookManager.removeManager(maid);

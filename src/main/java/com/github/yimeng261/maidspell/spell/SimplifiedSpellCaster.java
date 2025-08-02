@@ -1,7 +1,8 @@
 package com.github.yimeng261.maidspell.spell;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.manager.SpellBookManager;
+import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
@@ -22,7 +23,7 @@ public class SimplifiedSpellCaster {
     private final EntityMaid maid;
     private LivingEntity target;
     
-    public static final double MELEE_RANGE = 3;
+    public static double MELEE_RANGE;
     private static final double MOVEMENT_SPEED = 0.6;
 
     private SpellBookManager spellBookManager;
@@ -30,7 +31,6 @@ public class SimplifiedSpellCaster {
     public SimplifiedSpellCaster(EntityMaid maid) {
         this.maid = maid;
         this.spellBookManager = SpellBookManager.getOrCreateManager(maid);
-        
     }
     
     /**

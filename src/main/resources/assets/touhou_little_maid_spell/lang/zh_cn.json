@@ -1,19 +1,19 @@
 {
-  "commands.maid.player_only": "此命令只能由玩家使用",
-  "commands.maid.no_maids_found": "在 %.1f 格范围内未找到女仆",
-  "commands.maid.use_success": "成功让 %d 个女仆使用主手物品",
-  "commands.maid.use_no_items": "没有女仆持有物品或不属于你",
-  "commands.maid.release_success": "成功让 %d 个女仆释放主手物品",
-  "commands.maid.release_no_items": "没有女仆正在使用物品或不属于你",
-  "commands.maid.testblade_success": "成功测试 %d 个女仆的拔刀剑功能",
-  "commands.maid.testblade_no_items": "没有女仆持有拔刀剑或不属于你",
-  
-  "task.maidspell.spell_combat.name": "法术战斗",
-  "task.maidspell.spell_combat.desc": "女仆使用装备的法术书在战斗中施法。支持副手、主手或背包中的法术书。",
-  
-  "slashblade.debug.maid_using": "女仆 %s 正在尝试使用拔刀剑: %s",
-  "slashblade.debug.input_state": "女仆INPUT_STATE能力: %s",
-  "slashblade.debug.blade_state": "拔刀剑状态 - 损坏: %s, 封印: %s, 类型: %s",
-  "slashblade.debug.skill_info": "技能: %s, 消耗: %s, 当前魂: %s",
-  "slashblade.debug.maid_start_using": "女仆 %s 开始使用物品: %s"
-} 
+  "task.maidspell.spell_combat": "法术战斗",
+  "task.maidspell.spell_combat.desc": "女仆使用装备的法术书进行法术攻击。支持副手、主手或背包中的法术书。",
+  "task.maidspell.spell_combat.condition.spell_book": "需要装备法术书（副手、主手或背包）",
+  "item.maidspell.spell_book": "法术书",
+  "item.touhou_little_maid_spell.spell_enhancement_core": "法术强化核心",
+  "item.maidspell.spell_enhancement_core.desc1": "魔力共鸣装置",
+  "item.maidspell.spell_enhancement_core.desc2": "同步主人的法术属性",
+  "item.maidspell.spell_enhancement_core.desc3": "为女仆提供法术强化",
+  "item.touhou_little_maid_spell.bleeding_heart": "喋血之心",
+  "item.maidspell.bleeding_heart.desc1": "蕴含强大生命力的魔法物品",
+  "item.maidspell.bleeding_heart.desc2": "攻击敌人时造成伤害的10%转换为生命值",
+  "item.maidspell.bleeding_heart.desc3": "同时治疗女仆和主人",
+  "item.touhou_little_maid_spell.flow_core": "流转核心",
+  "item.maidspell.flow_core.desc1": "流转不息，生生不绝",
+  "item.maidspell.flow_core.desc2": "持续治疗女仆，每0.5s治疗（0.25*好感度*最大生命值）点生命值",
+  "item.maidspell.flow_core.desc3": "减少受到的伤害，减伤效果为（20%*好感度）",
+  "itemGroup.touhou_little_maid_spell": "东方女仆：法术"
+}
