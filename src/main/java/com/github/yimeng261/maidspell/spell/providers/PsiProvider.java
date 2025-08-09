@@ -4,8 +4,6 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.spell.data.MaidPsiSpellData;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
@@ -17,11 +15,9 @@ import net.minecraftforge.common.util.FakePlayerFactory;
 import vazkii.psi.api.PsiAPI;
 import vazkii.psi.api.cad.ICAD;
 import vazkii.psi.api.cad.ISocketable;
-import vazkii.psi.api.internal.IPlayerData;
 import vazkii.psi.api.spell.ISpellAcceptor;
 import vazkii.psi.api.spell.Spell;
 import vazkii.psi.api.spell.SpellContext;
-import vazkii.psi.api.spell.SpellPiece;
 import vazkii.psi.api.spell.EnumSpellStat;
 import vazkii.psi.common.core.handler.PlayerDataHandler;
 import vazkii.psi.common.item.ItemCAD;
@@ -29,7 +25,6 @@ import vazkii.psi.common.item.ItemCAD;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -63,11 +58,7 @@ public class PsiProvider implements ISpellBookProvider {
         }
         
         // 检查是否为CAD
-        if (itemStack.getItem() instanceof ICAD) {
-            return true;
-        }
-        
-        return false;
+        return itemStack.getItem() instanceof ICAD;
     }
 
     /**
@@ -97,7 +88,7 @@ public class PsiProvider implements ISpellBookProvider {
     public void setSpellBook(EntityMaid maid, ItemStack cad) {
         MaidPsiSpellData data = getData(maid);
         if (data != null) {
-            data.setCAD(cad);
+            data.setSpellBook(cad);
         }
     }
 
@@ -120,16 +111,13 @@ public class PsiProvider implements ISpellBookProvider {
             return false;
         }
 
-        ItemStack cad = data.getCAD();
-        if (cad.isEmpty() || !(cad.getItem() instanceof ICAD)) {
+        ItemStack cad = data.getSpellBook();
+        if (!isSpellBook(cad)) {
             return false;
         }
 
         // 获取CAD的可插拔组件
         ISocketable sockets = cad.getCapability(PsiAPI.SOCKETABLE_CAPABILITY).orElse(null);
-        if (sockets == null) {
-            return false;
-        }
 
         // 从弹夹中随机选择一个有效的法术弹
         ItemStack bullet = getRandomBulletFromMagazine(sockets, maid);
@@ -165,9 +153,8 @@ public class PsiProvider implements ISpellBookProvider {
         
         // 随机选择一个法术弹
         int randomIndex = maid.getRandom().nextInt(validBullets.size());
-        ItemStack selectedBullet = validBullets.get(randomIndex);
-        
-        return selectedBullet;
+
+        return validBullets.get(randomIndex);
     }
 
     /**
@@ -220,7 +207,7 @@ public class PsiProvider implements ISpellBookProvider {
             data.setCastingTicks(20); // 1秒的施法时间
             
             // 设置法术冷却时间
-            data.setSpellCooldown(spellId, cooldownTicks);
+            data.setSpellCooldown(spellId, cooldownTicks, maid);
 
             return true;
 
@@ -302,7 +289,7 @@ public class PsiProvider implements ISpellBookProvider {
                 // 确保虚假玩家有无限的 PSI（通过我们的虚拟 PlayerData）
                 return fakePlayer;
                 
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         }
         
@@ -322,7 +309,7 @@ public class PsiProvider implements ISpellBookProvider {
             playerData.overflowed = false;
             playerData.regenCooldown = 0;
             
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
     }
 
@@ -380,70 +367,4 @@ public class PsiProvider implements ISpellBookProvider {
         }
     }
 
-    /**
-     * 虚拟玩家数据类，用于女仆施法
-     * 提供无限PSI但不实际消耗的功能
-     */
-    private static class VirtualPlayerData implements IPlayerData {
-        
-        @Override
-        public int getTotalPsi() {
-            return Integer.MAX_VALUE; // 无限PSI容量
-        }
-
-        @Override
-        public int getAvailablePsi() {
-            return Integer.MAX_VALUE; // 无限可用PSI
-        }
-
-        @Override
-        public int getLastAvailablePsi() {
-            return Integer.MAX_VALUE;
-        }
-
-        @Override
-        public int getRegenCooldown() {
-            return 0;
-        }
-
-        @Override
-        public int getRegenPerTick() {
-            return 0;
-        }
-
-        @Override
-        public boolean isOverflowed() {
-            return false;
-        }
-
-        @Override
-        public void deductPsi(int psi, int cd, boolean sync, boolean shatter) {
-            // 不消耗PSI，什么都不做
-        }
-
-        @Override
-        public boolean isPieceGroupUnlocked(ResourceLocation group, @Nullable ResourceLocation piece) {
-            return true; // 所有法术组件都解锁
-        }
-
-        @Override
-        public void unlockPieceGroup(ResourceLocation group) {
-            // 不需要解锁
-        }
-
-        @Override
-        public void markPieceExecuted(SpellPiece piece) {
-            // 不记录执行
-        }
-
-        @Override
-        public CompoundTag getCustomData() {
-            return new CompoundTag();
-        }
-
-        @Override
-        public void save() {
-            // 不需要保存
-        }
-    }
 } 

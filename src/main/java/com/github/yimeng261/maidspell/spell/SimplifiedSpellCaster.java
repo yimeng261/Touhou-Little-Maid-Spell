@@ -4,16 +4,21 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
+import net.minecraft.world.level.pathfinder.Path;
+import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 import net.minecraftforge.fml.ModList;
 import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.SlashArtsRegistry;
+
+import java.util.stream.Stream;
 
 /**
  * 简化版的女仆法术施放AI - 不再独立处理索敌，依赖外部传入目标
@@ -24,6 +29,7 @@ public class SimplifiedSpellCaster {
     private LivingEntity target;
     
     public static double MELEE_RANGE;
+    public static double FAR_RANGE;
     private static final double MOVEMENT_SPEED = 0.6;
 
     private SpellBookManager spellBookManager;
@@ -58,7 +64,7 @@ public class SimplifiedSpellCaster {
     /**
      * 执行施法逻辑
      */
-    public void tick() {
+    public void melee_tick() {
         if (!hasValidTarget()) {
             return; // 没有有效目标，退出
         }
@@ -69,19 +75,31 @@ public class SimplifiedSpellCaster {
             executeCombat(distance);
         }
     }
+
+    /**
+     * 执行施法逻辑
+     */
+    public void far_tick() {
+        if (!hasValidTarget()) {
+            return; // 没有有效目标，退出
+        }
+
+        if (maid.tickCount % 5 == 0) {
+            // 执行战斗逻辑
+            double distance = maid.distanceTo(target);
+            executeCombatFar(distance);
+        }
+    }
     
     /**
      * 执行战斗逻辑
      */
     private void executeCombat(double distance) {
         // 确保目标无敌时间为0，允许法术伤害
-        if (target != null) {
-            target.invulnerableTime = 0;
+        if (target == null) {
+            return;
         }
-
-        if(distance > MELEE_RANGE) {
-            maid.getNavigation().moveTo(target, MOVEMENT_SPEED);
-        }
+        target.invulnerableTime = 0;
 
         // 执行法术施放
         if (spellBookManager != null) {
@@ -92,9 +110,25 @@ public class SimplifiedSpellCaster {
             return;
         }
 
-        if (distance <= MELEE_RANGE) {
+        if (distance <= MELEE_RANGE+1) {
             maid.doHurtTarget(target);
             maid.swing(InteractionHand.MAIN_HAND);
+        }
+    }
+
+    /**
+     * 执行战斗逻辑
+     */
+    private void executeCombatFar(double distance) {
+        // 确保目标无敌时间为0，允许法术伤害
+        if (target == null) {
+            return;
+        }
+        target.invulnerableTime = 0;
+
+        // 执行法术施放
+        if (spellBookManager != null) {
+            spellBookManager.castSpell(maid);
         }
     }
 

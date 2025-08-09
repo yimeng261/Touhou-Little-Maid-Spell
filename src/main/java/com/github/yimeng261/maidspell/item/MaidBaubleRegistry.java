@@ -4,8 +4,14 @@ import com.github.tartaricacid.touhoulittlemaid.api.ILittleMaid;
 import com.github.tartaricacid.touhoulittlemaid.api.LittleMaidExtension;
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeartBauble;
+import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNoteBauble;
+import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChainBauble;
 import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCoreBauble;
+import com.github.yimeng261.maidspell.item.bauble.quickChantRing.QuickChantBauble;
+import com.github.yimeng261.maidspell.item.bauble.rockCrystal.RockCrystalBauble;
+import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
+import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
 import net.minecraftforge.fml.ModList;
 
 /**
@@ -28,6 +34,31 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         if(MaidSpellItems.FLOW_CORE != null) {
             manager.bind(MaidSpellItems.FLOW_CORE, new FlowCoreBauble());
+        }
+
+        if(MaidSpellItems.QUICK_CHANT_RING != null){
+            manager.bind(MaidSpellItems.QUICK_CHANT_RING, new QuickChantBauble());
+        }
+
+        if(MaidSpellItems.SPRING_RING != null){
+            manager.bind(MaidSpellItems.SPRING_RING, new SpringBauble());
+        }
+        
+        // 新增饰品注册
+        if(MaidSpellItems.DOUBLE_HEART_CHAIN != null){
+            manager.bind(MaidSpellItems.DOUBLE_HEART_CHAIN, new DoubleHeartChainBauble());
+        }
+        
+        if(MaidSpellItems.ROCK_CRYSTAL != null){
+            manager.bind(MaidSpellItems.ROCK_CRYSTAL, new RockCrystalBauble());
+        }
+        
+        if(MaidSpellItems.SLIVER_CERCIS != null){
+            manager.bind(MaidSpellItems.SLIVER_CERCIS, new SilverCercisBauble());
+        }
+
+        if(MaidSpellItems.BLUE_NOTE != null){
+            manager.bind(MaidSpellItems.BLUE_NOTE, new BlueNoteBauble());
         }
     }
 }

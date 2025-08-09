@@ -1,6 +1,8 @@
 package com.github.yimeng261.maidspell.spell.providers;
 
+import com.hollingsworth.arsnouveau.api.item.inv.CombinedHandlerInv;
 import com.mojang.datafixers.util.Pair;
+import net.minecraftforge.items.wrapper.CombinedInvWrapper;
 import org.slf4j.Logger;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.spell.data.MaidGoetySpellData;
@@ -33,7 +35,6 @@ import java.util.Objects;
 public class GoetyProvider implements ISpellBookProvider {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final int MAX_TARGET_DISTANCE = 32;
     private static final int MAX_INFINITE_CASTING_TIME = 45;
     
 
@@ -294,8 +295,7 @@ public class GoetyProvider implements ISpellBookProvider {
         
         // 检查当前法杖上的聚晶
         ItemStack currentFocus = IWand.getFocus(spellBook);
-        if (!currentFocus.isEmpty() && currentFocus.getItem() instanceof IFocus) {
-            IFocus focus = (IFocus) currentFocus.getItem();
+        if (!currentFocus.isEmpty() && currentFocus.getItem() instanceof IFocus focus) {
             ISpell spell = focus.getSpell();
             if (spell != null && !data.isSpellOnCooldown(getSpellId(spell))) {
                 availableFoci.add(new Pair<>(currentFocus.copy(),-1));
@@ -309,8 +309,7 @@ public class GoetyProvider implements ISpellBookProvider {
                 FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
                 for (int i = 1; i < bagHandler.getSlots(); i++) {
                     ItemStack focusStack = bagHandler.getStackInSlot(i);
-                    if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus) {
-                        IFocus focus = (IFocus) focusStack.getItem();
+                    if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
                         ISpell spell = focus.getSpell();
                         if (spell != null && !data.isSpellOnCooldown(getSpellId(spell))) {
                             boolean isDuplicate = availableFoci.stream()
@@ -321,7 +320,7 @@ public class GoetyProvider implements ISpellBookProvider {
                         }
                     }
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         }
         
@@ -557,6 +556,9 @@ public class GoetyProvider implements ISpellBookProvider {
     private void ensureWandEquipped(EntityMaid maid) {
         MaidGoetySpellData data = getData(maid);
         if (data == null) return;
+        if (!isSpellBook(data.getSpellBook())){
+            return;
+        }
 
         ItemStack mainHandItem = maid.getMainHandItem();
         ItemStack originalOffHand = maid.getOffhandItem();
@@ -571,34 +573,20 @@ public class GoetyProvider implements ISpellBookProvider {
         maid.startUsingItem(wandHand);
     }
     
-    private void swapItem(EntityMaid maid, ItemStack targetItem, ItemStack sourceItem) {
+    private void swapItem(EntityMaid maid, ItemStack spellBook, ItemStack handItem) {
         if (maid == null) return;
-        
-        if (targetItem == null) targetItem = ItemStack.EMPTY;
-        if (sourceItem == null) sourceItem = ItemStack.EMPTY;
-        
-        int ti = -1, si = -1;
-        var availableInv = maid.getAvailableInv(true);
+
+        CombinedInvWrapper availableInv = maid.getAvailableInv(true);
         
         for (int i = 0; i < availableInv.getSlots(); i++) {
             ItemStack stackInSlot = availableInv.getStackInSlot(i);
-            if (ItemStack.isSameItemSameTags(stackInSlot, sourceItem)) {
-                si = i;
-            }
-            if (ItemStack.isSameItemSameTags(stackInSlot, targetItem)) {
-                ti = i;
-            }
-            if (ti != -1 && si != -1) {
+            if (ItemStack.isSameItemSameTags(stackInSlot, spellBook)) {
+                availableInv.setStackInSlot(i, handItem);
                 break;
             }
         }
-        
-        if (ti != -1) {
-            availableInv.setStackInSlot(ti, sourceItem);
-        }
-        if (si != -1) {
-            availableInv.setStackInSlot(si, targetItem);
-        }
+
+        maid.setItemInHand(InteractionHand.OFF_HAND, spellBook);
     }
     
     private void completeCasting(EntityMaid maid) {
@@ -635,7 +623,7 @@ public class GoetyProvider implements ISpellBookProvider {
         if (data != null && spell != null) {
             String spellId = getSpellId(spell);
             int cooldown = spell.defaultSpellCooldown();
-            data.setSpellCooldown(spellId, cooldown);
+            data.setSpellCooldown(spellId, cooldown, maid);
         }
     }
 } 

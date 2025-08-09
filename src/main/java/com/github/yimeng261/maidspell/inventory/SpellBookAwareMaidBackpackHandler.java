@@ -22,7 +22,7 @@ public class SpellBookAwareMaidBackpackHandler extends MaidBackpackHandler {
     @Override
     protected void onContentsChanged(int slot) {
         super.onContentsChanged(slot);
-        LOGGER.info("mixin onContentsChanged slot: {}", slot);
+        LOGGER.debug("mixin onContentsChanged slot: {}", slot);
         handleSpellBookChange(slot);
     }
     

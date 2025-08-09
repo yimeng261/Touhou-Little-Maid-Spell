@@ -17,7 +17,8 @@ public class TaskRegistry implements ILittleMaid {
     @Override
     public void addMaidTask(TaskManager manager) {
         // 注册法术战斗任务
-        manager.add(new SpellCombatTask());
+        manager.add(new SpellCombatMeleeTask());
+        manager.add(new SpellCombatFarTask());
     }
 
 

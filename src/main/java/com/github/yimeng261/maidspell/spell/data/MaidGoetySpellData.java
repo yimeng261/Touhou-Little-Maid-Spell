@@ -2,10 +2,8 @@ package com.github.yimeng261.maidspell.spell.data;
 
 import com.Polarice3.Goety.api.magic.ISpell;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemStack;
+import com.github.yimeng261.maidspell.api.AbstractSpellData;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,17 +12,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * 女仆Goety法术数据存储类
  * 集中管理每个女仆的法术相关状态和数据
  */
-public class MaidGoetySpellData {
+public class MaidGoetySpellData extends AbstractSpellData {
     
     // 全局数据存储，按女仆UUID映射
     private static final Map<UUID, MaidGoetySpellData> MAID_DATA_MAP = new ConcurrentHashMap<>();
-    
-    // === 基本状态 ===
-    private LivingEntity target;
-    private ItemStack spellBook = ItemStack.EMPTY;
+
     
     // === 施法状态 ===
-    private boolean isCasting = false;
     private int castingTime = 0;
     private int maxCastingTime = 0;
     private ISpell currentSpell = null;
@@ -33,10 +27,7 @@ public class MaidGoetySpellData {
     // === 蓄力法术状态 ===
     private int coolCounter = 0;
     private int shotsFired = 0;
-    
-    
-    // === 冷却管理 ===
-    private final Map<String, Integer> spellCooldowns = new HashMap<>();
+
     
     // === 构造函数 ===
     private MaidGoetySpellData() {
@@ -79,47 +70,9 @@ public class MaidGoetySpellData {
         MAID_DATA_MAP.remove(maidUuid);
     }
     
-    /**
-     * 清理所有数据（用于服务器关闭等场景）
-     */
-    public static void clearAll() {
-        MAID_DATA_MAP.clear();
-    }
-    
-    /**
-     * 获取当前存储的女仆数据数量
-     */
-    public static int getDataCount() {
-        return MAID_DATA_MAP.size();
-    }
+
     
     // === 基本状态管理 ===
-    
-    public LivingEntity getTarget() {
-        return target;
-    }
-    
-    public void setTarget(LivingEntity target) {
-        this.target = target;
-    }
-    
-    public ItemStack getSpellBook() {
-        return spellBook;
-    }
-    
-    public void setSpellBook(ItemStack spellBook) {
-        this.spellBook = spellBook != null ? spellBook : ItemStack.EMPTY;
-    }
-    
-    // === 施法状态管理 ===
-    
-    public boolean isCasting() {
-        return isCasting;
-    }
-    
-    public void setCasting(boolean casting) {
-        this.isCasting = casting;
-    }
     
     public int getCastingTime() {
         return castingTime;
@@ -175,29 +128,6 @@ public class MaidGoetySpellData {
         this.shotsFired++;
     }
 
-    // === 冷却管理 ===
-    
-    public Map<String, Integer> getSpellCooldowns() {
-        return spellCooldowns;
-    }
-    
-    public boolean isSpellOnCooldown(String spellId) {
-        return spellCooldowns.getOrDefault(spellId, 0) > 0;
-    }
-    
-    public void setSpellCooldown(String spellId, int cooldown) {
-        if (cooldown <= 0) {
-            spellCooldowns.remove(spellId);
-        } else {
-            spellCooldowns.put(spellId, cooldown);
-        }
-    }
-    
-    public void updateCooldowns() {
-        spellCooldowns.replaceAll((spellId, cooldown) -> Math.max(0, cooldown - 20));
-        spellCooldowns.entrySet().removeIf(entry -> entry.getValue() <= 0);
-    }
-    
     // === 状态重置方法 ===
     
     /**
@@ -221,32 +151,16 @@ public class MaidGoetySpellData {
         this.shotsFired = 0;
     }
     
-    /**
-     * 完全重置（除了冷却数据）
-     */
-    public void reset() {
-        this.target = null;
-        this.spellBook = ItemStack.EMPTY;
-        resetCastingState();
-    }
+
     
     /**
      * 初始化施法状态
      */
     public void initiateCastingState(ISpell spell, int duration) {
-        this.currentSpell = spell;
+        setCurrentSpell(spell);
         this.castingTime = 0;
         this.maxCastingTime = duration;
         this.isCasting = true;
     }
-    
-    /**
-     * 设置法术冷却时间（兼容方法）
-     */
-    public void setCooldown(ISpell spell) {
-        if (spell != null) {
-            String spellId = spell.getClass().getSimpleName();
-            setSpellCooldown(spellId, spell.defaultSpellCooldown());
-        }
-    }
+
 } 

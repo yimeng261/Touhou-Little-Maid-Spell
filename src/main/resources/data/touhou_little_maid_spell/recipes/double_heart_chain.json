@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " C ",
+    "CHC",
+    " C "
+  ],
+  "key": {
+    "C": {
+      "item": "minecraft:chain"
+    },
+    "H": {
+      "item": "touhou_little_maid_spell:bleeding_heart"
+    }
+  },
+  "result": {
+    "item": "touhou_little_maid_spell:double_heart_chain"
+  }
+} 

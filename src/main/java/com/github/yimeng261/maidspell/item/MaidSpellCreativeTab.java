@@ -27,10 +27,16 @@ public class MaidSpellCreativeTab {
             .displayItems((parameters, output) -> {
                 if (ModList.get().isLoaded("irons_spellbooks")) {
                     output.accept(MaidSpellItems.SPELL_ENHANCEMENT_CORE.get());
+                    output.accept(MaidSpellItems.BLUE_NOTE.get());
                 }
 
                 output.accept(MaidSpellItems.BLEEDING_HEART.get());
                 output.accept(MaidSpellItems.FLOW_CORE.get());
+                output.accept(MaidSpellItems.QUICK_CHANT_RING.get());
+                output.accept(MaidSpellItems.SPRING_RING.get());
+                output.accept(MaidSpellItems.ROCK_CRYSTAL.get());
+                output.accept(MaidSpellItems.DOUBLE_HEART_CHAIN.get());
+                //output.accept(MaidSpellItems.SLIVER_CERCIS.get());
             })
             .build());
     

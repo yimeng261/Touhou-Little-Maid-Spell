@@ -115,24 +115,31 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onEntityHurt(LivingHurtEvent event) {
         Entity entity = event.getEntity();
+        Entity direct = event.getSource().getDirectEntity();
         Entity source = event.getSource().getEntity();
         if(source instanceof EntityMaid maid){
-            Global.common_damageProcessors.forEach(function -> function.apply(event, maid));
-
-            BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_damageProcessors.computeIfAbsent(bauble.getDescriptionId(), k-> (livingHurtEvent, entityMaid) -> null);
-                func.apply(event, maid);
-            });
+            processor(event, maid);
+        }else if(direct instanceof EntityMaid maid){
+            processor(event, maid);
         }
 
         if(entity instanceof EntityMaid maid){
             Global.common_hurtProcessors.forEach(function -> function.apply(event, maid));
 
             BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_hurtProcessors.computeIfAbsent(bauble.getDescriptionId(), k-> (livingHurtEvent, entityMaid) -> null);
+                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_hurtProcessors.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
                 func.apply(event, maid);
             });
         }
+    }
+
+    private static void processor(LivingHurtEvent event, EntityMaid maid) {
+        Global.common_damageProcessors.forEach(function -> function.apply(event, maid));
+
+        BaubleStateManager.getBaubles(maid).forEach(bauble->{
+            BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_damageProcessors.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+            func.apply(event, maid);
+        });
     }
 
     /**

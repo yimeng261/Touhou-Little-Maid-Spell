@@ -15,7 +15,7 @@ public class BleedingHeartBauble implements IExtendBauble {
     public void onRemove(EntityMaid maid) {}
 
     static {
-        Global.bauble_damageProcessors.put(Util.makeDescriptionId("item", MaidSpellItems.BLEEDING_HEART.getId()),(event, maid) -> {
+        Global.bauble_damageProcessors.put(MaidSpellItems.itemDesc(MaidSpellItems.BLEEDING_HEART),(event, maid) -> {
             Float amount = event.getAmount();
             Player owner = (Player) maid.getOwner();
             if (owner != null) {

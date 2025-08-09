@@ -1,9 +1,10 @@
 package com.github.yimeng261.maidspell;
 
-import com.github.yimeng261.maidspell.task.SpellCombatTask;
+import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
+import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
@@ -19,7 +20,7 @@ public class MaidSpellMod {
     public static final String MOD_NAME = "Touhou Little Maid: Spell";
     
     private static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
-    public static final SpellCombatTask SPELL_COMBAT_TASK = new SpellCombatTask();
+    public static final SpellCombatMeleeTask SPELL_COMBAT_TASK = new SpellCombatMeleeTask();
     
 
     public MaidSpellMod() {
@@ -38,6 +39,9 @@ public class MaidSpellMod {
         
         // 注册创造模式物品栏（始终注册）
         MaidSpellCreativeTab.register(modBus);
+        
+        // 注册容器类型
+        MaidSpellContainers.register(modBus);
         
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         

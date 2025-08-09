@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
@@ -147,12 +148,9 @@ public class SlashBladeProvider implements ISpellBookProvider {
                     // 确保女仆面向目标
                     LivingEntity target = data.getTarget();
                     if (target != null && target.isAlive()) {
-                        // 修复：使用目标的眼部位置而不是脚部位置，确保刀气射向目标中心
+                        BehaviorUtils.lookAtEntity(maid, target);
                         Vec3 targetEyePos = target.getEyePosition();
                         maid.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, targetEyePos);
-                        
-                        // 额外的精确朝向调整，确保女仆的getLookAngle()返回正确的方向
-                        forceLookAtTarget(maid, target);
                     }
                     
                     // 调用inventoryTick以保持拔刀剑状态更新
@@ -255,7 +253,7 @@ public class SlashBladeProvider implements ISpellBookProvider {
             // 在combo执行期间也要确保女仆朝向目标
             LivingEntity target = data.getTarget();
             if (target != null && target.isAlive()) {
-                forceLookAtTarget(maid, target);
+                BehaviorUtils.lookAtEntity(maid, target);
             }
             
             // 检查是否与上一次combo状态相同（防止状态停滞）
@@ -310,30 +308,4 @@ public class SlashBladeProvider implements ISpellBookProvider {
         maid.swing(InteractionHand.MAIN_HAND);
     }
 
-    /**
-     * 强制女仆精确朝向目标
-     */
-    private void forceLookAtTarget(EntityMaid maid, LivingEntity target) {
-        if (target == null || maid == null) return;
-        
-        double dx = target.getX() - maid.getX();
-        double dy = target.getEyeY() - maid.getEyeY();
-        double dz = target.getZ() - maid.getZ();
-        
-        double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-        
-        // 计算Yaw（水平旋转）
-        float yaw = (float) (Math.atan2(dz, dx) * 180.0 / Math.PI) - 90.0f;
-        
-        // 计算Pitch（垂直旋转）
-        float pitch = (float) (-(Math.atan2(dy, horizontalDistance) * 180.0 / Math.PI));
-        
-        // 设置女仆的朝向
-        maid.setYRot(yaw);
-        maid.setXRot(pitch);
-        maid.yRotO = yaw;
-        maid.xRotO = pitch;
-        maid.yHeadRot = yaw;
-        maid.yHeadRotO = yaw;
-    }
 }

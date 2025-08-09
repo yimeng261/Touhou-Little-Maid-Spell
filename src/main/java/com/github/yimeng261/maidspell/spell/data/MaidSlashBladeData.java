@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MaidSlashBladeData {
     private static final Map<UUID, MaidSlashBladeData> DATA_MAP = new ConcurrentHashMap<>();
 
-    private final UUID maidUUID;
     private ItemStack slashBlade = ItemStack.EMPTY;
     private WeakReference<LivingEntity> target = new WeakReference<>(null);
     
@@ -31,7 +30,6 @@ public class MaidSlashBladeData {
 
 
     private MaidSlashBladeData(UUID maidUUID) {
-        this.maidUUID = maidUUID;
     }
     
     public static MaidSlashBladeData getOrCreate(UUID maidUUID) {

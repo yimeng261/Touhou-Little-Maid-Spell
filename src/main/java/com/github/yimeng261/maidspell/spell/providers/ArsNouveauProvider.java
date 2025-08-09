@@ -38,7 +38,6 @@ import java.util.ArrayList;
  */
 public class ArsNouveauProvider implements ISpellBookProvider {
     private static final Logger LOGGER = LogUtils.getLogger();
-    public static final String MOD_ID = "ars_nouveau";
 
     /**
      * 私有构造函数，防止外部实例化
@@ -148,6 +147,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
         data.setCasting(true);
         data.setCastingTicks(0);
         data.setCurrentSpell(spell);
+        data.setSpellCooldown(spell.name,spell.getCost(),maid);
         
         // 播放手臂挥舞动画
         maid.swing(InteractionHand.MAIN_HAND);
@@ -161,7 +161,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
     @Override
     public void processContinuousCasting(EntityMaid maid) {
         MaidArsNouveauSpellData data = getData(maid);
-        if (data == null || !data.isCasting() || data.getCurrentSpell() == null || maid == null) {
+        if (data == null || !data.isCasting() || data.getCurrentSpell() == null) {
             return;
         }
         
@@ -211,6 +211,8 @@ public class ArsNouveauProvider implements ISpellBookProvider {
     @Override
     public void updateCooldown(EntityMaid maid) {
         // 新生魔艺法术没有内置冷却系统，这里预留接口供将来的魔力系统使用
+        MaidArsNouveauSpellData data = getData(maid);
+        data.updateCooldowns();
         // 定期补充女仆的魔力
         if (maid != null && maid.tickCount % 100 == 0) { // 每5秒检查一次
             ensureManaCapability(maid);
@@ -234,19 +236,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
             }
         }
     }
-    
-    /**
-     * 检查是否有可用法术
-     */
-    private boolean hasAvailableSpells(MaidArsNouveauSpellData data) {
-        if (data.getCurrentCaster() == null) {
-            return false;
-        }
-        
-        // 检查是否有有效的法术
-        List<Spell> availableSpells = getAvailableSpells(data);
-        return !availableSpells.isEmpty();
-    }
+
     
     /**
      * 获取可用的法术列表
@@ -261,7 +251,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
         // 遍历法术书的所有槽位
         for (int i = 0; i < caster.getMaxSlots(); i++) {
             Spell spell = caster.getSpell(i);
-            if (spell.isValid() && !spell.isEmpty()) {
+            if (spell.isValid() && !spell.isEmpty() && !data.isSpellOnCooldown(spell.name)) {
                 availableSpells.add(spell);
             }
         }
@@ -360,8 +350,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
                     }
                 } else {
                     // 非弹射物法术使用标准方法
-                    EntityHitResult entityHit = new EntityHitResult(target, targetPos);
-                    resolver.hitResult = entityHit;
+                    resolver.hitResult = new EntityHitResult(target, targetPos);
                     castSuccess = resolver.onCastOnEntity(data.getSpellBook(), target, InteractionHand.MAIN_HAND);
                 }
                 
@@ -393,7 +382,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
                         data.getCurrentSpell().sound.pitch);
                 }
             }   
-        } catch (Exception e) { 
+        } catch (Exception ignored) {
         } finally {
             // 重置施法状态
             data.resetCastingState();
