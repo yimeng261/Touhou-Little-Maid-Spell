@@ -18,6 +18,7 @@ import com.hollingsworth.arsnouveau.common.spell.augment.AugmentSensitive;
 import com.hollingsworth.arsnouveau.common.spell.method.MethodProjectile;
 import com.hollingsworth.arsnouveau.common.entity.EntityProjectileSpell;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.HitResult;
@@ -140,7 +141,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
         // 确保女仆面向目标
         LivingEntity target = data.getTarget();
         if (target != null) {
-            maid.getLookControl().setLookAt(target.getX(), target.getEyeY(), target.getZ());
+            BehaviorUtils.lookAtEntity(maid, target);
         }
         
         // 开始施法
@@ -170,7 +171,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
         // 持续面向目标
         LivingEntity target = data.getTarget();
         if (target != null) {
-            maid.getLookControl().setLookAt(target.getX(), target.getEyeY(), target.getZ());
+            BehaviorUtils.lookAtEntity(maid, target);
         }
 
         // 等待一段时间让女仆转向目标，然后完成施法

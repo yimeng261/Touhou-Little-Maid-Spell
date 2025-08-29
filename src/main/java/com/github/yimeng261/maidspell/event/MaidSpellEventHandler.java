@@ -8,10 +8,13 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraftforge.event.entity.living.MobEffectEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
@@ -25,9 +28,8 @@ import net.minecraftforge.event.entity.living.LivingDeathEvent;
 // SlashBlade相关导入
 import mods.flammpfeil.slashblade.capability.inputstate.InputStateCapabilityProvider;
 
-import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /**
  * 女仆法术事件处理器
@@ -46,10 +48,13 @@ public class MaidSpellEventHandler {
         Entity entity = event.getEntity();
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
             // 确保女仆有对应的管理器并更新引用
-
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.setMaid(maid);
             manager.updateSpellBooks();
+            LivingEntity owner = maid.getOwner();
+            if(owner != null) {
+                Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
+            }
         }
     }
 
@@ -65,6 +70,10 @@ public class MaidSpellEventHandler {
             // 因为女仆可能很快就会重新进入世界（魂符移动）
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.stopAllCasting();
+            LivingEntity owner = maid.getOwner();
+            if(owner != null) {
+                Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).remove(maid.getUUID());
+            }
         }
     }
 
@@ -118,26 +127,66 @@ public class MaidSpellEventHandler {
         Entity direct = event.getSource().getDirectEntity();
         Entity source = event.getSource().getEntity();
         if(source instanceof EntityMaid maid){
-            processor(event, maid);
+            processor_pre(event, maid);
         }else if(direct instanceof EntityMaid maid){
-            processor(event, maid);
+            processor_pre(event, maid);
         }
 
         if(entity instanceof EntityMaid maid){
             Global.common_hurtProcessors.forEach(function -> function.apply(event, maid));
 
             BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_hurtProcessors.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_hurtProcessors_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
                 func.apply(event, maid);
             });
         }
     }
 
-    private static void processor(LivingHurtEvent event, EntityMaid maid) {
+    @SubscribeEvent
+    public static void onEntityDamage(LivingDamageEvent event) {
+        Entity entity = event.getEntity();
+        Entity direct = event.getSource().getDirectEntity();
+        Entity source = event.getSource().getEntity();
+        if(source instanceof EntityMaid maid){
+            processor_aft(event, maid);
+        }else if(direct instanceof EntityMaid maid){
+            processor_aft(event, maid);
+        }
+
+        if(entity instanceof EntityMaid maid){
+            BaubleStateManager.getBaubles(maid).forEach(bauble->{
+                BiFunction<LivingDamageEvent, EntityMaid, Void> func = Global.bauble_hurtProcessors_aft.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+                func.apply(event, maid);
+            });
+        }else if(entity instanceof Player player){
+            Global.player_hurtProcessors_aft.forEach(func-> func.apply(event,player));
+        }
+    }
+
+    @SubscribeEvent
+    public static void onMaidEffectAdded(MobEffectEvent.Added event) {
+        if (event.getEntity() instanceof EntityMaid maid) {
+            BaubleStateManager.getBaubles(maid).forEach(bauble->{
+                BiFunction<MobEffectEvent.Added, EntityMaid, Void> func = Global.bauble_effectAddedProcessors.getOrDefault(bauble.getDescriptionId(), (mobEffectEvent, entityMaid) -> null);
+                func.apply(event, maid);
+            });
+        }
+    }
+
+
+
+    private static void processor_aft(LivingDamageEvent event, EntityMaid maid) {
+        BaubleStateManager.getBaubles(maid).forEach(bauble->{
+            BiFunction<LivingDamageEvent, EntityMaid, Void> func = Global.bauble_damageProcessors_aft.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+            func.apply(event, maid);
+        });
+    }
+
+    private static void processor_pre(LivingHurtEvent event, EntityMaid maid) {
         Global.common_damageProcessors.forEach(function -> function.apply(event, maid));
 
         BaubleStateManager.getBaubles(maid).forEach(bauble->{
-            BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_damageProcessors.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+            BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_damageProcessors_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
             func.apply(event, maid);
         });
     }
@@ -187,6 +236,8 @@ public class MaidSpellEventHandler {
             cleanupMaidSpellData(maid);
         }
     }
+
+
 
     /**
      * 清理女仆的法术相关数据

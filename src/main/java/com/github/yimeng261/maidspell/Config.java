@@ -3,12 +3,10 @@ package com.github.yimeng261.maidspell;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.task.SpellCombatFarTask;
 import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
-import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
-import org.slf4j.Logger;
 
 /**
  * 女仆法术战斗系统配置类
@@ -16,8 +14,6 @@ import org.slf4j.Logger;
  */
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
     
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
     

@@ -44,5 +44,9 @@
   "item.maidspell.blue_note.desc1": "Right-click to open spell collection interface",
   "item.maidspell.blue_note.desc2": "Used to mark Iron's Spells spells",
   "item.maidspell.blue_note.desc3": "Marked spells will be cast on the master",
-  "container.maidspell.blue_note": "Blue Note - Spell Collection"
+  "container.maidspell.blue_note": "Blue Note - Spell Collection",
+  "item.touhou_little_maid_spell.hairpin": "Hairpin",
+  "item.maidspell.hairpin.desc1": "An elegant hair ornament imbued with magic",
+  "item.maidspell.hairpin.desc2": "Its brilliance never fades",
+  "item.maidspell.hairpin.desc3": "Equip in maid's bauble slot to activate"
 }

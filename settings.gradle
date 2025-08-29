@@ -5,6 +5,10 @@ pluginManagement {
             name = 'MinecraftForge'
             url = 'https://maven.minecraftforge.net/'
         }
+        maven {
+            name = "forge"
+            url = "https://lss233.littleservice.cn/repositories/minecraft"
+        }
     }
 }
 

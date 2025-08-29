@@ -133,27 +133,7 @@ public class SpellBookManager {
         
         return false;
     }
-    
-    /**
-     * 移除女仆的管理器实例（通过UUID）
-     * 
-     * @param maidUUID 女仆UUID
-     * @return 如果存在并成功移除则返回true，否则返回false
-     */
-    public static boolean removeManager(UUID maidUUID) {
-        if (maidUUID == null) {
-            return false;
-        }
-        
-        SpellBookManager removed = MAID_MANAGERS.remove(maidUUID);
-        
-        if (removed != null) {
-            LOGGER.debug("Removed SpellBookManager for maid {}", maidUUID);
-            return true;
-        }
-        
-        return false;
-    }
+
     
 
     /**

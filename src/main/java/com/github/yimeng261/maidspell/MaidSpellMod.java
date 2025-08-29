@@ -33,15 +33,12 @@ public class MaidSpellMod {
         
         // 手动注册事件处理器，确保事件能被正确监听
         forgeBus.register(MaidSpellEventHandler.class);
+        MaidSpellItems.ITEMS.register(forgeBus);
 
-        // 注册物品（只在铁魔法模组存在时）
         MaidSpellItems.register(modBus);
-        
-        // 注册创造模式物品栏（始终注册）
         MaidSpellCreativeTab.register(modBus);
-        
-        // 注册容器类型
         MaidSpellContainers.register(modBus);
+
         
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         

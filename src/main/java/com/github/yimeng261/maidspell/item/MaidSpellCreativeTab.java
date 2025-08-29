@@ -36,6 +36,7 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.SPRING_RING.get());
                 output.accept(MaidSpellItems.ROCK_CRYSTAL.get());
                 output.accept(MaidSpellItems.DOUBLE_HEART_CHAIN.get());
+                output.accept(MaidSpellItems.HAIRPIN.get());
                 //output.accept(MaidSpellItems.SLIVER_CERCIS.get());
             })
             .build());

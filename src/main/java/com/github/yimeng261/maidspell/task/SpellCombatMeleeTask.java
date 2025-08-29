@@ -29,6 +29,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraftforge.fml.ModList;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
+import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,11 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     public static void setSpellRange(Float range){
         SPELL_RANGE = range;
+    }
+
+    @Override
+    public boolean enableLookAndRandomWalk(EntityMaid maid) {
+        return false; // 对于战斗任务，通常禁用随机行为以保持专注
     }
 
     @Override
@@ -107,12 +113,12 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public boolean canSee(EntityMaid maid, LivingEntity target) {
-        return maid.distanceTo(target) <= SPELL_RANGE && Math.abs(maid.getY()-target.getY()) < 3.5;
+        return maid.distanceTo(target) <= SPELL_RANGE*1.2 && Math.abs(maid.getY()-target.getY()) < 3.5;
     }
 
     @Override
     public AABB searchDimension(EntityMaid maid) {
-        float searchRange = Math.max(SPELL_RANGE, 32.0f);
+        float searchRange = SPELL_RANGE;
         return maid.hasRestriction()
             ? new AABB(maid.getRestrictCenter()).inflate(searchRange)
             : maid.getBoundingBox().inflate(searchRange);
@@ -189,6 +195,10 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
         @Override
         protected void start(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
+            // 设置女仆与玩家结盟，确保增益法术能正确识别友军
+            AllianceManager.setMaidAlliance(maid, true);
+            
+            
             // 创建SpellCaster并设置初始目标
             currentSpellCaster = new SimplifiedSpellCaster(maid);
 
@@ -203,10 +213,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         }
 
         boolean validateTarget(LivingEntity target) {
-            if(target!=null&&!(target instanceof Player)&&!(target instanceof EntityMaid)){
-                return true;
-            }
-            return false;
+            return target != null && !(target instanceof Player) && !(target instanceof EntityMaid);
         }
 
         @Override
@@ -223,6 +230,9 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
         @Override
         protected void stop(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
+            // 解除女仆与玩家的结盟
+            AllianceManager.setMaidAlliance(maid, false);
+            
             // 停止和清理SpellCaster
             if (currentSpellCaster != null) {
                 currentSpellCaster = null;

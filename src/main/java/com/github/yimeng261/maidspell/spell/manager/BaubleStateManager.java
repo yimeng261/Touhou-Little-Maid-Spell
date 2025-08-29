@@ -76,7 +76,7 @@ public class BaubleStateManager {
     }
 
     public static List<ItemStack> getBaubles(EntityMaid maid) {
-        return maidBaubleCurrent.computeIfAbsent(maid.getUUID(), k -> new ArrayList<>());
+        return maidBaubleCurrent.computeIfAbsent(maid.getUUID(), k -> getCurrentBaubles(maid));
     }
 
 

@@ -40,5 +40,9 @@
   "item.maidspell.blue_note.desc1": "右键可打开法术收集界面",
   "item.maidspell.blue_note.desc2": "用于标记铁魔法的法术",
   "item.maidspell.blue_note.desc3": "标记法术会对主人释放",
-  "container.maidspell.blue_note": "深蓝笔记 - 法术收集"
+  "container.maidspell.blue_note": "深蓝笔记 - 法术收集",
+  "item.touhou_little_maid_spell.hairpin": "发簪",
+  "item.maidspell.hairpin.desc1": "注入魔力的优雅发饰",
+  "item.maidspell.hairpin.desc2": "其光辉永不黯淡",
+  "item.maidspell.hairpin.desc3": "装备于女仆饰品栏以生效"
 }

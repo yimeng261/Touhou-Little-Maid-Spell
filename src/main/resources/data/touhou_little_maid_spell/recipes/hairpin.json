@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " G ",
+    " QI",
+    " S "
+  ],
+  "key": {
+    "G": { "item": "minecraft:gold_ingot" },
+    "Q": { "item": "minecraft:quartz" },
+    "I": { "item": "minecraft:iron_ingot" },
+    "S": { "item": "minecraft:stick" }
+  },
+  "result": {
+    "item": "touhou_little_maid_spell:hairpin",
+    "count": 1
+  }
+}

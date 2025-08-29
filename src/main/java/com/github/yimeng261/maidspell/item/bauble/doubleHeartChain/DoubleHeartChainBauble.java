@@ -5,7 +5,6 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
 
 public class DoubleHeartChainBauble implements IExtendBauble {
     @Override
@@ -13,7 +12,7 @@ public class DoubleHeartChainBauble implements IExtendBauble {
 
     static {
         // 女仆受到伤害时，平摊给主人
-        Global.bauble_hurtProcessors.put(MaidSpellItems.itemDesc(MaidSpellItems.DOUBLE_HEART_CHAIN), (event, maid) -> {
+        Global.bauble_hurtProcessors_aft.put(MaidSpellItems.itemDesc(MaidSpellItems.DOUBLE_HEART_CHAIN), (event, maid) -> {
             Player owner = (Player) maid.getOwner();
             if (owner != null && !owner.level().isClientSide) {
                 float originalDamage = event.getAmount();
@@ -21,8 +20,6 @@ public class DoubleHeartChainBauble implements IExtendBauble {
                 
                 // 女仆承担50%伤害
                 event.setAmount(sharedDamage);
-                
-                // 主人承担另外50%伤害
                 owner.hurt(event.getSource(), sharedDamage);
             }
             return null;
