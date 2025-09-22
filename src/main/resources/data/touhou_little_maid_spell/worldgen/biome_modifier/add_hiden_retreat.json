@@ -1,0 +1,5 @@
+{
+  "type": "forge:add_structures",
+  "biomes": "#touhou_little_maid_spell:has_structure/hiden_retreat",
+  "structures": "touhou_little_maid_spell:hiden_retreat_set"
+}

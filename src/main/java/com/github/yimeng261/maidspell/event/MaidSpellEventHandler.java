@@ -10,6 +10,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraftforge.common.ForgeMod;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
@@ -29,6 +31,7 @@ import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import mods.flammpfeil.slashblade.capability.inputstate.InputStateCapabilityProvider;
 
 import java.util.HashMap;
+import java.util.UUID;
 import java.util.function.BiFunction;
 
 /**
@@ -38,6 +41,9 @@ import java.util.function.BiFunction;
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class MaidSpellEventHandler {
     private static final Logger LOGGER = LogUtils.getLogger();
+    
+    // 女仆步高属性修饰符的UUID
+    private static final UUID MAID_STEP_HEIGHT_UUID = UUID.fromString("8e2c4a16-7f9d-4b45-a3e2-1c8f5d9a6b47");
 
     /**
      * 当女仆进入世界时，确保有对应的SpellBookManager
@@ -55,6 +61,9 @@ public class MaidSpellEventHandler {
             if(owner != null) {
                 Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
             }
+            
+            // 为女仆添加步高属性，让她能够直接走上一格高的方块
+            addStepHeightToMaid(maid);
         }
     }
 
@@ -262,6 +271,37 @@ public class MaidSpellEventHandler {
             
         } catch (Exception e) {
             // 静默处理清理错误，避免影响游戏正常运行
+        }
+    }
+    
+    /**
+     * 为女仆添加步高属性，让她能够直接走上一格高的方块
+     */
+    private static void addStepHeightToMaid(EntityMaid maid) {
+        try {
+            // 获取步高属性实例，进行空检查
+            var stepHeightAttribute = maid.getAttribute(ForgeMod.STEP_HEIGHT_ADDITION.get());
+            if (stepHeightAttribute == null) {
+                LOGGER.warn("Maid {} does not have step height attribute", maid.getName().getString());
+                return;
+            }
+            
+            // 检查女仆是否已经有步高属性修饰符，避免重复添加
+            if (stepHeightAttribute.getModifier(MAID_STEP_HEIGHT_UUID) == null) {
+                // 添加1.0的步高增加，让女仆能走上一格高的方块
+                AttributeModifier stepHeightModifier = new AttributeModifier(
+                    MAID_STEP_HEIGHT_UUID, 
+                    "Maid Step Height Addition", 
+                    1.0, 
+                    AttributeModifier.Operation.ADDITION
+                );
+                
+                stepHeightAttribute.addPermanentModifier(stepHeightModifier);
+                LOGGER.debug("Added step height attribute to maid: {}", maid.getName().getString());
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Failed to add step height attribute to maid {}: {}", 
+                maid.getName().getString(), e.getMessage());
         }
     }
 } 

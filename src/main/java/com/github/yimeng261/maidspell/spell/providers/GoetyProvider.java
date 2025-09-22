@@ -1,6 +1,6 @@
 package com.github.yimeng261.maidspell.spell.providers;
 
-import com.hollingsworth.arsnouveau.api.item.inv.CombinedHandlerInv;
+
 import com.mojang.datafixers.util.Pair;
 import net.minecraftforge.items.wrapper.CombinedInvWrapper;
 import org.slf4j.Logger;
@@ -306,7 +306,7 @@ public class GoetyProvider implements ISpellBookProvider {
             try {
                 FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
                 // 复用Goety模组的聚晶包遍历逻辑，从索引1开始（索引0通常用于当前聚晶）
-                for (int i = 0; i < bagHandler.getSlots(); i++) {
+                for (int i = 1; i < bagHandler.getSlots(); i++) {
                     ItemStack focusStack = bagHandler.getStackInSlot(i);
                     if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
                         ISpell spell = focus.getSpell();
@@ -348,6 +348,10 @@ public class GoetyProvider implements ISpellBookProvider {
      */
     private boolean switchFocus(EntityMaid maid, ItemStack spellBook, ItemStack focusBag, int bagSlot) {
         try {
+            // 记录切换前的状态
+//            List<String> beforeState = captureFocusState(spellBook, focusBag);
+//            logFocusSwitchBefore(maid, spellBook, focusBag, bagSlot);
+            
             // 复用Goety模组的聚晶包处理器逻辑
             FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
             SoulUsingItemHandler wandHandler = SoulUsingItemHandler.get(spellBook);
@@ -358,7 +362,13 @@ public class GoetyProvider implements ISpellBookProvider {
             bagHandler.setStackInSlot(bagSlot, currentFocus);
             wandHandler.insertItem(selectedFocus);
             
-
+            // 记录切换后的状态
+//            logFocusSwitchAfter(maid, spellBook, focusBag);
+//            List<String> afterState = captureFocusState(spellBook, focusBag);
+//
+//            // 检测并警告变化
+//            checkFocusStateChanges(maid, beforeState, afterState, bagSlot);
+            
             return true;
         } catch (Exception e) {
             LOGGER.warn("Failed to switch focus for maid: {}", maid.getUUID(), e);
@@ -636,6 +646,231 @@ public class GoetyProvider implements ISpellBookProvider {
             String spellId = getSpellId(spell);
             int cooldown = spell.defaultSpellCooldown();
             data.setSpellCooldown(spellId, cooldown, maid);
+        }
+    }
+    
+    /**
+     * 记录聚晶切换前的状态
+     */
+    private void logFocusSwitchBefore(EntityMaid maid, ItemStack spellBook, ItemStack focusBag, int bagSlot) {
+        MaidGoetySpellData data = getData(maid);
+        if (data == null) return;
+        
+        LOGGER.debug("==== 聚晶切换前状态 - 女仆: {} ====", maid.getUUID());
+        
+        // 记录当前法杖上的聚晶
+        ItemStack currentFocus = IWand.getFocus(spellBook);
+        if (!currentFocus.isEmpty() && currentFocus.getItem() instanceof IFocus focus) {
+            ISpell spell = focus.getSpell();
+            String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
+            boolean onCooldown = spell != null && data.isSpellOnCooldown(getSpellId(spell));
+            int cooldownRemaining = spell != null ? data.getSpellCooldown(getSpellId(spell)) : 0;
+            LOGGER.debug("当前法杖聚晶: {} | 法术: {} | 冷却中: {} | 剩余冷却: {}刻",
+                currentFocus.getDisplayName().getString(), spellName, onCooldown, cooldownRemaining);
+        } else {
+            LOGGER.debug("当前法杖聚晶: 无");
+        }
+        
+        // 记录聚晶包中的所有聚晶
+        if (!focusBag.isEmpty()) {
+            try {
+                FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
+                LOGGER.debug("聚晶包中的聚晶:");
+                for (int i = 0; i < bagHandler.getSlots(); i++) {
+                    ItemStack focusStack = bagHandler.getStackInSlot(i);
+                    if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
+                        ISpell spell = focus.getSpell();
+                        String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
+                        boolean onCooldown = spell != null && data.isSpellOnCooldown(getSpellId(spell));
+                        int cooldownRemaining = spell != null ? data.getSpellCooldown(getSpellId(spell)) : 0;
+                        String isSelected = (i == bagSlot) ? " [即将切换]" : "";
+                        LOGGER.debug("  槽位{}: {} | 法术: {} | 冷却中: {} | 剩余冷却: {}刻{}",
+                            i, focusStack.getDisplayName().getString(), spellName, onCooldown, cooldownRemaining, isSelected);
+                    } else {
+                        LOGGER.debug("  槽位{}: 空", i);
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.warn("无法读取聚晶包状态: {}", e.getMessage());
+            }
+
+        } else {
+            LOGGER.debug("聚晶包: 无");
+        }
+        
+        LOGGER.debug("准备切换: 槽位{} -> 法杖", bagSlot);
+    }
+    
+    /**
+     * 记录聚晶切换后的状态
+     */
+    private void logFocusSwitchAfter(EntityMaid maid, ItemStack spellBook, ItemStack focusBag) {
+        MaidGoetySpellData data = getData(maid);
+        if (data == null) return;
+        
+        LOGGER.debug("==== 聚晶切换后状态 - 女仆: {} ====", maid.getUUID());
+        
+        // 记录当前法杖上的聚晶
+        ItemStack currentFocus = IWand.getFocus(spellBook);
+        if (!currentFocus.isEmpty() && currentFocus.getItem() instanceof IFocus focus) {
+            ISpell spell = focus.getSpell();
+            String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
+            boolean onCooldown = spell != null && data.isSpellOnCooldown(getSpellId(spell));
+            int cooldownRemaining = spell != null ? data.getSpellCooldown(getSpellId(spell)) : 0;
+            LOGGER.debug("新的法杖聚晶: {} | 法术: {} | 冷却中: {} | 剩余冷却: {}刻",
+                currentFocus.getDisplayName().getString(), spellName, onCooldown, cooldownRemaining);
+        } else {
+            LOGGER.debug("新的法杖聚晶: 无");
+        }
+        
+        // 记录聚晶包中的所有聚晶
+        if (!focusBag.isEmpty()) {
+            try {
+                FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
+                LOGGER.debug("切换后聚晶包状态:");
+                for (int i = 0; i < bagHandler.getSlots(); i++) {
+                    ItemStack focusStack = bagHandler.getStackInSlot(i);
+                    if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
+                        ISpell spell = focus.getSpell();
+                        String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
+                        boolean onCooldown = spell != null && data.isSpellOnCooldown(getSpellId(spell));
+                        int cooldownRemaining = spell != null ? data.getSpellCooldown(getSpellId(spell)) : 0;
+                        LOGGER.debug("  槽位{}: {} | 法术: {} | 冷却中: {} | 剩余冷却: {}刻",
+                            i, focusStack.getDisplayName().getString(), spellName, onCooldown, cooldownRemaining);
+                    } else {
+                        LOGGER.debug("  槽位{}: 空", i);
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.warn("无法读取切换后聚晶包状态: {}", e.getMessage());
+            }
+        } else {
+            LOGGER.debug("聚晶包: 无");
+        }
+        
+        LOGGER.debug("==== 聚晶切换完成 ====");
+    }
+    
+    /**
+     * 捕获当前聚晶状态 - 用于变化检测
+     */
+    private List<String> captureFocusState(ItemStack spellBook, ItemStack focusBag) {
+        List<String> state = new ArrayList<>();
+        
+        // 记录法杖上的聚晶
+        ItemStack currentFocus = IWand.getFocus(spellBook);
+        if (!currentFocus.isEmpty() && currentFocus.getItem() instanceof IFocus focus) {
+            ISpell spell = focus.getSpell();
+            String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
+            state.add("WAND:" + currentFocus.getDisplayName().getString() + ":" + spellName);
+        } else {
+            state.add("WAND:EMPTY");
+        }
+        
+        // 记录聚晶包中的聚晶
+        if (!focusBag.isEmpty()) {
+            try {
+                FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
+                for (int i = 0; i < bagHandler.getSlots(); i++) {
+                    ItemStack focusStack = bagHandler.getStackInSlot(i);
+                    if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
+                        ISpell spell = focus.getSpell();
+                        String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
+                        state.add("BAG" + i + ":" + focusStack.getDisplayName().getString() + ":" + spellName);
+                    } else {
+                        state.add("BAG" + i + ":EMPTY");
+                    }
+                }
+            } catch (Exception e) {
+                state.add("BAG:ERROR:" + e.getMessage());
+            }
+        }
+        
+        return state;
+    }
+    
+    /**
+     * 检查聚晶状态变化并发出警告
+     */
+    private void checkFocusStateChanges(EntityMaid maid, List<String> beforeState, List<String> afterState, int switchedSlot) {
+        // 预期的变化：法杖聚晶与指定槽位聚晶交换
+        List<String> expectedAfterState = new ArrayList<>(beforeState);
+        
+        // 找到法杖和指定槽位的聚晶
+        String wandBefore = beforeState.stream().filter(s -> s.startsWith("WAND:")).findFirst().orElse("WAND:EMPTY");
+        String bagSlotBefore = beforeState.stream().filter(s -> s.startsWith("BAG" + switchedSlot + ":")).findFirst().orElse("BAG" + switchedSlot + ":EMPTY");
+        
+        // 构建预期的交换后状态
+        for (int i = 0; i < expectedAfterState.size(); i++) {
+            String item = expectedAfterState.get(i);
+            if (item.startsWith("WAND:")) {
+                expectedAfterState.set(i, bagSlotBefore.replace("BAG" + switchedSlot + ":", "WAND:"));
+            } else if (item.startsWith("BAG" + switchedSlot + ":")) {
+                expectedAfterState.set(i, wandBefore.replace("WAND:", "BAG" + switchedSlot + ":"));
+            }
+        }
+        
+        // 比较实际状态与预期状态
+        boolean hasUnexpectedChanges = false;
+        List<String> warnings = new ArrayList<>();
+        
+        if (afterState.size() != expectedAfterState.size()) {
+            hasUnexpectedChanges = true;
+            warnings.add("聚晶总数发生变化: 预期" + expectedAfterState.size() + "个, 实际" + afterState.size() + "个");
+        } else {
+            for (int i = 0; i < afterState.size(); i++) {
+                String actual = afterState.get(i);
+                String expected = expectedAfterState.get(i);
+                
+                if (!actual.equals(expected)) {
+                    hasUnexpectedChanges = true;
+                    warnings.add("位置异常变化: " + expected + " -> " + actual);
+                }
+            }
+        }
+        
+        // 检查聚晶是否意外丢失或复制
+        List<String> beforeFoci = beforeState.stream()
+            .filter(s -> !s.endsWith(":EMPTY") && !s.contains(":ERROR:"))
+            .map(s -> s.substring(s.indexOf(":") + 1)) // 去掉位置前缀
+            .sorted()
+            .toList();
+            
+        List<String> afterFoci = afterState.stream()
+            .filter(s -> !s.endsWith(":EMPTY") && !s.contains(":ERROR:"))
+            .map(s -> s.substring(s.indexOf(":") + 1)) // 去掉位置前缀
+            .sorted()
+            .toList();
+        
+        if (!beforeFoci.equals(afterFoci)) {
+            hasUnexpectedChanges = true;
+            
+            // 检查丢失的聚晶
+            List<String> lost = new ArrayList<>(beforeFoci);
+            lost.removeAll(afterFoci);
+            if (!lost.isEmpty()) {
+                warnings.add("聚晶丢失: " + String.join(", ", lost));
+            }
+            
+            // 检查新增的聚晶
+            List<String> gained = new ArrayList<>(afterFoci);
+            gained.removeAll(beforeFoci);
+            if (!gained.isEmpty()) {
+                warnings.add("聚晶意外出现: " + String.join(", ", gained));
+            }
+        }
+        
+        // 发出警告
+        if (hasUnexpectedChanges) {
+            LOGGER.warn("⚠️ 警告：女仆 {} 的聚晶切换过程中发生意外变化！", maid.getUUID());
+            for (String warning : warnings) {
+                LOGGER.warn("  - {}", warning);
+            }
+            LOGGER.warn("切换前状态: {}", beforeState);
+            LOGGER.warn("切换后状态: {}", afterState);
+            LOGGER.warn("预期状态: {}", expectedAfterState);
+        } else {
+            LOGGER.debug("✅ 聚晶切换正常完成，无异常变化");
         }
     }
 } 

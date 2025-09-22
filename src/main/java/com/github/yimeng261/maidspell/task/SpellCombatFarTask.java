@@ -17,8 +17,10 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.*;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.player.Player;
 
 import net.minecraftforge.fml.ModList;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -47,12 +49,12 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
     }
 
     @Override
-    public ResourceLocation getUid() {
+    public @NotNull ResourceLocation getUid() {
         return UID;
     }
 
     @Override
-    public MutableComponent getName() {
+    public @NotNull MutableComponent getName() {
         return NAME;
     }
 
@@ -90,7 +92,9 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         protected void start(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
             // 设置女仆与玩家结盟，确保增益法术能正确识别友军
             AllianceManager.setMaidAlliance(maid, true);
-            
+
+            SimplifiedSpellCaster.clearLookTarget(maid);
+
             // 创建SpellCaster并设置初始目标
             currentSpellCaster = new SimplifiedSpellCaster(maid);
 
@@ -98,7 +102,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
             if(target == maid.getOwner() && ModList.get().isLoaded("irons_spellbooks")){
                 target = MaidIronsSpellData.getOrCreate(maid).getOriginTarget();
             }
-            if (validateTarget(target)) {
+            if (!(target instanceof Player)) {
                 currentSpellCaster.setTarget(target);
             }
 
@@ -106,13 +110,15 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
         @Override
         protected void tick(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
+            SimplifiedSpellCaster.clearLookTarget(maid);
+
             if (currentSpellCaster != null) {
                 // 确保目标同步 - 这是唯一的目标更新点
                 LivingEntity currentTarget = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-                if (validateTarget(currentTarget)) {
+                if (!(currentTarget instanceof Player)) {
                     currentSpellCaster.setTarget(currentTarget);
-                    currentSpellCaster.far_tick();
                 }
+                currentSpellCaster.far_tick();
             }
         }
         
@@ -185,11 +191,9 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
                     owner.getMoveControl().strafe(forwardSpeed, strafeSpeed);
                     owner.setYRot(Mth.rotateIfNecessary(owner.getYRot(), owner.yHeadRot, 0.0F));
-                    BehaviorUtils.lookAtEntity(owner, target);
 
-                } else {
-                    BehaviorUtils.lookAtEntity(owner, target);
                 }
+                BehaviorUtils.lookAtEntity(owner, target);
             });
         }
 

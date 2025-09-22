@@ -42,7 +42,11 @@
   "item.maidspell.blue_note.desc3": "标记法术会对主人释放",
   "container.maidspell.blue_note": "深蓝笔记 - 法术收集",
   "item.touhou_little_maid_spell.hairpin": "发簪",
-  "item.maidspell.hairpin.desc1": "注入魔力的优雅发饰",
-  "item.maidspell.hairpin.desc2": "其光辉永不黯淡",
-  "item.maidspell.hairpin.desc3": "装备于女仆饰品栏以生效"
+  "item.maidspell.hairpin.desc1": "两姓联姻，一堂缔约",
+  "item.maidspell.hairpin.desc2": "女仆所受伤害由主人进行减伤再返回",
+  "item.maidspell.hairpin.desc3": "好感度2级：正面效果持续时间+15%",
+  "item.maidspell.hairpin.desc4": "好感度3级：免疫非正面效果",
+  "item.maidspell.hairpin.desc5": "女仆进食后额外增加1点好感度",
+  "structure.touhou_little_maid_spell.hiden_retreat": "隐世之境",
+  "jei.touhou_little_maid_spell.altar_craft.item_craft.result": "合成物品"
 }

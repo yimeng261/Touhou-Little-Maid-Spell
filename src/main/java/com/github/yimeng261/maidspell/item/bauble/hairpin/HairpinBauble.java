@@ -71,9 +71,9 @@ public class HairpinBauble implements IExtendBauble {
     @SubscribeEvent
     public void beforeMaidEffectAdded(MobEffectEvent.Applicable event) {
         if(event.getEntity() instanceof EntityMaid maid){
-            LOGGER.info("HairpinBauble beforeMaidEffectAdded");
+            //LOGGER.info("HairpinBauble beforeMaidEffectAdded");
             if(ItemsUtil.getBaubleSlotInMaid(maid,this)>=0){
-                LOGGER.info("HairpinBaubleEquipped");
+                //LOGGER.info("HairpinBaubleEquipped");
                 MobEffectInstance effectInstance = event.getEffectInstance();
                 int fl = maid.getFavorabilityManager().getLevel();
                 if(fl>=3){

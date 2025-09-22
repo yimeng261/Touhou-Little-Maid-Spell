@@ -7,6 +7,9 @@ import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.behavior.EntityTracker;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import net.minecraft.world.level.pathfinder.Path;
@@ -65,9 +68,12 @@ public class SimplifiedSpellCaster {
      * 执行施法逻辑
      */
     public void melee_tick() {
+
         if (!hasValidTarget()) {
             return; // 没有有效目标，退出
         }
+
+        clearLookTarget(maid);
         
         if (maid.tickCount % 8 == 0) {
             // 执行战斗逻辑
@@ -80,15 +86,28 @@ public class SimplifiedSpellCaster {
      * 执行施法逻辑
      */
     public void far_tick() {
+
         if (!hasValidTarget()) {
             return; // 没有有效目标，退出
         }
+
+        clearLookTarget(maid);
 
         if (maid.tickCount % 5 == 0) {
             // 执行战斗逻辑
             double distance = maid.distanceTo(target);
             executeCombatFar(distance);
         }
+    }
+
+    public static void clearLookTarget(EntityMaid maid) {
+        maid.getBrain().getMemory(MemoryModuleType.LOOK_TARGET).ifPresent(lookTarget -> {
+            if(lookTarget instanceof EntityTracker tracker) {
+                if (tracker.getEntity() instanceof Player player) {
+                    maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+                }
+            }
+        });
     }
     
     /**

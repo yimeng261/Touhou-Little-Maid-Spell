@@ -46,6 +46,7 @@ import com.mojang.logging.LogUtils;
  */
 public class IronsSpellbooksProvider implements ISpellBookProvider {
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final List<String> spellBlacklist = Arrays.asList("irons_spellbooks:spectral_hammer");
 
     /**
      * 私有构造函数，防止外部实例化
@@ -176,7 +177,22 @@ public class IronsSpellbooksProvider implements ISpellBookProvider {
             }
         });
 
-        availableSpells.removeIf(spellData -> spellData == null || data.isSpellOnCooldown(spellData.getSpell().getSpellId()));
+        // 过滤掉无效、冷却中或黑名单中的法术
+        availableSpells.removeIf(spellData -> {
+            if (spellData == null || spellData.getSpell() == null) {
+                return true;
+            }
+            String spellId = spellData.getSpell().getSpellId();
+            if (data.isSpellOnCooldown(spellId)) {
+                return true;
+            }
+            // 检查法术是否在黑名单中
+            if (spellBlacklist.contains(spellId)) {
+                LOGGER.debug("法术 {} 在黑名单中，女仆 {} 跳过施放", spellId, maid.getUUID());
+                return true;
+            }
+            return false;
+        });
 
         if (availableSpells.isEmpty()) {
             return false;

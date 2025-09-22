@@ -47,6 +47,10 @@
   "container.maidspell.blue_note": "Blue Note - Spell Collection",
   "item.touhou_little_maid_spell.hairpin": "Hairpin",
   "item.maidspell.hairpin.desc1": "An elegant hair ornament imbued with magic",
-  "item.maidspell.hairpin.desc2": "Its brilliance never fades",
-  "item.maidspell.hairpin.desc3": "Equip in maid's bauble slot to activate"
+  "item.maidspell.hairpin.desc2": "Redirects damage from maid to master",
+  "item.maidspell.hairpin.desc3": "Favorability 2+: Beneficial effects last 15% longer",
+  "item.maidspell.hairpin.desc4": "Favorability 3+: Immune to harmful effects",
+  "item.maidspell.hairpin.desc5": "Eating food increases favorability by 1",
+  "structure.touhou_little_maid_spell.hiden_retreat": "Hidden Retreat",
+  "jei.touhou_little_maid_spell.altar_craft.item_craft.result": "Item Craft"
 }

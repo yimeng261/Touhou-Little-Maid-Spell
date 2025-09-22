@@ -177,6 +177,8 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             ));
         }
 
+        
+
         @Override
         protected boolean checkExtraStartConditions(net.minecraft.server.level.ServerLevel level, EntityMaid maid) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
@@ -197,8 +199,9 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         protected void start(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
             // 设置女仆与玩家结盟，确保增益法术能正确识别友军
             AllianceManager.setMaidAlliance(maid, true);
-            
-            
+
+            SimplifiedSpellCaster.clearLookTarget(maid);
+
             // 创建SpellCaster并设置初始目标
             currentSpellCaster = new SimplifiedSpellCaster(maid);
 
@@ -206,22 +209,20 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             if(target == maid.getOwner() && ModList.get().isLoaded("irons_spellbooks")){
                 target = MaidIronsSpellData.getOrCreate(maid).getOriginTarget();
             }
-            if (validateTarget(target)) {
+            if (!(target instanceof Player)) {
                 currentSpellCaster.setTarget(target);
             }
 
         }
 
-        boolean validateTarget(LivingEntity target) {
-            return target != null && !(target instanceof Player) && !(target instanceof EntityMaid);
-        }
 
         @Override
         protected void tick(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
+            SimplifiedSpellCaster.clearLookTarget(maid);
             if (currentSpellCaster != null) {
                 // 确保目标同步 - 这是唯一的目标更新点
                 LivingEntity currentTarget = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-                if (validateTarget(currentTarget)) {
+                if (!(currentTarget instanceof Player)) {
                     currentSpellCaster.setTarget(currentTarget);
                     currentSpellCaster.melee_tick();
                 }
@@ -240,7 +241,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         }
     }
 
-    class SpellStrafingTask extends Behavior<EntityMaid> {
+    static class SpellStrafingTask extends Behavior<EntityMaid> {
         private boolean strafingClockwise;
         private boolean strafingBackwards;
         private int strafingTime = -1;
@@ -255,6 +256,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
                             MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES, MemoryStatus.VALUE_PRESENT),
                     1200);
         }
+
 
         @Override
         protected boolean checkExtraStartConditions(ServerLevel worldIn, EntityMaid owner) {
@@ -304,16 +306,14 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
                         this.strafingBackwards = true;
                     }
 
-                    float forwardSpeed = this.strafingBackwards ? -0.7F : 0.7F;
+                    float forwardSpeed = this.strafingBackwards ? -0.7F : 0.5F;
                     float strafeSpeed = this.strafingClockwise ? 0.7F : -0.7F;
 
                     owner.getMoveControl().strafe(forwardSpeed, strafeSpeed);
                     owner.setYRot(Mth.rotateIfNecessary(owner.getYRot(), owner.yHeadRot, 0.0F));
-                    BehaviorUtils.lookAtEntity(owner, target);
-
-                } else {
-                    BehaviorUtils.lookAtEntity(owner, target);
                 }
+                BehaviorUtils.lookAtEntity(owner, target);
+
             });
         }
 
