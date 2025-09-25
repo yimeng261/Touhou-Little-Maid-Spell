@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
+import com.github.yimeng261.maidspell.network.NetworkHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
@@ -39,7 +40,6 @@ public class MaidSpellMod {
         MaidSpellItems.register(modBus);
         MaidSpellCreativeTab.register(modBus);
         MaidSpellContainers.register(modBus);
-        
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modBus);
 
@@ -50,6 +50,9 @@ public class MaidSpellMod {
 
     private void setup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            // 注册网络消息
+            NetworkHandler.registerMessages();
+            
             if (checkDependencies()) {
                 LOGGER.info("Dependencies verified - initialization complete");
             }

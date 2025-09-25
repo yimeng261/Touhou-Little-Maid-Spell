@@ -28,6 +28,8 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
+            //property 'forge.logging.console.level', 'info'
+            //property 'log4j.logger.com.github.yimeng261.maidspell', 'INFO'
             property 'mixin.env.remapRefMap', 'true'
             property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
 
@@ -76,17 +78,26 @@ repositories {
     maven { url 'https://libraries.minecraft.net' }
 }
 
+// 强制解决版本冲突
+configurations.all {
+    resolutionStrategy {
+        force 'org.apache.logging.log4j:log4j-api:2.19.0'
+        force 'org.apache.logging.log4j:log4j-core:2.19.0'
+        force 'org.apache.logging.log4j:log4j-slf4j-impl:2.19.0'
+    }
+}
+
 dependencies {
     // Specify the version of Minecraft to use.
-    // Any artifact can be supplied so long as it has a "userdev" classifier artifact and is a compatible patcher artifact.
-    // The "userdev" classifier will be requested and setup by ForgeGradle.
-    // If the group id is "net.minecraft" and the artifact id is one of ["client", "server", "joined"],
-    // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     implementation 'com.mojang:datafixerupper:1.0.20'
     implementation 'com.mojang:brigadier:1.0.18'
 
-    implementation fg.deobf("curse.maven:touhou-little-maid-355044:6596061")
+    // 强制使用统一的 Log4j 版本
+    implementation 'org.apache.logging.log4j:log4j-api:2.19.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.19.0'
+
+    implementation fg.deobf("curse.maven:touhou-little-maid-355044:6979039")
     implementation fg.deobf("curse.maven:irons-spells-n-spellbooks-855414:6488484")
     implementation fg.deobf("curse.maven:ars-nouveau-401955:5894609")
     implementation fg.deobf("curse.maven:goety-586095:6660730")

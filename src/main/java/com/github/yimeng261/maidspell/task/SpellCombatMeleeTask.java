@@ -27,9 +27,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.fml.ModList;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
-import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 
 import java.util.List;
 import java.util.Map;
@@ -39,11 +39,6 @@ import java.util.function.Predicate;
  * 法术战斗任务 - 统一的索敌和战斗管理
  * 实现IRangedAttackTask接口，为女仆提供法术攻击能力和混合战斗模式
  * 负责统一的目标搜索、验证和管理
- *
- * 索敌系统：
- * - 使用近战索敌方法 (IAttackTask::findFirstValidAttackTarget)
- * - 自动优先攻击距离最近的可见目标
- * - 简化代码并确保与其他攻击任务的一致性
  */
 public class SpellCombatMeleeTask implements IRangedAttackTask {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -56,45 +51,45 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     @Override
-    public boolean enableLookAndRandomWalk(EntityMaid maid) {
+    public boolean enableLookAndRandomWalk(@NotNull EntityMaid maid) {
         return false; // 对于战斗任务，通常禁用随机行为以保持专注
     }
 
     @Override
-    public ResourceLocation getUid() {
+    public @NotNull ResourceLocation getUid() {
         return UID;
     }
 
     @Override
-    public MutableComponent getName() {
+    public @NotNull MutableComponent getName() {
         return NAME;
     }
 
     @Override
-    public ItemStack getIcon() {
+    public @NotNull ItemStack getIcon() {
         return Items.ENCHANTED_BOOK.getDefaultInstance();
     }
 
     @Override
-    public SoundEvent getAmbientSound(EntityMaid maid) {
+    public SoundEvent getAmbientSound(@NotNull EntityMaid maid) {
         // 使用女仆远程攻击音效
         return SoundUtil.attackSound(maid, InitSounds.MAID_RANGE_ATTACK.get(), 0.5f);
     }
 
     @Override
-    public boolean isEnable(EntityMaid maid) {
+    public boolean isEnable(@NotNull EntityMaid maid) {
         return true;
     }
 
 
 
     @Override
-    public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(EntityMaid maid) {
+    public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
         // 使用近战索敌方法 - 它已经内置了优先攻击最近目标的逻辑
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
-        BehaviorControl<EntityMaid> spellCastingTask = new UnifiedSpellCombatBehavior();
+        BehaviorControl<EntityMaid> spellCastingTask = new SpellCombatBehavior();
         BehaviorControl<EntityMaid> strafingTask = new SpellStrafingTask();
 
         return Lists.newArrayList(
@@ -107,17 +102,17 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     @Override
-    public void performRangedAttack(EntityMaid shooter, LivingEntity target, float distanceFactor) {
+    public void performRangedAttack(@NotNull EntityMaid shooter, @NotNull LivingEntity target, float distanceFactor) {
     }
 
 
     @Override
-    public boolean canSee(EntityMaid maid, LivingEntity target) {
-        return maid.distanceTo(target) <= SPELL_RANGE*1.2 && Math.abs(maid.getY()-target.getY()) < 3.5;
+    public boolean canSee(EntityMaid maid, @NotNull LivingEntity target) {
+        return maid.distanceTo(target) <= SPELL_RANGE * 1.2 && Math.abs(maid.getY() - target.getY()) < 5;
     }
 
     @Override
-    public AABB searchDimension(EntityMaid maid) {
+    public @NotNull AABB searchDimension(EntityMaid maid) {
         float searchRange = SPELL_RANGE;
         return maid.hasRestriction()
             ? new AABB(maid.getRestrictCenter()).inflate(searchRange)
@@ -125,25 +120,24 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     @Override
-    public float searchRadius(EntityMaid maid) {
+    public float searchRadius(@NotNull EntityMaid maid) {
         return SPELL_RANGE;
     }
 
     @Override
-    public boolean hasExtraAttack(EntityMaid maid, Entity target) {
-        // 如果有法术书且目标在范围内，则可以进行额外的法术攻击
+    public boolean hasExtraAttack(@NotNull EntityMaid maid, @NotNull Entity target) {
         return hasSpellBook(maid) && target instanceof LivingEntity && maid.distanceTo(target) <= SPELL_RANGE;
     }
 
     @Override
-    public List<Pair<String, Predicate<EntityMaid>>> getConditionDescription(EntityMaid maid) {
+    public @NotNull List<Pair<String, Predicate<EntityMaid>>> getConditionDescription(@NotNull EntityMaid maid) {
         return Lists.newArrayList(
                 Pair.of("spell_book", this::hasSpellBook)
         );
     }
 
     @Override
-    public boolean isWeapon(EntityMaid maid, ItemStack stack) {
+    public boolean isWeapon(@NotNull EntityMaid maid, @NotNull ItemStack stack) {
         // 法术书和近战武器都被认为是武器
         return true;
     }
@@ -167,17 +161,15 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
      * 统一的法术战斗行为控制器
      * 负责管理SimplifiedSpellCaster，并确保目标同步
      */
-    class UnifiedSpellCombatBehavior extends Behavior<EntityMaid> {
+    static class SpellCombatBehavior extends Behavior<EntityMaid> {
         private SimplifiedSpellCaster currentSpellCaster;
 
-        public UnifiedSpellCombatBehavior() {
+        public SpellCombatBehavior() {
             super(Map.of(
                 MemoryModuleType.ATTACK_TARGET, MemoryStatus.VALUE_PRESENT,
                 MemoryModuleType.LOOK_TARGET, MemoryStatus.REGISTERED
             ));
         }
-
-        
 
         @Override
         protected boolean checkExtraStartConditions(net.minecraft.server.level.ServerLevel level, EntityMaid maid) {
@@ -185,9 +177,9 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             if (target == null || !target.isAlive()) {
                 return false;
             }
-            
+
             double distance = maid.distanceTo(target);
-            return distance <= SPELL_RANGE && maid.hasLineOfSight(target) && hasSpellBook(maid);
+            return distance <= SPELL_RANGE;
         }
 
         @Override
@@ -197,20 +189,17 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
         @Override
         protected void start(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
-            // 设置女仆与玩家结盟，确保增益法术能正确识别友军
-            AllianceManager.setMaidAlliance(maid, true);
-
             SimplifiedSpellCaster.clearLookTarget(maid);
 
             // 创建SpellCaster并设置初始目标
-            currentSpellCaster = new SimplifiedSpellCaster(maid);
+            this.currentSpellCaster = new SimplifiedSpellCaster(maid);
 
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
             if(target == maid.getOwner() && ModList.get().isLoaded("irons_spellbooks")){
                 target = MaidIronsSpellData.getOrCreate(maid).getOriginTarget();
             }
             if (!(target instanceof Player)) {
-                currentSpellCaster.setTarget(target);
+                this.currentSpellCaster.setTarget(target);
             }
 
         }
@@ -231,9 +220,6 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
         @Override
         protected void stop(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
-            // 解除女仆与玩家的结盟
-            AllianceManager.setMaidAlliance(maid, false);
-            
             // 停止和清理SpellCaster
             if (currentSpellCaster != null) {
                 currentSpellCaster = null;
@@ -245,9 +231,9 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         private boolean strafingClockwise;
         private boolean strafingBackwards;
         private int strafingTime = -1;
-        private double optimalMinDistance = SimplifiedSpellCaster.MELEE_RANGE - 1; // 最佳最小距离
-        private double maxAttackDistance = SPELL_RANGE;
-        private double rangeRange = 2;
+        private final double optimalMinDistance = SimplifiedSpellCaster.MELEE_RANGE - 1; // 最佳最小距离
+        private final double maxAttackDistance = SPELL_RANGE;
+        private final double rangeRange = 1.5;
 
         public SpellStrafingTask() {
             super(ImmutableMap.of(MemoryModuleType.WALK_TARGET, MemoryStatus.VALUE_ABSENT,
@@ -259,29 +245,20 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
 
         @Override
-        protected boolean checkExtraStartConditions(ServerLevel worldIn, EntityMaid owner) {
-            // 修正：检查是否有法术书而不是投射武器
-            SpellCombatFarTask task = new SpellCombatFarTask();
-            return task.hasSpellBook(owner) &&
-                    owner.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET)
-                            .filter(Entity::isAlive)
-                            .isPresent();
+        protected boolean checkExtraStartConditions(ServerLevel worldIn, EntityMaid maid) {
+            LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+            return target != null && target.isAlive();
         }
 
         @Override
-        protected void tick(ServerLevel worldIn, EntityMaid owner, long gameTime) {
-            // 修正：检查法术书而不是投射武器
-            SpellCombatMeleeTask task = new SpellCombatMeleeTask();
-            if (!task.hasSpellBook(owner)) {
-                return;
-            }
+        protected void tick(ServerLevel worldIn, EntityMaid maid, long gameTime) {
 
-            owner.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
-                double distance = owner.distanceTo(target);
-                double optimalMaxDistance = optimalMinDistance + rangeRange; // 最佳最大距离
+            maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
+                double distance = maid.distanceTo(target);
+                double optimalMaxDistance = this.optimalMinDistance + this.rangeRange; // 最佳最大距离
 
                 // 如果在攻击距离内且能看到目标，开始计时
-                if (distance < maxAttackDistance && owner.canSee(target)) {
+                if (distance < this.maxAttackDistance && maid.canSee(target)) {
                     ++this.strafingTime;
                 } else {
                     this.strafingTime = -1;
@@ -289,10 +266,10 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
                 // 随机改变走位方向，增加不可预测性
                 if (this.strafingTime >= 20) {
-                    if (owner.getRandom().nextFloat() < 0.3) {
+                    if (maid.getRandom().nextFloat() < 0.3) {
                         this.strafingClockwise = !this.strafingClockwise;
                     }
-                    if (owner.getRandom().nextFloat() < 0.3) {
+                    if (maid.getRandom().nextFloat() < 0.3) {
                         this.strafingBackwards = !this.strafingBackwards;
                     }
                     this.strafingTime = 0;
@@ -306,13 +283,14 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
                         this.strafingBackwards = true;
                     }
 
-                    float forwardSpeed = this.strafingBackwards ? -0.7F : 0.5F;
+                    float forwardSpeed = this.strafingBackwards ? -0.7F : 0.7F;
                     float strafeSpeed = this.strafingClockwise ? 0.7F : -0.7F;
 
-                    owner.getMoveControl().strafe(forwardSpeed, strafeSpeed);
-                    owner.setYRot(Mth.rotateIfNecessary(owner.getYRot(), owner.yHeadRot, 0.0F));
+                    BehaviorUtils.lookAtEntity(maid, target);
+                    maid.getMoveControl().strafe(forwardSpeed, strafeSpeed);
+                    maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
                 }
-                BehaviorUtils.lookAtEntity(owner, target);
+
 
             });
         }

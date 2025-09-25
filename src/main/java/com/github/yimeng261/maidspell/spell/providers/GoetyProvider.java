@@ -37,6 +37,7 @@ public class GoetyProvider implements ISpellBookProvider {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAX_INFINITE_CASTING_TIME = 45;
+    private static final boolean DEBUG = true;
     
 
     /**
@@ -238,9 +239,6 @@ public class GoetyProvider implements ISpellBookProvider {
         return target != null && target.isAlive();
     }
     
-    /**
-     * 从法杖中提取法术 - 重写版本，复用Goety模组的聚晶收集逻辑
-     */
     private ISpell extractSpellFromWand(EntityMaid maid) {
         MaidGoetySpellData data = getData(maid);
         if (data == null) {
@@ -252,31 +250,27 @@ public class GoetyProvider implements ISpellBookProvider {
             return null;
         }
 
-        // 复用Goety模组的聚晶包查找逻辑
+
         ItemStack focusBag = findFocusBag(maid);
         
-        // 收集所有可用的聚晶（复用Goety模组的逻辑）
         List<Pair<ItemStack, Integer>> availableFoci = collectAllAvailableFoci(maid, data, spellBook, focusBag);
         
         if (availableFoci.isEmpty()) {
             return null;
         }
         
-        // 随机选择一个聚晶
         int randomIndex = (int) (Math.random() * availableFoci.size());
         Pair<ItemStack, Integer> selected = availableFoci.get(randomIndex);
         
-        // 如果选择的聚晶与当前聚晶不同，进行切换
         if (selected.getSecond() != -1) {
-            // 复用Goety模组的聚晶切换逻辑
             if (switchFocus(maid, spellBook, focusBag, selected.getSecond())) {
                 ItemStack selectedFocus = selected.getFirst();
+                focusBag.getOrCreateTag();
                 if (selectedFocus.getItem() instanceof IFocus magicFocus) {
                     return magicFocus.getSpell();
                 }
             }
         } else {
-            // 使用当前法杖上的聚晶
             ItemStack currentFocus = selected.getFirst();
             if (currentFocus.getItem() instanceof IFocus magicFocus) {
                 return magicFocus.getSpell();
@@ -286,13 +280,9 @@ public class GoetyProvider implements ISpellBookProvider {
         return null;
     }
     
-    /**
-     * 收集所有可用的聚晶 - 复用Goety模组的逻辑
-     */
     private List<Pair<ItemStack, Integer>> collectAllAvailableFoci(EntityMaid maid, MaidGoetySpellData data, ItemStack spellBook, ItemStack focusBag) {
         List<Pair<ItemStack, Integer>> availableFoci = new ArrayList<>();
 
-        // 检查当前法杖上的聚晶（复用Goety模组的逻辑）
         ItemStack currentFocus = IWand.getFocus(spellBook);
         if (!currentFocus.isEmpty() && currentFocus.getItem() instanceof IFocus focus) {
             ISpell spell = focus.getSpell();
@@ -301,11 +291,9 @@ public class GoetyProvider implements ISpellBookProvider {
             }
         }
 
-        // 检查聚晶包中的聚晶（复用Goety模组的逻辑）
         if (!focusBag.isEmpty()) {
             try {
                 FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
-                // 复用Goety模组的聚晶包遍历逻辑，从索引1开始（索引0通常用于当前聚晶）
                 for (int i = 1; i < bagHandler.getSlots(); i++) {
                     ItemStack focusStack = bagHandler.getStackInSlot(i);
                     if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
@@ -323,15 +311,12 @@ public class GoetyProvider implements ISpellBookProvider {
         return availableFoci;
     }
     
-    /**
-     * 查找聚晶包 - 复用Goety模组的逻辑，适配女仆实体
-     */
+
     private ItemStack findFocusBag(EntityMaid maid) {
         if (maid == null) {
             return ItemStack.EMPTY;
         }
         
-        // 复用Goety模组的聚晶包查找逻辑，但适配女仆的背包系统
         var availableInv = maid.getAvailableInv(false);
         for (int i = 0; i < availableInv.getSlots(); i++) {
             ItemStack stack = availableInv.getStackInSlot(i);
@@ -348,11 +333,12 @@ public class GoetyProvider implements ISpellBookProvider {
      */
     private boolean switchFocus(EntityMaid maid, ItemStack spellBook, ItemStack focusBag, int bagSlot) {
         try {
-            // 记录切换前的状态
-//            List<String> beforeState = captureFocusState(spellBook, focusBag);
-//            logFocusSwitchBefore(maid, spellBook, focusBag, bagSlot);
+            List<String> beforeState;
+            if(DEBUG) { 
+                beforeState = captureFocusState(spellBook, focusBag);
+                logFocusSwitchBefore(maid, spellBook, focusBag, bagSlot);
+            }
             
-            // 复用Goety模组的聚晶包处理器逻辑
             FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
             SoulUsingItemHandler wandHandler = SoulUsingItemHandler.get(spellBook);
             
@@ -362,12 +348,11 @@ public class GoetyProvider implements ISpellBookProvider {
             bagHandler.setStackInSlot(bagSlot, currentFocus);
             wandHandler.insertItem(selectedFocus);
             
-            // 记录切换后的状态
-//            logFocusSwitchAfter(maid, spellBook, focusBag);
-//            List<String> afterState = captureFocusState(spellBook, focusBag);
-//
-//            // 检测并警告变化
-//            checkFocusStateChanges(maid, beforeState, afterState, bagSlot);
+            if(DEBUG) {
+                logFocusSwitchAfter(maid, spellBook, focusBag);
+                List<String> afterState = captureFocusState(spellBook, focusBag);
+                checkFocusStateChanges(maid, beforeState, afterState, bagSlot);
+            }
             
             return true;
         } catch (Exception e) {

@@ -1,0 +1,69 @@
+package com.github.yimeng261.maidspell.item.bauble.soulBook;
+
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.api.IExtendBauble;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.mojang.logging.LogUtils;
+import net.minecraftforge.fml.common.Mod;
+import org.slf4j.Logger;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * 魂之书饰品实现
+ * 提供伤害保护：当伤害超过女仆生命值20%时，将伤害降为20%
+ * 同时实现伤害间隔检测：若两次伤害间隔不超过10tick则取消本次伤害
+ */
+@Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
+public class SoulBookBauble implements IExtendBauble {
+    public static final Logger LOGGER = LogUtils.getLogger();
+    
+    // 存储每个女仆上次受伤的时间（tick）
+    private static final Map<UUID, Integer> lastHurtTimeMap = new HashMap<>();
+    //private static final Map<UUID, Float> lastLife = new HashMap<>();
+    
+    // 伤害间隔阈值（10 tick）
+    private static final int DAMAGE_INTERVAL_THRESHOLD = 10;
+
+    static {
+        // 注册女仆受伤前的处理器（伤害间隔检测和伤害限制）
+        Global.bauble_hurtProcessors_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.SOUL_BOOK), (event, maid) -> {
+            UUID maidId = maid.getUUID();
+            int currentTime = maid.tickCount;
+            float originalDamage = event.getAmount();
+            float maxHealth = maid.getMaxHealth();
+            
+            int lastHurtTime = lastHurtTimeMap.computeIfAbsent(maidId, (uuid) -> maid.tickCount);
+            int timeDiff = currentTime - lastHurtTime;
+            if (timeDiff <= DAMAGE_INTERVAL_THRESHOLD) {
+                event.setCanceled(true);
+                return null;
+            }
+            
+            float damageThreshold = maxHealth * 0.2f;
+            if (originalDamage > damageThreshold) {
+                event.setAmount(damageThreshold);
+            }
+            
+            lastHurtTimeMap.put(maidId, currentTime);
+            //lastLife.put(maidId, maid.getHealth());
+            return null;
+        });
+    }
+
+    @Override
+    public void onRemove(EntityMaid maid) {
+        // 移除饰品时清理所有相关数据
+        UUID maidId = maid.getUUID();
+        lastHurtTimeMap.remove(maidId);
+        //lastLife.remove(maidId);
+    }
+    
+
+
+}
+

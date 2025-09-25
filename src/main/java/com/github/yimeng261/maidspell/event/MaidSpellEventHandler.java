@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidEquipEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import net.minecraft.world.entity.Entity;
@@ -75,8 +76,6 @@ public class MaidSpellEventHandler {
     public static void onEntityLeaveLevel(EntityLeaveLevelEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
-            // 停止所有正在进行的施法，但不移除管理器
-            // 因为女仆可能很快就会重新进入世界（魂符移动）
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.stopAllCasting();
             LivingEntity owner = maid.getOwner();
@@ -122,6 +121,16 @@ public class MaidSpellEventHandler {
                 SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
                 if (manager != null) {
                     manager.tick();
+                }
+                // 每20个tick更新一次结盟状态
+                if( maid.tickCount%20 == 0){
+                    if(maid.getTask().getUid().toString().startsWith("maidspell")) {
+                        if(!AllianceManager.getAllianceStatus().containsKey(maid.getUUID())) {
+                            AllianceManager.setMaidAlliance(maid, true);
+                        }
+                    }else{
+                        AllianceManager.setMaidAlliance(maid, false);
+                    }
                 }
             } catch (Exception e) {
                 LOGGER.error("Error in maid tick handler for maid {}: {}", 
@@ -236,13 +245,21 @@ public class MaidSpellEventHandler {
     }
 
     /**
-     * 当女仆死亡时清理数据
+     * 当女仆死亡时处理饰品逻辑并清理数据
      */
     @SubscribeEvent
     public static void onMaidDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof EntityMaid maid) {
-            // 清理女仆的法术数据
-            cleanupMaidSpellData(maid);
+            // 先处理饰品的死亡事件
+            BaubleStateManager.getBaubles(maid).forEach(bauble->{
+                BiFunction<LivingDeathEvent, EntityMaid, Void> func = Global.bauble_deathProcessors.getOrDefault(bauble.getDescriptionId(), (livingDeathEvent, entityMaid) -> null);
+                func.apply(event, maid);
+            });
+            
+            // 如果事件未被取消，则清理女仆的法术数据
+            if (!event.isCanceled()) {
+                cleanupMaidSpellData(maid);
+            }
         }
     }
 

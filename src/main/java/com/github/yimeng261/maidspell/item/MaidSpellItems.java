@@ -11,6 +11,9 @@ import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercis;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementCore;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringRing;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.Hairpin;
+import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBook;
+import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBook;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocket;
 import net.minecraft.Util;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -38,6 +41,9 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> ROCK_CRYSTAL = ITEMS.register("rock_crystal", RockCrystal::new);
     public static final RegistryObject<Item> SLIVER_CERCIS = ITEMS.register("sliver_cercis", SilverCercis::new);
     public static final RegistryObject<Item> HAIRPIN = ITEMS.register("hairpin", Hairpin::new);
+    public static final RegistryObject<Item> CHAOS_BOOK = ITEMS.register("chaos_book", ChaosBook::new);
+    public static final RegistryObject<Item> SOUL_BOOK = ITEMS.register("soul_book", SoulBook::new);
+    public static final RegistryObject<Item> ENDER_POCKET = ITEMS.register("ender_pocket", EnderPocket::new);
 
     /**
      * 注册物品

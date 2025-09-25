@@ -26,13 +26,10 @@ import org.slf4j.Logger;
 import java.util.List;
 
 
-import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
-
 /**
  * 法术战斗任务 - 统一的索敌和战斗管理
  * 实现IRangedAttackTask接口，为女仆提供法术攻击能力和混合战斗模式
  * 负责统一的目标搜索、验证和管理
- *
  * 索敌系统：
  * - 使用近战索敌方法 (IAttackTask::findFirstValidAttackTarget)
  * - 自动优先攻击距离最近的可见目标
@@ -59,13 +56,13 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
     }
 
     @Override
-    public boolean enableLookAndRandomWalk(EntityMaid maid) {
+    public boolean enableLookAndRandomWalk(@NotNull EntityMaid maid) {
         return false;
     }
 
 
     @Override
-    public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(EntityMaid maid) {
+    public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
@@ -81,7 +78,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         );
     }
 
-    private class FarSpellCombatBehavior extends SpellCombatMeleeTask.UnifiedSpellCombatBehavior {
+    private class FarSpellCombatBehavior extends SpellCombatBehavior {
         private SimplifiedSpellCaster currentSpellCaster;
 
         private FarSpellCombatBehavior() {
@@ -90,9 +87,6 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
         @Override
         protected void start(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
-            // 设置女仆与玩家结盟，确保增益法术能正确识别友军
-            AllianceManager.setMaidAlliance(maid, true);
-
             SimplifiedSpellCaster.clearLookTarget(maid);
 
             // 创建SpellCaster并设置初始目标
@@ -124,9 +118,6 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         
         @Override
         protected void stop(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
-            // 解除女仆与玩家的结盟
-            AllianceManager.setMaidAlliance(maid, false);
-            
             // 停止和清理SpellCaster
             if (currentSpellCaster != null) {
                 currentSpellCaster = null;
@@ -149,19 +140,19 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
 
         @Override
-        protected void tick(ServerLevel worldIn, EntityMaid owner, long gameTime) {
+        protected void tick(ServerLevel worldIn, EntityMaid maid, long gameTime) {
             // 修正：检查法术书而不是投射武器
             SpellCombatFarTask task = new SpellCombatFarTask();
-            if (!task.hasSpellBook(owner)) {
+            if (!task.hasSpellBook(maid)) {
                 return;
             }
 
-            owner.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
-                double distance = owner.distanceTo(target);
+            maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
+                double distance = maid.distanceTo(target);
                 double optimalMaxDistance = optimalMinDistance + rangeRange; // 最佳最大距离
 
                 // 如果在攻击距离内且能看到目标，开始计时
-                if (distance < maxAttackDistance && owner.canSee(target)) {
+                if (distance < maxAttackDistance && maid.canSee(target)) {
                     ++this.strafingTime;
                 } else {
                     this.strafingTime = -1;
@@ -169,10 +160,10 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
                 // 随机改变走位方向，增加不可预测性
                 if (this.strafingTime >= 20) {
-                    if (owner.getRandom().nextFloat() < 0.3) {
+                    if (maid.getRandom().nextFloat() < 0.3) {
                         this.strafingClockwise = !this.strafingClockwise;
                     }
-                    if (owner.getRandom().nextFloat() < 0.3) {
+                    if (maid.getRandom().nextFloat() < 0.3) {
                         this.strafingBackwards = !this.strafingBackwards;
                     }
                     this.strafingTime = 0;
@@ -189,11 +180,11 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
                     float forwardSpeed = this.strafingBackwards ? -0.7F : 0.7F;
                     float strafeSpeed = this.strafingClockwise ? 0.7F : -0.7F;
 
-                    owner.getMoveControl().strafe(forwardSpeed, strafeSpeed);
-                    owner.setYRot(Mth.rotateIfNecessary(owner.getYRot(), owner.yHeadRot, 0.0F));
+                    maid.getMoveControl().strafe(forwardSpeed, strafeSpeed);
+                    maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
 
                 }
-                BehaviorUtils.lookAtEntity(owner, target);
+                BehaviorUtils.lookAtEntity(maid, target);
             });
         }
 
