@@ -9,6 +9,8 @@ import net.minecraft.world.entity.player.Player;
 public class BleedingHeartBauble implements IExtendBauble {
     @Override
     public void onRemove(EntityMaid maid) {}
+    @Override
+    public void onAdd(EntityMaid maid) {}
 
     static {
         Global.bauble_damageProcessors_aft.put(MaidSpellItems.itemDesc(MaidSpellItems.BLEEDING_HEART),(event, maid) -> {

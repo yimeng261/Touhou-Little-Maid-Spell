@@ -28,6 +28,8 @@ public class SoulBookBauble implements IExtendBauble {
     
     // 伤害间隔阈值（10 tick）
     private static final int DAMAGE_INTERVAL_THRESHOLD = 10;
+    @Override
+    public void onAdd(EntityMaid maid) {}
 
     static {
         // 注册女仆受伤前的处理器（伤害间隔检测和伤害限制）

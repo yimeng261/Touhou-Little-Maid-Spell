@@ -5,5 +5,5 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 
 public interface IExtendBauble extends IMaidBauble {
     public void onRemove(EntityMaid maid);
-
+    public void onAdd(EntityMaid maid);
 }

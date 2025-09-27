@@ -37,6 +37,8 @@ public class Global {
 
     public static final HashMap<UUID,HashMap<UUID,EntityMaid>> maidInfos = new HashMap<>();
 
+    public static final Set<EntityMaid> maidList = new HashSet<>();
+
     public static ArrayList<BiFunction<LivingHurtEvent,EntityMaid,Void>> common_hurtProcessors = new ArrayList<>();
 
     public static ArrayList<Function<AbstractSpellData.CoolDown, Void>> common_coolDownProcessors = new ArrayList<>();

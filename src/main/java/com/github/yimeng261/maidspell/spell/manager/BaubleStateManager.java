@@ -6,13 +6,16 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHand
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.mojang.logging.LogUtils;
+
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.RegistryObject;
+
 import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager.getBauble;
 
 /**
  * 饰品状态管理器
@@ -40,13 +43,18 @@ public class BaubleStateManager {
 
         maidBaubleCurrent.put(maid.getUUID(), currentBaubles);
         
-        if (previousBaubles != null) {
-            List<ItemStack> removedBaubles = previousBaubles.stream().filter(item->!currentBaubles.contains(item)).toList();;
-            for (ItemStack removedBauble : removedBaubles) {
-                IMaidBauble bauble = BaubleManager.getBauble(removedBauble);
-                if(bauble instanceof IExtendBauble) {
-                    ((IExtendBauble) bauble).onRemove(maid);
-                }
+        List<ItemStack> removedBaubles = previousBaubles.stream().filter(item->!currentBaubles.contains(item)).toList();
+        List<ItemStack> addedBaubles = currentBaubles.stream().filter(item->!previousBaubles.contains(item)).toList();
+        for (ItemStack removedBauble : removedBaubles) {
+            IMaidBauble bauble = BaubleManager.getBauble(removedBauble);
+            if(bauble instanceof IExtendBauble) {
+                ((IExtendBauble) bauble).onRemove(maid);
+            }
+        }
+        for (ItemStack addedBauble : addedBaubles) {
+            IMaidBauble bauble = BaubleManager.getBauble(addedBauble);
+            if(bauble instanceof IExtendBauble) {
+                ((IExtendBauble) bauble).onAdd(maid);
             }
         }
 
@@ -61,6 +69,9 @@ public class BaubleStateManager {
      * 获取女仆当前的饰品列表
      */
     private static List<ItemStack> getCurrentBaubles(EntityMaid maid) {
+        if(maid == null || !maid.isAlive()) {
+            return new ArrayList<>();
+        }
 
         List<ItemStack> baubles = new ArrayList<>();
         BaubleItemHandler handler = maid.getMaidBauble();
@@ -76,8 +87,27 @@ public class BaubleStateManager {
     }
 
     public static List<ItemStack> getBaubles(EntityMaid maid) {
+        if(maid == null || !maid.isAlive()) {
+            return new ArrayList<>();
+        }
         return maidBaubleCurrent.computeIfAbsent(maid.getUUID(), k -> getCurrentBaubles(maid));
     }
 
+    public static boolean hasBauble(EntityMaid maid, ItemStack stack) {
+        return getBaubles(maid).stream().anyMatch(itemStack -> itemStack.getItem() == stack.getItem());
+    }
+
+    public static boolean hasBauble(EntityMaid maid, String itemId) {
+        return getBaubles(maid).stream().anyMatch(itemStack -> itemStack.getDescriptionId().equals(itemId));
+    }
+
+    public static boolean hasBauble(EntityMaid maid, RegistryObject<Item> item) {
+        return getBaubles(maid).stream().anyMatch(itemStack -> itemStack.getItem() == item.get());
+    }
+
+    public static void removeMaidBaubles(EntityMaid maid) {
+        maidBaubleCurrent.remove(maid.getUUID());
+        maidBaublePrevious.remove(maid.getUUID());
+    }
 
 } 

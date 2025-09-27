@@ -9,6 +9,8 @@ import net.minecraft.world.entity.player.Player;
 public class DoubleHeartChainBauble implements IExtendBauble {
     @Override
     public void onRemove(EntityMaid maid) {}
+    @Override
+    public void onAdd(EntityMaid maid) {}
 
     static {
         // 女仆受到伤害时，平摊给主人

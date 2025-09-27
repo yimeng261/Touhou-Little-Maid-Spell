@@ -1,5 +1,7 @@
 package com.github.yimeng261.maidspell.network.message;
 
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.IBackpackContainerScreen;
+import com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration;
 import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.service.EnderPocketService;
@@ -24,7 +26,8 @@ public class EnderPocketMessage {
     public enum Type {
         REQUEST_MAID_LIST,      // 请求女仆列表
         RESPONSE_MAID_LIST,     // 响应女仆列表
-        OPEN_MAID_INVENTORY     // 打开女仆背包
+        OPEN_MAID_INVENTORY,    // 打开女仆背包
+        SERVER_PUSH_UPDATE      // 服务器主动推送数据更新
     }
     
     private final Type type;
@@ -102,6 +105,7 @@ public class EnderPocketMessage {
         
         switch (type) {
             case RESPONSE_MAID_LIST:
+            case SERVER_PUSH_UPDATE:
                 return new EnderPocketMessage(type, maidInfos, fromMaidBackpack);
             case OPEN_MAID_INVENTORY:
                 return new EnderPocketMessage(type, maidEntityId);
@@ -145,7 +149,8 @@ public class EnderPocketMessage {
                 break;
                 
             case RESPONSE_MAID_LIST:
-                // 这种情况不应该在服务器端处理
+            case SERVER_PUSH_UPDATE:
+                // 这些情况不应该在服务器端处理
                 break;
         }
     }
@@ -157,18 +162,27 @@ public class EnderPocketMessage {
         switch (message.type) {
             case RESPONSE_MAID_LIST:
                 // 更新女仆背包集成的数据
-                com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration
-                        .updateEnderPocketData(message.maidInfos);
+                MaidBackpackEnderPocketIntegration.updateEnderPocketData(message.maidInfos);
                 
                 // 根据请求来源和当前界面决定显示方式
                 if (message.fromMaidBackpack) {
                     // 来自女仆背包界面的请求
-                    if (mc.screen instanceof com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.IBackpackContainerScreen) {
+                    if (mc.screen instanceof IBackpackContainerScreen) {
                         // 重新初始化界面以更新按钮
                         mc.screen.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
                     }
                 } else {
                     mc.setScreen(new EnderPocketScreen(message.maidInfos));
+                }
+                break;
+                
+            case SERVER_PUSH_UPDATE:
+                // 服务器主动推送的数据更新
+                MaidBackpackEnderPocketIntegration.updateEnderPocketData(message.maidInfos);
+                
+                // 如果当前在女仆背包界面，刷新界面
+                if (mc.screen instanceof IBackpackContainerScreen) {
+                    mc.screen.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
                 }
                 break;
                 
@@ -190,5 +204,9 @@ public class EnderPocketMessage {
     
     public static EnderPocketMessage openMaidInventory(int maidEntityId) {
         return new EnderPocketMessage(Type.OPEN_MAID_INVENTORY, maidEntityId);
+    }
+    
+    public static EnderPocketMessage serverPushUpdate(List<EnderPocketService.EnderPocketMaidInfo> maidInfos) {
+        return new EnderPocketMessage(Type.SERVER_PUSH_UPDATE, maidInfos, true);
     }
 }

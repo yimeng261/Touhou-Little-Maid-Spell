@@ -36,6 +36,9 @@ public class SpellEnhancementBauble implements IExtendBauble {
             initializeAttributes();
         }
     }
+
+    @Override
+    public void onAdd(EntityMaid maid) {}
     
     /**
      * 通过注册表初始化属性，无需反射

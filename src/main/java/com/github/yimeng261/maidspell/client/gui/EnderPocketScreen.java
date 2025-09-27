@@ -79,7 +79,6 @@ public class EnderPocketScreen extends Screen {
     
     private void openMaidInventory(int maidEntityId) {
         NetworkHandler.CHANNEL.sendToServer(EnderPocketMessage.openMaidInventory(maidEntityId));
-        this.onClose();
     }
     
 
@@ -116,11 +115,6 @@ public class EnderPocketScreen extends Screen {
         int titleX = this.width / 2 - this.font.width(this.title) / 2;
         guiGraphics.drawString(this.font, this.title, titleX, startY + 6, 0x404040, false);
         
-        // 如果没有女仆，显示提示信息
-        if (maidInfos.isEmpty()) {
-            Component noMaidText = Component.translatable("gui.maidspell.ender_pocket.no_maids");
-            guiGraphics.drawString(this.font, noMaidText, this.width / 2, startY + 50, 0x808080);
-        }
     }
     
     @Override

@@ -4,13 +4,12 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import net.minecraft.Util;
 
 public class QuickChantBauble implements IExtendBauble {
     @Override
-    public void onRemove(EntityMaid maid) {
-
-    }
+    public void onRemove(EntityMaid maid) {}
+    @Override
+    public void onAdd(EntityMaid maid) {}
 
     static {
         Global.bauble_coolDownProcessors.put(MaidSpellItems.itemDesc(MaidSpellItems.QUICK_CHANT_RING),(coolDown)->{

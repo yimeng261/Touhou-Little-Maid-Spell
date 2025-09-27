@@ -6,4 +6,6 @@ import com.github.yimeng261.maidspell.api.IExtendBauble;
 public class SilverCercisBauble implements IExtendBauble {
     @Override
     public void onRemove(EntityMaid maid) {}
+    @Override
+    public void onAdd(EntityMaid maid) {}
 } 

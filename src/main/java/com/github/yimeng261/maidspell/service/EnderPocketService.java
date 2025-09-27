@@ -30,18 +30,6 @@ public class EnderPocketService {
         }
     }
     
-    /**
-     * 检查女仆是否装备末影腰包
-     */
-    public static boolean hasMaidEnderPocket(EntityMaid maid) {
-        if (maid == null) return false;
-        
-        List<ItemStack> baubles = BaubleStateManager.getBaubles(maid);
-        String enderPocketId = MaidSpellItems.itemDesc(MaidSpellItems.ENDER_POCKET);
-        
-        return baubles.stream()
-                .anyMatch(stack -> stack.getDescriptionId().equals(enderPocketId));
-    }
     
     /**
      * 获取玩家所有装备末影腰包的女仆信息
@@ -55,7 +43,7 @@ public class EnderPocketService {
         List<EnderPocketMaidInfo> enderPocketMaids = new ArrayList<>();
         
         for (EntityMaid maid : maids.values()) {
-            if (hasMaidEnderPocket(maid)) {
+            if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
                 enderPocketMaids.add(new EnderPocketMaidInfo(
                         maid.getUUID(),
                         maid.getName().getString(),
@@ -65,23 +53,6 @@ public class EnderPocketService {
         }
         
         return enderPocketMaids;
-    }
-    
-    /**
-     * 检查特定女仆是否装备末影腰包
-     */
-    public static boolean checkSpecificMaidEnderPocket(ServerPlayer player, int maidEntityId) {
-        Entity entity = player.level().getEntity(maidEntityId);
-        if (!(entity instanceof EntityMaid maid)) {
-            return false;
-        }
-        
-        // 检查权限
-        if (!maid.isOwnedBy(player) || maid.isSleeping() || !maid.isAlive()) {
-            return false;
-        }
-        
-        return hasMaidEnderPocket(maid);
     }
     
     /**

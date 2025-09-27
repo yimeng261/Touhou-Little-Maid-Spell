@@ -40,6 +40,7 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.CHAOS_BOOK.get());
                 output.accept(MaidSpellItems.SOUL_BOOK.get());
                 output.accept(MaidSpellItems.ENDER_POCKET.get());
+                output.accept(MaidSpellItems.WOUND_RIME_BLADE.get());
                 //output.accept(MaidSpellItems.SLIVER_CERCIS.get());
             })
             .build());

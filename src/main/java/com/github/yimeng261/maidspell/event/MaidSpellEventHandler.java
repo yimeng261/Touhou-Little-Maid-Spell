@@ -4,13 +4,19 @@ import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidEquipEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
+import com.github.yimeng261.maidspell.network.NetworkHandler;
+import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
+import com.github.yimeng261.maidspell.service.EnderPocketService;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraftforge.common.ForgeMod;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
@@ -18,6 +24,7 @@ import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
@@ -32,6 +39,7 @@ import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import mods.flammpfeil.slashblade.capability.inputstate.InputStateCapabilityProvider;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.BiFunction;
 
@@ -54,17 +62,52 @@ public class MaidSpellEventHandler {
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
-            // 确保女仆有对应的管理器并更新引用
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.setMaid(maid);
             manager.updateSpellBooks();
             LivingEntity owner = maid.getOwner();
+            Global.maidList.add(maid);
             if(owner != null) {
                 Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
             }
-            
-            // 为女仆添加步高属性，让她能够直接走上一格高的方块
             addStepHeightToMaid(maid);
+            BaubleStateManager.updateAndCheckBaubleState(maid);
+        }
+    }
+    
+    /**
+     * 玩家登录时同步末影腰包数据
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            for(EntityMaid maid : Global.maidList){
+                LivingEntity owner = maid.getOwner();
+                if(owner != null) {
+                    Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
+                }
+            }
+            try {
+                // 获取玩家的末影腰包女仆数据并推送给客户端
+                List<EnderPocketService.EnderPocketMaidInfo> maidInfos = 
+                        EnderPocketService.getPlayerEnderPocketMaids(player);
+                
+                if (!maidInfos.isEmpty()) {
+                    LOGGER.debug("[MaidSpell] Pushing ender pocket data to player {} on login: {} maids", 
+                                player.getName().getString(), maidInfos.size());
+                    EnderPocketMessage message = EnderPocketMessage.serverPushUpdate(maidInfos);
+                    NetworkHandler.CHANNEL.sendTo(
+                            message, 
+                            player.connection.connection,
+                            net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT
+                    );
+                    LOGGER.debug("[MaidSpell] Pushed ender pocket data to player {} on login: {} maids", 
+                                player.getName().getString(), maidInfos.size());
+                }
+            } catch (Exception e) {
+                LOGGER.error("[MaidSpell] Failed to sync ender pocket data for player {} on login: {}", 
+                            player.getName().getString(), e.getMessage(), e);
+            }
         }
     }
 
@@ -78,6 +121,7 @@ public class MaidSpellEventHandler {
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.stopAllCasting();
+            BaubleStateManager.removeMaidBaubles(maid);
             LivingEntity owner = maid.getOwner();
             if(owner != null) {
                 Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).remove(maid.getUUID());
@@ -279,11 +323,8 @@ public class MaidSpellEventHandler {
                     }
                 }
             }
-            
-            // 清理特定模组的数据
-            com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData.remove(maid.getUUID());
-            
-            // 移除女仆的管理器
+            BaubleStateManager.removeMaidBaubles(maid);
+            MaidSlashBladeData.remove(maid.getUUID());
             SpellBookManager.removeManager(maid);
             
         } catch (Exception e) {

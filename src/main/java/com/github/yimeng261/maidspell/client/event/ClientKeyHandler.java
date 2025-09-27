@@ -2,7 +2,6 @@ package com.github.yimeng261.maidspell.client.event;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.KeyBinds;
-import com.github.yimeng261.maidspell.client.gui.ScreenManager;
 import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import net.minecraft.client.Minecraft;
@@ -26,7 +25,6 @@ public class ClientKeyHandler {
             if (KeyBinds.OPEN_ENDER_POCKET_GUI.consumeClick()) {
                 if (mc.player != null) {
                     NetworkHandler.CHANNEL.sendToServer(EnderPocketMessage.requestMaidList());
-
                 }
             }
         }

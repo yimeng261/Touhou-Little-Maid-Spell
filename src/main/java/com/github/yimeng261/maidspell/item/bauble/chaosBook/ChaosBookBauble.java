@@ -17,6 +17,8 @@ import org.slf4j.Logger;
  */
 public class ChaosBookBauble implements IExtendBauble {
     public static final Logger LOGGER = LogUtils.getLogger();
+    @Override
+    public void onAdd(EntityMaid maid) {}
     static {
         // 注册女仆造成伤害时的处理器
         Global.bauble_damageProcessors_aft.put(MaidSpellItems.itemDesc(MaidSpellItems.CHAOS_BOOK), (event, maid) -> {
