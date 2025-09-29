@@ -10,12 +10,11 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
-import com.github.yimeng261.maidspell.service.EnderPocketService;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraftforge.common.ForgeMod;
@@ -167,7 +166,10 @@ public class MaidSpellEventHandler {
                     manager.tick();
                 }
                 // 每20个tick更新一次结盟状态
-                if( maid.tickCount%20 == 0){
+                if(maid.tickCount%20 == 0){
+                    if(maid.isNoAi() && maid.getTask().getUid().toString().startsWith("maidspell")){
+                        maid.setNoAi(false);
+                    }
                     if(maid.getTask().getUid().toString().startsWith("maidspell")) {
                         if(!AllianceManager.getAllianceStatus().containsKey(maid.getUUID())) {
                             AllianceManager.setMaidAlliance(maid, true);

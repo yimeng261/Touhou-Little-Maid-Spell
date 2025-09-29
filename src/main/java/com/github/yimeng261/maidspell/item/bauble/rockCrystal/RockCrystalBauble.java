@@ -12,13 +12,8 @@ import java.util.UUID;
 
 public class RockCrystalBauble implements IExtendBauble {
     private static final UUID KNOCKBACK_RESISTANCE_UUID = UUID.fromString("8b5c7a26-3e4f-4c45-a7b3-2f8d9e1a5c47");
-    
-    @Override
-    public void onAdd(EntityMaid maid) {}
-
     @Override
     public void onTick(EntityMaid maid, ItemStack baubleItem) {
-        // 每tick检查并确保击退抗性存在
         if(maid.tickCount % 10 != 0){
             return;
         }

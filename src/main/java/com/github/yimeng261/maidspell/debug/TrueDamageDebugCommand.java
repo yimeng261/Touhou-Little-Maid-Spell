@@ -1,6 +1,6 @@
 package com.github.yimeng261.maidspell.debug;
 
-import com.github.yimeng261.maidspell.util.TrueDamageUtil;
+import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.logging.LogUtils;

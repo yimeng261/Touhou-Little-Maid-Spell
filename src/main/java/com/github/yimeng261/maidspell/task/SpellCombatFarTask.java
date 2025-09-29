@@ -3,7 +3,6 @@ package com.github.yimeng261.maidspell.task;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
-import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.google.common.collect.Lists;
@@ -60,6 +59,15 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         return false;
     }
 
+    /**
+     * 检查女仆是否处于战斗状态
+     * 当女仆有攻击目标且目标不是玩家时，认为处于战斗状态
+     */
+    public static boolean isInCombat(@NotNull EntityMaid maid) {
+        LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+        return target != null && target.isAlive() && !(target instanceof Player);
+    }
+
 
     @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
@@ -68,13 +76,16 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
         BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
         BehaviorControl<EntityMaid> strafingTask = new SpellStrafingTask();
+        // 添加高优先级的视线控制任务，阻止女仆看向玩家
+        BehaviorControl<EntityMaid> lookControlTask = new CombatLookControlTask();
 
         return Lists.newArrayList(
-                Pair.of(5, supplementedTask),
-                Pair.of(5, findTargetTask),
-                Pair.of(5, moveToTargetTask),
-                Pair.of(5, spellCastingTask),
-                Pair.of(5, strafingTask)
+                Pair.of(1, lookControlTask),      // 最高优先级，控制视线
+                Pair.of(2, supplementedTask),     // 提高战斗行为优先级
+                Pair.of(2, findTargetTask),
+                Pair.of(2, moveToTargetTask),
+                Pair.of(2, spellCastingTask),
+                Pair.of(2, strafingTask)
         );
     }
 
@@ -87,7 +98,8 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
         @Override
         protected void start(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
-            SimplifiedSpellCaster.clearLookTarget(maid);
+            // 不再清理LookTarget，让CombatLookControlTask处理
+            // SimplifiedSpellCaster.clearLookTarget(maid);
 
             // 创建SpellCaster并设置初始目标
             currentSpellCaster = new SimplifiedSpellCaster(maid);
@@ -99,12 +111,12 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
             if (!(target instanceof Player)) {
                 currentSpellCaster.setTarget(target);
             }
-
         }
 
         @Override
         protected void tick(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
-            SimplifiedSpellCaster.clearLookTarget(maid);
+            // 不再主动清理LookTarget，让CombatLookControlTask统一管理
+            // SimplifiedSpellCaster.clearLookTarget(maid);
 
             if (currentSpellCaster != null) {
                 // 确保目标同步 - 这是唯一的目标更新点
@@ -184,7 +196,8 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
                     maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
 
                 }
-                BehaviorUtils.lookAtEntity(maid, target);
+                // 移除BehaviorUtils.lookAtEntity调用，让CombatLookControlTask统一管理视线
+                // BehaviorUtils.lookAtEntity(maid, target);
             });
         }
 

@@ -61,7 +61,7 @@
   "item.touhou_little_maid_spell.ender_pocket": "Ender Pocket",
   "item.maidspell.ender_pocket.desc1": "A mysterious pouch connecting to ender space",
   "item.maidspell.ender_pocket.desc2": "Allows remote access to maid backpacks",
-  "item.maidspell.ender_pocket.desc3": "Press U to open maid selection interface",
+  "item.maidspell.ender_pocket.desc3": "Press bind key to open maid selection interface",
   "key.categories.touhou_little_maid_spell": "Touhou Little Maid: Spell",
   "key.touhou_little_maid_spell.open_ender_pocket": "Open Ender Pocket",
   "gui.maidspell.ender_pocket.title": "Ender Pocket",
@@ -69,5 +69,18 @@
   "gui.maidspell.ender_pocket.button.tooltip": "Ender Pocket",
   "gui.maidspell.ender_pocket.button.description": "Click to open maid selection panel",
   "gui.maidspell.ender_pocket.maid.name": "Maid: %s",
-  "gui.maidspell.ender_pocket.maid.click_to_open": "Click to open backpack"
+  "gui.maidspell.ender_pocket.maid.click_to_open": "Click to open backpack",
+  "item.touhou_little_maid_spell.wound_rime_blade": "Wound Rime Blade",
+  "item.maidspell.wound_rime_blade.desc1": "A cursed blade wreathed in frost",
+  "item.maidspell.wound_rime_blade.desc2": "Prevents enemies from healing within its range",
+  "item.maidspell.wound_rime_blade.desc3": "The wounds it inflicts never heal",
+  "item.touhou_little_maid_spell.wind_seeking_bell": "Wind Seeking Bell",
+  "item.touhou_little_maid_spell.wind_seeking_bell.desc1": "Can locate the nearest Hidden Retreat",
+  "item.touhou_little_maid_spell.wind_seeking_bell.desc2": "Rings with a clear sound when used",
+  "item.touhou_little_maid_spell.wind_seeking_bell.no_structure": "No Hidden Retreat found nearby",
+  "item.touhou_little_maid_spell.wind_seeking_bell.found_structure": "The nearest Hidden Retreat is at [%s, %s, %s] (%s blocks away)",
+  "item.touhou_little_maid_spell.wind_seeking_bell.click_to_suggest": "Click to add teleport command to chat",
+  "item.touhou_little_maid_spell.wind_seeking_bell.search_time": "Search took: %s ms",
+  "item.touhou_little_maid_spell.wind_seeking_bell.sound": "Wind Seeking Bell rings",
+  "subtitle.touhou_little_maid_spell.wind_seeking_bell": "Wind Seeking Bell rings"
 }

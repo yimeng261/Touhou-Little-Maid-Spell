@@ -7,7 +7,7 @@ import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen.TransparentBu
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
-import com.github.yimeng261.maidspell.service.EnderPocketService;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -23,8 +23,6 @@ import net.minecraft.client.gui.screens.Screen;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import org.lwjgl.glfw.GLFW;
 
 /**
  * 女仆背包界面中的末影腰包集成

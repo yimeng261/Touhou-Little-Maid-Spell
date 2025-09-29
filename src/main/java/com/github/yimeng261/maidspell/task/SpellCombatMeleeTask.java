@@ -55,6 +55,15 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         return false; // 对于战斗任务，通常禁用随机行为以保持专注
     }
 
+    /**
+     * 检查女仆是否处于战斗状态
+     * 当女仆有攻击目标且目标不是玩家时，认为处于战斗状态
+     */
+    public static boolean isInCombat(@NotNull EntityMaid maid) {
+        LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+        return target != null && target.isAlive() && !(target instanceof Player);
+    }
+
     @Override
     public @NotNull ResourceLocation getUid() {
         return UID;
@@ -91,13 +100,16 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
         BehaviorControl<EntityMaid> spellCastingTask = new SpellCombatBehavior();
         BehaviorControl<EntityMaid> strafingTask = new SpellStrafingTask();
+        // 添加高优先级的视线控制任务，阻止女仆看向玩家
+        BehaviorControl<EntityMaid> lookControlTask = new CombatLookControlTask();
 
         return Lists.newArrayList(
-                Pair.of(5, supplementedTask),
-                Pair.of(5, findTargetTask),
-                Pair.of(5, moveToTargetTask),
-                Pair.of(5, spellCastingTask),
-                Pair.of(5, strafingTask)
+                Pair.of(1, lookControlTask),      // 最高优先级，控制视线
+                Pair.of(2, supplementedTask),     // 提高战斗行为优先级
+                Pair.of(2, findTargetTask),
+                Pair.of(2, moveToTargetTask),
+                Pair.of(2, spellCastingTask),
+                Pair.of(2, strafingTask)
         );
     }
 
@@ -108,7 +120,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public boolean canSee(EntityMaid maid, @NotNull LivingEntity target) {
-        return maid.distanceTo(target) <= SPELL_RANGE * 1.2 && Math.abs(maid.getY() - target.getY()) < 5;
+        return maid.distanceTo(target) <= SPELL_RANGE * 1.2 && Math.abs(maid.getY() - target.getY()) < 5 && !(target instanceof Player);
     }
 
     @Override
@@ -126,7 +138,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public boolean hasExtraAttack(@NotNull EntityMaid maid, @NotNull Entity target) {
-        return hasSpellBook(maid) && target instanceof LivingEntity && maid.distanceTo(target) <= SPELL_RANGE;
+        return hasSpellBook(maid) && target instanceof LivingEntity && maid.distanceTo(target) <= SPELL_RANGE && !(target instanceof Player);
     }
 
     @Override
@@ -172,9 +184,9 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         }
 
         @Override
-        protected boolean checkExtraStartConditions(net.minecraft.server.level.ServerLevel level, EntityMaid maid) {
+        protected boolean checkExtraStartConditions(ServerLevel level, EntityMaid maid) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            if (target == null || !target.isAlive()) {
+            if (target == null || !target.isAlive() || target instanceof Player) {
                 return false;
             }
 
@@ -189,7 +201,8 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
         @Override
         protected void start(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
-            SimplifiedSpellCaster.clearLookTarget(maid);
+            // 不再清理LookTarget，让CombatLookControlTask处理
+            // SimplifiedSpellCaster.clearLookTarget(maid);
 
             // 创建SpellCaster并设置初始目标
             this.currentSpellCaster = new SimplifiedSpellCaster(maid);
@@ -201,13 +214,13 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             if (!(target instanceof Player)) {
                 this.currentSpellCaster.setTarget(target);
             }
-
         }
 
 
         @Override
         protected void tick(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
-            SimplifiedSpellCaster.clearLookTarget(maid);
+            // 不再主动清理LookTarget，让CombatLookControlTask统一管理
+            // SimplifiedSpellCaster.clearLookTarget(maid);
             if (currentSpellCaster != null) {
                 // 确保目标同步 - 这是唯一的目标更新点
                 LivingEntity currentTarget = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
@@ -224,6 +237,53 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             if (currentSpellCaster != null) {
                 currentSpellCaster = null;
             }
+        }
+    }
+
+    /**
+     * 战斗状态下的视线控制任务
+     * 高优先级任务，确保女仆在战斗时只看向攻击目标，不会看向玩家
+     */
+    static class CombatLookControlTask extends Behavior<EntityMaid> {
+        
+        public CombatLookControlTask() {
+            super(Map.of(
+                MemoryModuleType.ATTACK_TARGET, MemoryStatus.VALUE_PRESENT,
+                MemoryModuleType.LOOK_TARGET, MemoryStatus.REGISTERED
+            ));
+        }
+
+        @Override
+        protected boolean checkExtraStartConditions(ServerLevel level, EntityMaid maid) {
+            LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+            return target != null && target.isAlive() && !(target instanceof Player);
+        }
+
+        @Override
+        protected boolean canStillUse(ServerLevel level, EntityMaid maid, long gameTime) {
+            return checkExtraStartConditions(level, maid);
+        }
+
+        @Override
+        protected void tick(ServerLevel level, EntityMaid maid, long gameTime) {
+            LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+            if (target != null && target.isAlive() && !(target instanceof Player)) {
+                // 强制设置视线目标为攻击目标，覆盖其他系统的设置
+                maid.getLookControl().setLookAt(target.getX(), target.getEyeY(), target.getZ());
+                // 清除可能导致看向玩家的Look Memory
+                maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+            }
+        }
+
+        @Override
+        protected void start(ServerLevel level, EntityMaid maid, long gameTime) {
+            // 开始时立即清除可能的干扰视线目标
+            maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+        }
+
+        @Override
+        protected void stop(ServerLevel level, EntityMaid maid, long gameTime) {
+            // 战斗结束时不做特殊处理，让其他系统接管
         }
     }
 
@@ -247,7 +307,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         @Override
         protected boolean checkExtraStartConditions(ServerLevel worldIn, EntityMaid maid) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            return target != null && target.isAlive();
+            return target != null && target.isAlive() && !(target instanceof Player);
         }
 
         @Override
@@ -286,7 +346,8 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
                     float forwardSpeed = this.strafingBackwards ? -0.7F : 0.7F;
                     float strafeSpeed = this.strafingClockwise ? 0.7F : -0.7F;
 
-                    BehaviorUtils.lookAtEntity(maid, target);
+                    // 移除BehaviorUtils.lookAtEntity调用，让CombatLookControlTask统一管理视线
+                    // BehaviorUtils.lookAtEntity(maid, target);
                     maid.getMoveControl().strafe(forwardSpeed, strafeSpeed);
                     maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
                 }

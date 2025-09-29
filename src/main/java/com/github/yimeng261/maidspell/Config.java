@@ -46,6 +46,12 @@ public class Config {
             .comment("Maid cooldown multiplier(default:1.0,only effective on spellCombatTask)")
             .defineInRange("maidCooldownMultiplier", 1.0, 0, 50.0);
 
+    // 饰品系统配置
+    private static final ForgeConfigSpec.IntValue BAUBLE_SLOTS_COUNT = BUILDER
+            .comment("女仆饰品槽位总数 (默认: 9) (暂时无效)")
+            .comment("Total bauble slots count for maid (default: 9) (disabled)")
+            .defineInRange("baubleSlotCount", 9, 1, 54);
+
     public static final ForgeConfigSpec SPEC = BUILDER.build();
 
     // 缓存的配置值
@@ -54,6 +60,7 @@ public class Config {
     public static double farRange;
     public static double spellDamageMultiplier;
     public static double coolDownMultiplier;
+    public static int baubleSlotCounts;
 
 
     @SubscribeEvent
@@ -64,6 +71,7 @@ public class Config {
         spellDamageMultiplier = SPELL_DAMAGE_MULTIPLIER.get();
         coolDownMultiplier = COOLDOWN_MULITIPLIER.get();
         farRange = FAR_RANGE.get();
+        baubleSlotCounts = BAUBLE_SLOTS_COUNT.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

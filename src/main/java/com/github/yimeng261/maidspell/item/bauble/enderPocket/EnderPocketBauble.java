@@ -5,7 +5,6 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
-import com.github.yimeng261.maidspell.service.EnderPocketService;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -23,7 +22,7 @@ public class EnderPocketBauble implements IExtendBauble {
         try {
             // 在客户端更新本地数据
             if (maid.level().isClientSide()) {
-                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientHandler.handleBaubleChange());
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ClientHandler::handleBaubleChange);
             }
             
             // 在服务器端主动推送更新到所有相关客户端
@@ -40,7 +39,7 @@ public class EnderPocketBauble implements IExtendBauble {
         try {
             // 在客户端更新本地数据
             if (maid.level().isClientSide()) {
-                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientHandler.handleBaubleChange());
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ClientHandler::handleBaubleChange);
             }
             
             // 在服务器端主动推送更新到所有相关客户端
@@ -82,7 +81,7 @@ public class EnderPocketBauble implements IExtendBauble {
             try {
                 // 确保Minecraft实例可用后再调用客户端方法
                 net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
-                if (mc != null && mc.getConnection() != null) {
+                if (mc.getConnection() != null) {
                     com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration.forceRefreshData();
                 }
             } catch (Exception e) {

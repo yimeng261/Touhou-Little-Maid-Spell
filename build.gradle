@@ -43,13 +43,11 @@ minecraft {
         client {
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             property 'forge.enabledGameTestNamespaces', mod_id
-            arg '-mixin.config=maidspell.mixins.json'
         }
 
         server {
             property 'forge.enabledGameTestNamespaces', mod_id
             args '--nogui'
-            arg '-mixin.config=maidspell.mixins.json'
         }
 
         gameTestServer {
@@ -62,7 +60,6 @@ minecraft {
 
             // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
             args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
-            arg '-mixin.config=maidspell.mixins.json'
         }
     }
 }
@@ -128,6 +125,8 @@ tasks.named('processResources', ProcessResources).configure {
 
 // Example for how to get properties into the manifest for reading at runtime.
 tasks.named('jar', Jar).configure {
+    duplicatesStrategy = DuplicatesStrategy.WARN
+    
     manifest {
         attributes([
                 'Specification-Title'     : mod_id,
@@ -172,4 +171,7 @@ tasks.withType(JavaCompile).configureEach {
 mixin {
     add sourceSets.main, "maidspell.refmap.json"
     config "maidspell.mixins.json"
+    
+    // 确保 refmap 文件被正确处理
+    dumpTargetOnFailure true
 }

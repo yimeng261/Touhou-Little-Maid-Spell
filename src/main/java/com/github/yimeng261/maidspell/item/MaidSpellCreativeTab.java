@@ -41,6 +41,7 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.SOUL_BOOK.get());
                 output.accept(MaidSpellItems.ENDER_POCKET.get());
                 output.accept(MaidSpellItems.WOUND_RIME_BLADE.get());
+                output.accept(MaidSpellItems.WIND_SEEKING_BELL.get());
                 //output.accept(MaidSpellItems.SLIVER_CERCIS.get());
             })
             .build());

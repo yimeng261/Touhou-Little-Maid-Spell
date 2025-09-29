@@ -4,7 +4,6 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.mojang.logging.LogUtils;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -37,9 +36,6 @@ public class SpellEnhancementBauble implements IExtendBauble {
         }
     }
 
-    @Override
-    public void onAdd(EntityMaid maid) {}
-    
     /**
      * 通过注册表初始化属性，无需反射
      */
@@ -85,13 +81,13 @@ public class SpellEnhancementBauble implements IExtendBauble {
 
             AttributeInstance maidAttr=maid.getAttribute(config.attribute);
             AttributeModifier modifier = new AttributeModifier("yimeng"+config.attributeName,bonus,AttributeModifier.Operation.ADDITION);
-
-            if(config.uuid==null){
-                config.uuid = modifier.getId();
-            }else{
-                maidAttr.removeModifier(config.uuid);
-                config.uuid = modifier.getId();
+            if(maidAttr == null) {
+                return;
             }
+            if (config.uuid != null) {
+                maidAttr.removeModifier(config.uuid);
+            }
+            config.uuid = modifier.getId();
             maidAttr.addTransientModifier(modifier);
         }
     }
@@ -111,11 +107,6 @@ public class SpellEnhancementBauble implements IExtendBauble {
         }
     }
 
-    @Override
-    public void onRemove(EntityMaid maid) {
-        clearAllEnhancements(maid);
-    }
-
     /**
      * 属性配置类
      */
@@ -123,7 +114,7 @@ public class SpellEnhancementBauble implements IExtendBauble {
         final Attribute attribute;
         final double defaultValue;
         UUID uuid=null;
-        String attributeName=null;
+        String attributeName;
 
 
         AttributeConfig(Attribute attribute, double defaultValue, String attributeName) {

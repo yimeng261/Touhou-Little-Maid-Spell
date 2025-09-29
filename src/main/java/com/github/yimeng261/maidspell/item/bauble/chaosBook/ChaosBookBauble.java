@@ -1,11 +1,10 @@
 package com.github.yimeng261.maidspell.item.bauble.chaosBook;
 
-import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.util.TrueDamageUtil;
+import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -17,8 +16,6 @@ import org.slf4j.Logger;
  */
 public class ChaosBookBauble implements IExtendBauble {
     public static final Logger LOGGER = LogUtils.getLogger();
-    @Override
-    public void onAdd(EntityMaid maid) {}
     static {
         // 注册女仆造成伤害时的处理器
         Global.bauble_damageProcessors_aft.put(MaidSpellItems.itemDesc(MaidSpellItems.CHAOS_BOOK), (event, maid) -> {
@@ -33,7 +30,7 @@ public class ChaosBookBauble implements IExtendBauble {
             }else{
                 event.setAmount(1);
             }
-            // 使用新的真实伤害方法，直接修改entityData而不是使用setHealth
+
             TrueDamageUtil.dealTrueDamage(target, 5);
 
             if(source instanceof InfoDamageSource infoDamage){
@@ -58,10 +55,5 @@ public class ChaosBookBauble implements IExtendBauble {
             return null;
 
         });
-    }
-
-    @Override
-    public void onRemove(EntityMaid maid) {
-        // 移除饰品时无需特殊处理
     }
 }

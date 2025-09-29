@@ -4,7 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.
 import com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration;
 import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
-import com.github.yimeng261.maidspell.service.EnderPocketService;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;

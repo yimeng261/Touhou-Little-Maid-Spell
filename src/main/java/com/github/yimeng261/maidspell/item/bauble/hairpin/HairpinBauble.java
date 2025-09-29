@@ -26,14 +26,6 @@ public class HairpinBauble implements IExtendBauble {
     public HairpinBauble() {
         MinecraftForge.EVENT_BUS.register(this);
     }
-    
-    @Override
-    public void onAdd(EntityMaid maid) {}
-
-    @Override
-    public void onRemove(EntityMaid maid) {
-        // 默认无特殊移除行为
-    }
 
     static {
         // 注册女仆受伤时的处理器 - 将伤害转移给主人

@@ -60,7 +60,7 @@
   "item.touhou_little_maid_spell.ender_pocket": "末影腰包",
   "item.maidspell.ender_pocket.desc1": "连接末影空间的神秘腰包",
   "item.maidspell.ender_pocket.desc2": "允许远程访问女仆背包",
-  "item.maidspell.ender_pocket.desc3": "按U键打开女仆选择界面",
+  "item.maidspell.ender_pocket.desc3": "绑定按键打开女仆选择界面",
   "key.categories.touhou_little_maid_spell": "车万女仆：万法皆通",
   "key.touhou_little_maid_spell.open_ender_pocket": "打开末影腰包",
   "gui.maidspell.ender_pocket.title": "末影腰包",
@@ -68,5 +68,18 @@
   "gui.maidspell.ender_pocket.button.tooltip": "末影腰包",
   "gui.maidspell.ender_pocket.button.description": "点击打开女仆选择面板",
   "gui.maidspell.ender_pocket.maid.name": "女仆: %s",
-  "gui.maidspell.ender_pocket.maid.click_to_open": "点击打开背包"
+  "gui.maidspell.ender_pocket.maid.click_to_open": "点击打开背包",
+  "item.touhou_little_maid_spell.wound_rime_blade": "破愈咒锋",
+  "item.maidspell.wound_rime_blade.desc1": "血迹残留的咒法之刃",
+  "item.maidspell.wound_rime_blade.desc2": "阻止攻击过敌人的治疗效果",
+  "item.maidspell.wound_rime_blade.desc3": "它造成的伤口永不愈合",
+  "item.touhou_little_maid_spell.wind_seeking_bell": "寻风之铃",
+  "item.touhou_little_maid_spell.wind_seeking_bell.desc1": "能够寻找最近的隐世之境",
+  "item.touhou_little_maid_spell.wind_seeking_bell.desc2": "使用时会发出清脆的铃声",
+  "item.touhou_little_maid_spell.wind_seeking_bell.no_structure": "附近没有发现隐世之境",
+  "item.touhou_little_maid_spell.wind_seeking_bell.found_structure": "最近的隐世之境位于 [%s, %s, %s]（距离 %s 方块）",
+  "item.touhou_little_maid_spell.wind_seeking_bell.click_to_suggest": "点击添加传送命令到聊天框",
+  "item.touhou_little_maid_spell.wind_seeking_bell.search_time": "搜索耗时: %s毫秒",
+  "item.touhou_little_maid_spell.wind_seeking_bell.sound": "寻风之铃响起",
+  "subtitle.touhou_little_maid_spell.wind_seeking_bell": "寻风之铃响起"
 }

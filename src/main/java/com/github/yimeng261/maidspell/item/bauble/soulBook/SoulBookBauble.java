@@ -24,12 +24,8 @@ public class SoulBookBauble implements IExtendBauble {
     
     // 存储每个女仆上次受伤的时间（tick）
     private static final Map<UUID, Integer> lastHurtTimeMap = new HashMap<>();
-    //private static final Map<UUID, Float> lastLife = new HashMap<>();
-    
     // 伤害间隔阈值（10 tick）
     private static final int DAMAGE_INTERVAL_THRESHOLD = 10;
-    @Override
-    public void onAdd(EntityMaid maid) {}
 
     static {
         // 注册女仆受伤前的处理器（伤害间隔检测和伤害限制）
@@ -52,17 +48,14 @@ public class SoulBookBauble implements IExtendBauble {
             }
             
             lastHurtTimeMap.put(maidId, currentTime);
-            //lastLife.put(maidId, maid.getHealth());
             return null;
         });
     }
 
     @Override
     public void onRemove(EntityMaid maid) {
-        // 移除饰品时清理所有相关数据
         UUID maidId = maid.getUUID();
         lastHurtTimeMap.remove(maidId);
-        //lastLife.remove(maidId);
     }
     
 

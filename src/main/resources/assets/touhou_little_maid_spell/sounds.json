@@ -1,0 +1,13 @@
+{
+  "wind_seeking_bell": {
+    "category": "players",
+    "subtitle": "subtitle.touhou_little_maid_spell.wind_seeking_bell",
+    "sounds": [
+      {
+        "name": "touhou_little_maid_spell:item/wind_seeking_bell",
+        "volume": 1.0,
+        "pitch": 1.0
+      }
+    ]
+  }
+}

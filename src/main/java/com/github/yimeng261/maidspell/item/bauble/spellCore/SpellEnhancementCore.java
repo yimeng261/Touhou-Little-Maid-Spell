@@ -26,7 +26,7 @@ public class SpellEnhancementCore extends Item {
 
     @Override
     public boolean isFoil(ItemStack stack) {
-        return true; // 发光效果
+        return true;
     }
 
     @Override

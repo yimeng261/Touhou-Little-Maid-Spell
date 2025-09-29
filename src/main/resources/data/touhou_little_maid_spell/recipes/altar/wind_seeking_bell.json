@@ -1,0 +1,30 @@
+{
+  "type": "touhou_little_maid:altar_crafting",
+  "output": {
+    "type": "minecraft:item",
+    "nbt": {
+      "Item": {
+        "id": "touhou_little_maid_spell:wind_seeking_bell",
+        "Count": 1
+      }
+    }
+  },
+  "power": 0.3,
+  "ingredients": [
+    {
+      "item": "minecraft:bell"
+    },
+    {
+      "tag": "forge:nuggets/gold"
+    },
+    {
+      "tag": "forge:nuggets/gold"
+    },
+    {
+      "item": "minecraft:cherry_sapling"
+    },
+    {
+      "item": "minecraft:ender_eye"
+    }
+  ]
+}

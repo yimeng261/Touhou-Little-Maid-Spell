@@ -3,7 +3,7 @@ package com.github.yimeng261.maidspell.client.gui;
 import com.github.yimeng261.maidspell.client.KeyBinds;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
-import com.github.yimeng261.maidspell.service.EnderPocketService;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;

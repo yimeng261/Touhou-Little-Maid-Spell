@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
+import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import net.minecraftforge.common.MinecraftForge;
@@ -35,11 +36,10 @@ public class MaidSpellMod {
         
         // 手动注册事件处理器，确保事件能被正确监听
         forgeBus.register(MaidSpellEventHandler.class);
-        MaidSpellItems.ITEMS.register(forgeBus);
-
         MaidSpellItems.register(modBus);
         MaidSpellCreativeTab.register(modBus);
         MaidSpellContainers.register(modBus);
+        MaidSpellSounds.SOUNDS.register(modBus);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modBus);
 
