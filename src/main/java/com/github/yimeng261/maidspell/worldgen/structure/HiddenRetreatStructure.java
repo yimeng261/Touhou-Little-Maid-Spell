@@ -19,13 +19,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class HidenRetreatStructure extends Structure {
-    public static final Codec<HidenRetreatStructure> CODEC = RecordCodecBuilder.<HidenRetreatStructure>mapCodec(instance ->
+public class HiddenRetreatStructure extends Structure {
+    public static final Codec<HiddenRetreatStructure> CODEC = RecordCodecBuilder.<HiddenRetreatStructure>mapCodec(instance ->
             instance.group(
                     Structure.settingsCodec(instance),
                     StructureTemplatePool.CODEC.fieldOf("start_pool").forGetter(structure -> structure.startPool),
                     Codec.intRange(0, 30).fieldOf("size").forGetter(structure -> structure.size)
-            ).apply(instance, HidenRetreatStructure::new)
+            ).apply(instance, HiddenRetreatStructure::new)
     ).codec();
 
     private final Holder<StructureTemplatePool> startPool;
@@ -37,7 +37,7 @@ public class HidenRetreatStructure extends Structure {
     // 每个区块的采样点数量
     private static final int SAMPLES_PER_CHUNK = 5;
 
-    public HidenRetreatStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool, int size) {
+    public HiddenRetreatStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool, int size) {
         super(settings);
         this.startPool = startPool;
         this.size = size;
@@ -70,7 +70,7 @@ public class HidenRetreatStructure extends Structure {
 
     @Override
     public StructureType<?> type() {
-        return MaidSpellStructures.HIDEN_RETREAT.get();
+        return MaidSpellStructures.HIDDEN_RETREAT.get();
     }
     
     /**

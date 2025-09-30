@@ -1,6 +1,8 @@
 package com.github.yimeng261.maidspell.item.bauble.woundRimeBlade;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,7 +19,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.damagesource.CombatEntry;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraftforge.common.MinecraftForge;
@@ -30,6 +31,7 @@ import net.minecraftforge.common.MinecraftForge;
 public class WoundRimeBladeBauble implements IExtendBauble {
 
     private static final ConcurrentHashMap<UUID, ConcurrentHashMap<LivingEntity,Float>> maidWoundRimeBladeMap = new ConcurrentHashMap<>();
+    private static final Set<UUID> maidWoundRimeBladeSet = new HashSet<>();
     
     public WoundRimeBladeBauble() {
         MinecraftForge.EVENT_BUS.register(this);
@@ -46,12 +48,10 @@ public class WoundRimeBladeBauble implements IExtendBauble {
     @SubscribeEvent
     public void onEntityHeal(LivingHealEvent event) {
         LivingEntity entity = event.getEntity();
-        CompoundTag tag = new CompoundTag();
         if(entity instanceof Player){
             return;
         }
-        entity.readAdditionalSaveData(tag);
-        if(tag.getBoolean("wound_rime_blade")) {
+        if(maidWoundRimeBladeSet.contains(entity.getUUID())) {
             event.setAmount(0);
         }
     }
@@ -81,10 +81,8 @@ public class WoundRimeBladeBauble implements IExtendBauble {
 
     static {
         Global.bauble_damageProcessors_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.WOUND_RIME_BLADE),(event, maid) -> {
-            CompoundTag tag = new CompoundTag();
             LivingEntity entity = event.getEntity();
-            tag.putBoolean("wound_rime_blade", true);
-            entity.addAdditionalSaveData(tag);
+            maidWoundRimeBladeSet.add(entity.getUUID());
             ConcurrentHashMap<LivingEntity,Float> map = maidWoundRimeBladeMap.computeIfAbsent(maid.getUUID(), (uuid) -> new ConcurrentHashMap<>());
             if(!map.containsKey(entity)){
                 map.put(entity, entity.getHealth());

@@ -1,7 +1,7 @@
-package com.github.yimeng261.maidspell.item;
+package com.github.yimeng261.maidspell.item.common;
 
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
+import com.github.yimeng261.maidspell.entity.WindSeekingBellEntity;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -13,12 +13,11 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundSource;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.EyeOfEnder;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
@@ -27,6 +26,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
@@ -49,7 +49,7 @@ import java.util.Map;
  * 功能模仿末影之眼，成功找到结构后播放铃声音效
  * 性能优化说明：
  * 1. 采用基于Main算法的简化螺旋搜索，避免OptimizedWhitePoleFinder的复杂数据结构开销
- * 2. 针对hiden_retreat极稀少特性（1万格以上），使用大步长(4)减少无效检测
+ * 2. 针对hidden_retreat极稀少特性（1万格以上），使用大步长(4)减少无效检测
  * 3. 直接按距离层遍历，每层检查边界点，找到第一个符合条件的立即返回
  * 4. 简化3×3樱花林验证逻辑：检查中心+四角+四边中点，通过后直接验证结构
  * 5. 减少Minecraft API调用次数，每个候选点最多9次生物群系检测+1次结构验证
@@ -70,7 +70,7 @@ public class WindSeekingBell extends Item {
     
     // 搜索优化常量
     private static final int MAX_SEARCH_RADIUS = 64000; // 最大搜索半径（区块）
-    private static final int SEARCH_STEP = 4; // 搜索步长，基于hiden_retreat稀少特性增大步长
+    private static final int SEARCH_STEP = 4; // 搜索步长，基于hidden_retreat稀少特性增大步长
     private static final int CHERRY_GROVE_CHECK_RADIUS = 2; // 樱花林3×3区域检查半径
     
     // 缓存机制
@@ -97,10 +97,10 @@ public class WindSeekingBell extends Item {
     );
     
     // 结构验证优化：提取静态常量避免重复创建
-    private static final ResourceLocation HIDEN_RETREAT_LOCATION = 
-        ResourceLocation.fromNamespaceAndPath("touhou_little_maid_spell", "hiden_retreat");
-    private static final ResourceKey<Structure> HIDEN_RETREAT_KEY = 
-        ResourceKey.create(Registries.STRUCTURE, HIDEN_RETREAT_LOCATION);
+    private static final ResourceLocation HIDDEN_RETREAT_LOCATION =
+        new ResourceLocation("touhou_little_maid_spell", "hidden_retreat");
+    private static final ResourceKey<Structure> HIDDEN_RETREAT_KEY =
+        ResourceKey.create(Registries.STRUCTURE, HIDDEN_RETREAT_LOCATION);
     
     // 结构集合缓存：延迟初始化以避免早期加载问题
     private static volatile HolderSet<Structure> cachedStructureSet = null;
@@ -139,11 +139,11 @@ public class WindSeekingBell extends Item {
                 if (cachedStructureSet == null) {
                     try {
                         var structureRegistry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
-                        Holder<Structure> structureHolder = structureRegistry.getHolderOrThrow(HIDEN_RETREAT_KEY);
+                        Holder<Structure> structureHolder = structureRegistry.getHolderOrThrow(HIDDEN_RETREAT_KEY);
                         cachedStructureSet = HolderSet.direct(structureHolder);
-                        Global.LOGGER.debug("Initialized structure set for hiden_retreat");
+                        Global.LOGGER.debug("Initialized structure set for hidden_retreat");
                     } catch (Exception e) {
-                        Global.LOGGER.error("Failed to initialize hiden_retreat structure set", e);
+                        Global.LOGGER.error("Failed to initialize hidden_retreat structure set", e);
                         return null;
                     }
                 }
@@ -233,7 +233,7 @@ public class WindSeekingBell extends Item {
             BlockPos playerPos = player.blockPosition();
             
             // 异步搜索结构，避免主线程卡顿
-            findNearestHidenRetreatAsync(serverLevel, playerPos, player, itemStack);
+            findNearestHiddenRetreatAsync(serverLevel, playerPos, player, itemStack);
             
             // 立即返回成功，实际结果将异步处理
             return InteractionResultHolder.success(itemStack);
@@ -245,7 +245,7 @@ public class WindSeekingBell extends Item {
     /**
      * 异步搜索隐世之境结构
      */
-    private void findNearestHidenRetreatAsync(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack) {
+    private void findNearestHiddenRetreatAsync(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack) {
         // 记录搜索开始时间
         long searchStartTime = System.currentTimeMillis();
         
@@ -273,7 +273,7 @@ public class WindSeekingBell extends Item {
         // 启动新的异步搜索（支持多线程并行）
         CompletableFuture<BlockPos> searchFuture = CompletableFuture.supplyAsync(() -> {
             try {
-                return findNearestHidenRetreatParallel(serverLevel, playerPos);
+                return findNearestHiddenRetreatParallel(serverLevel, playerPos);
             } catch (Exception e) {
                 // 搜索异常，返回null
                 Global.LOGGER.error("Structure search failed", e);
@@ -302,39 +302,38 @@ public class WindSeekingBell extends Item {
         // 确保在主线程中执行UI相关操作
         serverLevel.getServer().execute(() -> {
             if (structurePos != null) {
-                // 找到结构，创建类似末影之眼的飞行实体
-                EyeOfEnder eyeOfEnder = new EyeOfEnder(serverLevel, player.getX(), player.getY(0.5), player.getZ());
-                eyeOfEnder.setItem(itemStack);
-                eyeOfEnder.signalTo(structurePos);
-                serverLevel.addFreshEntity(eyeOfEnder);
-                
-
-                BlockPos playerBlockPos = player.blockPosition();
-
-                serverLevel.playSound(
-                    null, 
-                    playerBlockPos.getX(), 
-                    playerBlockPos.getY(), 
-                    playerBlockPos.getZ(), 
-                    MaidSpellSounds.WIND_SEEKING_BELL.get(), 
-                    SoundSource.PLAYERS, 
-                    1.0F, 
-                    1.2F
+                // 找到结构，创建自定义的寻风之铃飞行实体
+                int height = serverLevel.getChunkSource().getGenerator().getFirstOccupiedHeight(
+                    structurePos.getX(), structurePos.getZ(), 
+                    Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 
+                    serverLevel.getChunk(structurePos).getHeightAccessorForGeneration(), 
+                    serverLevel.getChunkSource().randomState()
                 );
-                
+                BlockPos structurePosVec3i = new BlockPos(structurePos.getX(), 0, structurePos.getZ());
+                BlockPos playerPosVec3i = new BlockPos(playerPos.getX(), 0, playerPos.getZ());
+                WindSeekingBellEntity windSeekingBell = new WindSeekingBellEntity(serverLevel, player);
+                ItemStack newItemStack = itemStack.copy();
+                newItemStack.setCount(1);
+                windSeekingBell.setItem(newItemStack);
+                windSeekingBell.signalTo(structurePosVec3i.above(height+3));
+                serverLevel.addFreshEntity(windSeekingBell);
+
+
                 // 在聊天栏显示可点击的坐标信息
-                int distance = (int) Math.sqrt(structurePos.distSqr(playerPos));
+
+                int distance = (int) Math.sqrt(structurePosVec3i.distSqr(playerPosVec3i));
                 
                 // 创建tp指令（使用相对y坐标）
-                String tpCommand = String.format("/tp %d ~ %d", 
-                    structurePos.getX(), 
-                    structurePos.getZ());
+                String tpCommand = String.format("/tp %f %d %f",
+                    structurePos.getX() + 0.5,
+                    height+3,
+                    structurePos.getZ() + 0.5);
                 
                 // 创建可点击的坐标消息
                 Component coordinateMessage = Component.translatable(
                     "item.touhou_little_maid_spell.wind_seeking_bell.found_structure",
                     structurePos.getX(),
-                    structurePos.getY(), 
+                    height,
                     structurePos.getZ(),
                     distance
                 ).withStyle(ChatFormatting.GREEN)
@@ -342,8 +341,7 @@ public class WindSeekingBell extends Item {
                     .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, tpCommand))
                     .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, CLICK_SUGGEST_MESSAGE))
                 );
-                
-                // 创建搜索耗时信息（添加缓存标识和多线程标识）
+
                 Component timingMessage = Component.translatable(
                         "item.touhou_little_maid_spell.wind_seeking_bell.search_time",
                         searchTime
@@ -351,9 +349,16 @@ public class WindSeekingBell extends Item {
                 
                 player.sendSystemMessage(coordinateMessage);
                 player.sendSystemMessage(timingMessage);
-                
-                // 统计使用次数
+
+                if(player instanceof ServerPlayer serverPlayer){
+                    int count =serverPlayer.getStats().getValue(Stats.ITEM_USED.get(this));
+                    if(count == 0){
+                        serverPlayer.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.first_use").withStyle(ChatFormatting.LIGHT_PURPLE));
+                    }
+                }
+
                 player.awardStat(Stats.ITEM_USED.get(this));
+            
                 
                 // 消耗物品（如果不是创造模式）
                 if (!player.getAbilities().instabuild) {
@@ -407,7 +412,7 @@ public class WindSeekingBell extends Item {
      * 根据搜索范围和系统资源自适应选择单线程或多线程搜索策略
      * 大范围搜索时将区域分割为扇形，并行搜索以提升性能
      */
-    private BlockPos findNearestHidenRetreatParallel(ServerLevel level, BlockPos playerPos) {
+    private BlockPos findNearestHiddenRetreatParallel(ServerLevel level, BlockPos playerPos) {
         // 1. 首先检查缓存
         CacheCheckResult cacheResult = checkCache(level, playerPos);
         if (cacheResult.hasCache) {
@@ -784,7 +789,7 @@ public class WindSeekingBell extends Item {
     
     /**
      * 检查潜在的结构中心点
-     * 基于Main算法思路：直接验证是否为有效的hiden_retreat中心
+     * 直接验证是否为有效的hidden_retreat中心
      */
     private BlockPos checkPotentialCenter(ServerLevel level, ChunkPos centerChunk) {
         // 1. 首先检查中心是否为樱花林（类似Main算法检查中心格子）
@@ -894,9 +899,9 @@ public class WindSeekingBell extends Item {
         super.appendHoverText(stack, level, tooltip, flag);
         
         tooltip.add(Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.desc1")
-            .withStyle(ChatFormatting.GRAY));
+            .withStyle(ChatFormatting.LIGHT_PURPLE));
         tooltip.add(Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.desc2")
-            .withStyle(ChatFormatting.BLUE));
+            .withStyle(ChatFormatting.GOLD));
     }
 
     @Override

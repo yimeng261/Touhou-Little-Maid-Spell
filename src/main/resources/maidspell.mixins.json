@@ -8,10 +8,7 @@
     "CombatTrackerMixin",
     "EntityMaidMixin",
     "SynchedEntityDataMixin",
-    "AbstractMaidContainerMixin",
-    "OpenMaidGuiMessageMixin",
-    "PlayerMixin",
-    "ServerPlayerMixin"
+    "AbstractMaidContainerMixin"
   ],
   "client": [],
   "server": []

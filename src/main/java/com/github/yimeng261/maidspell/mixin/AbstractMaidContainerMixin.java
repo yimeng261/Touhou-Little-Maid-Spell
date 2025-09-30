@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
+import com.github.yimeng261.maidspell.Global;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Final;
@@ -24,9 +25,10 @@ public class AbstractMaidContainerMixin {
     /**
      * 注入到 stillValid 方法开头，取消原方法并返回我们的逻辑
      */
-    @Inject(method = "stillValid", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "stillValid", at = @At("HEAD"), cancellable = true, remap = true)
     public void stillValid(Player playerIn, CallbackInfoReturnable<Boolean> cir) {
         boolean isValid = maid.isOwnedBy(playerIn) && !maid.isSleeping() && maid.isAlive();
+        Global.LOGGER.warn("[MaidSpell] AbstractMaidContainerMixin.stillValid called for player: " + playerIn.getName().getString() + ", result: " + isValid + " (distance: " + (maid != null ? maid.distanceTo(playerIn) : "maid is null") + ")");
         cir.setReturnValue(isValid);
     }
 }

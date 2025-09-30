@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell;
 
 import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
+import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
@@ -40,6 +41,7 @@ public class MaidSpellMod {
         MaidSpellCreativeTab.register(modBus);
         MaidSpellContainers.register(modBus);
         MaidSpellSounds.SOUNDS.register(modBus);
+        MaidSpellEntities.register(modBus);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modBus);
 

@@ -243,6 +243,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     /**
      * 战斗状态下的视线控制任务
      * 高优先级任务，确保女仆在战斗时只看向攻击目标，不会看向玩家
+     * 特殊情况：当女仆释放蓝色音符标记的铁魔法法术时，允许看向主人
      */
     static class CombatLookControlTask extends Behavior<EntityMaid> {
         
@@ -256,6 +257,10 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         @Override
         protected boolean checkExtraStartConditions(ServerLevel level, EntityMaid maid) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+            // 如果是铁魔法特殊情况（目标是主人），也允许启动
+            if (target instanceof Player && isIronSpellSpecialCase(maid)) {
+                return true;
+            }
             return target != null && target.isAlive() && !(target instanceof Player);
         }
 
@@ -267,23 +272,63 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         @Override
         protected void tick(ServerLevel level, EntityMaid maid, long gameTime) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            if (target != null && target.isAlive() && !(target instanceof Player)) {
-                // 强制设置视线目标为攻击目标，覆盖其他系统的设置
-                maid.getLookControl().setLookAt(target.getX(), target.getEyeY(), target.getZ());
-                // 清除可能导致看向玩家的Look Memory
-                maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+            if (target != null && target.isAlive()) {
+                // 检查是否是铁魔法特殊情况
+                if (target instanceof Player && isIronSpellSpecialCase(maid)) {
+                    // 特殊情况：女仆释放蓝色音符标记的法术时，允许看向主人
+                    maid.getLookControl().setLookAt(target.getX(), target.getEyeY(), target.getZ());
+                    // 不清除Look Memory，允许看向玩家
+                } else if (!(target instanceof Player)) {
+                    // 正常战斗情况：强制设置视线目标为攻击目标，覆盖其他系统的设置
+                    maid.getLookControl().setLookAt(target.getX(), target.getEyeY(), target.getZ());
+                    // 清除可能导致看向玩家的Look Memory
+                    maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+                }
             }
         }
 
         @Override
         protected void start(ServerLevel level, EntityMaid maid, long gameTime) {
-            // 开始时立即清除可能的干扰视线目标
-            maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+            // 开始时，只有在非特殊情况下才清除干扰视线目标
+            LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+            if (!(target instanceof Player && isIronSpellSpecialCase(maid))) {
+                maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+            }
         }
 
         @Override
         protected void stop(ServerLevel level, EntityMaid maid, long gameTime) {
             // 战斗结束时不做特殊处理，让其他系统接管
+        }
+        
+        /**
+         * 检查是否是铁魔法特殊情况（蓝色音符标记的法术）
+         * 这种情况下女仆需要对主人施法，因此应该看向主人
+         */
+        private boolean isIronSpellSpecialCase(EntityMaid maid) {
+            if (!ModList.get().isLoaded("irons_spellbooks")) {
+                return false;
+            }
+            
+            try {
+                // 获取女仆的铁魔法数据
+                MaidIronsSpellData data = MaidIronsSpellData.getOrCreate(maid);
+                if (data == null) {
+                    return false;
+                }
+                
+                // 检查当前目标是否是原始目标切换到主人的结果
+                // 这表明女仆正在施放蓝色音符标记的法术
+                LivingEntity currentTarget = data.getTarget();
+                LivingEntity originTarget = data.getOriginTarget();
+                LivingEntity owner = maid.getOwner();
+                
+                return currentTarget == owner && originTarget != null && originTarget != owner;
+                
+            } catch (Exception e) {
+                // 如果出现任何异常，安全返回false
+                return false;
+            }
         }
     }
 

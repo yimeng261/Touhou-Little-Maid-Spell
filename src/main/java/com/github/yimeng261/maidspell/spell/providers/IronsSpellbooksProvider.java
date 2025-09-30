@@ -22,6 +22,8 @@ import io.redspace.ironsspellbooks.item.SpellBook;
 import io.redspace.ironsspellbooks.item.weapons.StaffItem;
 import io.redspace.ironsspellbooks.api.item.weapons.MagicSwordItem;
 import io.redspace.ironsspellbooks.spells.TargetAreaCastData;
+import net.minecraft.commands.arguments.EntityAnchorArgument.Anchor;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.item.ItemStack;
@@ -237,7 +239,12 @@ public class IronsSpellbooksProvider implements ISpellBookProvider {
             // 确保女仆面向目标（特别是对于投射法术）
             LivingEntity target = data.getTarget();
             if (target != null) {
+                if(target==maid.getOwner()){
+                    LOGGER.debug("look at owner");
+                }
                 BehaviorUtils.lookAtEntity(maid, target);
+                maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
+                maid.lookAt(Anchor.EYES, target.getEyePosition());
             }
             
             // 设置目标相关的施法数据（在checkPreCastConditions之前）
@@ -287,7 +294,12 @@ public class IronsSpellbooksProvider implements ISpellBookProvider {
         // 持续更新女仆朝向目标（重要：确保持续性法术始终面向目标）
         LivingEntity target = data.getTarget();
         if (target != null) {
+            if(target==maid.getOwner()){
+                LOGGER.debug("look at owner");
+            }
             BehaviorUtils.lookAtEntity(maid, target);
+            maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
+            maid.lookAt(Anchor.EYES, target.getEyePosition());
         }
         
         // 更新施法持续时间

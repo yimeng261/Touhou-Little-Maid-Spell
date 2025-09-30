@@ -18,13 +18,16 @@
       "tag": "forge:nuggets/gold"
     },
     {
-      "tag": "forge:nuggets/gold"
+      "item": "minecraft:nether_star"
     },
     {
       "item": "minecraft:cherry_sapling"
     },
     {
       "item": "minecraft:ender_eye"
+    },
+    {
+      "tag": "forge:nuggets/gold"
     }
   ]
 }

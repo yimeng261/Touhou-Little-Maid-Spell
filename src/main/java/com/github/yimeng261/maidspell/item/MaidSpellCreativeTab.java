@@ -28,6 +28,7 @@ public class MaidSpellCreativeTab {
                 if (ModList.get().isLoaded("irons_spellbooks")) {
                     output.accept(MaidSpellItems.SPELL_ENHANCEMENT_CORE.get());
                     output.accept(MaidSpellItems.BLUE_NOTE.get());
+                    output.accept(MaidSpellItems.WIND_SEEKING_BELL.get());
                 }
 
                 output.accept(MaidSpellItems.BLEEDING_HEART.get());
@@ -41,7 +42,10 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.SOUL_BOOK.get());
                 output.accept(MaidSpellItems.ENDER_POCKET.get());
                 output.accept(MaidSpellItems.WOUND_RIME_BLADE.get());
-                output.accept(MaidSpellItems.WIND_SEEKING_BELL.get());
+                
+                // 管理员工具
+                output.accept(MaidSpellItems.OWNER_CLEAR_TOOL.get());
+                
                 //output.accept(MaidSpellItems.SLIVER_CERCIS.get());
             })
             .build());

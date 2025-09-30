@@ -15,7 +15,8 @@ import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBook;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBook;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocket;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBlade;
-import com.github.yimeng261.maidspell.item.WindSeekingBell;
+import com.github.yimeng261.maidspell.item.common.WindSeekingBell;
+import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import net.minecraft.Util;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -49,6 +50,9 @@ public class MaidSpellItems {
     
     // 寻风之铃
     public static final RegistryObject<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
+    
+    // 管理员工具
+    public static final RegistryObject<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);
 
     /**
      * 注册物品
