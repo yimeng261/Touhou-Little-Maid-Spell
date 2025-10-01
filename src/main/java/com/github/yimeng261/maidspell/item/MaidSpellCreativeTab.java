@@ -4,7 +4,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.DeferredRegister;
@@ -42,11 +41,10 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.SOUL_BOOK.get());
                 output.accept(MaidSpellItems.ENDER_POCKET.get());
                 output.accept(MaidSpellItems.WOUND_RIME_BLADE.get());
+                output.accept(MaidSpellItems.SLIVER_CERCIS.get());
                 
                 // 管理员工具
                 output.accept(MaidSpellItems.OWNER_CLEAR_TOOL.get());
-                
-                //output.accept(MaidSpellItems.SLIVER_CERCIS.get());
             })
             .build());
     

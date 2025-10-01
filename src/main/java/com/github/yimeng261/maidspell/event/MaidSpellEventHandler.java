@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.event;
 
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidEquipEvent;
+import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
@@ -15,6 +16,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraftforge.common.ForgeMod;
@@ -30,6 +34,10 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
@@ -188,11 +196,8 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onEntityHurt(LivingHurtEvent event) {
         Entity entity = event.getEntity();
-        Entity direct = event.getSource().getDirectEntity();
         Entity source = event.getSource().getEntity();
         if(source instanceof EntityMaid maid){
-            processor_pre(event, maid);
-        }else if(direct instanceof EntityMaid maid){
             processor_pre(event, maid);
         }
 
@@ -200,11 +205,12 @@ public class MaidSpellEventHandler {
             Global.common_hurtProcessors.forEach(function -> function.apply(event, maid));
 
             BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_hurtProcessors_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_commonHurtProcessors_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
                 func.apply(event, maid);
             });
         }
     }
+    
 
     @SubscribeEvent
     public static void onEntityDamage(LivingDamageEvent event) {
@@ -217,12 +223,7 @@ public class MaidSpellEventHandler {
             processor_aft(event, maid);
         }
 
-        if(entity instanceof EntityMaid maid){
-            BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                BiFunction<LivingDamageEvent, EntityMaid, Void> func = Global.bauble_hurtProcessors_aft.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
-                func.apply(event, maid);
-            });
-        }else if(entity instanceof Player player){
+        if(entity instanceof Player player){
             Global.player_hurtProcessors_aft.forEach(func-> func.apply(event,player));
         }
     }
@@ -363,5 +364,43 @@ public class MaidSpellEventHandler {
             LOGGER.warn("Failed to add step height attribute to maid {}: {}", 
                 maid.getName().getString(), e.getMessage());
         }
+    }
+
+    @SubscribeEvent
+    public static void onMaidTamed(MaidTamedEvent event) {
+        EntityMaid maid = event.getMaid();
+        Player player = event.getPlayer();
+        
+        if (!player.level().isClientSide() && player.level() instanceof ServerLevel level) {
+            if(maid.isOrderedToSit()&&!maid.isStructureSpawn()&&isInHiddenRetreatStructure(level, maid.blockPosition())){
+                player.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat").withStyle(ChatFormatting.LIGHT_PURPLE));
+            }
+        }
+    }
+
+    /**
+     * 检查指定位置是否在hidden_retreat结构中
+     * @param level 维度
+     * @param pos 检查的位置
+     * @return 如果在hidden_retreat结构中返回true
+     */
+    private static boolean isInHiddenRetreatStructure(ServerLevel level, BlockPos pos) {
+        try {
+            // 检查当前位置是否在hidden_retreat结构中
+            // 使用结构管理器检查
+            var structureManager = level.structureManager();
+            var hiddenRetreatStructureSet = level.registryAccess()
+                .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
+                .getOptional(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("touhou_little_maid_spell", "hidden_retreat"));
+
+            if (hiddenRetreatStructureSet.isPresent()) {
+                // 检查此位置是否在hidden_retreat结构的范围内
+                var structureStart = structureManager.getStructureWithPieceAt(pos, hiddenRetreatStructureSet.get());
+                return structureStart.isValid();
+            }
+        } catch (Exception e) {
+            LogUtils.getLogger().debug("Error checking hidden_retreat structure at {}: {}", pos, e.getMessage());
+        }
+        return false;
     }
 } 

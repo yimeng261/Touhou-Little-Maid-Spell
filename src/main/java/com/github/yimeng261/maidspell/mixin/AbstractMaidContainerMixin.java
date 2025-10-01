@@ -28,7 +28,6 @@ public class AbstractMaidContainerMixin {
     @Inject(method = "stillValid", at = @At("HEAD"), cancellable = true, remap = true)
     public void stillValid(Player playerIn, CallbackInfoReturnable<Boolean> cir) {
         boolean isValid = maid.isOwnedBy(playerIn) && !maid.isSleeping() && maid.isAlive();
-        Global.LOGGER.warn("[MaidSpell] AbstractMaidContainerMixin.stillValid called for player: " + playerIn.getName().getString() + ", result: " + isValid + " (distance: " + (maid != null ? maid.distanceTo(playerIn) : "maid is null") + ")");
         cir.setReturnValue(isValid);
     }
 }

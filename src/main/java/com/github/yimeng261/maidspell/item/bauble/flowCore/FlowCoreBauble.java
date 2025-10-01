@@ -10,13 +10,14 @@ public class FlowCoreBauble implements IExtendBauble {
     @Override
     public void onTick(EntityMaid maid, ItemStack baubleItem){
         if(maid.tickCount % 10 == 0){
-            maid.heal(maid.getMaxHealth()*0.025f*maid.getFavorabilityManager().getLevel());
+            maid.setHealth(maid.getHealth()+maid.getMaxHealth()*0.025f*maid.getFavorabilityManager().getLevel());
         }
     }
 
     static {
-        Global.bauble_hurtProcessors_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.FLOW_CORE),(event,maid)->{
-            event.setAmount(event.getAmount()*(1-0.2f*maid.getFavorabilityManager().getLevel()));
+        Global.bauble_hurtProcessors_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.FLOW_CORE),(data)->{
+            EntityMaid maid = data.getMaid();
+            data.setAmount(data.getAmount()*(1-0.15f*maid.getFavorabilityManager().getLevel()));
             return null;
         });
     }

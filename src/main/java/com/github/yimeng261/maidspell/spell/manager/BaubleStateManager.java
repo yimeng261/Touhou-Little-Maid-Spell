@@ -24,9 +24,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class BaubleStateManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     
-    // 存储每个女仆的饰品状态快照 UUID -> List<ItemStack>
-    private static final Map<UUID, List<ItemStack>> maidBaublePrevious = new ConcurrentHashMap<>();
-    private static final Map<UUID, List<ItemStack>> maidBaubleCurrent = new ConcurrentHashMap<>();
+    // 存储每个女仆的饰品状态快照 UUID -> HashSet<Item>
+    private static final Map<UUID, HashSet<Item>> maidBaublePrevious = new ConcurrentHashMap<>();
+    private static final Map<UUID, HashSet<Item>> maidBaubleCurrent = new ConcurrentHashMap<>();
 
     /**
      * 更新指定女仆的饰品状态并检测变化
@@ -38,71 +38,77 @@ public class BaubleStateManager {
         }
         
         UUID maidUUID = maid.getUUID();
-        List<ItemStack> currentBaubles = getCurrentBaubles(maid);
-        List<ItemStack> previousBaubles = getPreviousBaubles(maidUUID);
+        HashSet<Item> currentBaubles = getCurrentBaubles(maid);
+        HashSet<Item> previousBaubles = getPreviousBaubles(maidUUID);
 
         maidBaubleCurrent.put(maid.getUUID(), currentBaubles);
         
-        List<ItemStack> removedBaubles = previousBaubles.stream().filter(item->!currentBaubles.contains(item)).toList();
-        List<ItemStack> addedBaubles = currentBaubles.stream().filter(item->!previousBaubles.contains(item)).toList();
-        for (ItemStack removedBauble : removedBaubles) {
-            IMaidBauble bauble = BaubleManager.getBauble(removedBauble);
+        List<Item> removedBaubles = previousBaubles.stream().filter(item->!currentBaubles.contains(item)).toList();
+        List<Item> addedBaubles = currentBaubles.stream().filter(item->!previousBaubles.contains(item)).toList();
+        for (Item removedBauble : removedBaubles) {
+            IMaidBauble bauble = BaubleManager.getBauble(new ItemStack(removedBauble));
             if(bauble instanceof IExtendBauble) {
                 ((IExtendBauble) bauble).onRemove(maid);
             }
         }
-        for (ItemStack addedBauble : addedBaubles) {
-            IMaidBauble bauble = BaubleManager.getBauble(addedBauble);
+        for (Item addedBauble : addedBaubles) {
+            IMaidBauble bauble = BaubleManager.getBauble(new ItemStack(addedBauble));
             if(bauble instanceof IExtendBauble) {
                 ((IExtendBauble) bauble).onAdd(maid);
             }
         }
 
-        maidBaublePrevious.put(maidUUID, new ArrayList<>(currentBaubles));
+        maidBaublePrevious.put(maidUUID, new HashSet<>(currentBaubles));
     }
 
-    private static List<ItemStack> getPreviousBaubles(UUID maidUUID) {
-        return maidBaublePrevious.computeIfAbsent(maidUUID, k -> new ArrayList<>());
+    private static HashSet<Item> getPreviousBaubles(UUID maidUUID) {
+        return maidBaublePrevious.computeIfAbsent(maidUUID, k -> new HashSet<>());
     }
     
     /**
      * 获取女仆当前的饰品列表
      */
-    private static List<ItemStack> getCurrentBaubles(EntityMaid maid) {
+    private static HashSet<Item> getCurrentBaubles(EntityMaid maid) {
         if(maid == null || !maid.isAlive()) {
-            return new ArrayList<>();
+            return new HashSet<>();
         }
 
-        List<ItemStack> baubles = new ArrayList<>();
+        HashSet<Item> baubles = new HashSet<>();
         BaubleItemHandler handler = maid.getMaidBauble();
+        
+        // 检查handler是否为null
+        if (handler == null) {
+            LOGGER.debug("BaubleItemHandler is null for maid {}", maid.getUUID());
+            return new HashSet<>();
+        }
 
         for (int i = 0; i < handler.getSlots(); i++) {
             ItemStack stack = handler.getStackInSlot(i);
             if (!stack.isEmpty()) {
-                baubles.add(stack.copy()); // 创建副本避免引用问题
+                baubles.add(stack.getItem()); // 创建副本避免引用问题
             }
         }
 
         return baubles;
     }
 
-    public static List<ItemStack> getBaubles(EntityMaid maid) {
+    public static HashSet<Item> getBaubles(EntityMaid maid) {
         if(maid == null || !maid.isAlive()) {
-            return new ArrayList<>();
+            return new HashSet<>();
         }
         return maidBaubleCurrent.computeIfAbsent(maid.getUUID(), k -> getCurrentBaubles(maid));
     }
 
     public static boolean hasBauble(EntityMaid maid, ItemStack stack) {
-        return getBaubles(maid).stream().anyMatch(itemStack -> itemStack.getItem() == stack.getItem());
-    }
-
-    public static boolean hasBauble(EntityMaid maid, String itemId) {
-        return getBaubles(maid).stream().anyMatch(itemStack -> itemStack.getDescriptionId().equals(itemId));
+        return getBaubles(maid).contains(stack.getItem());
     }
 
     public static boolean hasBauble(EntityMaid maid, RegistryObject<Item> item) {
-        return getBaubles(maid).stream().anyMatch(itemStack -> itemStack.getItem() == item.get());
+        return getBaubles(maid).contains(item.get());
+    }
+
+    public static boolean hasBauble(EntityMaid maid, Item item) {
+        return getBaubles(maid).contains(item);
     }
 
     public static void removeMaidBaubles(EntityMaid maid) {

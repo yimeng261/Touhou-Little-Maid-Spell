@@ -24,7 +24,7 @@ import java.util.List;
 @OnlyIn(Dist.CLIENT)
 public class EnderPocketScreen extends Screen {
     private static final ResourceLocation BACKGROUND_TEXTURE = 
-            ResourceLocation.fromNamespaceAndPath("touhou_little_maid_spell", "textures/gui/ender_pocket.png");
+            new ResourceLocation("touhou_little_maid_spell", "textures/gui/ender_pocket.png");
     
     private List<EnderPocketService.EnderPocketMaidInfo> maidInfos;
     private static final int GUI_WIDTH = 90;

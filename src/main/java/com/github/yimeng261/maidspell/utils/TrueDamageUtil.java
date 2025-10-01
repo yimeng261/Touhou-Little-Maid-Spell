@@ -31,15 +31,13 @@ public class TrueDamageUtil {
             SynchedEntityDataMixin dataMixin = (SynchedEntityDataMixin) target.getEntityData();
             Int2ObjectMap<SynchedEntityData.DataItem<?>> itemsById = dataMixin.getItemsById();
             String className = target.getClass().getSimpleName();
-            int healthId = healthIdMap.get(className);
-            
             try{
-                if(!healthIdMap.containsKey(className) || !(itemsById.get(healthId).getValue() instanceof Float v && v == target.getHealth())){
-                    getEntityDataInfo(target);
-                }
+                
+                getEntityDataInfo(target);
                 @SuppressWarnings("unchecked")
                 SynchedEntityData.DataItem<Float> dataItem = (SynchedEntityData.DataItem<Float>) itemsById.get(healthIdMap.get(className));
-                target.getEntityData().set(dataItem.getAccessor(), dataItem.getValue() - damage);
+                float finalhealth = Math.max(0.0f, dataItem.getValue() - damage);
+                target.getEntityData().set(dataItem.getAccessor(), finalhealth);
                 target.getEntityData().isDirty();
             }catch(Exception e){
                 LOGGER.error("[TrueDamage] Failed to deal true damage to entity", e);
@@ -65,6 +63,12 @@ public class TrueDamageUtil {
             SynchedEntityDataMixin dataMixin = (SynchedEntityDataMixin) entity.getEntityData();
             Int2ObjectMap<SynchedEntityData.DataItem<?>> itemsById = dataMixin.getItemsById();
             float health = entity.getHealth();
+            String className = entity.getClass().getSimpleName();
+            int healthId = healthIdMap.getOrDefault(className, -1);
+
+            if(healthId != -1 && itemsById.get(healthId).getValue() instanceof Float v && v == health){
+                return "healthId: " + healthId + " health: " + health;
+            }
             
             StringBuilder sb = new StringBuilder();
             sb.append("EntityData for ").append(entity.getClass().getSimpleName()).append(":\n");
@@ -73,8 +77,8 @@ public class TrueDamageUtil {
             // 显示所有数据项
             itemsById.forEach((id, dataItem) -> {
                 if (dataItem.getValue() instanceof Float v && v == health) {
-                    sb.append("  Health -> ");
                     healthIdMap.put(entity.getClass().getSimpleName(), id);
+                    sb.append("  Health -> ");
                     sb.append("  ID ").append(id).append(": ");
                     sb.append(dataItem.getValue()).append("\n");
                 }

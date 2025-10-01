@@ -11,6 +11,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
 import net.minecraftforge.eventbus.api.Event;
@@ -27,9 +28,20 @@ public class HairpinBauble implements IExtendBauble {
         MinecraftForge.EVENT_BUS.register(this);
     }
 
+    @Override
+    public void onTick(EntityMaid maid, ItemStack baubleItem) {
+        if(maid.tickCount%10 == 0){
+            maid.getActiveEffects().forEach(effect -> {
+                if(!effect.getEffect().isBeneficial()){
+                    effect.update(new MobEffectInstance(effect.getEffect(), 0, 0));
+                }
+            });
+        }
+    }
+
     static {
         // 注册女仆受伤时的处理器 - 将伤害转移给主人
-        Global.bauble_hurtProcessors_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.HAIRPIN), (event, maid) -> {
+        Global.bauble_commonHurtProcessors_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.HAIRPIN), (event, maid) -> {
             LivingEntity owner = maid.getOwner();
             DamageSource source = event.getSource();
 

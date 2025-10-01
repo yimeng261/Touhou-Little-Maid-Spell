@@ -89,5 +89,6 @@
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line3": "Only usable by creative players and ops",
   "item.touhou_little_maid_spell.owner_clear_tool.no_owner": "This maid has no owner",
   "item.touhou_little_maid_spell.owner_clear_tool.no_permission": "You don't have permission to use this tool",
-  "item.touhou_little_maid_spell.owner_clear_tool.success": "Successfully cleared owner %s from maid %s"
+  "item.touhou_little_maid_spell.owner_clear_tool.success": "Successfully cleared owner %s from maid %s",
+  "item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat": "Your skills, as ever"
 }

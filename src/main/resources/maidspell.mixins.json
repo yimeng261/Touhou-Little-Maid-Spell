@@ -7,6 +7,7 @@
   "mixins": [
     "CombatTrackerMixin",
     "EntityMaidMixin",
+    "LivingEntityMixin",
     "SynchedEntityDataMixin",
     "AbstractMaidContainerMixin"
   ],

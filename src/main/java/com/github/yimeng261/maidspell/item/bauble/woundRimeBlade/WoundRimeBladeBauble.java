@@ -31,28 +31,21 @@ import net.minecraftforge.common.MinecraftForge;
 public class WoundRimeBladeBauble implements IExtendBauble {
 
     private static final ConcurrentHashMap<UUID, ConcurrentHashMap<LivingEntity,Float>> maidWoundRimeBladeMap = new ConcurrentHashMap<>();
-    private static final Set<UUID> maidWoundRimeBladeSet = new HashSet<>();
-    
+
     public WoundRimeBladeBauble() {
         MinecraftForge.EVENT_BUS.register(this);
     }
 
     @Override
-    public void onAdd(EntityMaid maid) {}
-    
-    @Override
     public void onRemove(EntityMaid maid) {
         maidWoundRimeBladeMap.remove(maid.getUUID());
     }
-    
-    @SubscribeEvent
-    public void onEntityHeal(LivingHealEvent event) {
-        LivingEntity entity = event.getEntity();
-        if(entity instanceof Player){
-            return;
-        }
-        if(maidWoundRimeBladeSet.contains(entity.getUUID())) {
-            event.setAmount(0);
+
+    public static void updateWoundRimeMap(EntityMaid maid, LivingEntity entity,float damage) {
+        if(maidWoundRimeBladeMap.containsKey(maid.getUUID())) {
+            ConcurrentHashMap<LivingEntity,Float> map = maidWoundRimeBladeMap.get(maid.getUUID());
+            float nowHealth = map.computeIfAbsent(entity, k -> entity.getHealth());
+            map.put(entity, nowHealth - damage);
         }
     }
 
@@ -65,13 +58,6 @@ public class WoundRimeBladeBauble implements IExtendBauble {
                     return;
                 }
                 float nowHealth = entity.getHealth();
-                List<CombatEntry> entries = ((CombatTrackerMixin)entity.getCombatTracker()).getEntries();
-                if(entries.size() > 0){
-                    CombatEntry entry = entries.get(entries.size() - 1);
-                    if(nowHealth - (health - entry.damage()) < entry.damage()*0.8 ){
-                        map.put(entity, health - entry.damage());
-                    }
-                }
                 if(nowHealth > health){
                     TrueDamageUtil.dealTrueDamage(entity, nowHealth - health);
                 }
@@ -82,7 +68,6 @@ public class WoundRimeBladeBauble implements IExtendBauble {
     static {
         Global.bauble_damageProcessors_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.WOUND_RIME_BLADE),(event, maid) -> {
             LivingEntity entity = event.getEntity();
-            maidWoundRimeBladeSet.add(entity.getUUID());
             ConcurrentHashMap<LivingEntity,Float> map = maidWoundRimeBladeMap.computeIfAbsent(maid.getUUID(), (uuid) -> new ConcurrentHashMap<>());
             if(!map.containsKey(entity)){
                 map.put(entity, entity.getHealth());

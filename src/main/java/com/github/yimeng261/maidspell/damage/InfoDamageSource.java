@@ -48,4 +48,10 @@ public class InfoDamageSource extends DamageSource {
         super(damage_source.typeHolder(),damage_source.getEntity(), damage_source.getDirectEntity(), damage_source.getSourcePosition());
     }
 
+    public InfoDamageSource() {
+        super(Holder.direct(new DamageType("info_damage", 0.0f)), null, null, null);
+        this.msg_type = "";
+        this.damage_source = null;
+    }
+
 }

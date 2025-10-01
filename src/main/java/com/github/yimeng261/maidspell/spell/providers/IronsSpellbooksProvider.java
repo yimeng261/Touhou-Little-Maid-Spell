@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.spell.providers;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHandler;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
@@ -22,6 +23,7 @@ import io.redspace.ironsspellbooks.item.SpellBook;
 import io.redspace.ironsspellbooks.item.weapons.StaffItem;
 import io.redspace.ironsspellbooks.api.item.weapons.MagicSwordItem;
 import io.redspace.ironsspellbooks.spells.TargetAreaCastData;
+import io.redspace.ironsspellbooks.spells.ender.TeleportSpell;
 import net.minecraft.commands.arguments.EntityAnchorArgument.Anchor;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
@@ -203,19 +205,20 @@ public class IronsSpellbooksProvider implements ISpellBookProvider {
         // 随机选择一个可用的法术
         int index = (int) (Math.random() * availableSpells.size());
         SpellData spellData = availableSpells.get(index);
-        BaubleStateManager.getBaubles(maid).forEach(bauble -> {
-            if(!bauble.getDescriptionId().equals(MaidSpellItems.itemDesc(MaidSpellItems.BLUE_NOTE))){
-                return;
+        if(BaubleStateManager.hasBauble(maid,MaidSpellItems.BLUE_NOTE)){
+            ItemStack bauble = null;
+            BaubleItemHandler baubleItemHandler = maid.getMaidBauble();
+            for(int i=0; i<baubleItemHandler.getSlots(); i++){
+                bauble = baubleItemHandler.getStackInSlot(i);
+                if(bauble.getItem() instanceof BlueNote){
+                    break;
+                }
             }
-            LOGGER.debug("storedSpells:");
-            BlueNoteSpellManager.getStoredSpellIds(bauble).forEach(LOGGER::debug);
-            if(BlueNoteSpellManager.getStoredSpellIds(bauble).contains(spellData.getSpell().getSpellId())){
-                LOGGER.debug("should cast to owner : {}",spellData.getSpell().getSpellId());
+            if (bauble != null && BlueNoteSpellManager.getStoredSpellIds(bauble).contains(spellData.getSpell().getSpellId())) {
+                LOGGER.debug("should cast to owner : {}", spellData.getSpell().getSpellId());
                 data.switchTargetToOwner(maid);
-            }else{
-                data.switchTargetToOrigin(maid);
             }
-        });
+        }
 
         return initiateCasting(maid, spellData);
 
@@ -237,16 +240,8 @@ public class IronsSpellbooksProvider implements ISpellBookProvider {
             AbstractSpell spell = spellData.getSpell();
             
             // 确保女仆面向目标（特别是对于投射法术）
-            LivingEntity target = data.getTarget();
-            if (target != null) {
-                if(target==maid.getOwner()){
-                    LOGGER.debug("look at owner");
-                }
-                BehaviorUtils.lookAtEntity(maid, target);
-                maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
-                maid.lookAt(Anchor.EYES, target.getEyePosition());
-            }
-            
+            forceLookAtTarget(maid, data);
+
             // 设置目标相关的施法数据（在checkPreCastConditions之前）
             setupSpellTargetData(maid, spell, spellData.getLevel());
             
@@ -292,16 +287,8 @@ public class IronsSpellbooksProvider implements ISpellBookProvider {
         MagicData magicData = data.getMagicData();
         
         // 持续更新女仆朝向目标（重要：确保持续性法术始终面向目标）
-        LivingEntity target = data.getTarget();
-        if (target != null) {
-            if(target==maid.getOwner()){
-                LOGGER.debug("look at owner");
-            }
-            BehaviorUtils.lookAtEntity(maid, target);
-            maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
-            maid.lookAt(Anchor.EYES, target.getEyePosition());
-        }
-        
+        forceLookAtTarget(maid, data);
+
         // 更新施法持续时间
         magicData.handleCastDuration();
 
@@ -324,6 +311,18 @@ public class IronsSpellbooksProvider implements ISpellBookProvider {
                     spell.onCast(maid.level(), data.getCurrentCastingSpell().getLevel(), maid, castSource, magicData);
                 }
             }
+        }
+    }
+
+    private void forceLookAtTarget(EntityMaid maid, MaidIronsSpellData data) {
+        LivingEntity target = data.getTarget();
+        if (target != null) {
+            if(target==maid.getOwner()){
+                LOGGER.debug("look at owner");
+            }
+            BehaviorUtils.lookAtEntity(maid, target);
+            maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
+            maid.lookAt(Anchor.EYES, target.getEyePosition());
         }
     }
 
@@ -484,8 +483,6 @@ public class IronsSpellbooksProvider implements ISpellBookProvider {
      */
     private void setTeleportLocationBehindTarget(EntityMaid maid, LivingEntity target, MagicData magicData, AbstractSpell spell, int spellLevel) {
         if (target == null || maid == null) {
-            // 没有目标时传送到原地
-            magicData.setAdditionalCastData(new io.redspace.ironsspellbooks.spells.ender.TeleportSpell.TeleportData(maid.position()));
             return;
         }
         
@@ -494,13 +491,13 @@ public class IronsSpellbooksProvider implements ISpellBookProvider {
         Vec3 teleportPos = target.position();
         boolean validPositionFound = false;
         
-        // 尝试在目标后方找到合适的传送位置
+        // 尝试在目标后方找到合适传送位置
         for (int i = 0; i < 24; i++) {
             Vec3 randomness = Utils.getRandomVec3(.15f * i).multiply(1, 0, 1);
             teleportPos = Utils.moveToRelativeGroundLevel(
                 maid.level(), 
                 target.position().subtract(new Vec3(0, 0, distance / (float) (i / 7 + 1))
-                    .yRot(-(target.getYRot() + i * 45) * net.minecraft.util.Mth.DEG_TO_RAD))
+                    .yRot(-(target.getYRot() + i * 45) * Mth.DEG_TO_RAD))
                     .add(randomness), 
                 5
             );
@@ -517,6 +514,6 @@ public class IronsSpellbooksProvider implements ISpellBookProvider {
             teleportPos = target.position();
         }
         
-        magicData.setAdditionalCastData(new io.redspace.ironsspellbooks.spells.ender.TeleportSpell.TeleportData(teleportPos));
+        magicData.setAdditionalCastData(new TeleportSpell.TeleportData(teleportPos));
     }
 } 

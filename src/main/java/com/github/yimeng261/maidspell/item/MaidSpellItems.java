@@ -15,7 +15,7 @@ import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBook;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBook;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocket;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBlade;
-import com.github.yimeng261.maidspell.item.common.WindSeekingBell;
+import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import net.minecraft.Util;
 import net.minecraft.world.item.Item;

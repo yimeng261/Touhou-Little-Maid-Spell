@@ -17,7 +17,7 @@
   "item.touhou_little_maid_spell.flow_core": "流转核心",
   "item.maidspell.flow_core.desc1": "流转不息，生生不绝",
   "item.maidspell.flow_core.desc2": "持续治疗女仆，每0.5s治疗（2.5%*好感度*最大生命值）点生命值",
-  "item.maidspell.flow_core.desc3": "减少受到的伤害，减伤效果为（20%*好感度）",
+  "item.maidspell.flow_core.desc3": "减少受到的伤害，减伤效果为（15%*好感等级）",
   "itemGroup.touhou_little_maid_spell": "车万女仆：万法皆通",
   "item.touhou_little_maid_spell.quick_chant_ring": "时痕之戒",
   "item.maidspell.quick_chant_ring.desc1": "时光流淌，不留痕迹",
@@ -34,8 +34,8 @@
   "item.maidspell.rock_crystal.desc1": "坚如磐石的魔法水晶",
   "item.maidspell.rock_crystal.desc2": "大幅提高女仆的抗击退能力",
   "item.touhou_little_maid_spell.sliver_cercis": "紫荆银冠",
-  "item.maidspell.sliver_cercis.desc1": "闪烁着银光的荆棘饰品",
-  "item.maidspell.sliver_cercis.desc2": "神秘的防护效果",
+  "item.maidspell.sliver_cercis.desc1": "闪烁着银光的荆棘",
+  "item.maidspell.sliver_cercis.desc2": "对攻击者造成伤害",
   "item.touhou_little_maid_spell.blue_note": "深蓝笔记",
   "item.maidspell.blue_note.desc1": "右键可打开法术收集界面",
   "item.maidspell.blue_note.desc2": "用于标记铁魔法的法术",
@@ -52,7 +52,7 @@
   "item.touhou_little_maid_spell.chaos_book": "混沌之书",
   "item.maidspell.chaos_book.desc1": "记录混沌的典籍",
   "item.maidspell.chaos_book.desc2": "将女仆的伤害分5次传递给目标",
-  "item.maidspell.chaos_book.desc3": "女仆每次最低造成5点伤害",
+  "item.maidspell.chaos_book.desc3": "女仆每次攻击额外造成目标生命1%的（最少5点）真实伤害",
   "item.touhou_little_maid_spell.soul_book": "魂之书",
   "item.maidspell.soul_book.desc1": "守护灵魂的典籍",
   "item.maidspell.soul_book.desc2": "女仆不会受到超过最大生命值20%的伤害",
@@ -89,5 +89,6 @@
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line3": "仅创造模式玩家和OP可用",
   "item.touhou_little_maid_spell.owner_clear_tool.no_owner": "该女仆没有主人",
   "item.touhou_little_maid_spell.owner_clear_tool.no_permission": "你没有权限使用此工具",
-  "item.touhou_little_maid_spell.owner_clear_tool.success": "已成功清除女仆 %s 的主人 %s"
+  "item.touhou_little_maid_spell.owner_clear_tool.success": "已成功清除女仆 %s 的主人 %s",
+  "item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat": "您的手艺，一如既往呢"
 }
