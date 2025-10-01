@@ -5,12 +5,15 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "maidspell.refmap.json",
   "mixins": [
+    "AbstractMaidContainerMixin",
     "CombatTrackerMixin",
     "EntityMaidMixin",
     "LivingEntityMixin",
-    "SynchedEntityDataMixin",
-    "AbstractMaidContainerMixin"
+    "SynchedEntityDataMixin"
   ],
-  "client": [],
-  "server": []
-} 
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
