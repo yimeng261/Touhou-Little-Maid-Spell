@@ -10,10 +10,10 @@
   "power": 0.5,
   "ingredients": [
     {
-      "tag": "c:string"
+      "tag": "c:strings"
     },
     {
-      "tag": "c:leather"
+      "tag": "c:leathers"
     },
     {
       "item": "minecraft:ender_chest"
@@ -22,10 +22,10 @@
       "tag": "c:gems/diamond"
     },
     {
-      "tag": "c:string"
+      "tag": "c:strings"
     },
     {
-      "tag": "c:leather"
+      "tag": "c:leathers"
     }
   ]
 }
