@@ -1,12 +1,18 @@
 package com.github.yimeng261.maidspell.network.message;
 
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.IBackpackContainerScreen;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration;
+import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import io.netty.buffer.ByteBuf;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,5 +38,23 @@ public record S2CEnderPocketMaidList(List<EnderPocketService.EnderPocketMaidInfo
     @Override
     public Type<S2CEnderPocketMaidList> type() {
         return TYPE;
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public void handle() {
+        Minecraft mc = Minecraft.getInstance();
+        // 更新女仆背包集成的数据
+        MaidBackpackEnderPocketIntegration.updateEnderPocketData(maidInfos());
+
+        // 根据请求来源和当前界面决定显示方式
+        if (fromMaidBackpack()) {
+            // 来自女仆背包界面的请求
+            if (mc.screen instanceof IBackpackContainerScreen) {
+                // 重新初始化界面以更新按钮
+                mc.screen.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+            }
+        } else {
+            mc.setScreen(new EnderPocketScreen(maidInfos()));
+        }
     }
 }

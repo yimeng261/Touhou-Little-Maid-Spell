@@ -10,6 +10,7 @@ import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBaub
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
@@ -29,7 +30,7 @@ public class MaidSpellMod {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
 
-    public MaidSpellMod(IEventBus modEventBus, ModContainer modContainer) {
+    public MaidSpellMod(IEventBus modEventBus, ModContainer modContainer, Dist dist) {
         // 检查依赖
         modEventBus.addListener(this::setup);
         // 注册网络消息
@@ -53,7 +54,9 @@ public class MaidSpellMod {
         }
 
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
-        modContainer.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
+        if (dist.isClient()) {
+            modContainer.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
+        }
     }
 
     private void setup(final FMLCommonSetupEvent event) {

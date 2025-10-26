@@ -1,11 +1,13 @@
 package com.github.yimeng261.maidspell.network.message;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * 打开女仆物品栏
@@ -26,5 +28,9 @@ public record C2SEnderPocketOpenInventory(int maidEntityId) implements CustomPac
     @Override
     public Type<C2SEnderPocketOpenInventory> type() {
         return TYPE;
+    }
+
+    public void handle(ServerPlayer player) {
+        EnderPocketService.openMaidInventory(player, maidEntityId());
     }
 }

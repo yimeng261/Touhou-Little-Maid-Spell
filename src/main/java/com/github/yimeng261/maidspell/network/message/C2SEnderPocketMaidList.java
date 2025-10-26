@@ -1,11 +1,15 @@
 package com.github.yimeng261.maidspell.network.message;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+
+import java.util.List;
 
 /**
  * 请求女仆列表
@@ -26,5 +30,15 @@ public record C2SEnderPocketMaidList(boolean fromMaidBackpack) implements Custom
     @Override
     public Type<C2SEnderPocketMaidList> type() {
         return TYPE;
+    }
+
+    public void handle(ServerPlayer player) {
+        List<EnderPocketService.EnderPocketMaidInfo> maidInfos =
+                EnderPocketService.getPlayerEnderPocketMaids(player);
+
+        if (!maidInfos.isEmpty()) {
+            S2CEnderPocketMaidList response = new S2CEnderPocketMaidList(maidInfos, fromMaidBackpack());
+            player.connection.send(response);
+        }
     }
 }

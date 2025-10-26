@@ -1,12 +1,17 @@
 package com.github.yimeng261.maidspell.network.message;
 
+import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.IBackpackContainerScreen;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import io.netty.buffer.ByteBuf;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,5 +37,17 @@ public record S2CEnderPocketPushUpdate(List<EnderPocketService.EnderPocketMaidIn
     @Override
     public Type<S2CEnderPocketPushUpdate> type() {
         return TYPE;
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public void handle() {
+        Minecraft mc = Minecraft.getInstance();
+        // 服务器主动推送的数据更新
+        MaidBackpackEnderPocketIntegration.updateEnderPocketData(maidInfos());
+
+        // 如果当前在女仆背包界面，刷新界面
+        if (mc.screen instanceof IBackpackContainerScreen) {
+            mc.screen.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+        }
     }
 }
