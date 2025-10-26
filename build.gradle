@@ -75,6 +75,9 @@ repositories {
             includeGroup "curse.maven"
         }
     }
+    maven { // Registrate
+        url "https://maven.tterrag.com/"
+    }
     maven {
         name = "Modrinth"
         url = "https://api.modrinth.com/maven"
@@ -89,7 +92,7 @@ dependencies {
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
     // 女仆模组，必须使用 CurseForge 的，才能有源码
-    implementation fg.deobf("curse.maven:touhou-little-maid-355044:6979039-source-6979049")
+    implementation fg.deobf("curse.maven:touhou-little-maid-355044:6979039-sources-6979049")
 
     implementation fg.deobf("maven.modrinth:caelus:3.2.0+1.20.1-forge")
     implementation fg.deobf("maven.modrinth:playeranimator:1.0.2-rc1+1.20-forge")
@@ -98,12 +101,29 @@ dependencies {
     implementation fg.deobf("maven.modrinth:ars-nouveau:4.12.6-forge,1.20.1")
 
     implementation fg.deobf("maven.modrinth:curios:5.14.1+1.20.1-forge")
-    implementation fg.deobf("maven.modrinth:goety:2.5.34.3-forge,1.20.1")
+    //implementation fg.deobf("maven.modrinth:goety:2.5.34.3-forge,1.20.1")
+    implementation fg.deobf("maven.modrinth:goety:2.5.37.0-forge,1.20.1")
 
     implementation fg.deobf("maven.modrinth:patchouli:1.20.1-84.1-forge")
     implementation fg.deobf("maven.modrinth:psi:1.20.1-1.20.1-102-forge")
 
+    implementation fg.deobf("maven.modrinth:youkaishomecoming:2.6.1-forge,1.20.1")
+    implementation fg.deobf("maven.modrinth:farmers-delight:1.20.1-1.2.9-forge")
+    implementation fg.deobf("maven.modrinth:l2library:2.5.3-forge,1.20.1")
+    compileOnly fg.deobf(jarJar("com.tterrag.registrate:Registrate:${registrate_version}")) {
+        transitive = false
+        jarJar.ranged(it, "[MC1.20-1.3.3,)")
+    }
+
     implementation fg.deobf("maven.modrinth:slashblade-resharped:1.6.54-forge,1.20.1")
+
+    runtimeOnly fg.deobf("curse.maven:jei-238222:7037120")
+    runtimeOnly fg.deobf("curse.maven:mouse-tweaks-60089:5338457")
+    runtimeOnly fg.deobf("curse.maven:imblocker-483760:6487340")
+    runtimeOnly fg.deobf("maven.modrinth:jade:11.13.2+forge")
+    runtimeOnly fg.deobf("maven.modrinth:justenoughcharacters:4.5.16-forge,1.20.1")
+
+
 }
 
 tasks.named('processResources', ProcessResources).configure {

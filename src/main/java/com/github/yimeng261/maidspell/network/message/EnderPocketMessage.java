@@ -1,11 +1,7 @@
 package com.github.yimeng261.maidspell.network.message;
 
-import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.IBackpackContainerScreen;
-import com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration;
-import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.api.distmarker.Dist;
@@ -156,41 +152,8 @@ public class EnderPocketMessage {
     }
     
     private static void handleClientSide(EnderPocketMessage message) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
-        
-        switch (message.type) {
-            case RESPONSE_MAID_LIST:
-                // 更新女仆背包集成的数据
-                MaidBackpackEnderPocketIntegration.updateEnderPocketData(message.maidInfos);
-                
-                // 根据请求来源和当前界面决定显示方式
-                if (message.fromMaidBackpack) {
-                    // 来自女仆背包界面的请求
-                    if (mc.screen instanceof IBackpackContainerScreen) {
-                        // 重新初始化界面以更新按钮
-                        mc.screen.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-                    }
-                } else {
-                    mc.setScreen(new EnderPocketScreen(message.maidInfos));
-                }
-                break;
-                
-            case SERVER_PUSH_UPDATE:
-                // 服务器主动推送的数据更新
-                MaidBackpackEnderPocketIntegration.updateEnderPocketData(message.maidInfos);
-                
-                // 如果当前在女仆背包界面，刷新界面
-                if (mc.screen instanceof IBackpackContainerScreen) {
-                    mc.screen.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-                }
-                break;
-                
-            case REQUEST_MAID_LIST:
-            case OPEN_MAID_INVENTORY:
-                // 这些情况不应该在客户端处理
-                break;
-        }
+        // 使用 DistExecutor 确保客户端专用代码只在客户端执行
+        EnderPocketClientHandler.handleClientMessage(message.type, message.maidInfos, message.fromMaidBackpack);
     }
     
     // 便利方法

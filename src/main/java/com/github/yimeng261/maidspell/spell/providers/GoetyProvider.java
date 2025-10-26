@@ -6,6 +6,7 @@ import net.minecraftforge.items.wrapper.CombinedInvWrapper;
 import org.slf4j.Logger;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.spell.data.MaidGoetySpellData;
+import com.github.yimeng261.maidspell.utils.VersionUtil;
 import com.mojang.logging.LogUtils;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -13,7 +14,6 @@ import com.Polarice3.Goety.api.items.magic.IWand;
 import com.Polarice3.Goety.api.items.magic.IFocus;
 import com.Polarice3.Goety.api.magic.ISpell;
 import com.Polarice3.Goety.api.magic.IChargingSpell;
-import com.Polarice3.Goety.common.items.handler.SoulUsingItemHandler;
 import com.Polarice3.Goety.common.items.magic.FocusBag;
 import com.Polarice3.Goety.common.items.handler.FocusBagItemHandler;
 
@@ -27,17 +27,27 @@ import net.minecraft.sounds.SoundSource;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.lang.reflect.Method;
 
 /**
- * Goety模组法术书提供者 - 单例版本
+ * Goety模组法术书提供者 - 统一版本
  * 支持诡恶巫法的法杖和聚晶系统
  * 全局只有一个实例，通过MaidGoetySpellData管理各女仆的数据
+ * 自动检测Goety版本并使用对应的API调用方式
  */
 public class GoetyProvider implements ISpellBookProvider {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAX_INFINITE_CASTING_TIME = 45;
     private static final boolean DEBUG = true;
+    private static final String NEW_API_MIN_VERSION = "2.5.37.0";
+    
+    // 缓存老版本API的Method，减少反射开销
+    private static Method cachedStopSpellMethod = null;
+    private static volatile boolean stopSpellMethodInitialized = false;
+    
+    // 缓存版本检测结果
+    private static volatile Boolean useNewAPI = null;
     
 
     /**
@@ -47,6 +57,20 @@ public class GoetyProvider implements ISpellBookProvider {
         // 私有构造函数
     }
 
+    /**
+     * 检测是否应该使用新版本API
+     */
+    private static boolean shouldUseNewAPI() {
+        if (useNewAPI == null) {
+            synchronized (GoetyProvider.class) {
+                if (useNewAPI == null) {
+                    useNewAPI = VersionUtil.isGoetyVersionSatisfied(NEW_API_MIN_VERSION);
+                    LOGGER.info("Goety API version detection: using {} API", useNewAPI ? "new" : "old");
+                }
+            }
+        }
+        return useNewAPI;
+    }
 
     /**
      * 获取指定女仆的法术数据
@@ -193,8 +217,8 @@ public class GoetyProvider implements ISpellBookProvider {
         
         // 调用法术停止逻辑
         if (maid.level() instanceof ServerLevel serverLevel) {
-            data.getCurrentSpell().stopSpell(serverLevel, maid, data.getSpellBook(),
-                data.getMaxCastingTime() - data.getCastingTime());
+            int remainingTime = data.getMaxCastingTime() - data.getCastingTime();
+            stopSpellUnified(data.getCurrentSpell(), serverLevel, maid, data.getSpellBook(), remainingTime);
         }
         
         // 设置部分冷却
@@ -263,12 +287,10 @@ public class GoetyProvider implements ISpellBookProvider {
         Pair<ItemStack, Integer> selected = availableFoci.get(randomIndex);
         
         if (selected.getSecond() != -1) {
-            if (switchFocus(maid, spellBook, focusBag, selected.getSecond())) {
-                ItemStack selectedFocus = selected.getFirst();
-                focusBag.getOrCreateTag();
-                if (selectedFocus.getItem() instanceof IFocus magicFocus) {
-                    return magicFocus.getSpell();
-                }
+            FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
+            ItemStack selectedFocus = bagHandler.getStackInSlot(selected.getSecond());
+            if (selectedFocus.getItem() instanceof IFocus magicFocus) {
+                return magicFocus.getSpell();
             }
         } else {
             ItemStack currentFocus = selected.getFirst();
@@ -326,40 +348,6 @@ public class GoetyProvider implements ISpellBookProvider {
         }
         
         return ItemStack.EMPTY;
-    }
-    
-    /**
-     * 切换聚晶 - 复用Goety模组的聚晶切换逻辑
-     */
-    private boolean switchFocus(EntityMaid maid, ItemStack spellBook, ItemStack focusBag, int bagSlot) {
-        try {
-            List<String> beforeState;
-            if(DEBUG) { 
-                beforeState = captureFocusState(spellBook, focusBag);
-                logFocusSwitchBefore(maid, spellBook, focusBag, bagSlot);
-            }
-            
-            FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
-            SoulUsingItemHandler wandHandler = SoulUsingItemHandler.get(spellBook);
-            
-            ItemStack currentFocus = wandHandler.extractItem();
-            ItemStack selectedFocus = bagHandler.getStackInSlot(bagSlot);
-            
-            bagHandler.setStackInSlot(bagSlot, currentFocus);
-            wandHandler.insertItem(selectedFocus);
-            
-            if(DEBUG) {
-                logFocusSwitchAfter(maid, spellBook, focusBag);
-                List<String> afterState = captureFocusState(spellBook, focusBag);
-                checkFocusStateChanges(maid, beforeState, afterState, bagSlot);
-            }
-            
-            return true;
-        } catch (Exception e) {
-            LOGGER.warn("Failed to switch focus for maid: {}", maid.getUUID(), e);
-        }
-        
-        return false;
     }
 
     private void prepareForCasting(EntityMaid maid) {
@@ -603,7 +591,7 @@ public class GoetyProvider implements ISpellBookProvider {
         }
         
         if (maid.level() instanceof ServerLevel serverLevel) {
-            data.getCurrentSpell().stopSpell(serverLevel, maid, data.getSpellBook(),0);
+            stopSpellUnified(data.getCurrentSpell(), serverLevel, maid, data.getSpellBook(), 0);
             data.getCurrentSpell().SpellResult(serverLevel, maid, data.getSpellBook(), 
                 data.getCurrentSpell().defaultStats());
         }
@@ -633,229 +621,63 @@ public class GoetyProvider implements ISpellBookProvider {
             data.setSpellCooldown(spellId, cooldown, maid);
         }
     }
-    
-    /**
-     * 记录聚晶切换前的状态
-     */
-    private void logFocusSwitchBefore(EntityMaid maid, ItemStack spellBook, ItemStack focusBag, int bagSlot) {
-        MaidGoetySpellData data = getData(maid);
-        if (data == null) return;
-        
-        LOGGER.debug("==== 聚晶切换前状态 - 女仆: {} ====", maid.getUUID());
-        
-        // 记录当前法杖上的聚晶
-        ItemStack currentFocus = IWand.getFocus(spellBook);
-        if (!currentFocus.isEmpty() && currentFocus.getItem() instanceof IFocus focus) {
-            ISpell spell = focus.getSpell();
-            String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
-            boolean onCooldown = spell != null && data.isSpellOnCooldown(getSpellId(spell));
-            int cooldownRemaining = spell != null ? data.getSpellCooldown(getSpellId(spell)) : 0;
-            LOGGER.debug("当前法杖聚晶: {} | 法术: {} | 冷却中: {} | 剩余冷却: {}刻",
-                currentFocus.getDisplayName().getString(), spellName, onCooldown, cooldownRemaining);
-        } else {
-            LOGGER.debug("当前法杖聚晶: 无");
-        }
-        
-        // 记录聚晶包中的所有聚晶
-        if (!focusBag.isEmpty()) {
-            try {
-                FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
-                LOGGER.debug("聚晶包中的聚晶:");
-                for (int i = 0; i < bagHandler.getSlots(); i++) {
-                    ItemStack focusStack = bagHandler.getStackInSlot(i);
-                    if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
-                        ISpell spell = focus.getSpell();
-                        String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
-                        boolean onCooldown = spell != null && data.isSpellOnCooldown(getSpellId(spell));
-                        int cooldownRemaining = spell != null ? data.getSpellCooldown(getSpellId(spell)) : 0;
-                        String isSelected = (i == bagSlot) ? " [即将切换]" : "";
-                        LOGGER.debug("  槽位{}: {} | 法术: {} | 冷却中: {} | 剩余冷却: {}刻{}",
-                            i, focusStack.getDisplayName().getString(), spellName, onCooldown, cooldownRemaining, isSelected);
-                    } else {
-                        LOGGER.debug("  槽位{}: 空", i);
-                    }
-                }
-            } catch (Exception e) {
-                LOGGER.warn("无法读取聚晶包状态: {}", e.getMessage());
-            }
 
+    /**
+     * 统一的stopSpell方法调用，根据版本自动选择合适的API
+     * 支持新旧两种Goety版本的API调用方式
+     */
+    private void stopSpellUnified(ISpell spell, ServerLevel serverLevel, EntityMaid maid, ItemStack spellBook, int remainingTime) {
+        if (shouldUseNewAPI()) {
+            // 使用新版本API
+            try {
+                ItemStack focus = IWand.getFocus(spellBook);
+                spell.stopSpell(serverLevel, maid, spellBook, focus, remainingTime, spell.defaultStats());
+                //LOGGER.debug("Successfully called new version stopSpell method for spell: {}", spell.getClass().getSimpleName());
+            } catch (Exception e) {
+                LOGGER.error("Error calling new version stopSpell method for spell {}: {}", spell.getClass().getSimpleName(), e.getMessage());
+                // 如果新版本API调用失败，尝试回退到老版本API
+                stopSpellOldAPI(spell, serverLevel, maid, spellBook, remainingTime);
+            }
         } else {
-            LOGGER.debug("聚晶包: 无");
+            // 使用老版本API
+            stopSpellOldAPI(spell, serverLevel, maid, spellBook, remainingTime);
         }
-        
-        LOGGER.debug("准备切换: 槽位{} -> 法杖", bagSlot);
     }
     
     /**
-     * 记录聚晶切换后的状态
+     * 调用老版本的stopSpell方法，使用缓存的Method减少反射开销
      */
-    private void logFocusSwitchAfter(EntityMaid maid, ItemStack spellBook, ItemStack focusBag) {
-        MaidGoetySpellData data = getData(maid);
-        if (data == null) return;
-        
-        LOGGER.debug("==== 聚晶切换后状态 - 女仆: {} ====", maid.getUUID());
-        
-        // 记录当前法杖上的聚晶
-        ItemStack currentFocus = IWand.getFocus(spellBook);
-        if (!currentFocus.isEmpty() && currentFocus.getItem() instanceof IFocus focus) {
-            ISpell spell = focus.getSpell();
-            String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
-            boolean onCooldown = spell != null && data.isSpellOnCooldown(getSpellId(spell));
-            int cooldownRemaining = spell != null ? data.getSpellCooldown(getSpellId(spell)) : 0;
-            LOGGER.debug("新的法杖聚晶: {} | 法术: {} | 冷却中: {} | 剩余冷却: {}刻",
-                currentFocus.getDisplayName().getString(), spellName, onCooldown, cooldownRemaining);
-        } else {
-            LOGGER.debug("新的法杖聚晶: 无");
-        }
-        
-        // 记录聚晶包中的所有聚晶
-        if (!focusBag.isEmpty()) {
-            try {
-                FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
-                LOGGER.debug("切换后聚晶包状态:");
-                for (int i = 0; i < bagHandler.getSlots(); i++) {
-                    ItemStack focusStack = bagHandler.getStackInSlot(i);
-                    if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
-                        ISpell spell = focus.getSpell();
-                        String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
-                        boolean onCooldown = spell != null && data.isSpellOnCooldown(getSpellId(spell));
-                        int cooldownRemaining = spell != null ? data.getSpellCooldown(getSpellId(spell)) : 0;
-                        LOGGER.debug("  槽位{}: {} | 法术: {} | 冷却中: {} | 剩余冷却: {}刻",
-                            i, focusStack.getDisplayName().getString(), spellName, onCooldown, cooldownRemaining);
-                    } else {
-                        LOGGER.debug("  槽位{}: 空", i);
+    private void stopSpellOldAPI(ISpell spell, ServerLevel serverLevel, EntityMaid maid, ItemStack spellBook, int remainingTime) {
+        try {
+            // 初始化缓存的Method（只在第一次调用时执行）
+            if (!stopSpellMethodInitialized) {
+                synchronized (GoetyProvider.class) {
+                    if (!stopSpellMethodInitialized) {
+                        try {
+                            // 获取老版本的stopSpell方法签名
+                            cachedStopSpellMethod = ISpell.class.getMethod("stopSpell", 
+                                ServerLevel.class, LivingEntity.class, ItemStack.class, int.class);
+                            LOGGER.debug("Successfully cached old version stopSpell method");
+                        } catch (NoSuchMethodException e) {
+                            LOGGER.warn("Could not find old version stopSpell method, this may cause issues with old Goety versions");
+                            cachedStopSpellMethod = null;
+                        }
+                        stopSpellMethodInitialized = true;
                     }
                 }
-            } catch (Exception e) {
-                LOGGER.warn("无法读取切换后聚晶包状态: {}", e.getMessage());
-            }
-        } else {
-            LOGGER.debug("聚晶包: 无");
-        }
-        
-        LOGGER.debug("==== 聚晶切换完成 ====");
-    }
-    
-    /**
-     * 捕获当前聚晶状态 - 用于变化检测
-     */
-    private List<String> captureFocusState(ItemStack spellBook, ItemStack focusBag) {
-        List<String> state = new ArrayList<>();
-        
-        // 记录法杖上的聚晶
-        ItemStack currentFocus = IWand.getFocus(spellBook);
-        if (!currentFocus.isEmpty() && currentFocus.getItem() instanceof IFocus focus) {
-            ISpell spell = focus.getSpell();
-            String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
-            state.add("WAND:" + currentFocus.getDisplayName().getString() + ":" + spellName);
-        } else {
-            state.add("WAND:EMPTY");
-        }
-        
-        // 记录聚晶包中的聚晶
-        if (!focusBag.isEmpty()) {
-            try {
-                FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
-                for (int i = 0; i < bagHandler.getSlots(); i++) {
-                    ItemStack focusStack = bagHandler.getStackInSlot(i);
-                    if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
-                        ISpell spell = focus.getSpell();
-                        String spellName = spell != null ? spell.getClass().getSimpleName() : "未知";
-                        state.add("BAG" + i + ":" + focusStack.getDisplayName().getString() + ":" + spellName);
-                    } else {
-                        state.add("BAG" + i + ":EMPTY");
-                    }
-                }
-            } catch (Exception e) {
-                state.add("BAG:ERROR:" + e.getMessage());
-            }
-        }
-        
-        return state;
-    }
-    
-    /**
-     * 检查聚晶状态变化并发出警告
-     */
-    private void checkFocusStateChanges(EntityMaid maid, List<String> beforeState, List<String> afterState, int switchedSlot) {
-        // 预期的变化：法杖聚晶与指定槽位聚晶交换
-        List<String> expectedAfterState = new ArrayList<>(beforeState);
-        
-        // 找到法杖和指定槽位的聚晶
-        String wandBefore = beforeState.stream().filter(s -> s.startsWith("WAND:")).findFirst().orElse("WAND:EMPTY");
-        String bagSlotBefore = beforeState.stream().filter(s -> s.startsWith("BAG" + switchedSlot + ":")).findFirst().orElse("BAG" + switchedSlot + ":EMPTY");
-        
-        // 构建预期的交换后状态
-        for (int i = 0; i < expectedAfterState.size(); i++) {
-            String item = expectedAfterState.get(i);
-            if (item.startsWith("WAND:")) {
-                expectedAfterState.set(i, bagSlotBefore.replace("BAG" + switchedSlot + ":", "WAND:"));
-            } else if (item.startsWith("BAG" + switchedSlot + ":")) {
-                expectedAfterState.set(i, wandBefore.replace("WAND:", "BAG" + switchedSlot + ":"));
-            }
-        }
-        
-        // 比较实际状态与预期状态
-        boolean hasUnexpectedChanges = false;
-        List<String> warnings = new ArrayList<>();
-        
-        if (afterState.size() != expectedAfterState.size()) {
-            hasUnexpectedChanges = true;
-            warnings.add("聚晶总数发生变化: 预期" + expectedAfterState.size() + "个, 实际" + afterState.size() + "个");
-        } else {
-            for (int i = 0; i < afterState.size(); i++) {
-                String actual = afterState.get(i);
-                String expected = expectedAfterState.get(i);
-                
-                if (!actual.equals(expected)) {
-                    hasUnexpectedChanges = true;
-                    warnings.add("位置异常变化: " + expected + " -> " + actual);
-                }
-            }
-        }
-        
-        // 检查聚晶是否意外丢失或复制
-        List<String> beforeFoci = beforeState.stream()
-            .filter(s -> !s.endsWith(":EMPTY") && !s.contains(":ERROR:"))
-            .map(s -> s.substring(s.indexOf(":") + 1)) // 去掉位置前缀
-            .sorted()
-            .toList();
-            
-        List<String> afterFoci = afterState.stream()
-            .filter(s -> !s.endsWith(":EMPTY") && !s.contains(":ERROR:"))
-            .map(s -> s.substring(s.indexOf(":") + 1)) // 去掉位置前缀
-            .sorted()
-            .toList();
-        
-        if (!beforeFoci.equals(afterFoci)) {
-            hasUnexpectedChanges = true;
-            
-            // 检查丢失的聚晶
-            List<String> lost = new ArrayList<>(beforeFoci);
-            lost.removeAll(afterFoci);
-            if (!lost.isEmpty()) {
-                warnings.add("聚晶丢失: " + String.join(", ", lost));
             }
             
-            // 检查新增的聚晶
-            List<String> gained = new ArrayList<>(afterFoci);
-            gained.removeAll(beforeFoci);
-            if (!gained.isEmpty()) {
-                warnings.add("聚晶意外出现: " + String.join(", ", gained));
+            // 使用缓存的Method调用
+            if (cachedStopSpellMethod != null) {
+                cachedStopSpellMethod.invoke(spell, serverLevel, maid, spellBook, remainingTime);
+                //LOGGER.debug("Successfully called old version stopSpell method for spell: {}", spell.getClass().getSimpleName());
+            } else {
+                LOGGER.warn("stopSpell method not available for spell: {}", spell.getClass().getSimpleName());
             }
-        }
-        
-        // 发出警告
-        if (hasUnexpectedChanges) {
-            LOGGER.warn("⚠️ 警告：女仆 {} 的聚晶切换过程中发生意外变化！", maid.getUUID());
-            for (String warning : warnings) {
-                LOGGER.warn("  - {}", warning);
-            }
-            LOGGER.warn("切换前状态: {}", beforeState);
-            LOGGER.warn("切换后状态: {}", afterState);
-            LOGGER.warn("预期状态: {}", expectedAfterState);
-        } else {
-            LOGGER.debug("✅ 聚晶切换正常完成，无异常变化");
+            
+        } catch (Exception e) {
+            LOGGER.error("Error calling old version stopSpell method for spell {}: {}", spell.getClass().getSimpleName(), e.getMessage());
         }
     }
+
 } 

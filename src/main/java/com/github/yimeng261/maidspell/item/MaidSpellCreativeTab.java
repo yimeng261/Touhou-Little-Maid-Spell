@@ -22,7 +22,7 @@ public class MaidSpellCreativeTab {
     public static final RegistryObject<CreativeModeTab> MAID_SPELL_TAB = 
         CREATIVE_MODE_TABS.register("maid_spell_tab", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.touhou_little_maid_spell"))
-            .icon(() -> new ItemStack(MaidSpellItems.BLEEDING_HEART.get()))
+            .icon(() -> new ItemStack(MaidSpellItems.FLOW_CORE.get()))
             .displayItems((parameters, output) -> {
                 if (ModList.get().isLoaded("irons_spellbooks")) {
                     output.accept(MaidSpellItems.SPELL_ENHANCEMENT_CORE.get());

@@ -6,12 +6,10 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public abstract class AbstractSpellData implements ISpellData {
@@ -67,12 +65,12 @@ public abstract class AbstractSpellData implements ISpellData {
     public void setSpellCooldown(String spellId, int cooldownTicks, EntityMaid maid) {
         CoolDown coolDown = new CoolDown(cooldownTicks,maid);
         if (spellId != null) {
-            Global.common_coolDownProcessors.forEach(func->{
+            Global.common_coolDownCalc.forEach(func->{
                 func.apply(coolDown);
             });
 
             BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                Function<CoolDown,Void> func = Global.bauble_coolDownProcessors.computeIfAbsent(bauble.getDescriptionId(), k-> (cooldown) -> null);
+                Function<CoolDown,Void> func = Global.bauble_coolDownCalc.computeIfAbsent(bauble.getDescriptionId(), k-> (cooldown) -> null);
                 func.apply(coolDown);
             });
             spellCooldowns.put(spellId, coolDown.cooldownticks);

@@ -6,7 +6,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 
 public class SpringBauble implements IExtendBauble {
     static {
-        Global.bauble_damageProcessors_aft.put(MaidSpellItems.itemDesc(MaidSpellItems.SPRING_RING),(event, maid) -> {
+        Global.bauble_damageCalc_aft.put(MaidSpellItems.itemDesc(MaidSpellItems.SPRING_RING),(event, maid) -> {
             Float percent = 1 - maid.getHealth()/maid.getMaxHealth();
             if(percent > 0.5f){
                 percent = 0.5f;
