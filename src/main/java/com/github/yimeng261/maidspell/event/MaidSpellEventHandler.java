@@ -1,65 +1,55 @@
 package com.github.yimeng261.maidspell.event;
 
-import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidEquipEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
+import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
+import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
+import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
-import com.github.yimeng261.maidspell.network.NetworkHandler;
-import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
-import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.ServerLevelAccessor;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraftforge.common.ForgeMod;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
-import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.api.ISpellBookProvider;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-
-// SlashBlade相关导入
-import mods.flammpfeil.slashblade.capability.inputstate.InputStateCapabilityProvider;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import org.slf4j.Logger;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
 import java.util.function.BiFunction;
 
 /**
  * 女仆法术事件处理器
  * 处理女仆生命周期相关的法术管理事件
  */
-@Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
+@EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class MaidSpellEventHandler {
     private static final Logger LOGGER = LogUtils.getLogger();
-    
+
     // 女仆步高属性修饰符的UUID
-    private static final UUID MAID_STEP_HEIGHT_UUID = UUID.fromString("8e2c4a16-7f9d-4b45-a3e2-1c8f5d9a6b47");
+    private static final ResourceLocation MAID_STEP_HEIGHT_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "maid_step_height");
 
     /**
      * 当女仆进入世界时，确保有对应的SpellBookManager
@@ -81,12 +71,12 @@ public class MaidSpellEventHandler {
             BaubleStateManager.updateAndCheckBaubleState(maid);
         }
     }
-    
+
     /**
      * 玩家登录时同步末影腰包数据
      */
     @SubscribeEvent
-    public static void onPlayerLoggedIn(PlayerLoggedInEvent event) {
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             for(EntityMaid maid : Global.maidList){
                 LivingEntity owner = maid.getOwner();
@@ -96,23 +86,18 @@ public class MaidSpellEventHandler {
             }
             try {
                 // 获取玩家的末影腰包女仆数据并推送给客户端
-                List<EnderPocketService.EnderPocketMaidInfo> maidInfos = 
+                List<EnderPocketService.EnderPocketMaidInfo> maidInfos =
                         EnderPocketService.getPlayerEnderPocketMaids(player);
-                
+
                 if (!maidInfos.isEmpty()) {
-                    LOGGER.debug("[MaidSpell] Pushing ender pocket data to player {} on login: {} maids", 
+                    LOGGER.debug("[MaidSpell] Pushing ender pocket data to player {} on login: {} maids",
                                 player.getName().getString(), maidInfos.size());
-                    EnderPocketMessage message = EnderPocketMessage.serverPushUpdate(maidInfos);
-                    NetworkHandler.CHANNEL.sendTo(
-                            message, 
-                            player.connection.connection,
-                            net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT
-                    );
-                    LOGGER.debug("[MaidSpell] Pushed ender pocket data to player {} on login: {} maids", 
+                    player.connection.send(new S2CEnderPocketPushUpdate(maidInfos, true));
+                    LOGGER.debug("[MaidSpell] Pushed ender pocket data to player {} on login: {} maids",
                                 player.getName().getString(), maidInfos.size());
                 }
             } catch (Exception e) {
-                LOGGER.error("[MaidSpell] Failed to sync ender pocket data for player {} on login: {}", 
+                LOGGER.error("[MaidSpell] Failed to sync ender pocket data for player {} on login: {}",
                             player.getName().getString(), e.getMessage(), e);
             }
         }
@@ -144,7 +129,7 @@ public class MaidSpellEventHandler {
     public static void onMaidEquip(MaidEquipEvent event) {
         EntityMaid maid = event.getMaid();
         EquipmentSlot slot = event.getSlot();
-        
+
         // 只处理手部装备变化
         if (!maid.level().isClientSide() && (slot == EquipmentSlot.MAINHAND || slot == EquipmentSlot.OFFHAND)) {
             try {
@@ -154,7 +139,7 @@ public class MaidSpellEventHandler {
                     manager.updateSpellBooks();
                 }
             } catch (Exception e) {
-                LOGGER.error("Error handling maid equip event for maid {}: {}", 
+                LOGGER.error("Error handling maid equip event for maid {}: {}",
                     maid.getName().getString(), e.getMessage(), e);
             }
         }
@@ -187,14 +172,14 @@ public class MaidSpellEventHandler {
                     }
                 }
             } catch (Exception e) {
-                LOGGER.error("Error in maid tick handler for maid {}: {}", 
+                LOGGER.error("Error in maid tick handler for maid {}: {}",
                     maid.getName().getString(), e.getMessage(), e);
             }
         }
     }
 
     @SubscribeEvent
-    public static void onEntityHurt(LivingHurtEvent event) {
+    public static void onEntityHurt(LivingIncomingDamageEvent event) {
         Entity entity = event.getEntity();
         Entity source = event.getSource().getEntity();
         if(source instanceof EntityMaid maid){
@@ -205,26 +190,25 @@ public class MaidSpellEventHandler {
             Global.common_hurtProcessors.forEach(function -> function.apply(event, maid));
 
             BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_commonHurtProcessors_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+                BiFunction<LivingIncomingDamageEvent, EntityMaid, Void> func = Global.bauble_commonHurtProcessors_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
                 func.apply(event, maid);
             });
         }
+
+        if(entity instanceof Player player){
+            Global.player_hurtProcessors_pre.forEach(func-> func.apply(event,player));
+        }
     }
-    
+
 
     @SubscribeEvent
-    public static void onEntityDamage(LivingDamageEvent event) {
-        Entity entity = event.getEntity();
+    public static void onEntityDamage(LivingDamageEvent.Post event) {
         Entity direct = event.getSource().getDirectEntity();
         Entity source = event.getSource().getEntity();
         if(source instanceof EntityMaid maid){
             processor_aft(event, maid);
         }else if(direct instanceof EntityMaid maid){
             processor_aft(event, maid);
-        }
-
-        if(entity instanceof Player player){
-            Global.player_hurtProcessors_aft.forEach(func-> func.apply(event,player));
         }
     }
 
@@ -240,55 +224,20 @@ public class MaidSpellEventHandler {
 
 
 
-    private static void processor_aft(LivingDamageEvent event, EntityMaid maid) {
+    private static void processor_aft(LivingDamageEvent.Post event, EntityMaid maid) {
         BaubleStateManager.getBaubles(maid).forEach(bauble->{
-            BiFunction<LivingDamageEvent, EntityMaid, Void> func = Global.bauble_damageProcessors_aft.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+            BiFunction<LivingDamageEvent.Post, EntityMaid, Void> func = Global.bauble_damageProcessors_aft.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
             func.apply(event, maid);
         });
     }
 
-    private static void processor_pre(LivingHurtEvent event, EntityMaid maid) {
+    private static void processor_pre(LivingIncomingDamageEvent event, EntityMaid maid) {
         Global.common_damageProcessors.forEach(function -> function.apply(event, maid));
 
         BaubleStateManager.getBaubles(maid).forEach(bauble->{
-            BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_damageProcessors_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+            BiFunction<LivingIncomingDamageEvent, EntityMaid, Void> func = Global.bauble_damageProcessors_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
             func.apply(event, maid);
         });
-    }
-
-    /**
-     * 为女仆附加INPUT_STATE能力，确保拔刀剑能正常工作
-     * 使用不同的键名以避免与拔刀剑模组的能力冲突
-     */
-    @SubscribeEvent
-    public static void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
-        // 只在服务器端处理，避免客户端渲染问题
-        if (event.getObject().level().isClientSide()) {
-            return;
-        }
-        
-        if (event.getObject() instanceof EntityMaid) {
-            // 检查拔刀剑模组是否加载
-            if (!net.minecraftforge.fml.ModList.get().isLoaded("slashblade")) {
-                return;
-            }
-            
-            Entity entity = event.getObject();
-            
-            // 使用我们自己的键名，以防拔刀剑的能力没有正确附加
-            ResourceLocation maidInputStateKey = new ResourceLocation(MaidSpellMod.MOD_ID, "maid_inputstate");
-            
-            try {
-                // 检查是否已经有这个能力，避免重复添加
-                if (!entity.getCapability(mods.flammpfeil.slashblade.capability.inputstate.CapabilityInputState.INPUT_STATE).isPresent()) {
-                    event.addCapability(maidInputStateKey, new InputStateCapabilityProvider());
-                    LOGGER.debug("Added INPUT_STATE capability to maid entity");
-                }
-            } catch (Exception e) {
-                LOGGER.warn("Failed to add INPUT_STATE capability to maid: {}", e.getMessage());
-                // 不要重新抛出异常，避免影响其他模组
-            }
-        }
     }
 
     /**
@@ -302,7 +251,7 @@ public class MaidSpellEventHandler {
                 BiFunction<LivingDeathEvent, EntityMaid, Void> func = Global.bauble_deathProcessors.getOrDefault(bauble.getDescriptionId(), (livingDeathEvent, entityMaid) -> null);
                 func.apply(event, maid);
             });
-            
+
             // 如果事件未被取消，则清理女仆的法术数据
             if (!event.isCanceled()) {
                 cleanupMaidSpellData(maid);
@@ -327,41 +276,40 @@ public class MaidSpellEventHandler {
                 }
             }
             BaubleStateManager.removeMaidBaubles(maid);
-            MaidSlashBladeData.remove(maid.getUUID());
+            // MaidSlashBladeData.remove(maid.getUUID());
             SpellBookManager.removeManager(maid);
-            
+
         } catch (Exception e) {
             // 静默处理清理错误，避免影响游戏正常运行
         }
     }
-    
+
     /**
      * 为女仆添加步高属性，让她能够直接走上一格高的方块
      */
     private static void addStepHeightToMaid(EntityMaid maid) {
         try {
             // 获取步高属性实例，进行空检查
-            var stepHeightAttribute = maid.getAttribute(ForgeMod.STEP_HEIGHT_ADDITION.get());
+            var stepHeightAttribute = maid.getAttribute(Attributes.STEP_HEIGHT);
             if (stepHeightAttribute == null) {
                 LOGGER.warn("Maid {} does not have step height attribute", maid.getName().getString());
                 return;
             }
-            
+
             // 检查女仆是否已经有步高属性修饰符，避免重复添加
-            if (stepHeightAttribute.getModifier(MAID_STEP_HEIGHT_UUID) == null) {
+            if (stepHeightAttribute.getModifier(MAID_STEP_HEIGHT_ID) == null) {
                 // 添加1.0的步高增加，让女仆能走上一格高的方块
                 AttributeModifier stepHeightModifier = new AttributeModifier(
-                    MAID_STEP_HEIGHT_UUID, 
-                    "Maid Step Height Addition", 
-                    1.0, 
-                    AttributeModifier.Operation.ADDITION
+                        MAID_STEP_HEIGHT_ID,
+                    1.0,
+                    AttributeModifier.Operation.ADD_VALUE
                 );
-                
+
                 stepHeightAttribute.addPermanentModifier(stepHeightModifier);
                 LOGGER.debug("Added step height attribute to maid: {}", maid.getName().getString());
             }
         } catch (Exception e) {
-            LOGGER.warn("Failed to add step height attribute to maid {}: {}", 
+            LOGGER.warn("Failed to add step height attribute to maid {}: {}",
                 maid.getName().getString(), e.getMessage());
         }
     }
@@ -370,7 +318,7 @@ public class MaidSpellEventHandler {
     public static void onMaidTamed(MaidTamedEvent event) {
         EntityMaid maid = event.getMaid();
         Player player = event.getPlayer();
-        
+
         if (!player.level().isClientSide() && player.level() instanceof ServerLevel level) {
             if(maid.isOrderedToSit()&&!maid.isStructureSpawn()&&isInHiddenRetreatStructure(level, maid.blockPosition())){
                 player.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat").withStyle(ChatFormatting.LIGHT_PURPLE));
@@ -403,4 +351,4 @@ public class MaidSpellEventHandler {
         }
         return false;
     }
-} 
+}

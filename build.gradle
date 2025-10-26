@@ -1,80 +1,16 @@
 plugins {
-    id 'eclipse'
+    id 'java-library'
+    id 'maven-publish'
     id 'idea'
-    id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
-    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
-    id 'org.spongepowered.mixin' version '0.7.+'
+    id 'net.neoforged.moddev' version '2.0.115'
+    id "com.modrinth.minotaur" version "2.+"
 }
 
 version = mod_version
 group = mod_group_id
-base {
-    archivesName = mod_id
-}
-
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
-
-minecraft {
-    mappings channel: mapping_channel, version: mapping_version
-    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
-    copyIdeResources = true
-    runs {
-        configureEach {
-            // 为 JetBrain Runtime 添加的参数，方便热重载
-            jvmArgs = [
-                    "-XX:+IgnoreUnrecognizedVMOptions",
-                    "-XX:+AllowEnhancedClassRedefinition"
-            ]
-            workingDirectory project.file('run')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            // 控制台彩色打印
-            property 'terminal.jline', 'true'
-            mods {
-                "${mod_id}" {
-                    source sourceSets.main
-                }
-            }
-        }
-
-        client {
-            property 'forge.enabledGameTestNamespaces', mod_id
-            workingDirectory project.file('run/client')
-        }
-
-        server {
-            property 'forge.enabledGameTestNamespaces', mod_id
-            workingDirectory project.file('run/server')
-            args '--nogui'
-        }
-
-        gameTestServer {
-            property 'forge.enabledGameTestNamespaces', mod_id
-            workingDirectory project.file('run/gametest')
-        }
-
-        data {
-            workingDirectory project.file('run/data')
-            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
-        }
-    }
-}
-
-sourceSets.main.resources {
-    srcDir 'src/generated/resources'
-    // 排除 datagen 生成的缓存文件
-    exclude '.cache/**'
-}
 
 repositories {
-    maven {
-        url "https://cursemaven.com"
-        content {
-            includeGroup "curse.maven"
-        }
-    }
+    mavenLocal()
     maven {
         name = "Modrinth"
         url = "https://api.modrinth.com/maven"
@@ -82,75 +18,209 @@ repositories {
             includeGroup "maven.modrinth"
         }
     }
+    maven {
+        name "cursemaven"
+        url "https://www.cursemaven.com"
+        content {
+            includeGroup "curse.maven"
+        }
+    }
+    maven {
+        url "https://code.redspace.io/releases"
+        content {
+            includeGroup "io.redspace"
+        }
+    }
+    maven {
+        url "https://maven.blamejared.com"
+        content {
+            includeGroup "vazkii.patchouli"
+            includeGroup "mezz.jei"
+        }
+    }
+    maven {
+        url "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/"
+        content {
+            includeGroup("software.bernie.geckolib")
+        }
+    }
+    maven {
+        url "https://maven.theillusivec4.top"
+        content {
+            includeGroup("top.theillusivec4.curios")
+        }
+    }
+    maven {
+        url 'https://maven.blamejared.com'
+        content {
+            includeGroup("com.hollingsworth.ars_nouveau")
+            includeGroup("com.hollingsworth.nuggets")
+        }
+    }
+    maven {
+        url "https://maven.minecraftforge.net/"
+        content {
+            includeGroup("com.github.glitchfiend")
+        }
+    }
 }
+
+base {
+    // 打包制品以 mod_id 命名添加版本后缀
+    archivesName = "$mod_id-$minecraft_version"
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    // 指定 NeoForge 版本
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    // 这个文件会自动加载
+    // accessTransformers.add('src/main/resources/META-INF/accesstransformer.cfg')
+
+    // Default run configurations.
+    // These can be tweaked, removed, or duplicated as needed.
+    runs {
+        client {
+            client()
+
+            // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+
+            // 导出混入后的 class 字节码以供分析调试
+            systemProperty 'mixin.debug.export', 'true'
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        // This run config launches GameTestServer and runs all registered gametests, then exits.
+        // By default, the server will crash when no gametests are provided.
+        // The gametest system is also enabled by default for other run configs under the /test command.
+        gameTestServer {
+            type = "gameTestServer"
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        data {
+            data()
+
+            // example of overriding the workingDirectory set in configureEach above, uncomment if you want to use it
+            // gameDirectory = project.file('run-data')
+
+            // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+
+        // applies to all the run configs above
+        configureEach {
+            // Recommended logging data for a userdev environment
+            // The markers can be added/remove as needed separated by commas.
+            // "SCAN": For mods scan.
+            // "REGISTRIES": For firing of registry events.
+            // "REGISTRYDUMP": For getting the contents of all registries.
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+
+            // Recommended logging level for the console
+            // You can set various levels here.
+            // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        // define mod <-> source bindings
+        // these are used to tell the game which sources are for which mod
+        // mostly optional in a single mod project
+        // but multi mod projects should define one per mod
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+// Include resources generated by data generators.
+sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    // 车万女仆
+    implementation("curse.maven:touhou-little-maid-355044:${tlm_curse_version}") {
+        exclude group: "maven.modrinth", module: "sodium"
+        exclude group: "maven.modrinth", module: "embeddium"
+    }
+    // Iron 的法术与魔导书
+    implementation("io.redspace:irons_spellbooks:${minecraft_version}-${irons_spells_version}")
+    // 新生魔艺
+    implementation("com.hollingsworth.ars_nouveau:ars_nouveau-${minecraft_version}:${ars_nouveau_version}")
+    // PSI
+    implementation("curse.maven:psi-241665:${psi_version}")
 
-    // 女仆模组，必须使用 CurseForge 的，才能有源码
-    implementation fg.deobf("curse.maven:touhou-little-maid-355044:6979039-source-6979049")
+    // 不兼容
+    // implementation("maven.modrinth:goety:2.5.34.3-forge,${minecraft_version}")
+    // implementation("maven.modrinth:slashblade-resharped:1.6.54-forge,${minecraft_version}")
 
-    implementation fg.deobf("maven.modrinth:caelus:3.2.0+1.20.1-forge")
-    implementation fg.deobf("maven.modrinth:playeranimator:1.0.2-rc1+1.20-forge")
-    implementation fg.deobf("maven.modrinth:irons-spells-n-spellbooks:1.20.1-3.4.0.9-forge")
-
-    implementation fg.deobf("maven.modrinth:ars-nouveau:4.12.6-forge,1.20.1")
-
-    implementation fg.deobf("maven.modrinth:curios:5.14.1+1.20.1-forge")
-    implementation fg.deobf("maven.modrinth:goety:2.5.34.3-forge,1.20.1")
-
-    implementation fg.deobf("maven.modrinth:patchouli:1.20.1-84.1-forge")
-    implementation fg.deobf("maven.modrinth:psi:1.20.1-1.20.1-102-forge")
-
-    implementation fg.deobf("maven.modrinth:slashblade-resharped:1.6.54-forge,1.20.1")
+    // 下面是一些前置
+    implementation("vazkii.patchouli:Patchouli:${patchouli_version}")
+    implementation("software.bernie.geckolib:geckolib-neoforge-${minecraft_version}:${geckolib_version}")
+    implementation("maven.modrinth:jade:${jade_version}")
+    runtimeOnly("maven.modrinth:appleskin:${appleskin_version}")
+    runtimeOnly("maven.modrinth:playeranimator:${playeranimator_version}")
 }
 
-tasks.named('processResources', ProcessResources).configure {
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
-            minecraft_version      : minecraft_version,
-            minecraft_version_range: minecraft_version_range,
-            forge_version          : forge_version,
-            forge_version_range    : forge_version_range,
-            loader_version_range   : loader_version_range,
-            mod_id                 : mod_id,
-            mod_name               : mod_name,
-            mod_license            : mod_license,
-            mod_version            : mod_version,
-            mod_authors            : mod_authors,
-            mod_description        : mod_description,
+            minecraft_version               : minecraft_version,
+            minecraft_version_range         : minecraft_version_range,
+            neo_version                     : neo_version,
+            neo_version_range               : neo_version_range,
+            loader_version_range            : loader_version_range,
+            mod_id                          : mod_id,
+            mod_name                        : mod_name,
+            mod_license                     : mod_license,
+            mod_version                     : mod_version,
+            mod_authors                     : mod_authors,
+            mod_description                 : mod_description,
+            touhou_little_maid_version_range: touhou_little_maid_version_range,
+            irons_spells_version_range      : irons_spells_version_range,
+            ars_nouveau_version_range       : ars_nouveau_version_range
     ]
     inputs.properties replaceProperties
-    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
-        expand replaceProperties + [project: project]
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+
+createMinecraftArtifacts {
+    dependsOn generateModMetadata
+}
+
+// Include the output of "generateModMetadata" as an input directory for the build
+// this works with both building through Gradle and the IDE.
+sourceSets.main.resources.srcDir generateModMetadata
+// To avoid having to run "generateModMetadata" manually, make it run on every project reload
+neoForge.ideSyncTask generateModMetadata
+
+// Example configuration to allow publishing using the maven-publish plugin
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+        }
     }
-}
-
-tasks.named('jar', Jar).configure {
-    duplicatesStrategy = DuplicatesStrategy.WARN
-
-    manifest {
-        attributes([
-                "Implementation-Title"  : project.name,
-                "Implementation-Version": "${version}"
-        ])
+    repositories {
+        maven {
+            url "file://${project.projectDir}/repo"
+        }
     }
-    finalizedBy 'reobfJar'
-}
-
-tasks.withType(JavaCompile).configureEach {
-    // 强制使用 UTF-8 编码，避免中文乱码
-    options.encoding = 'UTF-8'
-    // 忽略过时API的警告
-    options.compilerArgs += ['-Xlint:-removal']
-}
-
-mixin {
-    add sourceSets.main, "maidspell.refmap.json"
-    config "maidspell.mixins.json"
-
-    // 确保 refmap 文件被正确处理
-    dumpTargetOnFailure true
 }
 
 // 让 IDEA 强制下载前置库的源代码，方便开发时查看

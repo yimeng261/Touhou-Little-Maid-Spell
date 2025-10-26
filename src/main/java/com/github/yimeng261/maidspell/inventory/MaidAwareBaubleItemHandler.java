@@ -2,7 +2,6 @@ package com.github.yimeng261.maidspell.inventory;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHandler;
-import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 
 /**
@@ -12,7 +11,7 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 public class MaidAwareBaubleItemHandler extends BaubleItemHandler {
 
     private EntityMaid myMaid;
-    
+
     /**
      * 构建 size 大小的饰品栏
      *
@@ -23,14 +22,14 @@ public class MaidAwareBaubleItemHandler extends BaubleItemHandler {
         super(size);
         this.myMaid = maid;
     }
-    
+
     @Override
     protected void onContentsChanged(int slot) {
         // 调用父类的处理逻辑
         super.onContentsChanged(slot);
         BaubleStateManager.updateAndCheckBaubleState(myMaid);
     }
-    
+
     /**
      * 获取关联的女仆实体
      */
@@ -38,4 +37,4 @@ public class MaidAwareBaubleItemHandler extends BaubleItemHandler {
         return myMaid;
     }
 
-} 
+}

@@ -1,0 +1,25 @@
+{
+  "type": "touhou_little_maid:altar_recipe_serializers",
+  "category": "misc",
+  "entity": "minecraft:item",
+  "group": "altar_recipe",
+  "result": {
+    "id": "touhou_little_maid_spell:hairpin",
+    "count": 1
+  },
+  "power": 1,
+  "ingredients": [
+    {
+      "tag": "c:ingots/gold"
+    },
+    {
+      "item": "minecraft:quartz"
+    },
+    {
+      "tag": "c:ingots/iron"
+    },
+    {
+      "tag": "c:rods/wooden"
+    }
+  ]
+}

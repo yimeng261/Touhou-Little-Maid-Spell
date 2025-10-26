@@ -1,8 +1,7 @@
 package com.github.yimeng261.maidspell.mixin;
 
-import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
-import com.github.yimeng261.maidspell.Global;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,11 +16,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(value = AbstractMaidContainer.class, remap = false)
 public class AbstractMaidContainerMixin {
-    
+
     @Final
     @Shadow
     protected EntityMaid maid;
-    
+
     /**
      * 注入到 stillValid 方法开头，取消原方法并返回我们的逻辑
      */

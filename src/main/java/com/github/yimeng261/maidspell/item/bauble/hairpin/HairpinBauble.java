@@ -12,10 +12,9 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import org.slf4j.Logger;
 
 /**
@@ -25,14 +24,14 @@ public class HairpinBauble implements IExtendBauble {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public HairpinBauble() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     @Override
     public void onTick(EntityMaid maid, ItemStack baubleItem) {
         if(maid.tickCount%10 == 0){
             maid.getActiveEffects().forEach(effect -> {
-                if(!effect.getEffect().isBeneficial()){
+                if(!effect.getEffect().value().isBeneficial()){
                     effect.update(new MobEffectInstance(effect.getEffect(), 0, 0));
                 }
             });
@@ -68,9 +67,9 @@ public class HairpinBauble implements IExtendBauble {
         });
 
         // 注册玩家受伤时的处理器 - 处理hairpin重定向的伤害
-        Global.player_hurtProcessors_aft.add((event, player) -> {
+        Global.player_hurtProcessors_pre.add((event, player) -> {
             DamageSource source = event.getSource();
-            
+
             if (source instanceof InfoDamageSource infoDamage && "hairpin_redirect".equals(infoDamage.msg_type)) {
                 EntityMaid maid = (EntityMaid) infoDamage.sourceEntity;
                 maid.setInvulnerable(false);
@@ -92,13 +91,13 @@ public class HairpinBauble implements IExtendBauble {
                 MobEffectInstance effectInstance = event.getEffectInstance();
                 int fl = maid.getFavorabilityManager().getLevel();
                 if(fl>=3){
-                    if(!effectInstance.getEffect().isBeneficial()){
-                        event.setResult(Event.Result.DENY);
+                    if(!effectInstance.getEffect().value().isBeneficial()){
+                        event.setResult(MobEffectEvent.Applicable.Result.DO_NOT_APPLY);
                     }
                 }
                 if(fl>=2){
                     int duration = effectInstance.getDuration();
-                    if(effectInstance.getEffect().isBeneficial()){
+                    if(effectInstance.getEffect().value().isBeneficial()){
                         duration = Math.max((int)(duration*1.15), duration+15);
                         effectInstance.update(new MobEffectInstance(effectInstance.getEffect(), duration, event.getEffectInstance().getAmplifier(), event.getEffectInstance().isAmbient(), event.getEffectInstance().isVisible()));
                     }

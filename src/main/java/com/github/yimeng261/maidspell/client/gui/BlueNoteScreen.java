@@ -10,26 +10,26 @@ import net.minecraft.world.entity.player.Inventory;
 
 public class BlueNoteScreen extends AbstractContainerScreen<BlueNoteContainer> {
     private static final ResourceLocation TEXTURE = new ResourceLocation("touhou_little_maid_spell", "textures/gui/blue_note.png");
-    
+
     public BlueNoteScreen(BlueNoteContainer container, Inventory playerInventory, Component title) {
         super(container, playerInventory, title);
         this.imageHeight = 166;
         this.imageWidth = 176;
     }
-    
+
     @Override
     protected void init() {
         super.init();
         this.titleLabelX = (this.imageWidth - this.font.width(this.title)) / 2;
     }
-    
+
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(guiGraphics);
+        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         this.renderTooltip(guiGraphics, mouseX, mouseY);
     }
-    
+
     @Override
     protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
@@ -37,10 +37,10 @@ public class BlueNoteScreen extends AbstractContainerScreen<BlueNoteContainer> {
         int y = (this.height - this.imageHeight) / 2;
         guiGraphics.blit(TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight);
     }
-    
+
     @Override
     protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         guiGraphics.drawString(this.font, this.title, this.titleLabelX, 6, 4210752, false);
         guiGraphics.drawString(this.font, this.playerInventoryTitle, 8, this.imageHeight - 96 + 2, 4210752, false);
     }
-} 
+}

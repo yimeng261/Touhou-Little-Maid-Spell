@@ -8,13 +8,11 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
-
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
 /**
@@ -25,11 +23,11 @@ public class ChaosBookBauble implements IExtendBauble {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public ChaosBookBauble() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     @SubscribeEvent
-    public static void onMaidAttack(MaidAttackEvent event) {
+    public void onMaidAttack(MaidAttackEvent event) {
         LOGGER.debug("[MaidSpell] ChaosBookBauble onMaidAttack");
         if(BaubleStateManager.hasBauble(event.getMaid(), MaidSpellItems.CHAOS_BOOK)) {
             LOGGER.debug("[MaidSpell] ChaosBookBauble onMaidAttack hasBauble");
@@ -42,7 +40,7 @@ public class ChaosBookBauble implements IExtendBauble {
 
     static {
         // 注册女仆造成伤害时的处理器
-        Global.bauble_damageProcessors_aft.put(MaidSpellItems.itemDesc(MaidSpellItems.CHAOS_BOOK), (event, maid) -> {
+        Global.bauble_damageProcessors_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.CHAOS_BOOK), (event, maid) -> {
 
             LivingEntity target = event.getEntity();
             DamageSource source = event.getSource();

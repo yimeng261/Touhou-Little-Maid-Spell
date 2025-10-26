@@ -1,0 +1,31 @@
+{
+  "type": "touhou_little_maid:altar_recipe_serializers",
+  "category": "misc",
+  "entity": "minecraft:item",
+  "group": "altar_recipe",
+  "result": {
+    "id": "touhou_little_maid_spell:ender_pocket",
+    "count": 1
+  },
+  "power": 0.5,
+  "ingredients": [
+    {
+      "tag": "c:string"
+    },
+    {
+      "tag": "c:leather"
+    },
+    {
+      "item": "minecraft:ender_chest"
+    },
+    {
+      "tag": "c:gems/diamond"
+    },
+    {
+      "tag": "c:string"
+    },
+    {
+      "tag": "c:leather"
+    }
+  ]
+}

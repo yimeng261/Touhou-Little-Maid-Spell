@@ -6,9 +6,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
 
-import javax.annotation.Nullable;
 import java.util.List;
 
 /**
@@ -16,7 +14,7 @@ import java.util.List;
  * 展示如何创建具有多帧贴图的物品
  */
 public class BleedingHeart extends Item {
-    
+
     public BleedingHeart() {
         super(new Properties()
             .stacksTo(1)
@@ -30,8 +28,8 @@ public class BleedingHeart extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltip, flag);
 
         tooltip.add(Component.translatable("item.maidspell.bleeding_heart.desc1")
             .withStyle(ChatFormatting.GRAY));
@@ -40,4 +38,4 @@ public class BleedingHeart extends Item {
         tooltip.add(Component.translatable("item.maidspell.bleeding_heart.desc3")
             .withStyle(ChatFormatting.YELLOW));
     }
-} 
+}

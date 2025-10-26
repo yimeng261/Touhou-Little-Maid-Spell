@@ -1,22 +1,25 @@
 package com.github.yimeng261.maidspell.item.bauble.spellCore;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-
+import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.mojang.logging.LogUtils;
+import io.redspace.ironsspellbooks.IronsSpellbooks;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.registries.RegisterEvent;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * 法术强化饰品实现
@@ -29,27 +32,26 @@ public class SpellEnhancementBauble implements IExtendBauble {
     // 支持的属性列表
     private static final List<AttributeConfig> ATTRIBUTES = new ArrayList<>();
     private static final Logger LOGGER = LogUtils.getLogger();
-    
-    static {
-        if (ModList.get().isLoaded("irons_spellbooks")) {
-            initializeAttributes();
-        }
-    }
 
     /**
      * 通过注册表初始化属性，无需反射
      */
-    private static void initializeAttributes() {
+    public static void initializeAttributes(RegisterEvent event) {
         // 铁魔法属性的ResourceLocation列表
-
-        ForgeRegistries.ATTRIBUTES.forEach(attribute -> {
-            if(attribute.getDescriptionId().startsWith("attribute.irons_spellbooks.")){
+        Registry<Attribute> registry = event.getRegistry(Registries.ATTRIBUTE);
+        if (registry == null) {
+            return;
+        }
+        for (var entry : registry.entrySet()) {
+            ResourceLocation id = entry.getKey().location();
+            Attribute attribute = entry.getValue();
+            if (IronsSpellbooks.MODID.equals(id.getNamespace())) {
                 double defaultValue = attribute.getDefaultValue();
-                ATTRIBUTES.add(new AttributeConfig(attribute, defaultValue,attribute.getDescriptionId().replace("attribute.irons_spellbooks.", "")));
+                ATTRIBUTES.add(new AttributeConfig(registry.wrapAsHolder(attribute), defaultValue, ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, id.getPath())));
             }
-        });
+        }
     }
-    
+
     @Override
     public void onTick(EntityMaid maid, ItemStack baubleItem) {
         // 只在服务端执行，每40tick（2秒）更新一次
@@ -62,11 +64,11 @@ public class SpellEnhancementBauble implements IExtendBauble {
         if (!(owner instanceof Player player)) {
             return;
         }
-        
+
         // 更新女仆的属性加成
         updateMaidEnhancements(maid, player);
     }
-    
+
     /**
      * 更新女仆的属性加成，优化版本
      */
@@ -80,14 +82,14 @@ public class SpellEnhancementBauble implements IExtendBauble {
             }
 
             AttributeInstance maidAttr=maid.getAttribute(config.attribute);
-            AttributeModifier modifier = new AttributeModifier("yimeng"+config.attributeName,bonus,AttributeModifier.Operation.ADDITION);
+            AttributeModifier modifier = new AttributeModifier(config.renamedId, bonus, AttributeModifier.Operation.ADD_VALUE);
             if(maidAttr == null) {
                 return;
             }
-            if (config.uuid != null) {
-                maidAttr.removeModifier(config.uuid);
+            if (config.renamedId != null) {
+                maidAttr.removeModifier(config.renamedId);
             }
-            config.uuid = modifier.getId();
+            config.renamedId = modifier.id();
             maidAttr.addTransientModifier(modifier);
         }
     }
@@ -99,10 +101,10 @@ public class SpellEnhancementBauble implements IExtendBauble {
     private void clearAllEnhancements(EntityMaid maid) {
         for (AttributeConfig config : ATTRIBUTES) {
             AttributeInstance maidAttr = maid.getAttribute(config.attribute);
-            if (maidAttr != null && config.uuid != null) {
-                maidAttr.removeModifier(config.uuid);
+            if (maidAttr != null && config.renamedId != null) {
+                maidAttr.removeModifier(config.renamedId);
                 LOGGER.debug("Removed modifier {} for attribute {} from maid {}",
-                    config.uuid, config.attributeName, maid.getName().getString());
+                    config.renamedId, config.attribute.getKey(), maid.getName().getString());
             }
         }
     }
@@ -111,16 +113,15 @@ public class SpellEnhancementBauble implements IExtendBauble {
      * 属性配置类
      */
     private static class AttributeConfig {
-        final Attribute attribute;
+        final Holder<Attribute> attribute;
         final double defaultValue;
-        UUID uuid=null;
-        String attributeName;
+        ResourceLocation renamedId;
 
 
-        AttributeConfig(Attribute attribute, double defaultValue, String attributeName) {
+        AttributeConfig(Holder<Attribute> attribute, double defaultValue, ResourceLocation renamedId) {
             this.attribute = attribute;
             this.defaultValue = defaultValue;
-            this.attributeName = attributeName;
+            this.renamedId = renamedId;
         }
     }
-} 
+}

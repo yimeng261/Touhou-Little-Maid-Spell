@@ -1,7 +1,7 @@
 package com.github.yimeng261.maidspell.entity;
 
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -27,11 +27,11 @@ import org.jetbrains.annotations.NotNull;
  * 寻风之铃实体 - 模仿末影之眼的飞行轨迹，但使用樱花粒子和自定义音效
  */
 public class WindSeekingBellEntity extends Entity {
-    private static final EntityDataAccessor<ItemStack> DATA_ITEM_STACK = 
+    private static final EntityDataAccessor<ItemStack> DATA_ITEM_STACK =
         SynchedEntityData.defineId(WindSeekingBellEntity.class, EntityDataSerializers.ITEM_STACK);
-    
+
     private double targetX;
-    private double targetY; 
+    private double targetY;
     private double targetZ;
     private int life;
     private boolean surviveAfterDeath;
@@ -52,22 +52,21 @@ public class WindSeekingBellEntity extends Entity {
         this.setPos(player.getX(), player.getY(), player.getZ());
     }
 
-    public void setItem(ItemStack itemStack) {
-        this.getEntityData().set(DATA_ITEM_STACK, itemStack.copy());
-    }
-
-    private ItemStack getItemRaw() {
-        return this.getEntityData().get(DATA_ITEM_STACK);
+    public void setItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            this.getEntityData().set(DATA_ITEM_STACK, getDefaultItem());
+        } else {
+            this.getEntityData().set(DATA_ITEM_STACK, stack.copyWithCount(1));
+        }
     }
 
     public ItemStack getItem() {
-        ItemStack itemStack = this.getItemRaw();
-        return itemStack.isEmpty() ? ItemStack.EMPTY : itemStack;
+        return this.getEntityData().get(DATA_ITEM_STACK);
     }
 
     @Override
-    protected void defineSynchedData() {
-        this.getEntityData().define(DATA_ITEM_STACK, ItemStack.EMPTY);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(DATA_ITEM_STACK, getDefaultItem());
     }
 
     /**
@@ -100,13 +99,13 @@ public class WindSeekingBellEntity extends Entity {
     @Override
     public void tick() {
         super.tick();
-        
+
         if (!this.level().isClientSide) {
             // 服务器端逻辑
             double dx = this.targetX - this.getX();
             double dz = this.targetZ - this.getZ();
             double distance = Math.sqrt(dx * dx + dz * dz);
-            
+
             if (distance < 1.0) {
                 // 到达目标，播放碎裂音效并消失
                 this.playBreakSound();
@@ -136,7 +135,7 @@ public class WindSeekingBellEntity extends Entity {
             int j = this.getY() < this.targetY ? 1 : -1;
             vec3 = new Vec3(Math.cos(f1) * d6, d7 + ((double)j - d7) * (double)0.015F, Math.sin(f1) * d6);
             this.setDeltaMovement(vec3);
-            
+
             HitResult hitResult = ProjectileUtil.getHitResultOnMoveVector(this, this::canHitEntity);
             this.life++;
             if (this.life > 80 || hitResult.getType() != HitResult.Type.MISS) {
@@ -147,7 +146,7 @@ public class WindSeekingBellEntity extends Entity {
             // 客户端粒子效果
             this.spawnCherryParticles();
         }
-        
+
         this.move(net.minecraft.world.entity.MoverType.SELF, this.getDeltaMovement());
     }
 
@@ -155,11 +154,11 @@ public class WindSeekingBellEntity extends Entity {
         while(p_37275_ - p_37274_ < -180.0F) {
            p_37274_ -= 360.0F;
         }
-  
+
         while(p_37275_ - p_37274_ >= 180.0F) {
            p_37274_ += 360.0F;
         }
-  
+
         return Mth.lerp(0.2F, p_37274_, p_37275_);
      }
 
@@ -173,7 +172,7 @@ public class WindSeekingBellEntity extends Entity {
                 double offsetX = (this.random.nextDouble() - 0.5) * 0.3;
                 double offsetY = (this.random.nextDouble() - 0.5) * 0.3;
                 double offsetZ = (this.random.nextDouble() - 0.5) * 0.3;
-                
+
                 this.level().addParticle(
                     ParticleTypes.CHERRY_LEAVES,
                     this.getX() + offsetX,
@@ -192,7 +191,7 @@ public class WindSeekingBellEntity extends Entity {
         this.level().playSound(
             null,
             this.getX(),
-            this.getY(), 
+            this.getY(),
             this.getZ(),
             MaidSpellSounds.WIND_SEEKING_BELL.get(),
             SoundSource.NEUTRAL,
@@ -224,10 +223,7 @@ public class WindSeekingBellEntity extends Entity {
 
     @Override
     public void addAdditionalSaveData(@NotNull CompoundTag compound) {
-        ItemStack item = this.getItemRaw();
-        if (!item.isEmpty()) {
-            compound.put("Item", item.save(new CompoundTag()));
-        }
+        compound.put("Item", this.getItem().save(this.registryAccess()));
         compound.putDouble("TargetX", this.targetX);
         compound.putDouble("TargetY", this.targetY);
         compound.putDouble("TargetZ", this.targetZ);
@@ -237,8 +233,9 @@ public class WindSeekingBellEntity extends Entity {
 
     @Override
     public void readAdditionalSaveData(CompoundTag compound) {
-        ItemStack item = ItemStack.of(compound.getCompound("Item"));
-        this.setItem(item);
+        if (compound.contains("Item", 10)) {
+            setItem(ItemStack.parse(registryAccess(), compound.getCompound("Item")).orElse(getDefaultItem()));
+        }
         this.targetX = compound.getDouble("TargetX");
         this.targetY = compound.getDouble("TargetY");
         this.targetZ = compound.getDouble("TargetZ");
@@ -254,5 +251,9 @@ public class WindSeekingBellEntity extends Entity {
     @Override
     public float getPickRadius() {
         return 0.0F;
+    }
+
+    private ItemStack getDefaultItem() {
+        return new ItemStack(MaidSpellItems.WIND_SEEKING_BELL.get());
     }
 }

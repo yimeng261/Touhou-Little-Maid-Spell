@@ -1,14 +1,13 @@
 package com.github.yimeng261.maidspell.spell.data;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.AbstractSpellData;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
-import io.redspace.ironsspellbooks.api.spells.SpellData;
-import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import io.redspace.ironsspellbooks.api.spells.SpellSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,26 +17,26 @@ import java.util.concurrent.ConcurrentHashMap;
  * 集中管理每个女仆的铁魔法相关状态和数据
  */
 public class MaidIronsSpellData extends AbstractSpellData {
-    
+
     // 全局数据存储，按女仆UUID映射
     private static final Map<UUID, MaidIronsSpellData> MAID_DATA_MAP = new ConcurrentHashMap<>();
-    
+
     // === 基本状态 ===
     private ItemStack magicSword = ItemStack.EMPTY;
     private ItemStack staff = ItemStack.EMPTY;
     private LivingEntity origin_target = null;
-    
+
     // === 施法状态 ===
-    private SpellData currentCastingSpell = null;
+    private SpellSlot currentCastingSpell = null;
     private final MagicData magicData;
 
     // === 构造函数 ===
     private MaidIronsSpellData() {
         this.magicData = new MagicData(true); // true表示这是mob
     }
-    
+
     // === 静态工厂方法 ===
-    
+
     /**
      * 获取指定女仆的法术数据，如果不存在则创建新的
      */
@@ -49,14 +48,14 @@ public class MaidIronsSpellData extends AbstractSpellData {
         UUID maidUuid = maidEntity.getUUID();
         return MAID_DATA_MAP.computeIfAbsent(maidUuid, k -> new MaidIronsSpellData());
     }
-    
+
     /**
      * 获取指定女仆的法术数据，如果不存在返回null
      */
     public static MaidIronsSpellData get(UUID maidUuid) {
         return MAID_DATA_MAP.get(maidUuid);
     }
-    
+
     /**
      * 移除指定女仆的法术数据（当女仆被删除时调用）
      */
@@ -74,37 +73,37 @@ public class MaidIronsSpellData extends AbstractSpellData {
     }
 
     public LivingEntity getOriginTarget() {return origin_target;}
-    
+
     public ItemStack getMagicSword() {
         return magicSword;
     }
-    
+
     public void setMagicSword(ItemStack magicSword) {
         this.magicSword = magicSword != null ? magicSword : ItemStack.EMPTY;
     }
-    
+
     public ItemStack getStaff() {
         return staff;
     }
-    
+
     public void setStaff(ItemStack staff) {
         this.staff = staff != null ? staff : ItemStack.EMPTY;
     }
-    
+
     // === 施法状态管理 ===
-    
-    public SpellData getCurrentCastingSpell() {
+
+    public SpellSlot getCurrentCastingSpell() {
         return currentCastingSpell;
     }
-    
-    public void setCurrentCastingSpell(SpellData spell) {
+
+    public void setCurrentCastingSpell(SpellSlot spell) {
         this.currentCastingSpell = spell;
     }
-    
+
     public MagicData getMagicData() {
         return magicData;
     }
-    
+
     // === 冷却管理 ===
 
     /**
@@ -116,7 +115,7 @@ public class MaidIronsSpellData extends AbstractSpellData {
         currentCastingSpell = null;
         magicData.resetCastingState();
     }
-    
+
     /**
      * 获取所有法术容器
      */
@@ -133,7 +132,7 @@ public class MaidIronsSpellData extends AbstractSpellData {
         }
         return containers;
     }
-    
+
     /**
      * 检查是否有任何法术容器
      */
@@ -141,4 +140,4 @@ public class MaidIronsSpellData extends AbstractSpellData {
         return !spellBook.isEmpty() || !magicSword.isEmpty() || !staff.isEmpty();
     }
 
-} 
+}

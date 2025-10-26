@@ -1,0 +1,28 @@
+{
+  "type": "touhou_little_maid:altar_recipe_serializers",
+  "category": "misc",
+  "entity": "minecraft:item",
+  "group": "altar_recipe",
+  "result": {
+    "id": "touhou_little_maid_spell:flow_core",
+    "count": 1
+  },
+  "power": 0.3,
+  "ingredients": [
+    {
+      "tag": "c:ingots/gold"
+    },
+    {
+      "tag": "c:ingots/gold"
+    },
+    {
+      "tag": "c:gems/emerald"
+    },
+    {
+      "tag": "c:gems/emerald"
+    },
+    {
+      "item": "minecraft:heart_of_the_sea"
+    }
+  ]
+}

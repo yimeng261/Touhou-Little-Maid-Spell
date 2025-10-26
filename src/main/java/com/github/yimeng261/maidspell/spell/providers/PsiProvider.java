@@ -3,27 +3,24 @@ package com.github.yimeng261.maidspell.spell.providers;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.spell.data.MaidPsiSpellData;
-
+import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.common.util.FakePlayerFactory;
-
+import net.neoforged.neoforge.common.util.FakePlayer;
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
+import org.slf4j.Logger;
 import vazkii.psi.api.PsiAPI;
 import vazkii.psi.api.cad.ICAD;
 import vazkii.psi.api.cad.ISocketable;
+import vazkii.psi.api.spell.EnumSpellStat;
 import vazkii.psi.api.spell.ISpellAcceptor;
 import vazkii.psi.api.spell.Spell;
 import vazkii.psi.api.spell.SpellContext;
-import vazkii.psi.api.spell.EnumSpellStat;
 import vazkii.psi.common.core.handler.PlayerDataHandler;
 import vazkii.psi.common.item.ItemCAD;
-
-import org.slf4j.Logger;
-import com.mojang.logging.LogUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +53,7 @@ public class PsiProvider implements ISpellBookProvider {
         if (itemStack == null || itemStack.isEmpty()) {
             return false;
         }
-        
+
         // 检查是否为CAD
         return itemStack.getItem() instanceof ICAD;
     }
@@ -117,7 +114,7 @@ public class PsiProvider implements ISpellBookProvider {
         }
 
         // 获取CAD的可插拔组件
-        ISocketable sockets = cad.getCapability(PsiAPI.SOCKETABLE_CAPABILITY).orElse(null);
+        ISocketable sockets = cad.getCapability(PsiAPI.SOCKETABLE_CAPABILITY);
 
         // 从弹夹中随机选择一个有效的法术弹
         ItemStack bullet = getRandomBulletFromMagazine(sockets, maid);
@@ -134,7 +131,7 @@ public class PsiProvider implements ISpellBookProvider {
      */
     private ItemStack getRandomBulletFromMagazine(ISocketable sockets, EntityMaid maid) {
         List<ItemStack> validBullets = new ArrayList<>();
-        
+
         // 遍历所有弹夹槽位，收集有效的法术弹
         // 从0开始遍历到最后一个槽位
         for (int i = 0; i <= sockets.getLastSlot(); i++) {
@@ -145,12 +142,12 @@ public class PsiProvider implements ISpellBookProvider {
                 }
             }
         }
-        
+
         // 如果没有有效的法术弹，返回空物品栈
         if (validBullets.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        
+
         // 随机选择一个法术弹
         int randomIndex = maid.getRandom().nextInt(validBullets.size());
 
@@ -171,10 +168,10 @@ public class PsiProvider implements ISpellBookProvider {
 
             // 获取法术的唯一标识符
             String spellId = getSpellId(spell);
-            
+
             // 检查法术是否在冷却中
             MaidPsiSpellData data = getData(maid);
-            if (data.isSpellOnCooldown(spellId)) {  
+            if (data.isSpellOnCooldown(spellId)) {
                 return false;
             }
 
@@ -200,12 +197,12 @@ public class PsiProvider implements ISpellBookProvider {
 
             // 执行法术（不消耗PSI）
             context.cspell.safeExecute(context);
-            
+
             // 设置施法状态
             data.setCasting(true);
             data.setCurrentSpell(spell);
             data.setCastingTicks(20); // 1秒的施法时间
-            
+
             // 设置法术冷却时间
             data.setSpellCooldown(spellId, cooldownTicks, maid);
 
@@ -240,21 +237,21 @@ public class PsiProvider implements ISpellBookProvider {
     private SpellContext createSpellContext(EntityMaid maid, Spell spell) {
         try {
             SpellContext context = new SpellContext();
-            
+
             // 设置施法者（需要一个玩家对象，使用女仆的主人或创建虚拟玩家）
             Player caster = getValidCaster(maid);
             if (caster == null) {
                 return null;
             }
-            
+
             context.caster = caster;
-            
+
             // 设置施法焦点（使用女仆作为施法焦点）
             context.setFocalPoint(maid);
-            
+
             // 设置法术
             context.setSpell(spell);
-            
+
             // 设置手部（默认主手）
             context.castFrom = InteractionHand.MAIN_HAND;
 
@@ -274,25 +271,25 @@ public class PsiProvider implements ISpellBookProvider {
         if (maid.level() instanceof ServerLevel serverLevel) {
             try {
                 // 创建一个专门用于女仆施法的虚假玩家
-                FakePlayer fakePlayer = FakePlayerFactory.get(serverLevel, 
+                FakePlayer fakePlayer = FakePlayerFactory.get(serverLevel,
                     new com.mojang.authlib.GameProfile(
-                        java.util.UUID.randomUUID(), 
+                        java.util.UUID.randomUUID(),
                         "MaidCaster_" + maid.getUUID().toString().substring(0, 8)
                     )
                 );
-                
+
                 // 设置虚假玩家的位置为女仆的位置
                 fakePlayer.setPos(maid.getX(), maid.getY(), maid.getZ());
                 fakePlayer.setYRot(maid.getYRot());
                 fakePlayer.setXRot(maid.getXRot());
-                
+
                 // 确保虚假玩家有无限的 PSI（通过我们的虚拟 PlayerData）
                 return fakePlayer;
-                
+
             } catch (Exception ignored) {
             }
         }
-        
+
         return null;
     }
 
@@ -303,12 +300,12 @@ public class PsiProvider implements ISpellBookProvider {
         try {
             // 获取或创建虚拟 PlayerData
             PlayerDataHandler.PlayerData playerData = PlayerDataHandler.get(fakePlayer);
-            
+
             // 设置无限 PSI
             playerData.availablePsi = Integer.MAX_VALUE;
             playerData.overflowed = false;
             playerData.regenCooldown = 0;
-            
+
         } catch (Exception ignored) {
         }
     }
@@ -339,7 +336,7 @@ public class PsiProvider implements ISpellBookProvider {
      * 停止施法
      */
     @Override
-    public void stopCasting(EntityMaid maid) {  
+    public void stopCasting(EntityMaid maid) {
         MaidPsiSpellData data = getData(maid);
         if (data != null) {
             data.setCasting(false);
@@ -367,4 +364,4 @@ public class PsiProvider implements ISpellBookProvider {
         }
     }
 
-} 
+}

@@ -2,20 +2,14 @@ package com.github.yimeng261.maidspell.spell.manager;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
-
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.ModList;
-import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
-import net.minecraftforge.items.wrapper.CombinedInvWrapper;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper;
+import org.slf4j.Logger;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 
 /**
  * 法术书管理器
@@ -23,16 +17,16 @@ import java.util.function.Supplier;
  */
 public class SpellBookManager {
     private static final Logger LOGGER = LogUtils.getLogger();
-    
+
     // 女仆管理器实例缓存 - 使用ConcurrentHashMap保证线程安全
     private static final Map<UUID, SpellBookManager> MAID_MANAGERS = new ConcurrentHashMap<>();
 
-    
+
     // 实例相关的提供者列表 - 每个管理器可以有自己的提供者实例
     private static final List<ISpellBookProvider> instanceProviders = new ArrayList<>();
 
     public static final List<String> loadedMods = new ArrayList<>();
-    
+
     // 女仆实体存储为每个管理器的上下文
     private EntityMaid maid;
 
@@ -52,17 +46,17 @@ public class SpellBookManager {
 
         registerProviderFactoryByClassName("ars_nouveau", "ArsNouveauProvider", com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider.class);
 
-        registerProviderFactoryByClassName("goety", "GoetyProvider", com.github.yimeng261.maidspell.spell.providers.GoetyProvider.class);
+        // registerProviderFactoryByClassName("goety", "GoetyProvider", com.github.yimeng261.maidspell.spell.providers.GoetyProvider.class);
 
         registerProviderFactoryByClassName("psi","PsiProvider", com.github.yimeng261.maidspell.spell.providers.PsiProvider.class);
 
-        registerProviderFactoryByClassName("slashblade","SlashBladeProvider", com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider.class);
+        // registerProviderFactoryByClassName("slashblade","SlashBladeProvider", com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider.class);
     }
-    
+
     /**
      * 通过类名安全注册提供者工厂
      * 这个方法避免了在静态初始化时直接引用可能不存在的类
-     * 
+     *
      * @param modId 模组ID
      * @param providerName 提供者名称（用于日志）
      * @param providerClass 提供者类
@@ -76,7 +70,7 @@ public class SpellBookManager {
                 LOGGER.debug("Mod {} loaded, finished {} registration", modId, providerName);
                 return;
             }
-            
+
         } catch (Exception e) {
             LOGGER.error("Failed to register provider factory for mod {}: {}", modId, e.getMessage());
         }
@@ -89,11 +83,11 @@ public class SpellBookManager {
         this.maid = maid;
     }
 
-    
+
     /**
      * 获取或创建女仆的管理器实例
      * 如果该女仆已有管理器实例，则返回现有的；否则创建新的
-     * 
+     *
      * @param maid 女仆实体
      * @return 该女仆对应的SpellBookManager实例
      */
@@ -102,19 +96,19 @@ public class SpellBookManager {
             LOGGER.warn("Attempted to get manager for null maid entity");
             return null;
         }
-        
+
         UUID maidUUID = maid.getUUID();
-        
+
         // 使用computeIfAbsent确保线程安全且避免重复创建
         return MAID_MANAGERS.computeIfAbsent(maidUUID, uuid -> {
             LOGGER.debug("Creating new SpellBookManager for maid {}", uuid);
             return new SpellBookManager(maid);
         });
     }
-    
+
     /**
      * 移除女仆的管理器实例（当女仆被移除时调用）
-     * 
+     *
      * @param maid 女仆实体
      * @return 如果存在并成功移除则返回true，否则返回false
      */
@@ -122,19 +116,19 @@ public class SpellBookManager {
         if (maid == null) {
             return false;
         }
-        
+
         UUID maidUUID = maid.getUUID();
         SpellBookManager removed = MAID_MANAGERS.remove(maidUUID);
-        
+
         if (removed != null) {
             LOGGER.debug("Removed SpellBookManager for maid {}", maidUUID);
             return true;
         }
-        
+
         return false;
     }
 
-    
+
 
     /**
      * 获取物品对应的法术书提供者
@@ -160,7 +154,7 @@ public class SpellBookManager {
         }
         return success;
     }
-    
+
     /**
      * 获取当前实例的提供者列表
      */
@@ -176,7 +170,7 @@ public class SpellBookManager {
             }
         }
     }
-    
+
     /**
      * 获取关联的女仆实体
      */
@@ -206,15 +200,15 @@ public class SpellBookManager {
      */
     public Map<ISpellBookProvider, ItemStack> findSpellBooksInInventory() {
         Map<ISpellBookProvider, ItemStack> foundBooks = new HashMap<>();
-        
+
         // 创建搜索队列：副手 -> 主手 -> 背包
         CombinedInvWrapper availableInv = maid.getAvailableInv(false);
         ItemStack[] searchOrder = new ItemStack[availableInv.getSlots()];
-        
+
         for (int i = 0; i < availableInv.getSlots(); i++) {
             searchOrder[i] = availableInv.getStackInSlot(i);
         }
-        
+
         // 遍历所有物品，为每个提供者找到对应的法术书
         for (ItemStack stack : searchOrder) {
             if (stack == null || stack.isEmpty()) {
@@ -235,13 +229,13 @@ public class SpellBookManager {
                 }
             }
         }
-        
+
         return foundBooks;
     }
 
     public void tick(){
         // 处理持续性施法
-        
+
         for (ISpellBookProvider provider : getProviders()) {
             if(provider.getTarget(maid) != null){
                 provider.getTarget(maid).invulnerableTime = 0;
@@ -263,7 +257,7 @@ public class SpellBookManager {
                 break;
             }
         }
-        
+
         var spellBooks = findSpellBooksInInventory();
         // 更新每个提供者的法术书
         for (ISpellBookProvider provider : getProviders()) {
@@ -272,7 +266,7 @@ public class SpellBookManager {
                 // IronsSpellbooksProvider在findSpellBooksInInventory中已经被更新了
                 continue;
             }
-            
+
             // 对于其他提供者，使用原有逻辑
             ItemStack providerSpellBook = spellBooks.get(provider);
             if (providerSpellBook != null && !providerSpellBook.isEmpty()) {

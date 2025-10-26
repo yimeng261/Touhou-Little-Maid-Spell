@@ -5,19 +5,19 @@ import com.github.tartaricacid.touhoulittlemaid.api.LittleMaidExtension;
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeartBauble;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNoteBauble;
+import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChainBauble;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.HairpinBauble;
-import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBookBauble;
-import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
-import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
-import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.item.bauble.quickChantRing.QuickChantBauble;
 import com.github.yimeng261.maidspell.item.bauble.rockCrystal.RockCrystalBauble;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
+import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
-import net.minecraftforge.fml.ModList;
+import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
+import net.neoforged.fml.ModList;
 
 /**
  * 女仆法术饰品注册器
@@ -28,7 +28,6 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
     @Override
     public void bindMaidBauble(BaubleManager manager) {
-
         if (ModList.get().isLoaded("irons_spellbooks") && MaidSpellItems.SPELL_ENHANCEMENT_CORE != null) {
             manager.bind(MaidSpellItems.SPELL_ENHANCEMENT_CORE, new SpellEnhancementBauble());
         }
@@ -48,16 +47,16 @@ public class MaidBaubleRegistry implements ILittleMaid {
         if(MaidSpellItems.SPRING_RING != null){
             manager.bind(MaidSpellItems.SPRING_RING, new SpringBauble());
         }
-        
+
         // 新增饰品注册
         if(MaidSpellItems.DOUBLE_HEART_CHAIN != null){
             manager.bind(MaidSpellItems.DOUBLE_HEART_CHAIN, new DoubleHeartChainBauble());
         }
-        
+
         if(MaidSpellItems.ROCK_CRYSTAL != null){
             manager.bind(MaidSpellItems.ROCK_CRYSTAL, new RockCrystalBauble());
         }
-        
+
         if(MaidSpellItems.SLIVER_CERCIS != null){
             manager.bind(MaidSpellItems.SLIVER_CERCIS, new SilverCercisBauble());
         }

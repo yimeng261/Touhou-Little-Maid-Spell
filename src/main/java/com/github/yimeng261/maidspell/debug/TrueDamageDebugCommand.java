@@ -9,23 +9,23 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import org.slf4j.Logger;
 
 /**
  * 真实伤害调试命令
  * 用于测试和调试真实伤害功能
  */
-@Mod.EventBusSubscriber
+@EventBusSubscriber
 public class TrueDamageDebugCommand {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
-        
+
         dispatcher.register(Commands.literal("truedamage")
             .requires(source -> source.hasPermission(2)) // 需要OP权限
             .then(Commands.literal("deal")
@@ -35,20 +35,20 @@ public class TrueDamageDebugCommand {
                             try {
                                 var entity = EntityArgument.getEntity(context, "target");
                                 float damage = FloatArgumentType.getFloat(context, "damage");
-                                
+
                                 if (!(entity instanceof LivingEntity target)) {
                                     context.getSource().sendFailure(Component.literal("目标必须是生物实体"));
                                     return 0;
                                 }
-                                
+
                                 float oldHealth = target.getHealth();
                                 TrueDamageUtil.dealTrueDamage(target, damage);
                                 float newHealth = target.getHealth();
-                                
+
                                 context.getSource().sendSuccess(() -> Component.literal(
-                                    String.format("对 %s 造成 %.1f 真实伤害，健康值从 %.1f 变为 %.1f", 
+                                    String.format("对 %s 造成 %.1f 真实伤害，健康值从 %.1f 变为 %.1f",
                                         target.getName().getString(), damage, oldHealth, newHealth)), true);
-                                
+
                                 return 1;
                             } catch (Exception e) {
                                 LOGGER.error("执行真实伤害命令时出错", e);
@@ -65,12 +65,12 @@ public class TrueDamageDebugCommand {
                         .executes(context -> {
                             try {
                                 var entity = EntityArgument.getEntity(context, "target");
-                                
+
                                 if (!(entity instanceof LivingEntity target)) {
                                     context.getSource().sendFailure(Component.literal("目标必须是生物实体"));
                                     return 0;
                                 }
-                                
+
                                 String info = TrueDamageUtil.getEntityDataInfo(target);
                                 context.getSource().sendSuccess(() -> Component.literal(info), false);
                                 return 1;

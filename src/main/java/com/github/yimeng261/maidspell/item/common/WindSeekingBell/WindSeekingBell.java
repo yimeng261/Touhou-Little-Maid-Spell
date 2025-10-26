@@ -19,14 +19,13 @@ import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.event.server.ServerStoppedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.List;
 
 /**
@@ -54,28 +53,28 @@ import java.util.List;
  * 19. 模块化设计：配置、缓存、验证逻辑分离，代码从952行优化到约750行，可维护性大幅提升
  */
 public class WindSeekingBell extends Item {
-    
+
     // 注意：所有搜索配置已迁移到 SearchConfig 类
-    
+
     // 常用消息组件缓存：避免重复创建相同的本地化组件
     private static final Component NO_STRUCTURE_MESSAGE = Component.translatable(
         "item.touhou_little_maid_spell.wind_seeking_bell.no_structure"
     ).withStyle(ChatFormatting.RED);
-    
+
     private static final Component CLICK_SUGGEST_MESSAGE = Component.translatable(
         "item.touhou_little_maid_spell.wind_seeking_bell.click_to_suggest"
     ).withStyle(ChatFormatting.YELLOW);
-    
-    
+
+
     // 搜索缓存管理器：管理所有缓存和正在进行的搜索
     private static final SearchCacheManager cacheManager = new SearchCacheManager();
-    
+
     // 生物群系验证器：检查樱花林生物群系
     private static final BiomeValidator biomeValidator = new BiomeValidator();
-    
+
     // 结构搜索引擎：负责执行并行搜索
     private static final StructureSearchEngine searchEngine = new StructureSearchEngine(biomeValidator, cacheManager);
-    
+
     public WindSeekingBell() {
         super(new Properties()
             .stacksTo(16)
@@ -87,47 +86,47 @@ public class WindSeekingBell extends Item {
     public @NotNull InteractionResultHolder<ItemStack> use(@Nonnull Level level, @Nonnull Player player, @Nonnull InteractionHand hand) {
         ItemStack itemStack = player.getItemInHand(hand);
         player.startUsingItem(hand);
-        
+
         if (level instanceof ServerLevel serverLevel) {
             BlockPos playerPos = player.blockPosition();
-            
+
             // 异步搜索结构，避免主线程卡顿
             findNearestHiddenRetreatAsync(serverLevel, playerPos, player, itemStack);
-            
+
             // 立即返回成功，实际结果将异步处理
             return InteractionResultHolder.success(itemStack);
         }
-        
+
         return InteractionResultHolder.consume(itemStack);
     }
-    
+
     /**
      * 异步搜索隐世之境结构
      */
     private void findNearestHiddenRetreatAsync(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack) {
         // 记录搜索开始时间
         long searchStartTime = System.currentTimeMillis();
-        
+
         // 使用搜索引擎执行异步搜索
         searchEngine.searchAsync(serverLevel, playerPos).thenAccept(result -> {
             long searchTime = System.currentTimeMillis() - searchStartTime;
             handleSearchResult(serverLevel, playerPos, player, itemStack, result, searchTime);
         });
     }
-    
+
     /**
      * 处理搜索结果
      */
-    private void handleSearchResult(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack, 
+    private void handleSearchResult(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack,
                                   BlockPos structurePos, long searchTime) {
         // 确保在主线程中执行UI相关操作
         serverLevel.getServer().execute(() -> {
             if (structurePos != null) {
                 // 找到结构，创建自定义的寻风之铃飞行实体
                 int height = serverLevel.getChunkSource().getGenerator().getFirstOccupiedHeight(
-                    structurePos.getX(), structurePos.getZ(), 
-                    Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 
-                    serverLevel.getChunk(structurePos).getHeightAccessorForGeneration(), 
+                    structurePos.getX(), structurePos.getZ(),
+                    Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                    serverLevel.getChunk(structurePos).getHeightAccessorForGeneration(),
                     serverLevel.getChunkSource().randomState()
                 );
                 BlockPos structurePosVec3i = new BlockPos(structurePos.getX(), 0, structurePos.getZ());
@@ -143,13 +142,13 @@ public class WindSeekingBell extends Item {
                 // 在聊天栏显示可点击的坐标信息
 
                 int distance = (int) Math.sqrt(structurePosVec3i.distSqr(playerPosVec3i));
-                
+
                 // 创建tp指令（使用相对y坐标）
                 String tpCommand = String.format("/tp %f %d %f",
                     structurePos.getX() + 0.5,
                     height+3,
                     structurePos.getZ() + 0.5);
-                
+
                 // 创建可点击的坐标消息
                 Component coordinateMessage = Component.translatable(
                     "item.touhou_little_maid_spell.wind_seeking_bell.found_structure",
@@ -167,7 +166,7 @@ public class WindSeekingBell extends Item {
                         "item.touhou_little_maid_spell.wind_seeking_bell.search_time",
                         searchTime
                     ).withStyle(ChatFormatting.AQUA);
-                
+
                 player.sendSystemMessage(coordinateMessage);
                 player.sendSystemMessage(timingMessage);
 
@@ -179,8 +178,8 @@ public class WindSeekingBell extends Item {
                 }
 
                 player.awardStat(Stats.ITEM_USED.get(this));
-            
-                
+
+
                 // 消耗物品（如果不是创造模式）
                 if (!player.getAbilities().instabuild) {
                     itemStack.shrink(1);
@@ -190,19 +189,19 @@ public class WindSeekingBell extends Item {
                         "item.touhou_little_maid_spell.wind_seeking_bell.search_time",
                         searchTime
                     ).withStyle(ChatFormatting.GREEN);
-                
+
                 player.displayClientMessage(NO_STRUCTURE_MESSAGE, true);
                 player.sendSystemMessage(timingMessage);
             }
         });
     }
-    
-    
+
+
 
     @Override
-    public void appendHoverText(@Nonnull ItemStack stack, @Nullable Level level, @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
-        
+    public void appendHoverText(@Nonnull ItemStack stack, @Nonnull TooltipContext context, @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltip, flag);
+
         tooltip.add(Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.desc1")
             .withStyle(ChatFormatting.LIGHT_PURPLE));
         tooltip.add(Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.desc2")
@@ -213,22 +212,22 @@ public class WindSeekingBell extends Item {
     public boolean isFoil(@Nonnull ItemStack stack) {
         return true;
     }
-    
+
     /**
      * 服务器事件监听器：处理缓存清理
      */
-    @Mod.EventBusSubscriber(modid = "touhou_little_maid_spell")
+    @EventBusSubscriber(modid = "touhou_little_maid_spell")
     public static class ServerEventHandler {
-        
+
         @SubscribeEvent
         public static void onServerStarted(ServerStartedEvent event) {
             // 服务器启动时清空缓存，确保不会跨存档使用旧缓存
             clearAllCaches();
             Global.LOGGER.info("WindSeekingBell: Cleared caches on server startup");
-            Global.LOGGER.info("WindSeekingBell: Using striped lock with {} segments for improved concurrency", 
+            Global.LOGGER.info("WindSeekingBell: Using striped lock with {} segments for improved concurrency",
                 SearchConfig.LOCK_STRIPE_COUNT);
         }
-        
+
         @SubscribeEvent
         public static void onServerStopped(ServerStoppedEvent event) {
             // 服务器停止时清空缓存，释放内存
@@ -236,17 +235,17 @@ public class WindSeekingBell extends Item {
             Global.LOGGER.info("WindSeekingBell: Cleared caches on server shutdown");
         }
     }
-    
+
     /**
      * 清空所有缓存数据
      */
     public static void clearAllCaches() {
         // 清空搜索缓存管理器
         cacheManager.clearAll();
-        
+
         // 清空搜索引擎的结构集合缓存
         StructureSearchEngine.clearCaches();
-        
+
         Global.LOGGER.debug("WindSeekingBell: All caches cleared");
     }
 }

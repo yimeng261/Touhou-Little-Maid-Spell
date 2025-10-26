@@ -1,6 +1,5 @@
 package com.github.yimeng261.maidspell.item.bauble.quickChantRing;
 
-import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;

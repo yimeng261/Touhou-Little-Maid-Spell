@@ -1,16 +1,17 @@
 package com.github.yimeng261.maidspell.task;
 
-import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
-import com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
+import com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitSounds;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
+import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
+import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
@@ -19,17 +20,19 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.behavior.*;
+import net.minecraft.world.entity.ai.behavior.Behavior;
+import net.minecraft.world.entity.ai.behavior.BehaviorControl;
+import net.minecraft.world.entity.ai.behavior.StartAttacking;
+import net.minecraft.world.entity.ai.behavior.StopAttackingIfTargetInvalid;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
-import com.mojang.logging.LogUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -246,7 +249,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
      * 特殊情况：当女仆释放蓝色音符标记的铁魔法法术时，允许看向主人
      */
     static class CombatLookControlTask extends Behavior<EntityMaid> {
-        
+
         public CombatLookControlTask() {
             super(Map.of(
                 MemoryModuleType.ATTACK_TARGET, MemoryStatus.VALUE_PRESENT,
@@ -300,7 +303,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         protected void stop(ServerLevel level, EntityMaid maid, long gameTime) {
             // 战斗结束时不做特殊处理，让其他系统接管
         }
-        
+
         /**
          * 检查是否是铁魔法特殊情况（蓝色音符标记的法术）
          * 这种情况下女仆需要对主人施法，因此应该看向主人
@@ -309,22 +312,22 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             if (!ModList.get().isLoaded("irons_spellbooks")) {
                 return false;
             }
-            
+
             try {
                 // 获取女仆的铁魔法数据
                 MaidIronsSpellData data = MaidIronsSpellData.getOrCreate(maid);
                 if (data == null) {
                     return false;
                 }
-                
+
                 // 检查当前目标是否是原始目标切换到主人的结果
                 // 这表明女仆正在施放蓝色音符标记的法术
                 LivingEntity currentTarget = data.getTarget();
                 LivingEntity originTarget = data.getOriginTarget();
                 LivingEntity owner = maid.getOwner();
-                
+
                 return currentTarget == owner && originTarget != null && originTarget != owner;
-                
+
             } catch (Exception e) {
                 // 如果出现任何异常，安全返回false
                 return false;
@@ -417,4 +420,4 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             return this.checkExtraStartConditions(worldIn, entityIn);
         }
     }
-} 
+}

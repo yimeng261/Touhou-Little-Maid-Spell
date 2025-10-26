@@ -1,0 +1,31 @@
+{
+  "type": "touhou_little_maid:altar_recipe_serializers",
+  "category": "misc",
+  "entity": "minecraft:item",
+  "group": "altar_recipe",
+  "result": {
+    "id": "touhou_little_maid_spell:wind_seeking_bell",
+    "count": 1
+  },
+  "power": 0.3,
+  "ingredients": [
+    {
+      "item": "minecraft:bell"
+    },
+    {
+      "tag": "c:nuggets/gold"
+    },
+    {
+      "item": "minecraft:nether_star"
+    },
+    {
+      "item": "minecraft:cherry_sapling"
+    },
+    {
+      "item": "minecraft:ender_eye"
+    },
+    {
+      "tag": "c:nuggets/gold"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "type": "touhou_little_maid:altar_recipe_serializers",
+  "category": "misc",
+  "entity": "minecraft:item",
+  "group": "altar_recipe",
+  "result": {
+    "id": "touhou_little_maid_spell:spell_enhancement_core",
+    "count": 1
+  },
+  "power": 0.4,
+  "ingredients": [
+    {
+      "item": "minecraft:amethyst_shard"
+    },
+    {
+      "item": "minecraft:amethyst_shard"
+    },
+    {
+      "item": "minecraft:ender_eye"
+    },
+    {
+      "item": "minecraft:ender_eye"
+    },
+    {
+      "tag": "c:gems/diamond"
+    }
+  ]
+}

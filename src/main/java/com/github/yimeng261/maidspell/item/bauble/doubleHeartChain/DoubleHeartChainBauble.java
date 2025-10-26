@@ -5,7 +5,6 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-
 import net.minecraft.world.entity.player.Player;
 
 public class DoubleHeartChainBauble implements IExtendBauble {
@@ -17,7 +16,7 @@ public class DoubleHeartChainBauble implements IExtendBauble {
             if (owner != null && !owner.level().isClientSide) {
                 float originalDamage = data.getAmount();
                 float sharedDamage = originalDamage * 0.5f; // 各承担50%伤害
-                
+
                 // 女仆承担50%伤害
                 data.setAmount(sharedDamage);
                 owner.hurt(new InfoDamageSource(), sharedDamage);
@@ -25,4 +24,4 @@ public class DoubleHeartChainBauble implements IExtendBauble {
             return null;
         });
     }
-} 
+}

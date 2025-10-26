@@ -6,9 +6,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
 
-import javax.annotation.Nullable;
+import javax.annotation.Nonnull;
 import java.util.List;
 
 /**
@@ -16,7 +15,7 @@ import java.util.List;
  * 根据玩家的铁魔法属性为女仆提供相应的法术强化
  */
 public class SpellEnhancementCore extends Item {
-    
+
     public SpellEnhancementCore() {
         super(new Properties()
             .stacksTo(1)
@@ -30,8 +29,8 @@ public class SpellEnhancementCore extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
+    public void appendHoverText(ItemStack stack, @Nonnull TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltip, flag);
 
         tooltip.add(Component.translatable("item.maidspell.spell_enhancement_core.desc1")
             .withStyle(ChatFormatting.GRAY));
@@ -40,4 +39,4 @@ public class SpellEnhancementCore extends Item {
         tooltip.add(Component.translatable("item.maidspell.spell_enhancement_core.desc3")
             .withStyle(ChatFormatting.YELLOW));
     }
-} 
+}

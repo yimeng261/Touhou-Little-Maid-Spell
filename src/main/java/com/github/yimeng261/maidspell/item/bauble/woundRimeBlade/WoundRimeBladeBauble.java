@@ -1,40 +1,23 @@
 package com.github.yimeng261.maidspell.item.bauble.woundRimeBlade;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.mixin.CombatTrackerMixin;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
-
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.living.LivingHealEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraft.world.damagesource.CombatEntry;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.common.MinecraftForge;
+import net.minecraft.world.item.ItemStack;
+
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 破愈咒锋饰品实现
  * 监听周围敌对实体的治疗并阻止
  */
-@Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class WoundRimeBladeBauble implements IExtendBauble {
 
     private static final ConcurrentHashMap<UUID, ConcurrentHashMap<LivingEntity,Float>> maidWoundRimeBladeMap = new ConcurrentHashMap<>();
-
-    public WoundRimeBladeBauble() {
-        MinecraftForge.EVENT_BUS.register(this);
-    }
 
     @Override
     public void onRemove(EntityMaid maid) {

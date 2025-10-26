@@ -1,0 +1,28 @@
+{
+  "type": "touhou_little_maid:altar_recipe_serializers",
+  "category": "misc",
+  "entity": "minecraft:item",
+  "group": "altar_recipe",
+  "result": {
+    "id": "touhou_little_maid_spell:soul_book",
+    "count": 1
+  },
+  "power": 0.4,
+  "ingredients": [
+    {
+      "item": "minecraft:book"
+    },
+    {
+      "item": "minecraft:golden_apple"
+    },
+    {
+      "tag": "c:gems/diamond"
+    },
+    {
+      "item": "minecraft:totem_of_undying"
+    },
+    {
+      "item": "minecraft:ghast_tear"
+    }
+  ]
+}

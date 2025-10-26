@@ -1,13 +1,9 @@
 package com.github.yimeng261.maidspell.spell.data;
 
 import com.github.yimeng261.maidspell.api.AbstractSpellData;
-import io.redspace.ironsspellbooks.api.spells.SpellData;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemStack;
-import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
+import org.slf4j.Logger;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,13 +14,13 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MaidPsiSpellData extends AbstractSpellData {
     private static final Logger LOGGER = LogUtils.getLogger();
-    
+
     // 全局女仆数据存储
     private static final Map<UUID, MaidPsiSpellData> MAID_DATA = new ConcurrentHashMap<>();
 
 
     // 当前目标
-    
+
     // 施法状态
     private Object currentSpell; // 使用Object避免直接依赖Psi类
     private int castingTicks = 0;
@@ -68,4 +64,4 @@ public class MaidPsiSpellData extends AbstractSpellData {
         this.castingTicks = 0;
     }
 
-} 
+}

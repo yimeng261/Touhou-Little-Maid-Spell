@@ -6,9 +6,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
 
-import javax.annotation.Nullable;
 import javax.annotation.Nonnull;
 import java.util.List;
 
@@ -30,9 +28,9 @@ public class EnderPocket extends Item {
     }
 
     @Override
-    public void appendHoverText(@Nonnull ItemStack stack, @Nullable Level level, @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
-        super.appendHoverText(stack, level, tooltip, flag);
-        
+    public void appendHoverText(@Nonnull ItemStack stack, @Nonnull TooltipContext context, @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
+        super.appendHoverText(stack, context, tooltip, flag);
+
         tooltip.add(Component.translatable("item.maidspell.ender_pocket.desc1")
                 .withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("item.maidspell.ender_pocket.desc2")

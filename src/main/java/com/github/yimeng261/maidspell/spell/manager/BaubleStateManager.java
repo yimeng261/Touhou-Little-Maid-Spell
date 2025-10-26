@@ -6,14 +6,15 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHand
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.mojang.logging.LogUtils;
-
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.RegistryObject;
-
+import net.neoforged.neoforge.registries.DeferredItem;
 import org.slf4j.Logger;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -23,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class BaubleStateManager {
     private static final Logger LOGGER = LogUtils.getLogger();
-    
+
     // 存储每个女仆的饰品状态快照 UUID -> HashSet<Item>
     private static final Map<UUID, HashSet<Item>> maidBaublePrevious = new ConcurrentHashMap<>();
     private static final Map<UUID, HashSet<Item>> maidBaubleCurrent = new ConcurrentHashMap<>();
@@ -36,13 +37,13 @@ public class BaubleStateManager {
         if (maid == null || maid.level().isClientSide()) {
             return;
         }
-        
+
         UUID maidUUID = maid.getUUID();
         HashSet<Item> currentBaubles = getCurrentBaubles(maid);
         HashSet<Item> previousBaubles = getPreviousBaubles(maidUUID);
 
         maidBaubleCurrent.put(maid.getUUID(), currentBaubles);
-        
+
         List<Item> removedBaubles = previousBaubles.stream().filter(item->!currentBaubles.contains(item)).toList();
         List<Item> addedBaubles = currentBaubles.stream().filter(item->!previousBaubles.contains(item)).toList();
         for (Item removedBauble : removedBaubles) {
@@ -64,7 +65,7 @@ public class BaubleStateManager {
     private static HashSet<Item> getPreviousBaubles(UUID maidUUID) {
         return maidBaublePrevious.computeIfAbsent(maidUUID, k -> new HashSet<>());
     }
-    
+
     /**
      * 获取女仆当前的饰品列表
      */
@@ -75,7 +76,7 @@ public class BaubleStateManager {
 
         HashSet<Item> baubles = new HashSet<>();
         BaubleItemHandler handler = maid.getMaidBauble();
-        
+
         // 检查handler是否为null
         if (handler == null) {
             LOGGER.debug("BaubleItemHandler is null for maid {}", maid.getUUID());
@@ -103,7 +104,7 @@ public class BaubleStateManager {
         return getBaubles(maid).contains(stack.getItem());
     }
 
-    public static boolean hasBauble(EntityMaid maid, RegistryObject<Item> item) {
+    public static boolean hasBauble(EntityMaid maid, DeferredItem<Item> item) {
         return getBaubles(maid).contains(item.get());
     }
 
@@ -116,4 +117,4 @@ public class BaubleStateManager {
         maidBaublePrevious.remove(maid.getUUID());
     }
 
-} 
+}
