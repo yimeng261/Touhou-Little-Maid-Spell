@@ -10,16 +10,22 @@
   "power": 0.15,
   "ingredients": [
     {
-      "tag": "c:ingots/iron"
-    },
-    {
-      "tag": "c:ingots/iron"
+      "item": "minecraft:amethyst_shard"
     },
     {
       "tag": "c:ingots/iron"
     },
     {
       "item": "minecraft:sweet_berries"
+    },
+    {
+      "item": "minecraft:nether_star"
+    },
+    {
+      "item": "minecraft:pufferfish"
+    },
+    {
+      "tag": "c:ingots/iron"
     }
   ]
 }

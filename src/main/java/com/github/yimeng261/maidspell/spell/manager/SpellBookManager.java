@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.spell.manager;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.utils.VersionUtil;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
@@ -42,15 +43,18 @@ public class SpellBookManager {
     private static void initializeProviderFactories() {
         LOGGER.info("Initializing spell book provider factories...");
 
-        registerProviderFactoryByClassName("irons_spellbooks", "IronsSpellbooksProvider", com.github.yimeng261.maidspell.spell.providers.IronsSpellbooksProvider.class);
+        // 使用传统方式注册（无版本检测）
+        registerProviderFactoryByClass("irons_spellbooks", "IronsSpellbooksProvider", com.github.yimeng261.maidspell.spell.providers.IronsSpellbooksProvider.class);
+        registerProviderFactoryByClass("ars_nouveau", "ArsNouveauProvider", com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider.class);
+        registerProviderFactoryByClass("psi","PsiProvider", com.github.yimeng261.maidspell.spell.providers.PsiProvider.class);
+        // registerProviderFactoryByClass("slashblade","SlashBladeProvider", com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider.class);
 
-        registerProviderFactoryByClassName("ars_nouveau", "ArsNouveauProvider", com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider.class);
+        // 注册统一的Goety提供者（内部自动处理版本兼容性）
+        // registerProviderFactoryByClass("goety", "GoetyProvider", com.github.yimeng261.maidspell.spell.providers.GoetyProvider.class);
 
-        // registerProviderFactoryByClassName("goety", "GoetyProvider", com.github.yimeng261.maidspell.spell.providers.GoetyProvider.class);
+        // 注册Youkai-Homecoming弹幕物品提供者
+        // registerProviderFactoryByClass("youkaishomecoming", "YoukaiHomecomingProvider", com.github.yimeng261.maidspell.spell.providers.YoukaiHomecomingProvider.class);
 
-        registerProviderFactoryByClassName("psi","PsiProvider", com.github.yimeng261.maidspell.spell.providers.PsiProvider.class);
-
-        // registerProviderFactoryByClassName("slashblade","SlashBladeProvider", com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider.class);
     }
 
     /**
@@ -61,18 +65,74 @@ public class SpellBookManager {
      * @param providerName 提供者名称（用于日志）
      * @param providerClass 提供者类
      */
-    private static void registerProviderFactoryByClassName(String modId, String providerName, Class<?> providerClass) {
+    private static void registerProviderFactoryByClass(String modId, String providerName, Class<?> providerClass) {
         try {
             // 检查模组是否加载
             if (ModList.get().isLoaded(modId)) {
                 instanceProviders.add((ISpellBookProvider) providerClass.getConstructor().newInstance());
                 loadedMods.add(modId);
                 LOGGER.debug("Mod {} loaded, finished {} registration", modId, providerName);
-                return;
             }
 
         } catch (Exception e) {
             LOGGER.error("Failed to register provider factory for mod {}: {}", modId, e.getMessage());
+        }
+    }
+
+    /**
+     * 通用的版本检测Provider注册方法
+     * 根据模组版本决定使用哪个Provider实现
+     *
+     * @param modId 模组ID
+     * @param minVersionForNewProvider 使用新Provider的最低版本要求
+     * @param defaultProviderClass 默认Provider类
+     * @param newProviderClass 新Provider类的完整类名（可选）
+     * @param providerName Provider名称（用于日志）
+     */
+    private static void registerProviderWithVersionCheck(String modId, String minVersionForNewProvider,
+            Class<?> defaultProviderClass, Class<?> newProviderClass, String providerName) {
+        try {
+            // 检查模组是否加载
+            if (!ModList.get().isLoaded(modId)) {
+                LOGGER.debug("Mod {} not loaded, skipping provider registration", modId);
+                return;
+            }
+
+            // 获取当前版本
+            String currentVersion = VersionUtil.getModVersion(modId);
+            if (currentVersion == null) {
+                LOGGER.warn("Could not determine {} mod version, using default provider", modId);
+                registerProviderFactoryByClass(modId, providerName, defaultProviderClass);
+                return;
+            }
+
+            // 检查版本是否满足要求使用新Provider
+            boolean useNewProvider = minVersionForNewProvider != null &&
+                    VersionUtil.isVersionGreaterOrEqual(currentVersion, minVersionForNewProvider);
+
+            if (useNewProvider && newProviderClass != null) {
+                LOGGER.info("{} version {} >= {}, attempting to load enhanced provider",
+                        modId, currentVersion, minVersionForNewProvider);
+
+                // 尝试加载新版本的Provider（如果存在）
+                instanceProviders.add((ISpellBookProvider) newProviderClass.getConstructor().newInstance());
+                loadedMods.add(modId);
+                LOGGER.info("Successfully loaded enhanced {} for {} version {}",
+                        newProviderClass.getSimpleName(), modId, currentVersion);
+            } else {
+                if (minVersionForNewProvider != null) {
+                    LOGGER.info("{} version {} < {}, using standard provider",
+                            modId, currentVersion, minVersionForNewProvider);
+                } else {
+                    LOGGER.info("Using standard provider for {} version {}", modId, currentVersion);
+                }
+                registerProviderFactoryByClass(modId, providerName, defaultProviderClass);
+            }
+
+        } catch (Exception e) {
+            LOGGER.error("Failed to register {} provider with version check: {}", modId, e.getMessage());
+            // 发生错误时回退到标准Provider
+            registerProviderFactoryByClass(modId, providerName, defaultProviderClass);
         }
     }
 
@@ -110,11 +170,10 @@ public class SpellBookManager {
      * 移除女仆的管理器实例（当女仆被移除时调用）
      *
      * @param maid 女仆实体
-     * @return 如果存在并成功移除则返回true，否则返回false
      */
-    public static boolean removeManager(EntityMaid maid) {
+    public static void removeManager(EntityMaid maid) {
         if (maid == null) {
-            return false;
+            return;
         }
 
         UUID maidUUID = maid.getUUID();
@@ -122,37 +181,18 @@ public class SpellBookManager {
 
         if (removed != null) {
             LOGGER.debug("Removed SpellBookManager for maid {}", maidUUID);
-            return true;
         }
 
-        return false;
     }
 
-
-
-    /**
-     * 获取物品对应的法术书提供者
-     */
-    public ISpellBookProvider getProvider(ItemStack itemStack) {
-        for (ISpellBookProvider provider : instanceProviders) {
-            if (provider.isSpellBook(itemStack)) {
-                return provider;
-            }
-        }
-        return null;
-    }
 
     /**
      * 执行法术
      */
-    public boolean castSpell(EntityMaid maid) {
-        boolean success = false;
+    public void castSpell(EntityMaid maid) {
         for (ISpellBookProvider provider : instanceProviders) {
-            if (provider.castSpell(maid)) {
-                success = true;
-            }
+            provider.castSpell(maid);
         }
-        return success;
     }
 
     /**

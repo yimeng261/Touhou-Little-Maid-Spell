@@ -65,12 +65,12 @@ public abstract class AbstractSpellData implements ISpellData {
     public void setSpellCooldown(String spellId, int cooldownTicks, EntityMaid maid) {
         CoolDown coolDown = new CoolDown(cooldownTicks,maid);
         if (spellId != null) {
-            Global.common_coolDownProcessors.forEach(func->{
+            Global.common_coolDownCalc.forEach(func->{
                 func.apply(coolDown);
             });
 
             BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                Function<CoolDown,Void> func = Global.bauble_coolDownProcessors.computeIfAbsent(bauble.getDescriptionId(), k-> (cooldown) -> null);
+                Function<CoolDown,Void> func = Global.bauble_coolDownCalc.computeIfAbsent(bauble.getDescriptionId(), k-> (cooldown) -> null);
                 func.apply(coolDown);
             });
             spellCooldowns.put(spellId, coolDown.cooldownticks);

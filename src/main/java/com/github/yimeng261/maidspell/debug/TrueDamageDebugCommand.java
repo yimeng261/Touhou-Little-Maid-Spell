@@ -28,6 +28,20 @@ public class TrueDamageDebugCommand {
 
         dispatcher.register(Commands.literal("truedamage")
             .requires(source -> source.hasPermission(2)) // 需要OP权限
+            .then(Commands.literal("setHealth")
+                .then(Commands.argument("target", EntityArgument.entity())
+                    .then(Commands.argument("health", FloatArgumentType.floatArg())
+                        .executes(context -> {
+                            var entity = EntityArgument.getEntity(context, "target");
+                            float health = FloatArgumentType.getFloat(context, "health");
+                            if(entity instanceof LivingEntity livingEntity) {
+                                livingEntity.setHealth(health);
+                            }
+                            return 0;
+                        })
+                    )
+                )
+            )
             .then(Commands.literal("deal")
                 .then(Commands.argument("target", EntityArgument.entity())
                     .then(Commands.argument("damage", FloatArgumentType.floatArg(0.0f))
@@ -42,7 +56,7 @@ public class TrueDamageDebugCommand {
                                 }
 
                                 float oldHealth = target.getHealth();
-                                TrueDamageUtil.dealTrueDamage(target, damage);
+                                TrueDamageUtil.dealTrueDamage(target, damage, context.getSource().getPlayer());
                                 float newHealth = target.getHealth();
 
                                 context.getSource().sendSuccess(() -> Component.literal(
@@ -59,28 +73,34 @@ public class TrueDamageDebugCommand {
                     )
                 )
             )
-            .then(Commands.literal("debug")
-                .then(Commands.literal("entitydata")
-                    .then(Commands.argument("target", EntityArgument.entity())
-                        .executes(context -> {
-                            try {
-                                var entity = EntityArgument.getEntity(context, "target");
+            .then(Commands.literal("entitydata")
+                .then(Commands.argument("target", EntityArgument.entity())
+                    .executes(context -> {
+                        try {
+                            var entity = EntityArgument.getEntity(context, "target");
 
-                                if (!(entity instanceof LivingEntity target)) {
-                                    context.getSource().sendFailure(Component.literal("目标必须是生物实体"));
-                                    return 0;
-                                }
-
-                                String info = TrueDamageUtil.getEntityDataInfo(target);
-                                context.getSource().sendSuccess(() -> Component.literal(info), false);
-                                return 1;
-                            } catch (Exception e) {
-                                LOGGER.error("获取实体数据信息时出错", e);
-                                context.getSource().sendFailure(Component.literal("获取信息失败: " + e.getMessage()));
+                            if (!(entity instanceof LivingEntity target)) {
+                                context.getSource().sendFailure(Component.literal("目标必须是生物实体"));
                                 return 0;
                             }
-                        })
-                    )
+
+                            String info = TrueDamageUtil.getEntityDataInfo(target);
+
+                            // 分行发送信息，避免单条消息过长
+                            String[] lines = info.split("\n");
+                            for (String line : lines) {
+                                if (!line.trim().isEmpty()) {
+                                    context.getSource().sendSuccess(() -> Component.literal(line), false);
+                                }
+                            }
+
+                            return 1;
+                        } catch (Exception e) {
+                            LOGGER.error("获取实体数据信息时出错", e);
+                            context.getSource().sendFailure(Component.literal("获取信息失败: " + e.getMessage()));
+                            return 0;
+                        }
+                    })
                 )
             )
         );

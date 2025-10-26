@@ -78,14 +78,14 @@ public class Config {
         SimplifiedSpellCaster.MELEE_RANGE= (float) meleeRange;
         SimplifiedSpellCaster.FAR_RANGE= (float) farRange;
 
-        Global.common_damageProcessors.add((hurtEvent,maid)->{
+        Global.common_damageCalc.add((hurtEvent, maid)->{
             if(maid.getTask().getUid().toString().startsWith("maidspell")) {
                 hurtEvent.setAmount((float) (hurtEvent.getAmount()*spellDamageMultiplier));
             }
             return null;
         });
 
-        Global.common_coolDownProcessors.add((coolDown -> {
+        Global.common_coolDownCalc.add((coolDown -> {
             coolDown.cooldownticks= (int)(coolDown.cooldownticks*coolDownMultiplier);
             return null;
         }));

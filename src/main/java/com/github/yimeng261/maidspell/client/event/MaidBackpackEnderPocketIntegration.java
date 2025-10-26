@@ -43,7 +43,7 @@ public class MaidBackpackEnderPocketIntegration {
     private static List<EnderPocketService.EnderPocketMaidInfo> currentMaidInfos = new ArrayList<>();
 
     // 面板位置计算常量
-    private static final int PANEL_OFFSET_X = -95; // 背包界面左侧偏移量
+    private static final int PANEL_OFFSET_X = -91; // 背包界面左侧偏移量
     private static final int PANEL_OFFSET_Y = 30;       // 背包界面顶部偏移量
     private static final int TASK_LIST_OFFSET_X = -93;  // 任务列表打开时的额外偏移量
 

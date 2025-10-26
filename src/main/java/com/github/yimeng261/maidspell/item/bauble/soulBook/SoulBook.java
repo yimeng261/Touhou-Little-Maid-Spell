@@ -35,6 +35,7 @@ public class SoulBook extends Item {
         tooltip.add(Component.translatable("item.maidspell.soul_book.desc1").withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("item.maidspell.soul_book.desc2").withStyle(ChatFormatting.BLUE));
         tooltip.add(Component.translatable("item.maidspell.soul_book.desc3").withStyle(ChatFormatting.GOLD));
+        tooltip.add(Component.translatable("item.maidspell.soul_book.desc4").withStyle(ChatFormatting.LIGHT_PURPLE));
     }
 }
 

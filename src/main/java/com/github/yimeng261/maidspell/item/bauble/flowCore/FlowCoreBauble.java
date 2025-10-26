@@ -15,7 +15,7 @@ public class FlowCoreBauble implements IExtendBauble {
     }
 
     static {
-        Global.bauble_hurtProcessors_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.FLOW_CORE),(data)->{
+        Global.bauble_hurtCalc_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.FLOW_CORE),(data)->{
             EntityMaid maid = data.getMaid();
             data.setAmount(data.getAmount()*(1-0.15f*maid.getFavorabilityManager().getLevel()));
             return null;

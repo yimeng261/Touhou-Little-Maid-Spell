@@ -5,11 +5,6 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHand
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.inventory.MaidAwareBaubleItemHandler;
 import com.github.yimeng261.maidspell.inventory.SpellBookAwareMaidBackpackHandler;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
-import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
-import com.github.yimeng261.maidspell.utils.DataItem;
-import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -24,9 +19,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import oshi.util.tuples.Pair;
-
-import java.util.function.Function;
 
 /**
  * EntityMaid的Mixin，用于:
@@ -61,16 +53,11 @@ public abstract class EntityMaidMixin extends TamableAnimal {
     @Inject(method = "<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V",
             at = @At("TAIL"))
     private void replaceHandlers(EntityType<EntityMaid> type, Level world, CallbackInfo ci) {
-        LogUtils.getLogger().info("[MaidSpell] Replacing maid handlers in constructor");
-
         // 使用Shadow字段直接替换背包处理器
         this.maidInv = new SpellBookAwareMaidBackpackHandler(36, (EntityMaid)(Object)this);
-        LogUtils.getLogger().info("[MaidSpell] Successfully replaced maidInv with SpellBookAwareMaidBackpackHandler");
 
         // 使用Shadow字段直接替换饰品处理器
         this.maidBauble = new MaidAwareBaubleItemHandler(9, (EntityMaid)(Object)this);
-        LogUtils.getLogger().info("[MaidSpell] Successfully replaced maidBauble with MaidAwareBaubleItemHandler");
-
     }
 
     /**
@@ -87,17 +74,70 @@ public abstract class EntityMaidMixin extends TamableAnimal {
                 EntityMaid maid = (EntityMaid)(Object)this;
                 BlockPos maidPos = maid.blockPosition();
 
-                if (isInHiddenRetreatStructure(worldIn, maidPos)) {
+                if (maidSpell$isInHiddenRetreatStructure(worldIn, maidPos)) {
                     this.structureSpawn = false;
-                    LogUtils.getLogger().info("Prevented finalizeSpawn processing for maid in hidden_retreat structure at {}", maidPos);
+                    Global.LOGGER.debug("Prevented finalizeSpawn processing for maid in hidden_retreat structure at {}", maidPos);
                     cir.setReturnValue(spawnDataIn);
                 }
             }
         } catch (Exception e) {
-            LogUtils.getLogger().error("Failed to prevent finalizeSpawn processing for hidden_retreat maid", e);
+            Global.LOGGER.error("Failed to prevent finalizeSpawn processing for hidden_retreat maid", e);
         }
     }
 
+
+    /**
+     * 拦截女仆的remove方法，防止非正常途径移除血量不为0的女仆
+     */
+    @Inject(method = "remove(Lnet/minecraft/world/entity/Entity$RemovalReason;)V",
+            at = @At("HEAD"),
+            cancellable = true, remap = true)
+    public void onRemove(Entity.RemovalReason reason, CallbackInfo ci) {
+        try {
+            if((Object)this instanceof EntityMaid maid) {
+
+                // 如果女仆血量为0，允许正常移除
+                Global.LOGGER.debug("remove called for {}", maid);
+                if (maid.getHealth() <= 0.0f) {
+                    return;
+                }
+
+                // 检查调用栈，判断是否来自touhou-little-maid模组
+                if (!maidSpell$isCallValid()) {
+                    Global.LOGGER.debug("Prevented non-TLM removal of maid {} with health {}",
+                            maid.getUUID(), maid.getHealth());
+                    ci.cancel();
+                }
+            }
+
+        } catch (Exception e) {
+            Global.LOGGER.error("Failed to check maid removal source", e);
+        }
+    }
+
+    /**
+     * 检查调用栈是否来自touhou-little-maid模组
+     * @return 如果调用来自TLM模组返回true
+     */
+    @Unique
+    private boolean maidSpell$isCallValid() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        boolean callFromTouhouLittleMaidMod = false;
+        for(int i=stackTrace.length-10; i>=0; i--) {
+            StackTraceElement stackTraceElement = stackTrace[i];
+            String className = stackTraceElement.getClassName();
+            //Global.LOGGER.debug("className {}", className);
+            if(className.endsWith("EntityMaid")) {
+                continue;
+            }
+            if (className.contains("tlm") || className.toLowerCase().contains("maid")) {
+                callFromTouhouLittleMaidMod = true;
+                break;
+            }
+        }
+
+        return callFromTouhouLittleMaidMod;
+    }
 
     /**
      * 检查指定位置是否在hidden_retreat结构中
@@ -105,99 +145,20 @@ public abstract class EntityMaidMixin extends TamableAnimal {
      * @param pos 检查的位置
      * @return 如果在hidden_retreat结构中返回true
      */
-    private boolean isInHiddenRetreatStructure(ServerLevelAccessor worldIn, BlockPos pos) {
-        try {
-            // 检查当前位置是否在hidden_retreat结构中
-            // 使用结构管理器检查
-            var structureManager = worldIn.getLevel().structureManager();
-            var hiddenRetreatStructureSet = worldIn.registryAccess()
-                .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
-                .getOptional(new ResourceLocation("touhou_little_maid_spell", "hidden_retreat"));
+    @Unique
+    private boolean maidSpell$isInHiddenRetreatStructure(ServerLevelAccessor worldIn, BlockPos pos) {
+        // 检查当前位置是否在hidden_retreat结构中
+        // 使用结构管理器检查
+        var structureManager = worldIn.getLevel().structureManager();
+        var hiddenRetreatStructureSet = worldIn.registryAccess()
+            .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
+            .getOptional(new ResourceLocation("touhou_little_maid_spell", "hidden_retreat"));
 
-            if (hiddenRetreatStructureSet.isPresent()) {
-                // 检查此位置是否在hidden_retreat结构的范围内
-                var structureStart = structureManager.getStructureWithPieceAt(pos, hiddenRetreatStructureSet.get());
-                return structureStart.isValid();
-            }
-        } catch (Exception e) {
-            LogUtils.getLogger().debug("Error checking hidden_retreat structure at {}: {}", pos, e.getMessage());
+        if (hiddenRetreatStructureSet.isPresent()) {
+            // 检查此位置是否在hidden_retreat结构的范围内
+            var structureStart = structureManager.getStructureWithPieceAt(pos, hiddenRetreatStructureSet.get());
+            return structureStart.isValid();
         }
         return false;
-    }
-
-    @Override
-    public void setHealth(float health) {
-        try {
-            float currentHealth = getHealth();
-            //治疗则不处理
-            if (health >= currentHealth) {
-                super.setHealth(health);
-                return;
-            }
-
-            EntityMaid maid = (EntityMaid) (Object) this;
-            LivingEntityAccessor accessor = (LivingEntityAccessor) maid;
-
-            DataItem dataItem = new DataItem(maid, currentHealth - health);
-
-            SliverCercisBauble_process(dataItem); //优先处理银链
-
-            SoulBookBauble_process(dataItem); //优先处理魂之书
-
-            Global.bauble_hurtProcessors_final.forEach((key, func) -> func.apply(dataItem));
-
-            BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                Function<DataItem, Void> func = Global.bauble_hurtProcessors_pre.getOrDefault(bauble.getDescriptionId(), (d) -> null);
-                func.apply(dataItem);
-            });
-
-            BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                Function<DataItem, Void> func = Global.bauble_hurtProcessors_final.getOrDefault(bauble.getDescriptionId(), (d) -> null);
-                func.apply(dataItem);
-            });
-
-            if(dataItem.isCanceled()){
-                dataItem.setAmount(0);
-            }
-
-            float finalHealth = Math.max(0.0f, currentHealth - dataItem.getAmount());
-            getEntityData().set(accessor.getDataHealthIdAccessor(), finalHealth);
-
-            return;
-
-        } catch (Exception e) {
-            LOGGER.error("[SoulBookBauble] Error processing setHealth modification for maid {}", getUUID(), e);
-        }
-        super.setHealth(health);
-    }
-
-    @Unique
-    private void SoulBookBauble_process(DataItem dataItem) {
-        EntityMaid maid = dataItem.getMaid();
-        if(!BaubleStateManager.hasBauble(maid, MaidSpellItems.SOUL_BOOK)){
-            return;
-        }
-        float damage = dataItem.getAmount();
-        Pair<Boolean, Float> result = SoulBookBauble.damageCalc(maid, damage);
-        if (!result.getA()) {
-            LOGGER.debug("[SoulBookBauble] Damage cancelled for maid {} due to insufficient interval", maid.getUUID());
-            dataItem.setCanceled(true);
-            return;
-        }
-        dataItem.setAmount(result.getB());
-        SoulBookBauble.lastHurtTimeMap.put(maid.getUUID(), maid.tickCount);
-    }
-
-    @Unique
-    private void SliverCercisBauble_process(DataItem dataItem) {
-        EntityMaid maid = dataItem.getMaid();
-        if(!BaubleStateManager.hasBauble(maid, MaidSpellItems.SLIVER_CERCIS)){
-            return;
-        }
-        LivingEntity target = maid.getLastAttacker();
-        if(!target.isAlive()){
-            target = maid.getTarget();
-        }
-        TrueDamageUtil.dealTrueDamage(target, dataItem.getAmount()*0.8f);
     }
 }

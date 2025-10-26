@@ -1,13 +1,18 @@
 {
   "required": true,
   "minVersion": "0.8",
+  "priority": 3000,
   "package": "com.github.yimeng261.maidspell.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "maidspell.refmap.json",
   "mixins": [
     "AbstractMaidContainerMixin",
+    "CombatTrackerAccessor",
     "EntityMaidMixin",
-    "LivingEntityAccessor"
+    "EntityMixin",
+    "LivingEntityAccessor",
+    "LivingEntityMixin",
+    "MobMixin"
   ],
   "client": [
   ],
