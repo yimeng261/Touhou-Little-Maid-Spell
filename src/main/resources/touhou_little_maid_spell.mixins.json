@@ -9,7 +9,6 @@
     "AbstractMaidContainerMixin",
     "CombatTrackerAccessor",
     "EntityMaidMixin",
-    "EntityMixin",
     "LivingEntityAccessor",
     "LivingEntityMixin",
     "MobMixin"

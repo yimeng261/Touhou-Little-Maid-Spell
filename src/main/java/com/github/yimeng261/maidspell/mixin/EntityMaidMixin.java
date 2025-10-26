@@ -85,60 +85,6 @@ public abstract class EntityMaidMixin extends TamableAnimal {
         }
     }
 
-
-    /**
-     * 拦截女仆的remove方法，防止非正常途径移除血量不为0的女仆
-     */
-    @Inject(method = "remove(Lnet/minecraft/world/entity/Entity$RemovalReason;)V",
-            at = @At("HEAD"),
-            cancellable = true, remap = true)
-    public void onRemove(Entity.RemovalReason reason, CallbackInfo ci) {
-        try {
-            if((Object)this instanceof EntityMaid maid) {
-
-                // 如果女仆血量为0，允许正常移除
-                Global.LOGGER.debug("remove called for {}", maid);
-                if (maid.getHealth() <= 0.0f) {
-                    return;
-                }
-
-                // 检查调用栈，判断是否来自touhou-little-maid模组
-                if (!maidSpell$isCallValid()) {
-                    Global.LOGGER.debug("Prevented non-TLM removal of maid {} with health {}",
-                            maid.getUUID(), maid.getHealth());
-                    ci.cancel();
-                }
-            }
-
-        } catch (Exception e) {
-            Global.LOGGER.error("Failed to check maid removal source", e);
-        }
-    }
-
-    /**
-     * 检查调用栈是否来自touhou-little-maid模组
-     * @return 如果调用来自TLM模组返回true
-     */
-    @Unique
-    private boolean maidSpell$isCallValid() {
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        boolean callFromTouhouLittleMaidMod = false;
-        for(int i=stackTrace.length-10; i>=0; i--) {
-            StackTraceElement stackTraceElement = stackTrace[i];
-            String className = stackTraceElement.getClassName();
-            //Global.LOGGER.debug("className {}", className);
-            if(className.endsWith("EntityMaid")) {
-                continue;
-            }
-            if (className.contains("tlm") || className.toLowerCase().contains("maid")) {
-                callFromTouhouLittleMaidMod = true;
-                break;
-            }
-        }
-
-        return callFromTouhouLittleMaidMod;
-    }
-
     /**
      * 检查指定位置是否在hidden_retreat结构中
      * @param worldIn 世界访问器
