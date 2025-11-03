@@ -12,18 +12,26 @@ import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
+
+import java.util.*;
+
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraftforge.common.ForgeMod;
+import net.minecraftforge.common.world.ForgeChunkManager;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
+import net.minecraftforge.event.entity.EntityTeleportEvent;
+import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
@@ -45,9 +53,6 @@ import net.minecraftforge.event.entity.living.LivingDeathEvent;
 // SlashBlade相关导入
 import mods.flammpfeil.slashblade.capability.inputstate.InputStateCapabilityProvider;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
 import java.util.function.BiFunction;
 
 /**
@@ -64,6 +69,7 @@ public class MaidSpellEventHandler {
     /**
      * 当女仆进入世界时，确保有对应的SpellBookManager
      * 同时更新背包处理器的女仆引用（魂符收放后特别重要）
+     * 如果装备了锚定核心，启用区块加载
      */
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
@@ -79,11 +85,26 @@ public class MaidSpellEventHandler {
             }
             addStepHeightToMaid(maid);
             BaubleStateManager.updateAndCheckBaubleState(maid);
+            
+            // 检查女仆的区块加载状态
+            if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                ServerLevel serverLevel = (ServerLevel) maid.level();
+                MinecraftServer server = serverLevel.getServer();
+                
+                // 使用完全基于SavedData的检查方法
+                if (ChunkLoadingManager.shouldEnableChunkLoading(maid, server)) {
+                    // 从全局SavedData恢复区块加载
+                    ChunkLoadingManager.restoreChunkLoadingFromSavedData(maid, server);
+                } else {
+                    // 首次装备，启用区块加载
+                    ChunkLoadingManager.enableChunkLoading(maid);
+                }
+            }
         }
     }
     
     /**
-     * 玩家登录时同步末影腰包数据
+     * 玩家登录时同步末影腰包数据并恢复女仆区块加载
      */
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerLoggedInEvent event) {
@@ -94,6 +115,10 @@ public class MaidSpellEventHandler {
                     Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
                 }
             }
+            
+            // 为该玩家拥有的女仆恢复区块加载状态
+            restorePlayerMaidChunkLoading(player);
+            
             try {
                 // 获取玩家的末影腰包女仆数据并推送给客户端
                 List<EnderPocketService.EnderPocketMaidInfo> maidInfos = 
@@ -121,14 +146,18 @@ public class MaidSpellEventHandler {
     /**
      * 当女仆离开世界时，停止所有施法但不移除管理器
      * 因为女仆可能很快就会重新进入世界（魂符移动）
+     * 同时禁用区块加载
      */
     @SubscribeEvent
     public static void onEntityLeaveLevel(EntityLeaveLevelEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-            manager.stopAllCasting();
+            if (manager != null) {
+                manager.stopAllCasting();
+            }
             BaubleStateManager.removeMaidBaubles(maid);
+            
             LivingEntity owner = maid.getOwner();
             if(owner != null) {
                 Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).remove(maid.getUUID());
@@ -161,6 +190,70 @@ public class MaidSpellEventHandler {
     }
 
     /**
+     * 监听实体传送事件
+     * 当女仆被传送时，更新其区块加载状态
+     */
+    @SubscribeEvent
+    public static void onEntityTeleport(EntityTeleportEvent event) {
+        if (event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
+            try {
+                // 检查女仆是否装备了锚定核心
+                if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                    UUID maidId = maid.getUUID();
+                    Global.LOGGER.debug("检测到女仆 {} 传送事件，准备更新区块加载", maidId);
+
+                    // 预加载目标区块
+                    if(maid.level() instanceof ServerLevel level) {
+                        ChunkLoadingManager.preloadTeleportTarget(
+                                maid,
+                                new Vec3(event.getTargetX(), event.getTargetY(), event.getTargetZ()),
+                                level
+                        );
+                        Global.LOGGER.debug("预加载女仆 {} 传送目标区块", maidId);
+                    }
+
+                }
+            } catch (Exception e) {
+                Global.LOGGER.error("处理女仆传送事件时发生错误: {}", e.getMessage(), e);
+            }
+        }
+    }
+    
+    /**
+     * 监听实体跨维度传送事件
+     * 当女仆跨维度传送时，更新其区块加载状态
+     */
+    @SubscribeEvent
+    public static void onEntityTravelToDimension(EntityTravelToDimensionEvent event) {
+        if (event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
+            try {
+                // 检查女仆是否装备了锚定核心
+                if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+
+                    UUID maidId = maid.getUUID();
+                    Global.LOGGER.debug("女仆 {} 跨维度传送，禁用当前维度区块加载", maidId);
+                    
+                    // 启用新维度的区块加载
+                    MinecraftServer server = maid.getServer();
+                    if (server != null) {
+                        // 重新获取女仆实体（可能在新维度）
+                        Entity newMaid = Objects.requireNonNull(server.getLevel(event.getDimension()))
+                            .getEntity(maidId);
+                        if (newMaid instanceof EntityMaid newMaidEntity) {
+                            ChunkLoadingManager.enableChunkLoading(newMaidEntity);
+                            Global.LOGGER.debug("女仆 {} 跨维度传送完成，启用新维度区块加载", maidId);
+                        }
+
+                    }
+                }
+            } catch (Exception e) {
+                Global.LOGGER.error("处理女仆跨维度传送事件时发生错误: {}", e.getMessage(), e);
+            }
+        }
+    }
+
+
+    /**
      * 监听女仆tick事件
      * 在每个tick中处理法术相关逻辑
      */
@@ -173,7 +266,7 @@ public class MaidSpellEventHandler {
                 if (manager != null) {
                     manager.tick();
                 }
-                // 每20个tick更新一次结盟状态
+                // 每20个tick更新一次结盟状态和区块加载
                 if(maid.tickCount%20 == 0){
                     if(maid.isNoAi() && maid.getTask().getUid().toString().startsWith("maidspell")){
                         maid.setNoAi(false);
@@ -185,6 +278,7 @@ public class MaidSpellEventHandler {
                     }else{
                         AllianceManager.setMaidAlliance(maid, false);
                     }
+                    Global.LOGGER.debug("女仆 {} 区块仍加载", maid.getUUID());
                 }
             } catch (Exception e) {
                 LOGGER.error("Error in maid tick handler for maid {}: {}", 
@@ -201,11 +295,12 @@ public class MaidSpellEventHandler {
             processor_pre(event, maid);
         }
 
+
         if(entity instanceof EntityMaid maid){
-            Global.common_hurtProcessors.forEach(function -> function.apply(event, maid));
+            Global.common_hurtCalc.forEach(function -> function.apply(event, maid));
 
             BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_commonHurtProcessors_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+                BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_commonHurtCalc_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
                 func.apply(event, maid);
             });
         }
@@ -217,6 +312,7 @@ public class MaidSpellEventHandler {
         Entity entity = event.getEntity();
         Entity direct = event.getSource().getDirectEntity();
         Entity source = event.getSource().getEntity();
+        
         if(source instanceof EntityMaid maid){
             processor_aft(event, maid);
         }else if(direct instanceof EntityMaid maid){
@@ -224,7 +320,7 @@ public class MaidSpellEventHandler {
         }
 
         if(entity instanceof Player player){
-            Global.player_hurtProcessors_aft.forEach(func-> func.apply(event,player));
+            Global.player_hurtCalc_aft.forEach(func-> func.apply(event,player));
         }
     }
 
@@ -232,7 +328,7 @@ public class MaidSpellEventHandler {
     public static void onMaidEffectAdded(MobEffectEvent.Added event) {
         if (event.getEntity() instanceof EntityMaid maid) {
             BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                BiFunction<MobEffectEvent.Added, EntityMaid, Void> func = Global.bauble_effectAddedProcessors.getOrDefault(bauble.getDescriptionId(), (mobEffectEvent, entityMaid) -> null);
+                BiFunction<MobEffectEvent.Added, EntityMaid, Void> func = Global.bauble_effectAddedCalc.getOrDefault(bauble.getDescriptionId(), (mobEffectEvent, entityMaid) -> null);
                 func.apply(event, maid);
             });
         }
@@ -242,16 +338,16 @@ public class MaidSpellEventHandler {
 
     private static void processor_aft(LivingDamageEvent event, EntityMaid maid) {
         BaubleStateManager.getBaubles(maid).forEach(bauble->{
-            BiFunction<LivingDamageEvent, EntityMaid, Void> func = Global.bauble_damageProcessors_aft.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+            BiFunction<LivingDamageEvent, EntityMaid, Void> func = Global.bauble_damageCalc_aft.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
             func.apply(event, maid);
         });
     }
 
     private static void processor_pre(LivingHurtEvent event, EntityMaid maid) {
-        Global.common_damageProcessors.forEach(function -> function.apply(event, maid));
+        Global.common_damageCalc.forEach(function -> function.apply(event, maid));
 
         BaubleStateManager.getBaubles(maid).forEach(bauble->{
-            BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_damageProcessors_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
+            BiFunction<LivingHurtEvent, EntityMaid, Void> func = Global.bauble_damageCalc_pre.getOrDefault(bauble.getDescriptionId(), (livingHurtEvent, entityMaid) -> null);
             func.apply(event, maid);
         });
     }
@@ -299,7 +395,7 @@ public class MaidSpellEventHandler {
         if (event.getEntity() instanceof EntityMaid maid) {
             // 先处理饰品的死亡事件
             BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                BiFunction<LivingDeathEvent, EntityMaid, Void> func = Global.bauble_deathProcessors.getOrDefault(bauble.getDescriptionId(), (livingDeathEvent, entityMaid) -> null);
+                BiFunction<LivingDeathEvent, EntityMaid, Void> func = Global.bauble_deathCalc.getOrDefault(bauble.getDescriptionId(), (livingDeathEvent, entityMaid) -> null);
                 func.apply(event, maid);
             });
             
@@ -329,7 +425,6 @@ public class MaidSpellEventHandler {
             BaubleStateManager.removeMaidBaubles(maid);
             MaidSlashBladeData.remove(maid.getUUID());
             SpellBookManager.removeManager(maid);
-            
         } catch (Exception e) {
             // 静默处理清理错误，避免影响游戏正常运行
         }
@@ -378,6 +473,80 @@ public class MaidSpellEventHandler {
         }
     }
 
+    /**
+     * 为玩家拥有的女仆恢复区块加载状态
+     * 在玩家登录时调用，确保远距离的女仆也能恢复区块加载
+     * 完全基于全局SavedData，不依赖实体NBT访问
+     */
+    private static void restorePlayerMaidChunkLoading(ServerPlayer player) {
+        try {
+            MinecraftServer server = player.getServer();
+            if (server == null) return;
+            
+            // 获取全局区块加载数据
+            ChunkLoadingManager.ChunkLoadingData data = ChunkLoadingManager.ChunkLoadingData.get(server);
+            Map<UUID, ChunkLoadingManager.ChunkKey> savedPositions = data.getSavedPositions();
+            
+            if (savedPositions.isEmpty()) {
+                return; // 没有需要恢复的数据
+            }
+            
+            int restoredCount = 0;
+            int totalCount = savedPositions.size();
+            
+            LOGGER.info("开始为玩家 {} 恢复 {} 个女仆的区块加载状态", player.getName().getString(), totalCount);
+            
+            for (Map.Entry<UUID, ChunkLoadingManager.ChunkKey> entry : savedPositions.entrySet()) {
+                UUID maidId = entry.getKey();
+                ChunkLoadingManager.ChunkKey info = entry.getValue();
+                
+                try {
+                    // 获取对应维度的服务器世界
+                    ServerLevel targetLevel = info.level();
+                    if (targetLevel == null) {
+                        LOGGER.warn("无法找到维度 {} 来恢复女仆 {} 的区块加载", info.level(), maidId);
+                        continue;
+                    }
+                    
+                    // 直接基于SavedData恢复区块加载，不需要等待实体加载
+                    boolean success = ForgeChunkManager.forceChunk(
+                        targetLevel,
+                        MaidSpellMod.MOD_ID,
+                        maidId,
+                        info.chunkPos().x,
+                        info.chunkPos().z,
+                        true,
+                        true
+                    );
+                    
+                    if (success) {
+                        // 同时更新内存中的记录
+                        ChunkLoadingManager.maidChunkPositions.put(maidId, info);
+                        restoredCount++;
+                        
+                        LOGGER.debug("成功恢复女仆 {} 的区块加载: {} ({})", 
+                            maidId, info.chunkPos(), info.level());
+                    } else {
+                        LOGGER.warn("无法恢复女仆 {} 的区块加载: {} ({})", 
+                            maidId, info.chunkPos(), info.level());
+                    }
+                } catch (Exception e) {
+                    LOGGER.warn("恢复女仆 {} 区块加载时发生错误: {}", maidId, e.getMessage());
+                }
+            }
+            
+            if (restoredCount > 0) {
+                LOGGER.info("为玩家 {} 成功恢复了 {}/{} 个女仆的区块加载", 
+                    player.getName().getString(), restoredCount, totalCount);
+            } else {
+                LOGGER.warn("为玩家 {} 恢复女仆区块加载失败，没有成功恢复任何女仆", 
+                    player.getName().getString());
+            }
+        } catch (Exception e) {
+            LOGGER.error("为玩家 {} 恢复女仆区块加载时发生严重错误", player.getName().getString(), e);
+        }
+    }
+    
     /**
      * 检查指定位置是否在hidden_retreat结构中
      * @param level 维度

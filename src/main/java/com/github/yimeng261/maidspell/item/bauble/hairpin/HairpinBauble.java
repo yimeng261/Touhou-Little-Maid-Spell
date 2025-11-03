@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.item.bauble.hairpin;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidAfterEatEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
@@ -41,7 +42,7 @@ public class HairpinBauble implements IExtendBauble {
 
     static {
         // 注册女仆受伤时的处理器 - 将伤害转移给主人
-        Global.bauble_commonHurtProcessors_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.HAIRPIN), (event, maid) -> {
+        Global.bauble_commonHurtCalc_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.HAIRPIN), (event, maid) -> {
             LivingEntity owner = maid.getOwner();
             DamageSource source = event.getSource();
 
@@ -51,24 +52,24 @@ public class HairpinBauble implements IExtendBauble {
 
             // 如果伤害源已经是InfoDamageSource且标记为hairpin_redirect，说明是回流伤害，不再转移
             if (source instanceof InfoDamageSource infoDamage && "hairpin_redirect".equals(infoDamage.msg_type)) {
-                LOGGER.debug("[hairpin] damage redirected finished, amount: {}, already redirected", event.getAmount());
+                //LOGGER.debug("[hairpin] damage redirected finished, amount: {}, already redirected", event.getAmount());
                 return null;
             }
 
-            // 创建带有hairpin标记的InfoDamageSource转发给主人
-            InfoDamageSource hairpinDamage = new InfoDamageSource("hairpin_redirect", source);
+            // 创建带有hairpin标记的InfoDamageSource转发给主人，使用安全的创建方法
+            InfoDamageSource hairpinDamage = InfoDamageSource.create(owner.level(), "hairpin_redirect", source);
             hairpinDamage.setSourceEntity(maid);
             owner.setInvulnerable(false);
             owner.invulnerableTime = 0;
             owner.hurt(hairpinDamage, event.getAmount());
             event.setCanceled(true);
 
-            LOGGER.debug("[hairpin] damage redirected from maid {} to owner {}, amount: {}", maid.getUUID(), owner.getUUID(), event.getAmount());
+            //LOGGER.debug("[hairpin] damage redirected from maid {} to owner {}, amount: {}", maid.getUUID(), owner.getUUID(), event.getAmount());
             return null;
         });
 
         // 注册玩家受伤时的处理器 - 处理hairpin重定向的伤害
-        Global.player_hurtProcessors_aft.add((event, player) -> {
+        Global.player_hurtCalc_aft.add((event, player) -> {
             DamageSource source = event.getSource();
             
             if (source instanceof InfoDamageSource infoDamage && "hairpin_redirect".equals(infoDamage.msg_type)) {
@@ -77,7 +78,7 @@ public class HairpinBauble implements IExtendBauble {
                 maid.invulnerableTime = 0;
                 maid.hurt(source, event.getAmount());
                 event.setCanceled(true);
-                LOGGER.debug("[hairpin] damage redirected back from owner {} to maid {}, amount: {}", player.getUUID(), maid.getUUID(), event.getAmount());
+                //LOGGER.debug("[hairpin] damage redirected back from owner {} to maid {}, amount: {}", player.getUUID(), maid.getUUID(), event.getAmount());
             }
             return null;
         });
@@ -99,7 +100,7 @@ public class HairpinBauble implements IExtendBauble {
                 if(fl>=2){
                     int duration = effectInstance.getDuration();
                     if(effectInstance.getEffect().isBeneficial()){
-                        duration = Math.max((int)(duration*1.15), duration+15);
+                        duration = Math.max((int)(duration*Config.hairpinBeneficialEffectExtension), duration+Config.hairpinMinExtensionTicks);
                         effectInstance.update(new MobEffectInstance(effectInstance.getEffect(), duration, event.getEffectInstance().getAmplifier(), event.getEffectInstance().isAmbient(), event.getEffectInstance().isVisible()));
                     }
                 }
@@ -111,7 +112,7 @@ public class HairpinBauble implements IExtendBauble {
     public void afterMaidEat(MaidAfterEatEvent event){
         EntityMaid maid = event.getMaid();
         if(ItemsUtil.getBaubleSlotInMaid(maid,this)>=0){
-            maid.getFavorabilityManager().add(1);
+            maid.getFavorabilityManager().add(Config.hairpinFavorabilityGain);
         }
     }
 }

@@ -63,15 +63,12 @@ public class MaidSpellMod {
     
     private boolean checkDependencies() {
         boolean hasTouhouMaid = checkModLoaded("touhou_little_maid");
-        if (!hasTouhouMaid) {
-            return false;
-        }
-        return true;
+        return hasTouhouMaid;
     }
     
     private boolean checkModLoaded(String modId) {
         return net.minecraftforge.fml.ModList.get().isLoaded(modId);
     }
-    
+
 
 }

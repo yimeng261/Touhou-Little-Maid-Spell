@@ -8,6 +8,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -22,6 +23,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.UUID;
 
 /**
  * 寻风之铃实体 - 模仿末影之眼的飞行轨迹，但使用樱花粒子和自定义音效
@@ -41,6 +44,7 @@ public class WindSeekingBellEntity extends Entity {
     private double aZ;
 
     private Player player;
+    private UUID playerUUID;
 
     public WindSeekingBellEntity(EntityType<? extends WindSeekingBellEntity> entityType, Level level) {
         super(entityType, level);
@@ -49,6 +53,7 @@ public class WindSeekingBellEntity extends Entity {
     public WindSeekingBellEntity(Level level, Player player) {
         this(MaidSpellEntities.WIND_SEEKING_BELL.get(), level);
         this.player = player;
+        this.playerUUID = player.getUUID();
         this.setPos(player.getX(), player.getY(), player.getZ());
     }
 
@@ -63,6 +68,22 @@ public class WindSeekingBellEntity extends Entity {
     public ItemStack getItem() {
         ItemStack itemStack = this.getItemRaw();
         return itemStack.isEmpty() ? ItemStack.EMPTY : itemStack;
+    }
+
+    /**
+     * 获取玩家，如果player为null则通过UUID查找
+     */
+    private Player getPlayer() {
+        if (this.player != null && this.player.isAlive()) {
+            return this.player;
+        }
+        
+        if (this.playerUUID != null && this.level() instanceof ServerLevel serverLevel) {
+            this.player = serverLevel.getPlayerByUUID(this.playerUUID);
+            return this.player;
+        }
+        
+        return null;
     }
 
     @Override
@@ -200,17 +221,29 @@ public class WindSeekingBellEntity extends Entity {
             0.8F
         );
 
-        this.player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED,1200,1));
+        Player currentPlayer = this.getPlayer();
+        if (currentPlayer != null) {
+            currentPlayer.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 1200, 1));
 
-        if(this.player.isCreative()){
-            this.player.teleportTo(this.aX, this.aY, this.aZ);
-        }
+            if (currentPlayer.isCreative()) {
+                currentPlayer.teleportTo(this.aX, this.aY, this.aZ);
+            }
 
-        if (this.surviveAfterDeath && !this.player.isCreative()) {
-            ItemStack item = this.getItem();
-            if (!item.isEmpty()) {
-                ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
-                this.level().addFreshEntity(itemEntity);
+            if (this.surviveAfterDeath && !currentPlayer.isCreative()) {
+                ItemStack item = this.getItem();
+                if (!item.isEmpty()) {
+                    ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
+                    this.level().addFreshEntity(itemEntity);
+                }
+            }
+        } else {
+            // 如果找不到玩家，仍然掉落物品（如果设置了surviveAfterDeath）
+            if (this.surviveAfterDeath) {
+                ItemStack item = this.getItem();
+                if (!item.isEmpty()) {
+                    ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
+                    this.level().addFreshEntity(itemEntity);
+                }
             }
         }
     }
@@ -231,8 +264,16 @@ public class WindSeekingBellEntity extends Entity {
         compound.putDouble("TargetX", this.targetX);
         compound.putDouble("TargetY", this.targetY);
         compound.putDouble("TargetZ", this.targetZ);
+        compound.putDouble("AX", this.aX);
+        compound.putDouble("AY", this.aY);
+        compound.putDouble("AZ", this.aZ);
         compound.putInt("Life", this.life);
         compound.putBoolean("SurviveAfterDeath", this.surviveAfterDeath);
+        
+        // 保存玩家UUID
+        if (this.playerUUID != null) {
+            compound.putUUID("PlayerUUID", this.playerUUID);
+        }
     }
 
     @Override
@@ -242,8 +283,16 @@ public class WindSeekingBellEntity extends Entity {
         this.targetX = compound.getDouble("TargetX");
         this.targetY = compound.getDouble("TargetY");
         this.targetZ = compound.getDouble("TargetZ");
+        this.aX = compound.getDouble("AX");
+        this.aY = compound.getDouble("AY");
+        this.aZ = compound.getDouble("AZ");
         this.life = compound.getInt("Life");
         this.surviveAfterDeath = compound.getBoolean("SurviveAfterDeath");
+        
+        // 加载玩家UUID
+        if (compound.hasUUID("PlayerUUID")) {
+            this.playerUUID = compound.getUUID("PlayerUUID");
+        }
     }
 
     @Override

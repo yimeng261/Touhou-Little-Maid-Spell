@@ -33,9 +33,8 @@ public class SilverCercis extends Item {
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
 
-        tooltip.add(Component.translatable("item.maidspell.sliver_cercis.desc1")
-            .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.maidspell.sliver_cercis.desc2")
-            .withStyle(ChatFormatting.BLUE));
+        tooltip.add(Component.translatable("item.maidspell.sliver_cercis.desc1").withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("item.maidspell.sliver_cercis.desc2").withStyle(ChatFormatting.BLUE));
+        tooltip.add(Component.translatable("item.maidspell.sliver_cercis.desc3").withStyle(ChatFormatting.RED));
     }
 } 

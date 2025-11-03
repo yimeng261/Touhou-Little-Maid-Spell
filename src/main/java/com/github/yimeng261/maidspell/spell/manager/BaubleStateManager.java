@@ -85,7 +85,7 @@ public class BaubleStateManager {
         for (int i = 0; i < handler.getSlots(); i++) {
             ItemStack stack = handler.getStackInSlot(i);
             if (!stack.isEmpty()) {
-                baubles.add(stack.getItem()); // 创建副本避免引用问题
+                baubles.add(stack.getItem());
             }
         }
 
