@@ -42,7 +42,7 @@ public class HairpinBauble implements IExtendBauble {
 
     static {
         // 注册女仆受伤时的处理器 - 将伤害转移给主人
-        Global.bauble_commonHurtCalc_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.HAIRPIN), (event, maid) -> {
+        Global.bauble_commonHurtCalc_pre.put(MaidSpellItems.HAIRPIN.get(), (event, maid) -> {
             LivingEntity owner = maid.getOwner();
             DamageSource source = event.getSource();
 

@@ -69,10 +69,12 @@ public abstract class AbstractSpellData implements ISpellData {
                 func.apply(coolDown);
             });
 
-            BaubleStateManager.getBaubles(maid).forEach(bauble->{
-                Function<CoolDown,Void> func = Global.bauble_coolDownCalc.computeIfAbsent(bauble.getDescriptionId(), k-> (cooldown) -> null);
-                func.apply(coolDown);
+            Global.bauble_coolDownCalc.forEach((item,func)->{
+                if(BaubleStateManager.hasBauble(maid, item)) {
+                    func.apply(coolDown);
+                }
             });
+
             spellCooldowns.put(spellId, coolDown.cooldownticks);
         }
     }

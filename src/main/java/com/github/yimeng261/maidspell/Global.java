@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.utils.DataItem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
@@ -44,20 +45,20 @@ public class Global {
 
     public static ArrayList<Function<AbstractSpellData.CoolDown, Void>> common_coolDownCalc = new ArrayList<>();
 
-    public static Map<String,BiFunction<LivingDamageEvent,EntityMaid,Void>> bauble_damageCalc_aft = new HashMap<>();
+    public static Map<Item,BiFunction<LivingDamageEvent,EntityMaid,Void>> bauble_damageCalc_aft = new HashMap<>();
 
-    public static Map<String,BiFunction<LivingHurtEvent,EntityMaid,Void>> bauble_damageCalc_pre = new HashMap<>();
+    public static Map<Item,BiFunction<LivingHurtEvent,EntityMaid,Void>> bauble_damageCalc_pre = new HashMap<>();
 
-    public static Map<String,BiFunction<LivingHurtEvent,EntityMaid,Void>> bauble_commonHurtCalc_pre = new HashMap<>();
+    public static Map<Item,BiFunction<LivingHurtEvent,EntityMaid,Void>> bauble_commonHurtCalc_pre = new HashMap<>();
 
-    public static Map<String,Function<DataItem,Void>> bauble_hurtCalc_pre = new HashMap<>();
+    public static Map<Item,Function<DataItem,Void>> bauble_hurtCalc_pre = new HashMap<>();
 
-    public static Map<String,Function<DataItem,Void>> bauble_hurtCalc_final = new HashMap<>();
+    public static Map<Item,Function<DataItem,Void>> bauble_hurtCalc_final = new HashMap<>();
 
-    public static Map<String, Function<AbstractSpellData.CoolDown, Void>> bauble_coolDownCalc = new HashMap<>();
+    public static Map<Item, Function<AbstractSpellData.CoolDown, Void>> bauble_coolDownCalc = new HashMap<>();
 
-    public static Map<String,BiFunction<MobEffectEvent.Added,EntityMaid,Void>> bauble_effectAddedCalc = new HashMap<>();
+    public static Map<Item,BiFunction<MobEffectEvent.Added,EntityMaid,Void>> bauble_effectAddedCalc = new HashMap<>();
 
-    public static Map<String,BiFunction<LivingDeathEvent,EntityMaid,Void>> bauble_deathCalc = new HashMap<>();
+    public static Map<Item,BiFunction<LivingDeathEvent,EntityMaid,Void>> bauble_deathCalc = new HashMap<>();
 
 }

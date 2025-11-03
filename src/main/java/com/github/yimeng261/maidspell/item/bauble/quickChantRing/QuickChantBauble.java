@@ -7,7 +7,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 
 public class QuickChantBauble implements IExtendBauble {
     static {
-        Global.bauble_coolDownCalc.put(MaidSpellItems.itemDesc(MaidSpellItems.QUICK_CHANT_RING),(coolDown)->{
+        Global.bauble_coolDownCalc.put(MaidSpellItems.QUICK_CHANT_RING.get(),(coolDown)->{
             coolDown.cooldownticks = (int) (coolDown.cooldownticks*(1-Config.quickChantRingCooldownReduction*coolDown.maid.getFavorabilityManager().getLevel()));
             return null;
         });

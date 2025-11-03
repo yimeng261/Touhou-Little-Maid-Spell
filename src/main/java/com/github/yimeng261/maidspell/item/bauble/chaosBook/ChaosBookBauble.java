@@ -37,7 +37,7 @@ public class ChaosBookBauble implements IExtendBauble {
 
     static {
         // 注册女仆造成伤害时的处理器
-        Global.bauble_damageCalc_aft.put(MaidSpellItems.itemDesc(MaidSpellItems.CHAOS_BOOK), (event, maid) -> {
+        Global.bauble_damageCalc_aft.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
 
             LivingEntity target = event.getEntity();
             DamageSource source = event.getSource();

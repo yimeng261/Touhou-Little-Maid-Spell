@@ -150,7 +150,7 @@ public class EntityMaidMixin {
             if(className.endsWith("EntityMaid")) {
                 continue;
             }
-            if (className.contains("tlm") || className.toLowerCase().contains("maid")) {
+            if (className.toLowerCase().contains("tlm") || className.toLowerCase().contains("maid")) {
                 callFromTouhouLittleMaidMod = true;
                 break;
             }
