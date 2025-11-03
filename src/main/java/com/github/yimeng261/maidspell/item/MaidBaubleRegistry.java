@@ -12,6 +12,7 @@ import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
+import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.quickChantRing.QuickChantBauble;
 import com.github.yimeng261.maidspell.item.bauble.rockCrystal.RockCrystalBauble;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
@@ -84,6 +85,10 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         if(MaidSpellItems.WOUND_RIME_BLADE != null){
             manager.bind(MaidSpellItems.WOUND_RIME_BLADE, new WoundRimeBladeBauble());
+        }
+
+        if(MaidSpellItems.ANCHOR_CORE != null){
+            manager.bind(MaidSpellItems.ANCHOR_CORE, new AnchorCoreBauble());
         }
     }
 }

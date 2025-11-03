@@ -5,6 +5,9 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHand
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.inventory.MaidAwareBaubleItemHandler;
 import com.github.yimeng261.maidspell.inventory.SpellBookAwareMaidBackpackHandler;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
@@ -104,6 +107,14 @@ public class EntityMaidMixin {
         try {
             if((Object)this instanceof EntityMaid maid) {
 
+                // 检查女仆是否装备了锚定核心饰品
+                if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                    Global.LOGGER.debug("Maid {} does not have anchor_core, allowing removal", maid.getUUID());
+                    return;
+                }
+
+                ChunkLoadingManager.enableChunkLoading(maid);
+
                 // 如果女仆血量为0，允许正常移除
                 Global.LOGGER.debug("remove called for {}", maid);
                 if (maid.getHealth() <= 0.0f) {
@@ -112,7 +123,7 @@ public class EntityMaidMixin {
 
                 // 检查调用栈，判断是否来自touhou-little-maid模组
                 if (!maidSpell$isCallValid()) {
-                    Global.LOGGER.debug("Prevented non-TLM removal of maid {} with health {}",
+                    Global.LOGGER.debug("Prevented non-TLM removal of maid {} with health {} (anchor_core protection)",
                             maid.getUUID(), maid.getHealth());
                     ci.cancel();
                     return;

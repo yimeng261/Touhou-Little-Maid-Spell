@@ -15,6 +15,7 @@ import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBook;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBook;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocket;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBlade;
+import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import net.minecraft.Util;
@@ -47,6 +48,7 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> SOUL_BOOK = ITEMS.register("soul_book", SoulBook::new);
     public static final RegistryObject<Item> ENDER_POCKET = ITEMS.register("ender_pocket", EnderPocket::new);
     public static final RegistryObject<Item> WOUND_RIME_BLADE = ITEMS.register("wound_rime_blade", WoundRimeBlade::new);
+    public static final RegistryObject<Item> ANCHOR_CORE = ITEMS.register("anchor_core", AnchorCore::new);
     
     // 寻风之铃
     public static final RegistryObject<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);

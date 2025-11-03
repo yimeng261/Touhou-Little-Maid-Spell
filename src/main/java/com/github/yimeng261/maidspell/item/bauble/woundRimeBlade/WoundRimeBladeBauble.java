@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -26,8 +27,6 @@ public class WoundRimeBladeBauble implements IExtendBauble {
 
     private static final ConcurrentHashMap<UUID, ConcurrentHashMap<LivingEntity, Pair<Float,Integer>>> maidWoundRimeBladeMap = new ConcurrentHashMap<>();
 
-    private static final int count = 15;
-
     public WoundRimeBladeBauble() {
         MinecraftForge.EVENT_BUS.register(this);
     }
@@ -47,10 +46,10 @@ public class WoundRimeBladeBauble implements IExtendBauble {
             }
             ConcurrentHashMap<LivingEntity,Pair<Float,Integer>> map = maidWoundRimeBladeMap.get(maid.getUUID());
             float nowHealth = entity.getHealth();
-            Pair<Float,Integer> record = map.computeIfAbsent(entity, k -> new Pair<>(nowHealth, count));
+            Pair<Float,Integer> record = map.computeIfAbsent(entity, k -> new Pair<>(nowHealth, Config.woundRimeBladeRecordDuration));
             float recordHealth = record.getA();
             float newHealth = Math.min(recordHealth,nowHealth) - damage;
-            map.put(entity, new Pair<>(newHealth, record.getB() + count));
+            map.put(entity, new Pair<>(newHealth, record.getB() + Config.woundRimeBladeRecordDuration));
         }
     }
 

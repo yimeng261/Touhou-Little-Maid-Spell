@@ -1,7 +1,6 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
-import com.github.yimeng261.maidspell.Global;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Final;

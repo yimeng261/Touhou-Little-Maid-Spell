@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item.bauble.silverCercis;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
@@ -20,8 +21,8 @@ public class SilverCercisBauble implements IExtendBauble {
         UUID uuid = maid.getUUID();
         Pair<Integer,Integer> record = maidCercisMap.computeIfAbsent(uuid, k -> new Pair<>(0, 0));
         int tick = maid.tickCount;
-        if(record.getA() >= 3 || tick - record.getB() > 5){
-            if(TrueDamageUtil.dealTrueDamage(target, dataItem.getAmount()*0.8f,maid)){
+        if(record.getA() >= Config.silverCercisTriggerCount || tick - record.getB() > Config.silverCercisCooldownTicks){
+            if(TrueDamageUtil.dealTrueDamage(target, dataItem.getAmount()*(float)Config.silverCercisTrueDamageMultiplier,maid)){
                 maidCercisMap.put(uuid, new Pair<>(0,tick));
             }
         }else{

@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.bleedingHeart;
 
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -11,9 +12,9 @@ public class BleedingHeartBauble implements IExtendBauble {
             Float amount = event.getAmount();
             Player owner = (Player) maid.getOwner();
             if (owner != null) {
-                owner.heal(amount*0.1f);
+                owner.heal(amount*(float)Config.bleedingHeartHealRatio);
             }
-            maid.heal(amount*0.1f);
+            maid.heal(amount*(float)Config.bleedingHeartHealRatio);
             return null;
         });
 

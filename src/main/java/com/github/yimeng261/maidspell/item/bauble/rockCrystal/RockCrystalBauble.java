@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item.bauble.rockCrystal;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -24,7 +25,7 @@ public class RockCrystalBauble implements IExtendBauble {
         if (knockbackResistance.getModifier(KNOCKBACK_RESISTANCE_UUID) == null) {
             knockbackResistance.addPermanentModifier(
                 new AttributeModifier(KNOCKBACK_RESISTANCE_UUID, "Rock Crystal Knockback Resistance", 
-                    8, AttributeModifier.Operation.ADDITION)
+                    Config.rockCrystalKnockbackResistance, AttributeModifier.Operation.ADDITION)
             );
         }
     }
