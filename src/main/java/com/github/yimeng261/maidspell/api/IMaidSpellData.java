@@ -102,12 +102,6 @@ public abstract class IMaidSpellData {
 
     public void setCasting(boolean casting) {
         this.isCasting = casting;
-        if(!casting && this instanceof MaidGoetySpellData){
-            StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
-            for(StackTraceElement stackTraceElement : stackTraceElements) {
-                LOGGER.debug("class: {},method: {}",stackTraceElement.getClassName(),stackTraceElement.getMethodName());
-            }
-        }
     }
 
     /**

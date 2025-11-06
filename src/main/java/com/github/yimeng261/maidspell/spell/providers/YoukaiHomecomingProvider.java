@@ -71,7 +71,7 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
         MaidYHSpellData data = getData(maid);
 
         Set<ItemStack> allDanmakuItems = data.getSpellBooks();
-        LOGGER.debug("Initiating casting for {} items", allDanmakuItems.size());
+        //LOGGER.debug("Initiating casting for {} items", allDanmakuItems.size());
         if (allDanmakuItems.isEmpty()) {
             return;
         }

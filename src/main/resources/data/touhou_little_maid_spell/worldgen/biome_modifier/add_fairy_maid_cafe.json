@@ -1,0 +1,6 @@
+{
+  "type": "forge:add_structures",
+  "biomes": "#touhou_little_maid_spell:has_structure/fairy_maid_cafe",
+  "structures": "touhou_little_maid_spell:fairy_maid_cafe_set"
+}
+

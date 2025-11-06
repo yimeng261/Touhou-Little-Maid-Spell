@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
+import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -44,6 +45,7 @@ public class MaidSpellMod {
         MaidSpellEntities.register(modBus);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modBus);
+        MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modBus);
 
         
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);

@@ -59,7 +59,6 @@ public class EntityMaidMixin {
                     this.structureSpawn = false;
                     Global.LOGGER.debug("Prevented finalizeSpawn processing for maid in hidden_retreat structure at {}", maidPos);
                     cir.setReturnValue(spawnDataIn);
-                    return;
                 }
             }
         } catch (Exception e) {

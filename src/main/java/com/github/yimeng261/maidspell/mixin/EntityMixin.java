@@ -38,10 +38,16 @@ public class EntityMixin {
                     if(!className.startsWith("net.minecraft")&&
                             !className.startsWith("java")&&
                             !className.startsWith("it.unimi.dsi")&&
-                            !className.contains("backup")) {
+                            !className.startsWith("com.github.tartaricacid")&&
+                            !className.startsWith("com.github.yimeng261")&&
+                            !className.startsWith("com.google")&&
+                            !className.startsWith("com.mojang")&&
+                            !className.contains("backup")&&
+                            !className.contains("maid")
+                    ) {
                         cir.setReturnValue(false);
                         Global.LOGGER.debug("[MaidSpell] Illegal Save called for {} (anchor_core protection)", maid);
-                        return;
+                        //return;
                     }
                 }
             }

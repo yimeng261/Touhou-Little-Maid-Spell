@@ -27,7 +27,7 @@ public class MobUtilMixin {
     @Inject(method = "isSpellCasting", at = @At("HEAD"), cancellable = true, remap = false)
     private static void onIsSpellCasting(LivingEntity livingEntity, CallbackInfoReturnable<Boolean> cir) {
         if (livingEntity instanceof EntityMaid maid) {
-            Global.LOGGER.debug("maid: {}, isCasting:{}", maid.getDisplayName(), MaidGoetySpellData.getOrCreate(maid).isCasting());
+            //Global.LOGGER.debug("maid: {}, isCasting:{}", maid.getDisplayName(), MaidGoetySpellData.getOrCreate(maid).isCasting());
             if(MaidGoetySpellData.getOrCreate(maid).isCasting()){
                 cir.setReturnValue(true);
             }

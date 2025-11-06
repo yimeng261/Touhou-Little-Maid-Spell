@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:cherry_grove",
+    "minecraft:bamboo_jungle",
+    "minecraft:meadow",
+    "minecraft:sparse_jungle",
+    "youkaishomecoming:sakura_forest"
+  ]
+}
+

@@ -1,0 +1,15 @@
+{
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:yin_yang_altar",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 40,
+    "separation": 20,
+    "salt": 1642892357
+  }
+}
+

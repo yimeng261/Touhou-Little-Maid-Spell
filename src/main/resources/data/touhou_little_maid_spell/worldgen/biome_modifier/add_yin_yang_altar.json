@@ -1,0 +1,6 @@
+{
+  "type": "forge:add_structures",
+  "biomes": "#touhou_little_maid_spell:has_structure/yin_yang_altar",
+  "structures": "touhou_little_maid_spell:yin_yang_altar_set"
+}
+

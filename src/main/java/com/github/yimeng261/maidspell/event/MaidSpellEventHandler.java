@@ -171,10 +171,8 @@ public class MaidSpellEventHandler {
         Entity entity = event.getEntity();
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-            if (manager != null) {
-                manager.stopAllCasting();
-            }
-            
+            manager.stopAllCasting();
+
             LivingEntity owner = maid.getOwner();
             if(owner != null) {
                 Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).remove(maid.getUUID());
