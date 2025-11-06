@@ -51,11 +51,7 @@ public class SpellBookManager {
         registerProviderFactoryByClass("ars_nouveau", "ArsNouveauProvider", com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider.class);
         registerProviderFactoryByClass("psi","PsiProvider", com.github.yimeng261.maidspell.spell.providers.PsiProvider.class);
         // registerProviderFactoryByClass("slashblade","SlashBladeProvider", com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider.class);
-
-        // 注册统一的Goety提供者（内部自动处理版本兼容性）
         // registerProviderFactoryByClass("goety", "GoetyProvider", com.github.yimeng261.maidspell.spell.providers.GoetyProvider.class);
-
-        // 注册Youkai-Homecoming弹幕物品提供者
         // registerProviderFactoryByClass("youkaishomecoming", "YoukaiHomecomingProvider", com.github.yimeng261.maidspell.spell.providers.YoukaiHomecomingProvider.class);
 
     }

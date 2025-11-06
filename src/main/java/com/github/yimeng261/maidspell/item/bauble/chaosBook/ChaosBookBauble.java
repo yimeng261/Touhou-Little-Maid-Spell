@@ -29,26 +29,25 @@ public class ChaosBookBauble implements IMaidBauble {
 
     static {
         // 注册女仆造成伤害时的处理器
-        Global.bauble_damageCalc_pre.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
+        Global.baubleDamageCalcPre.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
 
             LivingEntity target = event.getEntity();
             DamageSource source = event.getSource();
             Float amount = event.getAmount();
-            int n = Config.chaosBookDamageSplitCount;
+
 
             if(source instanceof InfoDamageSource infoDamage){
                 if ("chaos_book".equals(infoDamage.msg_type)){
-                    // 使用安全的创建方法，避免网络同步问题
                     InfoDamageSource newDamageSource = InfoDamageSource.create(target.level(), "chaos_book2", infoDamage.damage_source);
                     target.setInvulnerable(false);
                     target.invulnerableTime = 0;
                     target.hurt(newDamageSource, amount);
                     event.setCanceled(true);
+                    target.invulnerableTime = 0;
+                    target.setInvulnerable(false);
                 }
-                target.setInvulnerable(false);
-                target.invulnerableTime = 0;
             }else{
-                // 使用安全的创建方法，避免网络同步问题
+                int n = Config.chaosBookDamageSplitCount;
                 InfoDamageSource newDamageSource = InfoDamageSource.create(target.level(), "chaos_book", source);
                 float finalAmount = Math.max(amount/n, (float)Config.chaosBookMinSplitDamage);
                 for(int i=0;i<n;i++){

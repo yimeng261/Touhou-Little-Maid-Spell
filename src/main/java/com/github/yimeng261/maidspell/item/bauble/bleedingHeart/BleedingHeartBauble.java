@@ -8,7 +8,7 @@ import net.minecraft.world.entity.player.Player;
 
 public class BleedingHeartBauble implements IMaidBauble {
     static {
-        Global.bauble_damageCalc_aft.put(MaidSpellItems.BLEEDING_HEART.get(),(event, maid) -> {
+        Global.baubleDamageCalcAft.put(MaidSpellItems.BLEEDING_HEART.get(),(event, maid) -> {
             float amount = event.getOriginalDamage();
             Player owner = (Player) maid.getOwner();
             if (owner != null) {

@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.doubleHeartChain;
 
+import com.github.yimeng261.maidspell.Config;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -36,7 +37,8 @@ public class DoubleHeartChain extends Item {
             .withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("item.maidspell.double_heart_chain.desc2")
             .withStyle(ChatFormatting.BLUE));
-        tooltip.add(Component.translatable("item.maidspell.double_heart_chain.desc3")
+        tooltip.add(Component.translatable("item.maidspell.double_heart_chain.desc3",
+            String.format("%.0f", Config.doubleHeartChainShareRatio * 100))
             .withStyle(ChatFormatting.YELLOW));
     }
 }

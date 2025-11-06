@@ -283,9 +283,9 @@ public class Config {
     }
 
     private static final ModConfigSpec.DoubleValue CHAOS_BOOK_MIN_SPLIT_DAMAGE = BUILDER
-            .comment("混沌之书每次分割伤害最小值 (默认: 1.0)")
+            .comment("混沌之书每次分割伤害最小值 (默认: 3.0)")
             .comment("Chaos Book minimum damage per split")
-            .defineInRange("chaosBookMinSplitDamage", 1.0, 0.1, 10.0);
+            .defineInRange("chaosBookMinSplitDamage", 3.0, 0.1, 100.0);
 
     static {
         BUILDER.comment("");
@@ -414,14 +414,14 @@ public class Config {
         SimplifiedSpellCaster.MELEE_RANGE= (float) meleeRange;
         SimplifiedSpellCaster.FAR_RANGE= (float) farRange;
 
-        Global.common_damageCalc.add((hurtEvent, maid)->{
+        Global.commonDamageCalc.add((hurtEvent, maid)->{
             if(maid.getTask().getUid().toString().startsWith("maidspell")) {
                 hurtEvent.setAmount((float) (hurtEvent.getAmount()*spellDamageMultiplier));
             }
             return null;
         });
 
-        Global.common_coolDownCalc.add((coolDown -> {
+        Global.commonCoolDownCalc.add((coolDown -> {
             coolDown.cooldownticks= (int)(coolDown.cooldownticks*coolDownMultiplier);
             return null;
         }));

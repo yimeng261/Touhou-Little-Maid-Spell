@@ -11,7 +11,7 @@ import net.minecraft.world.entity.player.Player;
 public class DoubleHeartChainBauble implements IMaidBauble {
     static {
         // 女仆受到伤害时，平摊给主人
-        Global.bauble_hurtCalc_final.put(MaidSpellItems.DOUBLE_HEART_CHAIN.get(), (data) -> {
+        Global.baubleHurtCalcFinal.put(MaidSpellItems.DOUBLE_HEART_CHAIN.get(), (data) -> {
             EntityMaid maid = data.getMaid();
             Player owner = (Player) maid.getOwner();
             if (owner != null && !owner.level().isClientSide) {

@@ -17,13 +17,13 @@ public abstract class IMaidSpellData {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public final Map<String, Integer> spellCooldowns = new HashMap<>();
+    private final Map<String, Integer> spellCooldowns = new HashMap<>();
 
     // === 基本状态 ===
-    public LivingEntity target;
-    public Set<ItemStack> spellBooks = new HashSet<>();
-    public Set<Class<?>> spellBookKinds = new HashSet<>();
-    public boolean isCasting = false;
+    private LivingEntity target;
+    private final Set<ItemStack> spellBooks = new HashSet<>();
+    private final Set<Class<?>> spellBookKinds = new HashSet<>();
+    private boolean isCasting = false;
 
 
     public LivingEntity getTarget() {
@@ -120,11 +120,11 @@ public abstract class IMaidSpellData {
     public void setSpellCooldown(String spellId, int cooldownTicks, EntityMaid maid) {
         CoolDown coolDown = new CoolDown(cooldownTicks,maid);
         if (spellId != null) {
-            Global.common_coolDownCalc.forEach(func->{
+            Global.commonCoolDownCalc.forEach(func->{
                 func.apply(coolDown);
             });
 
-            Global.bauble_coolDownCalc.forEach((item,func)->{
+            Global.baubleCoolDownCalc.forEach((item, func)->{
                 if(BaubleStateManager.hasBauble(maid, item)) {
                     func.apply(coolDown);
                 }

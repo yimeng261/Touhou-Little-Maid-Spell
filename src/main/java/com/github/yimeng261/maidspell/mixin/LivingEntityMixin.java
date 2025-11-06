@@ -111,13 +111,13 @@ public abstract class LivingEntityMixin {
 
         SoulBookBauble_process(dataItem); //处理魂之书(最先计算是否取消)
 
-        Global.bauble_hurtCalc_pre.forEach((item,func)->{
+        Global.baubleHurtCalcPre.forEach((item, func)->{
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(dataItem);
             }
         });
 
-        Global.bauble_hurtCalc_final.forEach((item,func)->{
+        Global.baubleHurtCalcFinal.forEach((item, func)->{
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(dataItem);
             }

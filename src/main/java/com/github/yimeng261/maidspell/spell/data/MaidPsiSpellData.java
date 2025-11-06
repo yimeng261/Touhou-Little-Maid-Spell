@@ -59,7 +59,7 @@ public class MaidPsiSpellData extends IMaidSpellData {
      * 重置施法状态
      */
     public void resetCastingState() {
-        this.isCasting = false;
+        this.setCasting(false);
         this.currentSpell = null;
         this.castingTicks = 0;
     }

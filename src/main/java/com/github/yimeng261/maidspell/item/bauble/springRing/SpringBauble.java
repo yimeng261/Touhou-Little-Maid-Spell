@@ -7,7 +7,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 
 public class SpringBauble implements IMaidBauble {
     static {
-        Global.bauble_damageCalc_pre.put(MaidSpellItems.SPRING_RING.get(),(event, maid) -> {
+        Global.baubleDamageCalcPre.put(MaidSpellItems.SPRING_RING.get(),(event, maid) -> {
             Float percent = 1 - maid.getHealth()/maid.getMaxHealth();
             if(percent > Config.springRingMaxDamageBonus){
                 percent = (float)Config.springRingMaxDamageBonus;

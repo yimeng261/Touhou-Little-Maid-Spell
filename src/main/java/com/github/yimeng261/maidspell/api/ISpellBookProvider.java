@@ -10,7 +10,7 @@ import java.util.function.Function;
 /**
  * 法术书提供者抽象类
  * 用于支持不同模组的法术书系统
- * 
+ *
  * @param <T> 对应的法术数据类型，必须继承自 IMaidSpellData
  */
 public abstract class ISpellBookProvider<T extends IMaidSpellData> {
@@ -79,7 +79,7 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData> {
      */
     public void castSpell(EntityMaid entityMaid){
         IMaidSpellData spellData = getData(entityMaid);
-        if(spellData.spellBooks.isEmpty() || spellData.isCasting){
+        if(spellData.getSpellBooks().isEmpty() || spellData.isCasting()){
             return;
         }
         initiateCasting(entityMaid);
@@ -89,7 +89,7 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData> {
      * 更新法术冷却：每次一秒
      */
     public abstract void updateCooldown(EntityMaid maid);
-    
+
     /**
      * 设置当前目标
      */
@@ -99,7 +99,7 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData> {
             data.setTarget(target);
         }
     }
-    
+
     /**
      * 获取当前目标
      */
@@ -108,7 +108,7 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData> {
         return data != null ? data.getTarget() : null;
     }
 
-    
+
     /**
      * 检查是否正在施法
      */
@@ -116,21 +116,21 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData> {
         T data = getData(maid);
         return data != null && data.isCasting();
     }
-    
+
     /**
      * 开始施法
      */
     protected abstract void initiateCasting(EntityMaid maid);
-    
+
     /**
      * 处理持续性施法的tick
      */
     public abstract void processContinuousCasting(EntityMaid maid);
-    
+
     /**
      * 停止当前施法
      */
     public abstract void stopCasting(EntityMaid maid);
 
 
-} 
+}

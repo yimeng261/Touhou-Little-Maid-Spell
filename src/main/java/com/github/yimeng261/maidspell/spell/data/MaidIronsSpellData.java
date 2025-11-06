@@ -60,12 +60,12 @@ public class MaidIronsSpellData extends IMaidSpellData {
     }
 
     public void switchTargetToOwner(EntityMaid maid) {
-        origin_target = target;
-        target = maid.getOwner();
+        origin_target = getTarget();
+        setTarget(maid.getOwner());
     }
 
     public void switchTargetToOrigin(EntityMaid maid) {
-        target = origin_target;
+        setTarget(origin_target);
     }
 
     public LivingEntity getOriginTarget() {
@@ -97,7 +97,7 @@ public class MaidIronsSpellData extends IMaidSpellData {
      */
     @Override
     public void resetCastingState() {
-        isCasting = false;
+        setCasting(false);
         currentCastingSpell = null;
         magicData.resetCastingState();
     }

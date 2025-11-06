@@ -2,10 +2,7 @@ package com.github.yimeng261.maidspell.spell.data;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
-import com.hollingsworth.arsnouveau.api.registry.SpellCasterRegistry;
-import com.hollingsworth.arsnouveau.api.spell.AbstractCaster;
 import com.hollingsworth.arsnouveau.api.spell.Spell;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.Map;
 import java.util.UUID;
@@ -23,8 +20,6 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
     // === 施法状态 ===
     private int castingTicks = 0;
     private Spell currentSpell = null;
-    private AbstractCaster<? extends AbstractCaster<?>> currentCaster = null;
-
     // === 施法参数 ===
     private static final int CASTING_DURATION = 10; // 新生魔艺法术施法时间（tick）
 
@@ -61,13 +56,6 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
         MAID_DATA_MAP.remove(maidUuid);
     }
 
-    @Override
-    public void addSpellBook(ItemStack spellBook){
-        super.addSpellBook(spellBook);
-        var caster = SpellCasterRegistry.from(spellBook);
-        setCurrentCaster(caster);
-    }
-
     public int getCastingTicks() {
         return castingTicks;
     }
@@ -88,14 +76,6 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
         this.currentSpell = spell;
     }
 
-    public AbstractCaster<? extends AbstractCaster<?>> getCurrentCaster() {
-        return currentCaster;
-    }
-
-    public void setCurrentCaster(AbstractCaster<? extends AbstractCaster<?>> caster) {
-        this.currentCaster = caster;
-    }
-
     // === 施法参数 ===
 
     public int getCastingDuration() {
@@ -113,7 +93,7 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
      * 重置施法状态
      */
     public void resetCastingState() {
-        isCasting = false;
+        setCasting(false);
         castingTicks = 0;
         currentSpell = null;
         // 保持currentCaster，因为它与spellBook绑定
