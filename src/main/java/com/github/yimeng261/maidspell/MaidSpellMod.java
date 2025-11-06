@@ -68,11 +68,7 @@ public class MaidSpellMod {
     }
 
     private boolean checkDependencies() {
-        boolean hasTouhouMaid = checkModLoaded("touhou_little_maid");
-        if (!hasTouhouMaid) {
-            return false;
-        }
-        return true;
+        return checkModLoaded("touhou_little_maid");
     }
 
     private boolean checkModLoaded(String modId) {

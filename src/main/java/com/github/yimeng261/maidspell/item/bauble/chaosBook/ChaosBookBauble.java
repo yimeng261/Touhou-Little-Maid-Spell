@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item.bauble.chaosBook;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
@@ -21,19 +22,19 @@ public class ChaosBookBauble implements IExtendBauble {
 
     public static void chaosBookProcess(EntityMaid maid, LivingEntity target) {
         if(BaubleStateManager.hasBauble(maid, MaidSpellItems.CHAOS_BOOK)) {
-            float damage = (float) Math.max(5.0f,target.getMaxHealth()*0.01);
+            float damage = (float) Math.max(Config.chaosBookTrueDamageMin, target.getMaxHealth() * Config.chaosBookTrueDamagePercent);
             TrueDamageUtil.dealTrueDamage(target, damage, maid);
         }
     }
 
     static {
         // 注册女仆造成伤害时的处理器
-        Global.bauble_damageCalc_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.CHAOS_BOOK), (event, maid) -> {
+        Global.bauble_damageCalc_pre.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
 
             LivingEntity target = event.getEntity();
             DamageSource source = event.getSource();
             Float amount = event.getAmount();
-            int n = 5;
+            int n = Config.chaosBookDamageSplitCount;
 
             if(source instanceof InfoDamageSource infoDamage){
                 if ("chaos_book".equals(infoDamage.msg_type)){
@@ -49,7 +50,7 @@ public class ChaosBookBauble implements IExtendBauble {
             }else{
                 // 使用安全的创建方法，避免网络同步问题
                 InfoDamageSource newDamageSource = InfoDamageSource.create(target.level(), "chaos_book", source);
-                float finalAmount = Math.max(amount/n, 1.0f);
+                float finalAmount = Math.max(amount/n, (float)Config.chaosBookMinSplitDamage);
                 for(int i=0;i<n;i++){
                     target.setInvulnerable(false);
                     target.invulnerableTime = 0;

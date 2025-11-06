@@ -5,6 +5,10 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHand
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.inventory.MaidAwareBaubleItemHandler;
 import com.github.yimeng261.maidspell.inventory.SpellBookAwareMaidBackpackHandler;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
+
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -30,6 +34,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class EntityMaidMixin extends TamableAnimal {
     private static final Logger LOGGER = LogUtils.getLogger();
 
+    /**
+     * Shadow字段，用于直接访问EntityMaid的私有字段
+     */
     @Shadow
     private boolean structureSpawn;
 
@@ -57,7 +64,7 @@ public abstract class EntityMaidMixin extends TamableAnimal {
         this.maidInv = new SpellBookAwareMaidBackpackHandler(36, (EntityMaid)(Object)this);
 
         // 使用Shadow字段直接替换饰品处理器
-        this.maidBauble = new MaidAwareBaubleItemHandler(9, (EntityMaid)(Object)this);
+        this.maidBauble = new MaidAwareBaubleItemHandler(EntityMaid.BAUBLE_INV_SIZE, (EntityMaid)(Object)this);
     }
 
     /**
@@ -83,6 +90,68 @@ public abstract class EntityMaidMixin extends TamableAnimal {
         } catch (Exception e) {
             Global.LOGGER.error("Failed to prevent finalizeSpawn processing for hidden_retreat maid", e);
         }
+    }
+
+
+    /**
+     * 拦截女仆的remove方法，防止非正常途径移除血量不为0的女仆
+     */
+    @Inject(method = "remove(Lnet/minecraft/world/entity/Entity$RemovalReason;)V",
+            at = @At("HEAD"),
+            cancellable = true, remap = true)
+    public void onRemove(Entity.RemovalReason reason, CallbackInfo ci) {
+        try {
+            if((Object)this instanceof EntityMaid maid) {
+
+                // 检查女仆是否装备了锚定核心饰品
+                if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                    Global.LOGGER.debug("Maid {} does not have anchor_core, allowing removal", maid.getUUID());
+                    return;
+                }
+
+                ChunkLoadingManager.enableChunkLoading(maid);
+
+                // 如果女仆血量为0，允许正常移除
+                Global.LOGGER.debug("remove called for {}", maid);
+                if (maid.getHealth() <= 0.0f) {
+                    return;
+                }
+
+                // 检查调用栈，判断是否来自touhou-little-maid模组
+                if (!maidSpell$isCallValid()) {
+                    Global.LOGGER.debug("Prevented non-TLM removal of maid {} with health {} (anchor_core protection)",
+                            maid.getUUID(), maid.getHealth());
+                    ci.cancel();
+                }
+            }
+
+        } catch (Exception e) {
+            Global.LOGGER.error("Failed to check maid removal source", e);
+        }
+    }
+
+    /**
+     * 检查调用栈是否来自touhou-little-maid模组
+     * @return 如果调用来自TLM模组返回true
+     */
+    @Unique
+    private boolean maidSpell$isCallValid() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        boolean callFromTouhouLittleMaidMod = false;
+        for(int i=stackTrace.length-10; i>=0; i--) {
+            StackTraceElement stackTraceElement = stackTrace[i];
+            String className = stackTraceElement.getClassName();
+            //Global.LOGGER.debug("className {}", className);
+            if(className.endsWith("EntityMaid")) {
+                continue;
+            }
+            if (className.toLowerCase().contains("tlm") || className.toLowerCase().contains("maid")) {
+                callFromTouhouLittleMaidMod = true;
+                break;
+            }
+        }
+
+        return callFromTouhouLittleMaidMod;
     }
 
     /**

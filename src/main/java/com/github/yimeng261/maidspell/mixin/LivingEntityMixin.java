@@ -20,7 +20,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.List;
-import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
@@ -39,13 +38,15 @@ import oshi.util.tuples.Pair;
  * 当EntityMaid装备SoulBookBauble时，对伤害进行额外处理
  */
 @Mixin(LivingEntity.class)
-public class LivingEntityMixin {
+public abstract class LivingEntityMixin {
     @Unique
     private static final Logger maidspell$LOGGER = LogUtils.getLogger();
 
     @Final
     @Shadow
     private static EntityDataAccessor<Float> DATA_HEALTH_ID;
+
+    @Shadow public abstract void remove(Entity.RemovalReason pReason);
 
     /**
      * 拦截setHealth方法调用
@@ -86,7 +87,9 @@ public class LivingEntityMixin {
         //处理玩家hurt
         if(entity instanceof ServerPlayer player) {
             // 检查GameProfile是否为null，防止在玩家初始化过程中出现空指针异常
-            player.getGameProfile();
+            if(player.getGameProfile()==null){
+                return;
+            }
             if(SoulBookBauble.maidSoulBookCount.getOrDefault(player.getGameProfile().getId(), 0) == 0) {
                 return;
             }
@@ -105,7 +108,7 @@ public class LivingEntityMixin {
         float currentHealth = maid.getHealth();
         DataItem dataItem = new DataItem(maid, currentHealth - health);
 
-        SliverCercisBauble_process(dataItem); //处理银链(计算减伤之前)
+        SliverCercisBauble_process(dataItem); //处理紫荆(计算减伤之前)
 
         if (!maidspell$isCommonHurt(health, entity)){
             ci.cancel();
@@ -114,14 +117,16 @@ public class LivingEntityMixin {
 
         SoulBookBauble_process(dataItem); //处理魂之书(最先计算是否取消)
 
-        BaubleStateManager.getBaubles(maid).forEach(bauble->{
-            Function<DataItem, Void> func = Global.bauble_hurtCalc_pre.getOrDefault(bauble.getDescriptionId(), (d) -> null);
-            func.apply(dataItem);
+        Global.bauble_hurtCalc_pre.forEach((item,func)->{
+            if(BaubleStateManager.hasBauble(maid, item)){
+                func.apply(dataItem);
+            }
         });
 
-        BaubleStateManager.getBaubles(maid).forEach(bauble->{
-            Function<DataItem, Void> func = Global.bauble_hurtCalc_final.getOrDefault(bauble.getDescriptionId(), (d) -> null);
-            func.apply(dataItem);
+        Global.bauble_hurtCalc_final.forEach((item,func)->{
+            if(BaubleStateManager.hasBauble(maid, item)){
+                func.apply(dataItem);
+            }
         });
 
         if(dataItem.isCanceled()){

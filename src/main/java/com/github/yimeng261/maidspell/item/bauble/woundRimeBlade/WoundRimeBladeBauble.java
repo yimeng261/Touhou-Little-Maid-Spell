@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item.bauble.woundRimeBlade;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -21,8 +22,6 @@ public class WoundRimeBladeBauble implements IExtendBauble {
 
     private static final ConcurrentHashMap<UUID, ConcurrentHashMap<LivingEntity, Pair<Float,Integer>>> maidWoundRimeBladeMap = new ConcurrentHashMap<>();
 
-    private static final int count = 15;
-
     @Override
     public void onRemove(EntityMaid maid) {
         maidWoundRimeBladeMap.remove(maid.getUUID());
@@ -38,10 +37,10 @@ public class WoundRimeBladeBauble implements IExtendBauble {
             }
             ConcurrentHashMap<LivingEntity,Pair<Float,Integer>> map = maidWoundRimeBladeMap.get(maid.getUUID());
             float nowHealth = entity.getHealth();
-            Pair<Float,Integer> record = map.computeIfAbsent(entity, k -> new Pair<>(nowHealth, count));
+            Pair<Float,Integer> record = map.computeIfAbsent(entity, k -> new Pair<>(nowHealth, Config.woundRimeBladeRecordDuration));
             float recordHealth = record.getA();
             float newHealth = Math.min(recordHealth,nowHealth) - damage;
-            map.put(entity, new Pair<>(newHealth, record.getB() + count));
+            map.put(entity, new Pair<>(newHealth, record.getB() + Config.woundRimeBladeRecordDuration));
         }
     }
 

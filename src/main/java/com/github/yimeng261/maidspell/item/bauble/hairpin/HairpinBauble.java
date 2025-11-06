@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.item.bauble.hairpin;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidAfterEatEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
@@ -40,7 +41,7 @@ public class HairpinBauble implements IExtendBauble {
 
     static {
         // 注册女仆受伤时的处理器 - 将伤害转移给主人
-        Global.bauble_commonHurtCalc_pre.put(MaidSpellItems.itemDesc(MaidSpellItems.HAIRPIN), (event, maid) -> {
+        Global.bauble_commonHurtCalc_pre.put(MaidSpellItems.HAIRPIN.get(), (event, maid) -> {
             LivingEntity owner = maid.getOwner();
             DamageSource source = event.getSource();
 
@@ -98,7 +99,7 @@ public class HairpinBauble implements IExtendBauble {
                 if(fl>=2){
                     int duration = effectInstance.getDuration();
                     if(effectInstance.getEffect().value().isBeneficial()){
-                        duration = Math.max((int)(duration*1.15), duration+15);
+                        duration = Math.max((int)(duration*Config.hairpinBeneficialEffectExtension), duration+Config.hairpinMinExtensionTicks);
                         effectInstance.update(new MobEffectInstance(effectInstance.getEffect(), duration, event.getEffectInstance().getAmplifier(), event.getEffectInstance().isAmbient(), event.getEffectInstance().isVisible()));
                     }
                 }
@@ -110,7 +111,7 @@ public class HairpinBauble implements IExtendBauble {
     public void afterMaidEat(MaidAfterEatEvent event){
         EntityMaid maid = event.getMaid();
         if(ItemsUtil.getBaubleSlotInMaid(maid,this)>=0){
-            maid.getFavorabilityManager().add(1);
+            maid.getFavorabilityManager().add(Config.hairpinFavorabilityGain);
         }
     }
 }
