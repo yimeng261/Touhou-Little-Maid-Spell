@@ -33,7 +33,7 @@ public class SlashBladeProvider extends ISpellBookProvider<MaidSlashBladeData> {
     /**
      * 构造函数
      */
-    protected SlashBladeProvider() {
+    public SlashBladeProvider() {
         super(MaidSlashBladeData::getOrCreate);
     }
 

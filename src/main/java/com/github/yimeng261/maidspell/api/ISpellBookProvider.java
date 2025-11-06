@@ -1,6 +1,8 @@
 package com.github.yimeng261.maidspell.api;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
@@ -79,7 +81,7 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData> {
      */
     public void castSpell(EntityMaid entityMaid){
         IMaidSpellData spellData = getData(entityMaid);
-        if(spellData.spellBooks.isEmpty() || spellData.isCasting){
+        if(spellData.getSpellBooks().isEmpty() || spellData.isCasting()){
             return;
         }
         initiateCasting(entityMaid);

@@ -16,7 +16,7 @@ public class FlowCoreBauble implements IMaidBauble {
     }
 
     static {
-        Global.bauble_hurtCalc_pre.put(MaidSpellItems.FLOW_CORE.get(),(data)->{
+        Global.baubleHurtCalcPre.put(MaidSpellItems.FLOW_CORE.get(),(data)->{
             EntityMaid maid = data.getMaid();
             data.setAmount(data.getAmount()*(1-(float)Config.flowCoreDamageReduction*maid.getFavorabilityManager().getLevel()));
             return null;

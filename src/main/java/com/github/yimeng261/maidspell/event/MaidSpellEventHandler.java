@@ -313,9 +313,9 @@ public class MaidSpellEventHandler {
 
 
         if(entity instanceof EntityMaid maid){
-            Global.common_hurtCalc.forEach(function -> function.apply(event, maid));
+            Global.commonHurtCalc.forEach(function -> function.apply(event, maid));
 
-            Global.bauble_commonHurtCalc_pre.forEach((item,func)->{
+            Global.baubleCommonHurtCalcPre.forEach((item, func)->{
                 if(BaubleStateManager.hasBauble(maid, item)){
                     func.apply(event, maid);
                 }
@@ -331,20 +331,20 @@ public class MaidSpellEventHandler {
         Entity source = event.getSource().getEntity();
         
         if(source instanceof EntityMaid maid){
-            processor_aft(event, maid);
+            processorAft(event, maid);
         }else if(direct instanceof EntityMaid maid){
-            processor_aft(event, maid);
+            processorAft(event, maid);
         }
 
         if(entity instanceof Player player){
-            Global.player_hurtCalc_aft.forEach(func-> func.apply(event,player));
+            Global.playerHurtCalcAft.forEach(func-> func.apply(event,player));
         }
     }
 
     @SubscribeEvent
     public static void onMaidEffectAdded(MobEffectEvent.Added event) {
         if (event.getEntity() instanceof EntityMaid maid) {
-            Global.bauble_effectAddedCalc.forEach((item,func)->{
+            Global.baubleEffectAddedCalc.forEach((item, func)->{
                 if(BaubleStateManager.hasBauble(maid,item)){
                     func.apply(event, maid);
                 }
@@ -354,8 +354,8 @@ public class MaidSpellEventHandler {
 
 
 
-    private static void processor_aft(LivingDamageEvent event, EntityMaid maid) {
-        Global.bauble_damageCalc_aft.forEach((item, func) -> {
+    private static void processorAft(LivingDamageEvent event, EntityMaid maid) {
+        Global.baubleDamageCalcAft.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(event, maid);
             }
@@ -363,9 +363,9 @@ public class MaidSpellEventHandler {
     }
 
     private static void processor_pre(LivingHurtEvent event, EntityMaid maid) {
-        Global.common_damageCalc.forEach(function -> function.apply(event, maid));
+        Global.commonDamageCalc.forEach(function -> function.apply(event, maid));
 
-        Global.bauble_damageCalc_pre.forEach((item, func) -> {
+        Global.baubleDamageCalcPre.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(event, maid);
             }
@@ -415,7 +415,7 @@ public class MaidSpellEventHandler {
         if (event.getEntity() instanceof EntityMaid maid) {
             // 先处理饰品的死亡事件
 
-            Global.bauble_deathCalc.forEach((item, func)->{
+            Global.baubleDeathCalc.forEach((item, func)->{
                 if(BaubleStateManager.hasBauble(maid,item)){
                     func.apply(event, maid);
                 }

@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.chaosBook;
 
+import com.github.yimeng261.maidspell.Config;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -36,9 +37,12 @@ public class ChaosBook extends Item {
 
         tooltip.add(Component.translatable("item.maidspell.chaos_book.desc1")
             .withStyle(ChatFormatting.DARK_PURPLE));
-        tooltip.add(Component.translatable("item.maidspell.chaos_book.desc2")
+        tooltip.add(Component.translatable("item.maidspell.chaos_book.desc2",
+            String.format("%d", Config.chaosBookDamageSplitCount))
             .withStyle(ChatFormatting.RED));
-        tooltip.add(Component.translatable("item.maidspell.chaos_book.desc3")
+        tooltip.add(Component.translatable("item.maidspell.chaos_book.desc3",
+            String.format("%.0f", Config.chaosBookTrueDamagePercent * 100),
+            String.format("%.0f", Config.chaosBookTrueDamageMin))
             .withStyle(ChatFormatting.GRAY));
     }
 }

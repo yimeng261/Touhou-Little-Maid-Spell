@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.flowCore;
 
+import com.github.yimeng261.maidspell.Config;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -30,9 +31,12 @@ public class FlowCore extends Item {
 
         tooltip.add(Component.translatable("item.maidspell.flow_core.desc1")
                 .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.maidspell.flow_core.desc2")
+        tooltip.add(Component.translatable("item.maidspell.flow_core.desc2",
+                String.format("%.1f", Config.flowCoreTickInterval / 20.0),
+                String.format("%.1f", Config.flowCoreHealthRegenRate * 100))
                 .withStyle(ChatFormatting.BLUE));
-        tooltip.add(Component.translatable("item.maidspell.flow_core.desc3")
+        tooltip.add(Component.translatable("item.maidspell.flow_core.desc3",
+                String.format("%.0f", Config.flowCoreDamageReduction * 100))
                 .withStyle(ChatFormatting.YELLOW));
     }
 }

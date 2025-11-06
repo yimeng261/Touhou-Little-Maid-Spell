@@ -134,7 +134,7 @@ public class MaidGoetySpellData extends IMaidSpellData {
      * 重置施法状态（保留冷却数据）
      */
     public void resetCastingState() {
-        this.isCasting = false;
+        this.setCasting(false);
         this.castingTime = 0;
         this.maxCastingTime = 0;
         this.currentSpell = null;
@@ -160,7 +160,7 @@ public class MaidGoetySpellData extends IMaidSpellData {
         setCurrentSpell(spell);
         this.castingTime = 0;
         this.maxCastingTime = duration;
-        this.isCasting = true;
+        this.setCasting(true);
     }
 
 } 

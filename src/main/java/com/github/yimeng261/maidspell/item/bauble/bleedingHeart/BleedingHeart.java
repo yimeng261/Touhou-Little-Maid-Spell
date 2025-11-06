@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.bleedingHeart;
 
+import com.github.yimeng261.maidspell.Config;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -35,7 +36,8 @@ public class BleedingHeart extends Item {
 
         tooltip.add(Component.translatable("item.maidspell.bleeding_heart.desc1")
             .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.maidspell.bleeding_heart.desc2")
+        tooltip.add(Component.translatable("item.maidspell.bleeding_heart.desc2", 
+            String.format("%.0f", Config.bleedingHeartHealRatio * 100))
             .withStyle(ChatFormatting.BLUE));
         tooltip.add(Component.translatable("item.maidspell.bleeding_heart.desc3")
             .withStyle(ChatFormatting.YELLOW));

@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.hairpin;
 
+import com.github.yimeng261.maidspell.Config;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -35,8 +36,10 @@ public class Hairpin extends Item {
 
         tooltip.add(Component.translatable("item.maidspell.hairpin.desc1").withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("item.maidspell.hairpin.desc2").withStyle(ChatFormatting.BLUE));
-        tooltip.add(Component.translatable("item.maidspell.hairpin.desc3").withStyle(ChatFormatting.YELLOW));
+        tooltip.add(Component.translatable("item.maidspell.hairpin.desc3",
+            String.format("%.0f", (Config.hairpinBeneficialEffectExtension - 1) * 100)).withStyle(ChatFormatting.YELLOW));
         tooltip.add(Component.translatable("item.maidspell.hairpin.desc4").withStyle(ChatFormatting.YELLOW));
-        tooltip.add(Component.translatable("item.maidspell.hairpin.desc5").withStyle(ChatFormatting.GOLD));
+        tooltip.add(Component.translatable("item.maidspell.hairpin.desc5",
+            String.format("%d", Config.hairpinFavorabilityGain)).withStyle(ChatFormatting.GOLD));
     }
 }

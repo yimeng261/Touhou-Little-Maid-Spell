@@ -22,7 +22,7 @@ public class Global {
 
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public static ArrayList<BiFunction<LivingHurtEvent,EntityMaid,Void>> common_damageCalc = new ArrayList<>(){{
+    public static ArrayList<BiFunction<LivingHurtEvent,EntityMaid,Void>> commonDamageCalc = new ArrayList<>(){{
         add((event,maid)->{
             LivingEntity entity = event.getEntity();
             if(entity instanceof EntityMaid){
@@ -35,30 +35,30 @@ public class Global {
     }};
 
 
-    public static ArrayList<BiFunction<LivingDamageEvent,Player,Void>> player_hurtCalc_aft = new ArrayList<>();
+    public static ArrayList<BiFunction<LivingDamageEvent,Player,Void>> playerHurtCalcAft = new ArrayList<>();
 
     public static final HashMap<UUID,HashMap<UUID,EntityMaid>> maidInfos = new HashMap<>();
 
     public static final Set<EntityMaid> maidList = new HashSet<>();
 
-    public static ArrayList<BiFunction<LivingHurtEvent,EntityMaid,Void>> common_hurtCalc = new ArrayList<>();
+    public static ArrayList<BiFunction<LivingHurtEvent,EntityMaid,Void>> commonHurtCalc = new ArrayList<>();
 
-    public static ArrayList<Function<IMaidSpellData.CoolDown, Void>> common_coolDownCalc = new ArrayList<>();
+    public static ArrayList<Function<IMaidSpellData.CoolDown, Void>> commonCoolDownCalc = new ArrayList<>();
 
-    public static Map<Item,BiFunction<LivingDamageEvent,EntityMaid,Void>> bauble_damageCalc_aft = new HashMap<>();
+    public static Map<Item,BiFunction<LivingDamageEvent,EntityMaid,Void>> baubleDamageCalcAft = new HashMap<>();
 
-    public static Map<Item,BiFunction<LivingHurtEvent,EntityMaid,Void>> bauble_damageCalc_pre = new HashMap<>();
+    public static Map<Item,BiFunction<LivingHurtEvent,EntityMaid,Void>> baubleDamageCalcPre = new HashMap<>();
 
-    public static Map<Item,BiFunction<LivingHurtEvent,EntityMaid,Void>> bauble_commonHurtCalc_pre = new HashMap<>();
+    public static Map<Item,BiFunction<LivingHurtEvent,EntityMaid,Void>> baubleCommonHurtCalcPre = new HashMap<>();
 
-    public static Map<Item,Function<DataItem,Void>> bauble_hurtCalc_pre = new HashMap<>();
+    public static Map<Item,Function<DataItem,Void>> baubleHurtCalcPre = new HashMap<>();
 
-    public static Map<Item,Function<DataItem,Void>> bauble_hurtCalc_final = new HashMap<>();
+    public static Map<Item,Function<DataItem,Void>> baubleHurtCalcFinal = new HashMap<>();
 
-    public static Map<Item, Function<IMaidSpellData.CoolDown, Void>> bauble_coolDownCalc = new HashMap<>();
+    public static Map<Item, Function<IMaidSpellData.CoolDown, Void>> baubleCoolDownCalc = new HashMap<>();
 
-    public static Map<Item,BiFunction<MobEffectEvent.Added,EntityMaid,Void>> bauble_effectAddedCalc = new HashMap<>();
+    public static Map<Item,BiFunction<MobEffectEvent.Added,EntityMaid,Void>> baubleEffectAddedCalc = new HashMap<>();
 
-    public static Map<Item,BiFunction<LivingDeathEvent,EntityMaid,Void>> bauble_deathCalc = new HashMap<>();
+    public static Map<Item,BiFunction<LivingDeathEvent,EntityMaid,Void>> baubleDeathCalc = new HashMap<>();
 
 }

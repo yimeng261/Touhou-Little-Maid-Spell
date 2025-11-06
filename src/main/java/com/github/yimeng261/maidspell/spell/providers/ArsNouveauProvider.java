@@ -67,10 +67,6 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
     @Override
     public void initiateCasting(EntityMaid maid) {
         MaidArsNouveauSpellData data = getData(maid);
-        if (data == null || data.isCasting() || !isSpellBook(data.getSpellBook()) || 
-            data.getCurrentCaster() == null) {
-            return;
-        }
 
         // 确保女仆有魔力能力
         ensureManaCapability(maid);
@@ -91,7 +87,7 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
         data.setCasting(true);
         data.setCastingTicks(0);
         data.setCurrentSpell(spell);
-        data.setSpellCooldown(spell.name,spell.getCost(),maid);
+        data.setSpellCooldown(spell.name,spell.getCost()/2,maid);
         
         // 播放手臂挥舞动画
         maid.swing(InteractionHand.MAIN_HAND);
@@ -173,7 +169,7 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
      */
     private List<Spell> getAvailableSpells(MaidArsNouveauSpellData data) {
         List<Spell> availableSpells = new ArrayList<>();
-        ISpellCaster caster = data.getCurrentCaster();
+        ISpellCaster caster = CasterUtil.getCaster(data.getSpellBook());
         if (caster == null) {
             return availableSpells;
         }
@@ -206,11 +202,6 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
      */
     private void completeCasting(EntityMaid maid) {
         MaidArsNouveauSpellData data = getData(maid);
-        if (data == null || !data.isCasting() || data.getCurrentSpell() == null || 
-            data.getCurrentCaster() == null) {
-            return;
-        }
-        
         try {
             
             // 确保女仆有足够的魔力

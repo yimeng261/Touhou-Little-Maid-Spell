@@ -24,8 +24,6 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
     // === 施法状态 ===
     private int castingTicks = 0;
     private Spell currentSpell = null;
-    private ISpellCaster currentCaster = null;
-    
     // === 施法参数 ===
     private static final int CASTING_DURATION = 10; // 新生魔艺法术施法时间（tick）
     
@@ -62,12 +60,6 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
         MAID_DATA_MAP.remove(maidUuid);
     }
 
-    @Override
-    public void addSpellBook(ItemStack spellBook){
-        super.addSpellBook(spellBook);
-        setCurrentCaster(CasterUtil.getCaster(spellBook));
-    }
-    
     public int getCastingTicks() {
         return castingTicks;
     }
@@ -87,15 +79,7 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
     public void setCurrentSpell(Spell spell) {
         this.currentSpell = spell;
     }
-    
-    public ISpellCaster getCurrentCaster() {
-        return currentCaster;
-    }
-    
-    public void setCurrentCaster(ISpellCaster caster) {
-        this.currentCaster = caster;
-    }
-    
+
     // === 施法参数 ===
     
     public int getCastingDuration() {
@@ -113,7 +97,7 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
      * 重置施法状态
      */
     public void resetCastingState() {
-        isCasting = false;
+        setCasting(false);
         castingTicks = 0;
         currentSpell = null;
         // 保持currentCaster，因为它与spellBook绑定

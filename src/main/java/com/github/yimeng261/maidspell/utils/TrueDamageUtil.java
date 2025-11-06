@@ -8,6 +8,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.HashMap;
@@ -44,8 +45,9 @@ public class TrueDamageUtil {
         // 尝试EntityData修改，失败则尝试NBT修改
         boolean success = tryEntityDataDamage(target, newHealth) || tryNBTDamage(target, originalHealth, newHealth);
 
-        if(success||newHealth<=0.0f){
+        if(newHealth<=0.0f){
             target.die(new DamageSource(Holder.direct(new DamageType("info_damage", 0.0f)),attacker));
+            target.remove(Entity.RemovalReason.KILLED);
         }
         
         LOGGER.debug("[TrueDamage] Damage {} applied: {} -> {} (success: {})", 
