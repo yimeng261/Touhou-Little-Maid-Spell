@@ -2,19 +2,17 @@ package com.github.yimeng261.maidspell.spell.manager;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
-import com.github.yimeng261.maidspell.spell.providers.IronsSpellbooksProvider;
-import com.github.yimeng261.maidspell.spell.providers.YoukaiHomecomingProvider;
 import com.github.yimeng261.maidspell.utils.VersionUtil;
 
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.ModList;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.items.wrapper.CombinedInvWrapper;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,7 +29,7 @@ public class SpellBookManager {
 
     
     // 实例相关的提供者列表 - 每个管理器可以有自己的提供者实例
-    private static final List<ISpellBookProvider> instanceProviders = new ArrayList<>();
+    private static final List<ISpellBookProvider<?>> instanceProviders = new ArrayList<>();
 
     public static final List<String> loadedMods = new ArrayList<>();
     
@@ -76,7 +74,7 @@ public class SpellBookManager {
         try {
             // 检查模组是否加载
             if (ModList.get().isLoaded(modId)) {
-                instanceProviders.add((ISpellBookProvider) providerClass.getConstructor().newInstance());
+                instanceProviders.add((ISpellBookProvider<?>) providerClass.getConstructor().newInstance());
                 loadedMods.add(modId);
                 LOGGER.debug("Mod {} loaded, finished {} registration", modId, providerName);
             }
@@ -122,7 +120,7 @@ public class SpellBookManager {
                         modId, currentVersion, minVersionForNewProvider);
                 
                 // 尝试加载新版本的Provider（如果存在）
-                instanceProviders.add((ISpellBookProvider) newProviderClass.getConstructor().newInstance());
+                instanceProviders.add((ISpellBookProvider<?>) newProviderClass.getConstructor().newInstance());
                 loadedMods.add(modId);
                 LOGGER.info("Successfully loaded enhanced {} for {} version {}",
                         newProviderClass.getSimpleName(), modId, currentVersion);
@@ -158,12 +156,8 @@ public class SpellBookManager {
      * @param maid 女仆实体
      * @return 该女仆对应的SpellBookManager实例
      */
+    @NotNull
     public static SpellBookManager getOrCreateManager(EntityMaid maid) {
-        if (maid == null) {
-            LOGGER.warn("Attempted to get manager for null maid entity");
-            return null;
-        }
-        
         UUID maidUUID = maid.getUUID();
         
         // 使用computeIfAbsent确保线程安全且避免重复创建
@@ -197,7 +191,7 @@ public class SpellBookManager {
      * 执行法术
      */
     public void castSpell(EntityMaid maid) {
-        for (ISpellBookProvider provider : instanceProviders) {
+        for (ISpellBookProvider<?> provider : instanceProviders) {
             provider.castSpell(maid);
         }
     }
@@ -205,13 +199,13 @@ public class SpellBookManager {
     /**
      * 获取当前实例的提供者列表
      */
-    public List<ISpellBookProvider> getProviders() {
+    public List<ISpellBookProvider<?>> getProviders() {
         return new ArrayList<>(instanceProviders);
     }
 
 
     public void stopAllCasting() {
-        for (ISpellBookProvider provider : getProviders()) {
+        for (ISpellBookProvider<?> provider : getProviders()) {
             if (provider.isCasting(maid)) {
                 provider.stopCasting(maid);
             }
@@ -234,56 +228,16 @@ public class SpellBookManager {
      * 更新法术冷却：每次一秒
      */
     public void updateCooldown(){
-        for (ISpellBookProvider provider : instanceProviders) {
+        for (ISpellBookProvider<?> provider : instanceProviders) {
             provider.updateCooldown(maid);
         }
     }
 
-    /**
-     * 在女仆的背包中搜索各模组的法术书
-     * 搜索顺序：副手 -> 主手 -> 背包
-     * 对于IronsSpellbooksProvider，会收集所有类型的法术容器（法术书、魔剑、法杖）
-     * @return 找到的法术书映射，每个提供者对应一本法术书
-     */
-    public Map<ISpellBookProvider, ItemStack> findSpellBooksInInventory() {
-        Map<ISpellBookProvider, ItemStack> foundBooks = new HashMap<>();
-        
-        // 创建搜索队列：副手 -> 主手 -> 背包
-        CombinedInvWrapper availableInv = maid.getAvailableInv(false);
-        ItemStack[] searchOrder = new ItemStack[availableInv.getSlots()];
-        
-        for (int i = 0; i < availableInv.getSlots(); i++) {
-            searchOrder[i] = availableInv.getStackInSlot(i);
-        }
-        
-        // 遍历所有物品，为每个提供者找到对应的法术书
-        for (ItemStack stack : searchOrder) {
-            if (stack == null || stack.isEmpty()) {
-                continue;
-            }
-            for (ISpellBookProvider provider : instanceProviders) {
-                if (provider.isSpellBook(stack)) {
-                    if (provider instanceof IronsSpellbooksProvider) {
-                        provider.setSpellBook(maid, stack);
-                    } else if(provider instanceof YoukaiHomecomingProvider) {
-                        provider.setSpellBook(maid, stack);
-                    }else {
-                        // 对于其他提供者，保持原有逻辑：每个提供者只找第一本对应的法术书
-                        if (!foundBooks.containsKey(provider)) {
-                            foundBooks.put(provider, stack);
-                        }
-                    }
-                }
-            }
-        }
-        
-        return foundBooks;
-    }
 
     public void tick(){
         // 处理持续性施法
         
-        for (ISpellBookProvider provider : getProviders()) {
+        for (ISpellBookProvider<?> provider : getProviders()) {
             if(provider.getTarget(maid) != null){
                 provider.getTarget(maid).invulnerableTime = 0;
             }
@@ -296,30 +250,33 @@ public class SpellBookManager {
         }
     }
 
-    public void updateSpellBooks(){
-        // 先清理所有IronsSpellbooksProvider的法术容器
-        for (ISpellBookProvider provider : getProviders()) {
-            if (provider.getClass().getSimpleName().equals("IronsSpellbooksProvider")) {
-                provider.setSpellBook(maid, null); // 清空所有法术容器
-                break;
-            }
+    public void initSpellBooks(){
+        // 先清理所有法术容器
+        for (ISpellBookProvider<?> provider : getProviders()) {
+            provider.clearSpellItems(maid);
         }
         
-        var spellBooks = findSpellBooksInInventory();
-        // 更新每个提供者的法术书
-        for (ISpellBookProvider provider : getProviders()) {
-            // 对于IronsSpellbooksProvider，findSpellBooksInInventory已经处理了所有法术容器
-            if (provider instanceof IronsSpellbooksProvider || provider instanceof YoukaiHomecomingProvider) {
-                continue;
+        CombinedInvWrapper wrapper = maid.getAvailableInv(true);
+
+        for(int i=0;i< wrapper.getSlots();i++){
+            ItemStack itemStack = wrapper.getStackInSlot(i);
+            // 更新每个提供者的法术书
+            for (ISpellBookProvider<?> provider : getProviders()) {
+                provider.handleItemStack(maid, itemStack, true);
             }
-            
-            // 对于其他提供者，使用原有逻辑
-            ItemStack providerSpellBook = spellBooks.get(provider);
-            if (providerSpellBook != null && !providerSpellBook.isEmpty()) {
-                provider.setSpellBook(maid,providerSpellBook);
-            } else {
-                provider.setSpellBook(maid,null);
-            }
+        }
+
+    }
+
+    public void removeSpellItem(EntityMaid maid, ItemStack itemStack) {
+        for(ISpellBookProvider<?> provider : getProviders()) {
+            provider.handleItemStack(maid, itemStack, false);
+        }
+    }
+
+    public void addSpellItem(EntityMaid maid, ItemStack itemStack) {
+        for(ISpellBookProvider<?> provider : getProviders()) {
+            provider.handleItemStack(maid, itemStack, true);
         }
     }
 

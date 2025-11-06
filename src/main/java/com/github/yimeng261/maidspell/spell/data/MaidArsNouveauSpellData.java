@@ -1,11 +1,11 @@
 package com.github.yimeng261.maidspell.spell.data;
 
-import com.github.yimeng261.maidspell.api.AbstractSpellData;
+import com.github.yimeng261.maidspell.api.IMaidSpellData;
+import com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider;
 import com.hollingsworth.arsnouveau.api.spell.ISpellCaster;
 import com.hollingsworth.arsnouveau.api.spell.Spell;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import io.redspace.ironsspellbooks.api.spells.SpellData;
-import net.minecraft.world.entity.LivingEntity;
+import com.hollingsworth.arsnouveau.api.util.CasterUtil;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.UUID;
@@ -16,7 +16,7 @@ import java.util.Map;
  * 女仆新生魔艺数据存储类
  * 集中管理每个女仆的新生魔艺相关状态和数据
  */
-public class MaidArsNouveauSpellData extends AbstractSpellData {
+public class MaidArsNouveauSpellData extends IMaidSpellData {
     
     // 全局数据存储，按女仆UUID映射
     private static final Map<UUID, MaidArsNouveauSpellData> MAID_DATA_MAP = new ConcurrentHashMap<>();
@@ -62,6 +62,11 @@ public class MaidArsNouveauSpellData extends AbstractSpellData {
         MAID_DATA_MAP.remove(maidUuid);
     }
 
+    @Override
+    public void addSpellBook(ItemStack spellBook){
+        super.addSpellBook(spellBook);
+        setCurrentCaster(CasterUtil.getCaster(spellBook));
+    }
     
     public int getCastingTicks() {
         return castingTicks;

@@ -27,21 +27,19 @@ import mods.flammpfeil.slashblade.util.KnockBacks;
  * SlashBlade模组的法术提供者
  * 为女仆提供拔刀剑SA使用能力
  */
-public class SlashBladeProvider implements ISpellBookProvider {
+public class SlashBladeProvider extends ISpellBookProvider<MaidSlashBladeData> {
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private MaidSlashBladeData getData(EntityMaid maid) {
-        return MaidSlashBladeData.getOrCreate(maid.getUUID());
+    /**
+     * 构造函数
+     */
+    protected SlashBladeProvider() {
+        super(MaidSlashBladeData::getOrCreate);
     }
 
     @Override
     public boolean isSpellBook(ItemStack itemStack) {
         return itemStack != null && !itemStack.isEmpty() && itemStack.getItem() instanceof ItemSlashBlade;
-    }
-
-    @Override
-    public boolean castSpell(EntityMaid entityMaid) {
-        return initiateCasting(entityMaid);
     }
 
     @Override
@@ -66,31 +64,11 @@ public class SlashBladeProvider implements ISpellBookProvider {
     }
 
     @Override
-    public LivingEntity getTarget(EntityMaid maid) {
-        return getData(maid).getTarget();
-    }
-
-    @Override
-    public void setSpellBook(EntityMaid maid, ItemStack slashBlade) {
-        getData(maid).setSlashBlade(slashBlade);
-    }
-
-    @Override
-    public boolean isCasting(EntityMaid maid) {
-        return getData(maid).isCasting();
-    }
-
-    @Override
-    public boolean initiateCasting(EntityMaid maid) {
+    public void initiateCasting(EntityMaid maid) {
+        LOGGER.debug("[MaidSpell] Initiate casting for slashblade");
         ItemStack itemStack = maid.getMainHandItem();
-        if(!isSpellBook(itemStack)){
-            return false;
-        }
-        
+
         MaidSlashBladeData data = getData(maid);
-        if(maid.isUsingItem()){
-            return false;
-        }
         LivingEntity target = data.getTarget();
 
         if(data.isOnCooldown()||!hasSlashArt(itemStack)){
@@ -99,28 +77,30 @@ public class SlashBladeProvider implements ISpellBookProvider {
             }else{
                 maid.getNavigation().moveTo(target,0.6);
             }
-            return false;
+            return;
         }
 
+        LOGGER.debug("[MaidSpell] Initiate casting for slashblade2222");
         // 检查拔刀剑状态
-        return itemStack.getCapability(ItemSlashBlade.BLADESTATE).map(state -> {
+        itemStack.getCapability(ItemSlashBlade.BLADESTATE).map(state -> {
             if (state.isBroken() || state.isSealed()) {
                 return false;
             }
 
             // 为女仆添加INPUT_STATE能力（如果没有的话）
             ensureInputStateCapability(maid);
-            
+
             // 开始蓄力
             maid.startUsingItem(InteractionHand.MAIN_HAND);
-            
+
             // 设置数据状态
             data.setCasting(true);
             data.setSAExecutionStartTime(maid.level().getGameTime());
             data.setTargetUseTime(state.getFullChargeTicks(maid) + 5); // 稍微延长以确保充分蓄力
-            
+
             return true;
-        }).orElse(false);
+        });
+        LOGGER.debug("[MaidSpell] Initiate casting for slashblade333");
     }
 
     @Override
@@ -222,9 +202,7 @@ public class SlashBladeProvider implements ISpellBookProvider {
             return false;
         }
 
-        return itemStack.getCapability(ItemSlashBlade.BLADESTATE).map(state -> {
-            return state.getSlashArtsKey() != null && !state.getSlashArtsKey().equals(SlashArtsRegistry.NONE.getId());
-        }).orElse(false);
+        return itemStack.getCapability(ItemSlashBlade.BLADESTATE).map(state -> state.getSlashArtsKey() != null && !state.getSlashArtsKey().equals(SlashArtsRegistry.NONE.getId())).orElse(false);
     }
 
     /**

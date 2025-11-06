@@ -1,7 +1,7 @@
 package com.github.yimeng261.maidspell;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.api.AbstractSpellData;
+import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
@@ -43,7 +43,7 @@ public class Global {
 
     public static ArrayList<BiFunction<LivingHurtEvent,EntityMaid,Void>> common_hurtCalc = new ArrayList<>();
 
-    public static ArrayList<Function<AbstractSpellData.CoolDown, Void>> common_coolDownCalc = new ArrayList<>();
+    public static ArrayList<Function<IMaidSpellData.CoolDown, Void>> common_coolDownCalc = new ArrayList<>();
 
     public static Map<Item,BiFunction<LivingDamageEvent,EntityMaid,Void>> bauble_damageCalc_aft = new HashMap<>();
 
@@ -55,7 +55,7 @@ public class Global {
 
     public static Map<Item,Function<DataItem,Void>> bauble_hurtCalc_final = new HashMap<>();
 
-    public static Map<Item, Function<AbstractSpellData.CoolDown, Void>> bauble_coolDownCalc = new HashMap<>();
+    public static Map<Item, Function<IMaidSpellData.CoolDown, Void>> bauble_coolDownCalc = new HashMap<>();
 
     public static Map<Item,BiFunction<MobEffectEvent.Added,EntityMaid,Void>> bauble_effectAddedCalc = new HashMap<>();
 

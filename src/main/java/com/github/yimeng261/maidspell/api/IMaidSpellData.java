@@ -9,10 +9,11 @@ import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.Set;
 
-public abstract class AbstractSpellData implements ISpellData {
+public abstract class IMaidSpellData {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
@@ -20,48 +21,102 @@ public abstract class AbstractSpellData implements ISpellData {
 
     // === 基本状态 ===
     public LivingEntity target;
-    public ItemStack spellBook = ItemStack.EMPTY;
+    public Set<ItemStack> spellBooks = new HashSet<>();
+    public Set<Class<?>> spellBookKinds = new HashSet<>();
     public boolean isCasting = false;
 
 
-    @Override
     public LivingEntity getTarget() {
         return this.target;
     }
 
-    @Override
     public void setTarget(LivingEntity target) {
         this.target = target;
     }
 
-    @Override
+    /**
+     * 获取第一本法术书（兼容旧代码）
+     * @return 返回第一本法术书，如果没有则返回 ItemStack.EMPTY
+     */
     public ItemStack getSpellBook() {
-        return spellBook;
+        return spellBooks.isEmpty() ? ItemStack.EMPTY : spellBooks.iterator().next();
     }
 
-    @Override
-    public void setSpellBook(ItemStack spellBook) {
-        this.spellBook = spellBook;
+    /**
+     * 获取所有法术书
+     * @return 法术书集合
+     */
+    public Set<ItemStack> getSpellBooks() {
+        return spellBooks;
     }
 
-    @Override
+    /**
+     * 添加一本法术书
+     *
+     * @param spellBook 要添加的法术书
+     */
+    public void addSpellBook(ItemStack spellBook) {
+        if(spellBook==null||spellBook.isEmpty()){
+            return;
+        }
+        Class<?> spellBookClass = spellBook.getItem().getClass();
+        for(Class<?> spellBookKind : spellBookKinds) {
+            if(spellBookKind.isAssignableFrom(spellBookClass)||spellBookClass.isAssignableFrom(spellBookKind)) {
+                return;
+            }
+        }
+        spellBooks.add(spellBook);
+        spellBookKinds.add(spellBookClass);
+    }
+
+    /**
+     * 移除一本法术书
+     * @param spellBook 要移除的法术书
+     */
+    public void removeSpellBook(ItemStack spellBook) {
+        spellBooks.remove(spellBook);
+        spellBookKinds.remove(spellBook.getItem().getClass());
+    }
+
+    /**
+     * 清空所有法术书
+     */
+    public void clearSpellBooks() {
+        spellBooks.clear();
+        spellBookKinds.clear();
+    }
+
+    /**
+     * 检查是否拥有特定的法术书
+     * @param spellBook 要检查的法术书
+     * @return 如果拥有返回 true
+     */
+    public boolean hasSpellBook(ItemStack spellBook) {
+        return spellBooks.contains(spellBook);
+    }
+
     public boolean isCasting() {
         return isCasting;
     }
 
-    @Override
     public void setCasting(boolean casting) {
         this.isCasting = casting;
     }
 
-    @Override
+    /**
+     * 重置施法状态
+     */
+    public void resetCastingState() {
+        this.isCasting = false;
+        this.target = null;
+    }
+
     public boolean isSpellOnCooldown(String spellId) {
         if (spellId == null) return true;
         int remainingCooldown = spellCooldowns.getOrDefault(spellId, 0);
         return remainingCooldown > 0;
     }
 
-    @Override
     public void setSpellCooldown(String spellId, int cooldownTicks, EntityMaid maid) {
         CoolDown coolDown = new CoolDown(cooldownTicks,maid);
         if (spellId != null) {
@@ -79,7 +134,6 @@ public abstract class AbstractSpellData implements ISpellData {
         }
     }
 
-    @Override
     public int getSpellCooldown(String spellId) {
         return spellCooldowns.getOrDefault(spellId, 0);
     }
@@ -87,7 +141,6 @@ public abstract class AbstractSpellData implements ISpellData {
     /**
      * 更新所有法术的冷却时间(每秒一次)
      */
-    @Override
     public void updateCooldowns() {
         spellCooldowns.replaceAll((spellId, cooldown) -> Math.max(0, cooldown - 20));
         spellCooldowns.entrySet().removeIf(entry -> entry.getValue() <= 0);

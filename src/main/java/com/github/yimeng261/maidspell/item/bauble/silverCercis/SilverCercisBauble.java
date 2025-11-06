@@ -1,12 +1,11 @@
 package com.github.yimeng261.maidspell.item.bauble.silverCercis;
 
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
-import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemStack;
 import oshi.util.tuples.Pair;
 
 import java.util.UUID;
@@ -14,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 
 
-public class SilverCercisBauble implements IExtendBauble {
+public class SilverCercisBauble implements IMaidBauble {
     private static final ConcurrentHashMap<UUID, Pair<Integer,Integer>> maidCercisMap = new ConcurrentHashMap<>();
 
     public static void handleSilverCercis(EntityMaid maid, LivingEntity target, DataItem dataItem) {

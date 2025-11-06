@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.spell.data;
 
+import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
@@ -12,10 +13,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 女仆拔刀剑数据管理类 - 简化版本
  */
-public class MaidSlashBladeData {
+public class MaidSlashBladeData extends IMaidSpellData {
     private static final Map<UUID, MaidSlashBladeData> DATA_MAP = new ConcurrentHashMap<>();
 
-    private ItemStack slashBlade = ItemStack.EMPTY;
     private WeakReference<LivingEntity> target = new WeakReference<>(null);
     
     // 施法状态
@@ -38,9 +38,6 @@ public class MaidSlashBladeData {
     
     public static void remove(UUID maidUUID) {
         DATA_MAP.remove(maidUUID);
-    }
-    public void setSlashBlade(ItemStack slashBlade) { 
-        this.slashBlade = slashBlade != null ? slashBlade.copy() : ItemStack.EMPTY; 
     }
     
     public LivingEntity getTarget() { return target.get(); }
@@ -69,7 +66,6 @@ public class MaidSlashBladeData {
 
     
     public void reset() {
-        this.slashBlade = ItemStack.EMPTY;
         this.target = new WeakReference<>(null);
         this.isCasting = false;
         this.saExecutionStartTime = 0;

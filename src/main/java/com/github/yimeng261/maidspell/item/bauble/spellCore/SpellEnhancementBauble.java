@@ -1,8 +1,8 @@
 package com.github.yimeng261.maidspell.item.bauble.spellCore;
 
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 
-import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -24,7 +24,7 @@ import java.util.UUID;
  * 使用注册表查找，完全避免反射
  * 优化：女仆始终保有modifier，只更新数值
  */
-public class SpellEnhancementBauble implements IExtendBauble {
+public class SpellEnhancementBauble implements IMaidBauble {
 
     // 支持的属性列表
     private static final List<AttributeConfig> ATTRIBUTES = new ArrayList<>();

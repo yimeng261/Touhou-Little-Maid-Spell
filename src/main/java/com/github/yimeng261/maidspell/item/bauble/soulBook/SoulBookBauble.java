@@ -1,11 +1,12 @@
 package com.github.yimeng261.maidspell.item.bauble.soulBook;
 
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.mojang.logging.LogUtils;
 
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 import oshi.util.tuples.Pair;
@@ -20,7 +21,7 @@ import java.util.UUID;
  * 同时实现伤害间隔检测：若两次伤害间隔不超过10tick则取消本次伤害
  */
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
-public class SoulBookBauble implements IExtendBauble {
+public class SoulBookBauble implements IMaidBauble {
     public static final Logger LOGGER = LogUtils.getLogger();
     
     // 存储每个女仆上次受伤的时间（tick）
@@ -38,14 +39,14 @@ public class SoulBookBauble implements IExtendBauble {
     }
 
     @Override
-    public void onAdd(EntityMaid maid) {
+    public void onPutOn(EntityMaid maid, ItemStack baubleItem) {
         UUID id = maid.getOwnerUUID();
         int count = maidSoulBookCount.getOrDefault(id, 0);
         maidSoulBookCount.put(id, ++count);
     }
 
     @Override
-    public void onRemove(EntityMaid maid) {
+    public void onTakeOff(EntityMaid maid, ItemStack baubleItem) {
         UUID maidId = maid.getUUID();
         lastHurtTimeMap.remove(maidId);
         UUID id = maid.getOwnerUUID();

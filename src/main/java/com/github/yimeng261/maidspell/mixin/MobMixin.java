@@ -44,7 +44,6 @@ public class MobMixin {
 
             // 取消转换操作，返回null
             cir.setReturnValue(null);
-            return;
         }
     }
 
@@ -69,7 +68,6 @@ public class MobMixin {
             if (maid.getHealth() > 0.0f) {
                 Global.LOGGER.debug("阻止血量大于0的女仆 {} 掉落战利品 (anchor_core protection)", maid.getUUID());
                 ci.cancel();
-                return;
             }
         }
     }

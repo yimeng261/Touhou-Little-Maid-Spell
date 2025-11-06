@@ -34,28 +34,17 @@ import java.util.List;
 import java.util.ArrayList;
 
 /**
- * 新生魔艺模组的法术书提供者 - 单例版本
+ * 新生魔艺模组的法术书提供者
  * 通过 MaidArsNouveauSpellData 管理各女仆的数据
  */
-public class ArsNouveauProvider implements ISpellBookProvider {
+public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellData> {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     /**
-     * 私有构造函数，防止外部实例化
+     * 构造函数，绑定 MaidArsNouveauSpellData 数据类型
      */
     public ArsNouveauProvider() {
-        // 私有构造函数
-    }
-    
-
-    /**
-     * 获取指定女仆的法术数据
-     */
-    private MaidArsNouveauSpellData getData(EntityMaid maid) {
-        if (maid == null) {
-            return null;
-        }
-        return MaidArsNouveauSpellData.getOrCreate(maid.getUUID());
+        super(MaidArsNouveauSpellData::getOrCreate);
     }
     
     // === 核心方法（接受EntityMaid参数） ===
@@ -71,62 +60,16 @@ public class ArsNouveauProvider implements ISpellBookProvider {
         return itemStack.getItem() instanceof SpellBook;
     }
 
-    /**
-     * 设置目标
-     */
-    @Override
-    public void setTarget(EntityMaid maid, LivingEntity target) {
-        MaidArsNouveauSpellData data = getData(maid);
-        if (data != null) {
-            data.setTarget(target);
-        }
-    }
-
-    /**
-     * 获取目标
-     */
-    @Override
-    public LivingEntity getTarget(EntityMaid maid) {
-        MaidArsNouveauSpellData data = getData(maid);
-        return data != null ? data.getTarget() : null;
-    }
-
-    /**
-     * 设置法术书
-     */
-    @Override
-    public void setSpellBook(EntityMaid maid, ItemStack spellBook) {
-        MaidArsNouveauSpellData data = getData(maid);
-        if (data != null) {
-            data.setSpellBook(spellBook);
-            // 重置施法器缓存
-            if (isSpellBook(spellBook)) {
-                ISpellCaster caster = CasterUtil.getCaster(spellBook);
-                data.setCurrentCaster(caster);
-            } else {
-                data.setCurrentCaster(null);
-            }
-        }
-    }
-    
-    /**
-     * 检查是否正在施法
-     */
-    @Override
-    public boolean isCasting(EntityMaid maid) {
-        MaidArsNouveauSpellData data = getData(maid);
-        return data != null && data.isCasting();
-    }
     
     /**
      * 开始施法
      */
     @Override
-    public boolean initiateCasting(EntityMaid maid) {
+    public void initiateCasting(EntityMaid maid) {
         MaidArsNouveauSpellData data = getData(maid);
         if (data == null || data.isCasting() || !isSpellBook(data.getSpellBook()) || 
             data.getCurrentCaster() == null) {
-            return false;
+            return;
         }
 
         // 确保女仆有魔力能力
@@ -135,7 +78,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
         // 选择一个法术进行施放
         Spell spell = selectRandomSpell(data);
         if (spell == null) {
-            return false;
+            return;
         }
         
         // 确保女仆面向目标
@@ -152,8 +95,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
         
         // 播放手臂挥舞动画
         maid.swing(InteractionHand.MAIN_HAND);
-        
-        return true;
+
     }
     
     /**
@@ -192,20 +134,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
         
         data.resetCastingState();
     }
-    
-    /**
-     * 执行法术
-     */
-    @Override
-    public boolean castSpell(EntityMaid maid) {
-        // 防止在已经施法时重复开始施法
-        MaidArsNouveauSpellData data = getData(maid);
-        if (data != null && data.isCasting()) { 
-            return false;
-        }
-        return initiateCasting(maid);
-    }
-    
+
     /**
      * 更新冷却时间
      */
@@ -306,7 +235,7 @@ public class ArsNouveauProvider implements ISpellBookProvider {
                 }
             };
             
-            boolean castSuccess = false;
+            boolean castSuccess;
             LivingEntity target = data.getTarget();
             
             if (target != null) {

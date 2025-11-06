@@ -1,12 +1,11 @@
 package com.github.yimeng261.maidspell.item.bauble.chaosBook;
 
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 
@@ -21,7 +20,7 @@ import org.slf4j.Logger;
  * 混沌之书饰品实现
  * 将女仆造成的伤害转换为InfoDamageSources类型
  */
-public class ChaosBookBauble implements IExtendBauble {
+public class ChaosBookBauble implements IMaidBauble {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public ChaosBookBauble() {

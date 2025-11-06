@@ -4,13 +4,14 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 
+import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.common.Mod;
@@ -23,7 +24,7 @@ import oshi.util.tuples.Pair;
  * 监听周围敌对实体的治疗并阻止
  */
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
-public class WoundRimeBladeBauble implements IExtendBauble {
+public class WoundRimeBladeBauble implements IMaidBauble {
 
     private static final ConcurrentHashMap<UUID, ConcurrentHashMap<LivingEntity, Pair<Float,Integer>>> maidWoundRimeBladeMap = new ConcurrentHashMap<>();
 
@@ -32,7 +33,7 @@ public class WoundRimeBladeBauble implements IExtendBauble {
     }
 
     @Override
-    public void onRemove(EntityMaid maid) {
+    public void onTakeOff(EntityMaid maid, ItemStack baubleItem) {
         maidWoundRimeBladeMap.remove(maid.getUUID());
     }
 
@@ -46,21 +47,29 @@ public class WoundRimeBladeBauble implements IExtendBauble {
             }
             ConcurrentHashMap<LivingEntity,Pair<Float,Integer>> map = maidWoundRimeBladeMap.get(maid.getUUID());
             float nowHealth = entity.getHealth();
-            Pair<Float,Integer> record = map.computeIfAbsent(entity, k -> new Pair<>(nowHealth, Config.woundRimeBladeRecordDuration));
+            Pair<Float,Integer> record = map.getOrDefault(entity, new Pair<>(nowHealth, Config.woundRimeBladeRecordTimes));
             float recordHealth = record.getA();
+            if(nowHealth > recordHealth) {
+                TrueDamageUtil.setNewHealth(entity,recordHealth,maid);
+            }
             float newHealth = Math.min(recordHealth,nowHealth) - damage;
-            map.put(entity, new Pair<>(newHealth, record.getB() + Config.woundRimeBladeRecordDuration));
+            map.put(entity, new Pair<>(newHealth, record.getB() + Config.woundRimeBladeRecordTimes));
         }
     }
 
+    /**
+     * 处理破愈咒锋饰品
+     * @param entity 实体
+     * @param health 健康值
+     * @return 是否取消治疗
+     */
     public static boolean handleWoundRimeMap(LivingEntity entity,float health) {
         AtomicBoolean shouldCancel = new AtomicBoolean(false);
         maidWoundRimeBladeMap.forEach( (uuid, map) -> {
             if(!map.containsKey(entity)) {
                 return;
             }
-            Pair<Float,Integer> record = map.get(entity);
-            map.put(entity, new Pair<>(health, record.getB() - 1));
+            map.computeIfPresent(entity, (k, record) -> new Pair<>(health, record.getB() - 1));
             shouldCancel.set(true);
         });
         return shouldCancel.get();
@@ -72,9 +81,7 @@ public class WoundRimeBladeBauble implements IExtendBauble {
         map.forEach((entity, record) -> {
             if(!entity.isAlive() || record.getB() == 0){
                 map.remove(entity);
-                return;
             }
-
         });
     }
 

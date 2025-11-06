@@ -1,8 +1,8 @@
 package com.github.yimeng261.maidspell.item.bauble.rockCrystal;
 
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
-import com.github.yimeng261.maidspell.api.IExtendBauble;
 
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -11,7 +11,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.UUID;
 
-public class RockCrystalBauble implements IExtendBauble {
+public class RockCrystalBauble implements IMaidBauble {
     private static final UUID KNOCKBACK_RESISTANCE_UUID = UUID.fromString("8b5c7a26-3e4f-4c45-a7b3-2f8d9e1a5c47");
     @Override
     public void onTick(EntityMaid maid, ItemStack baubleItem) {
@@ -31,7 +31,7 @@ public class RockCrystalBauble implements IExtendBauble {
     }
     
     @Override
-    public void onRemove(EntityMaid maid) {
+    public void onTakeOff(EntityMaid maid, ItemStack baubleItem) {
         // 移除击退抗性加成
         AttributeInstance knockbackResistance = maid.getAttribute(Attributes.KNOCKBACK_RESISTANCE);
         if (knockbackResistance == null) {

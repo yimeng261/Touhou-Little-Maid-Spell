@@ -44,12 +44,37 @@ public class TrueDamageUtil {
         // 尝试EntityData修改，失败则尝试NBT修改
         boolean success = tryEntityDataDamage(target, newHealth) || tryNBTDamage(target, originalHealth, newHealth);
 
-        if(success&&newHealth<=0.0f){
+        if(success||newHealth<=0.0f){
             target.die(new DamageSource(Holder.direct(new DamageType("info_damage", 0.0f)),attacker));
         }
         
         LOGGER.debug("[TrueDamage] Damage {} applied: {} -> {} (success: {})", 
                    damage, originalHealth, target.getHealth(), success);
+        return success;
+    }
+
+    /**
+     * 对目标实体造成真实伤害
+     *
+     * @param target 目标实体
+     * @param newHealth 伤害值
+     * @return success 是否成功
+     */
+    public static boolean setNewHealth(LivingEntity target, float newHealth, LivingEntity attacker) {
+        if(target == null){
+            return false;
+        }
+        float originalHealth = target.getHealth();
+
+        // 尝试EntityData修改，失败则尝试NBT修改
+        boolean success = tryEntityDataDamage(target, newHealth) || tryNBTDamage(target, originalHealth, newHealth);
+
+        if(success||newHealth<=0.0f){
+            target.die(new DamageSource(Holder.direct(new DamageType("info_damage", 0.0f)),attacker));
+        }
+
+        LOGGER.debug("[TrueDamage] NewHealth {} applied: {} -> {} (success: {})",
+                newHealth, originalHealth, target.getHealth(), success);
         return success;
     }
     

@@ -10,7 +10,6 @@ import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.DataItem;
-import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,8 +20,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
@@ -89,11 +86,7 @@ public abstract class LivingEntityMixin {
     private void maidspell$handelHpDecrease(LivingEntity entity, float health, CallbackInfo ci) {
         //处理玩家hurt
         if(entity instanceof ServerPlayer player) {
-            // 检查GameProfile是否为null，防止在玩家初始化过程中出现空指针异常
-            if(player.getGameProfile()==null){
-                return;
-            }
-            if(SoulBookBauble.maidSoulBookCount.getOrDefault(player.getGameProfile().getId(), 0) == 0) {
+            if(SoulBookBauble.maidSoulBookCount.getOrDefault(player.getUUID(), 0) == 0) {
                 return;
             }
 

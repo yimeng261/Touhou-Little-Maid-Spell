@@ -28,7 +28,7 @@ import java.util.*;
  * Youkai-Homecoming弹幕物品提供者
  * 支持女仆使用弹幕物品、法术卡和激光武器
  */
-public class YoukaiHomecomingProvider implements ISpellBookProvider {
+public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData> {
     
     private static final Logger LOGGER = LogUtils.getLogger();
     
@@ -39,18 +39,12 @@ public class YoukaiHomecomingProvider implements ISpellBookProvider {
 
     private static final HashSet<Class<?>> DANMAKU_CLASSES = new HashSet<>(Arrays.asList(DanmakuItem.class,SpellItem.class,LaserItem.class,ItemDanmakuEntity.class,ItemLaserEntity.class));
     
-    public YoukaiHomecomingProvider() {
-        LOGGER.info("YoukaiHomecomingProvider initialized");
-    }
-    
     /**
-     * 获取指定女仆的弹幕数据
+     * 构造函数，绑定 MaidYHSpellData 数据类型
      */
-    private MaidYHSpellData getData(EntityMaid maid) {
-        if (maid == null) {
-            return null;
-        }
-        return MaidYHSpellData.getOrCreate(maid.getUUID());
+    public YoukaiHomecomingProvider() {
+        super(MaidYHSpellData::getOrCreate);
+        LOGGER.info("YoukaiHomecomingProvider initialized");
     }
     
     // === ISpellBookProvider 接口实现 ===
@@ -67,68 +61,29 @@ public class YoukaiHomecomingProvider implements ISpellBookProvider {
         //LOGGER.debug("isSpellBook({}),result:{}", itemStack,DANMAKU_CLASSES.contains(itemStack.getItem().getClass()));
         return DANMAKU_CLASSES.contains(itemStack.getItem().getClass());
     }
-    
-    /**
-     * 设置目标
-     */
-    @Override
-    public void setTarget(EntityMaid maid, LivingEntity target) {
-        MaidYHSpellData data = getData(maid);
-        if (data != null) {
-            data.setTarget(target);
-        }
-    }
-    
-    /**
-     * 获取目标
-     */
-    @Override
-    public LivingEntity getTarget(EntityMaid maid) {
-        MaidYHSpellData data = getData(maid);
-        return data != null ? data.getTarget() : null;
-    }
-    
-    /**
-     * 设置弹幕物品
-     */
-    @Override
-    public void setSpellBook(EntityMaid maid, ItemStack danmakuItem) {
-        MaidYHSpellData data = getData(maid);
-        data.setSpellBook(danmakuItem);
-        if(danmakuItem==null){
-            data.removeDanmakuItems();
-        }else{
-            data.addDanmakuItem(danmakuItem);
-        }
-    }
-    
-    /**
-     * 检查是否正在施法
-     */
-    @Override
-    public boolean isCasting(EntityMaid maid) {
-        MaidYHSpellData data = getData(maid);
-        return data != null && data.isCasting();
-    }
+
     
     /**
      * 开始施法 - 随机选择多种弹幕进行扇形发射
      */
     @Override
-    public boolean initiateCasting(EntityMaid maid) {
+    public void initiateCasting(EntityMaid maid) {
         MaidYHSpellData data = getData(maid);
+        if(data.spellBooks.isEmpty()){
+            return;
+        }
 
-        HashSet<ItemStack> allDanmakuItems = data.getDanmakuItems();
+        Set<ItemStack> allDanmakuItems = data.getSpellBooks();
         LOGGER.debug("Initiating casting for {} items", allDanmakuItems.size());
         if (allDanmakuItems.isEmpty()) {
-            return false;
+            return;
         }
         
         // 面向目标
         prepareForCasting(maid, data);
         
         // 随机选择发射数量和种类，进行扇形发射
-        return performRandomFanShooting(maid, data, allDanmakuItems);
+        performRandomFanShooting(maid, allDanmakuItems);
     }
     
     /**
@@ -169,14 +124,6 @@ public class YoukaiHomecomingProvider implements ISpellBookProvider {
     }
     
     /**
-     * 执行法术（简化版本）
-     */
-    @Override
-    public boolean castSpell(EntityMaid maid) {
-        return initiateCasting(maid);
-    }
-    
-    /**
      * 更新冷却时间
      */
     @Override
@@ -190,20 +137,18 @@ public class YoukaiHomecomingProvider implements ISpellBookProvider {
     /**
      * 执行随机扇形发射
      */
-    private boolean performRandomFanShooting(EntityMaid maid, MaidYHSpellData data, Set<ItemStack> allDanmakuItems) {
+    private void performRandomFanShooting(EntityMaid maid, Set<ItemStack> allDanmakuItems) {
         if (!(maid.level() instanceof ServerLevel)) {
-            return false;
+            return;
         }
-
+        MaidYHSpellData data = getData(maid);
         Random random = new Random();
         // 随机选择发射数量
         int shotCount = random.nextInt(MIN_DANMAKU_COUNT, MAX_DANMAKU_COUNT + 1);
         Vec3 baseDirection = calculateShootDirection(maid, data);
         LOGGER.debug("danmaku set: {}",allDanmakuItems.toArray());
         ItemStack selectedItem = (ItemStack) allDanmakuItems.toArray()[random.nextInt(allDanmakuItems.size())];
-        
-        boolean success = false;
-        
+
         // 发射多个弹幕
         for (int i = 0; i < shotCount; i++) {
 
@@ -217,13 +162,10 @@ public class YoukaiHomecomingProvider implements ISpellBookProvider {
             Vec3 shootDirection = calculateFanDirection(baseDirection, angleOffset);
             
             // 根据物品类型发射
-            if (fireDanmakuByType(maid, data, selectedItem, shootDirection)) {
-                success = true;
-            }
+            fireDanmakuByType(maid, selectedItem, shootDirection);
 
         }
-        
-        return success;
+
     }
     
     /**
@@ -277,29 +219,28 @@ public class YoukaiHomecomingProvider implements ISpellBookProvider {
     /**
      * 根据物品类型发射弹幕
      */
-    private boolean fireDanmakuByType(EntityMaid maid, MaidYHSpellData data, ItemStack item, Vec3 direction) {
+    private void fireDanmakuByType(EntityMaid maid, ItemStack item, Vec3 direction) {
         if (!(maid.level() instanceof ServerLevel)) {
-            return false;
+            return;
         }
         
         if (item.getItem() instanceof DanmakuItem danmakuItem) {
-            return fireDanmakuWithDirection(maid, danmakuItem, item, direction);
+            fireDanmakuWithDirection(maid, danmakuItem, item, direction);
         } else if (item.getItem() instanceof LaserItem laserItem) {
-            return fireLaserWithDirection(maid, laserItem, item, direction);
+            fireLaserWithDirection(maid, laserItem, item, direction);
         } else if (item.getItem() instanceof SpellItem) {
             // 法术卡暂时使用弹幕的发射方式
-            return fireDanmakuWithDirection(maid, null, item, direction);
+            fireDanmakuWithDirection(maid, null, item, direction);
         }
-        
-        return false;
+
     }
     
     /**
      * 按指定方向发射弹幕
      */
-    private boolean fireDanmakuWithDirection(EntityMaid maid, DanmakuItem danmakuItem, ItemStack item, Vec3 direction) {
+    private void fireDanmakuWithDirection(EntityMaid maid, DanmakuItem danmakuItem, ItemStack item, Vec3 direction) {
         if (!(maid.level() instanceof ServerLevel serverLevel)) {
-            return false;
+            return;
         }
         
         // 创建弹幕实体
@@ -314,15 +255,14 @@ public class YoukaiHomecomingProvider implements ISpellBookProvider {
         }
         
         serverLevel.addFreshEntity(danmaku);
-        return true;
     }
     
     /**
      * 按指定方向发射激光
      */
-    private boolean fireLaserWithDirection(EntityMaid maid, LaserItem laserItem, ItemStack item, Vec3 direction) {
+    private void fireLaserWithDirection(EntityMaid maid, LaserItem laserItem, ItemStack item, Vec3 direction) {
         if (!(maid.level() instanceof ServerLevel serverLevel)) {
-            return false;
+            return;
         }
         
         Vec3 startPos = maid.position().add(0, maid.getBbHeight() * 0.8, 0);
@@ -334,7 +274,6 @@ public class YoukaiHomecomingProvider implements ISpellBookProvider {
         laser.setPos(startPos);
         
         serverLevel.addFreshEntity(laser);
-        return true;
     }
 
     

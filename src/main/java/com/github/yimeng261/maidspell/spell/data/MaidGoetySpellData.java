@@ -2,7 +2,7 @@ package com.github.yimeng261.maidspell.spell.data;
 
 import com.Polarice3.Goety.api.magic.ISpell;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.api.AbstractSpellData;
+import com.github.yimeng261.maidspell.api.IMaidSpellData;
 
 import java.util.Map;
 import java.util.UUID;
@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 女仆Goety法术数据存储类
  * 集中管理每个女仆的法术相关状态和数据
  */
-public class MaidGoetySpellData extends AbstractSpellData {
+public class MaidGoetySpellData extends IMaidSpellData {
     
     // 全局数据存储，按女仆UUID映射
     private static final Map<UUID, MaidGoetySpellData> MAID_DATA_MAP = new ConcurrentHashMap<>();

@@ -6,7 +6,6 @@ import com.github.yimeng261.maidspell.spell.data.MaidPsiSpellData;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.util.FakePlayer;
@@ -32,20 +31,14 @@ import java.util.List;
  * Psi模组的法术提供者
  * 使女仆能够使用Psi的CAD和法术弹进行施法
  */
-public class PsiProvider implements ISpellBookProvider {
+public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData> {
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public PsiProvider() {
-    }
-
     /**
-     * 获取指定女仆的Psi法术数据
+     * 构造函数，绑定 MaidPsiSpellData 数据类型
      */
-    private MaidPsiSpellData getData(EntityMaid maid) {
-        if (maid == null) {
-            return null;
-        }
-        return MaidPsiSpellData.getOrCreate(maid.getUUID());
+    public PsiProvider() {
+        super(MaidPsiSpellData::getOrCreate);
     }
 
     /**
@@ -62,58 +55,18 @@ public class PsiProvider implements ISpellBookProvider {
     }
 
     /**
-     * 设置目标
-     */
-    @Override
-    public void setTarget(EntityMaid maid, LivingEntity target) {
-        MaidPsiSpellData data = getData(maid);
-        if (data != null) {
-            data.setTarget(target);
-        }
-    }
-
-    /**
-     * 获取目标
-     */
-    @Override
-    public LivingEntity getTarget(EntityMaid maid) {
-        MaidPsiSpellData data = getData(maid);
-        return data != null ? data.getTarget() : null;
-    }
-
-    /**
-     * 设置CAD
-     */
-    @Override
-    public void setSpellBook(EntityMaid maid, ItemStack cad) {
-        MaidPsiSpellData data = getData(maid);
-        if (data != null) {
-            data.setSpellBook(cad);
-        }
-    }
-
-    /**
-     * 检查是否正在施法
-     */
-    @Override
-    public boolean isCasting(EntityMaid maid) {
-        MaidPsiSpellData data = getData(maid);
-        return data != null && data.isCasting();
-    }
-
-    /**
      * 开始施法
      */
     @Override
-    public boolean initiateCasting(EntityMaid maid) {
+    public void initiateCasting(EntityMaid maid) {
         MaidPsiSpellData data = getData(maid);
         if (data == null) {
-            return false;
+            return;
         }
 
         ItemStack cad = data.getSpellBook();
         if (!isSpellBook(cad)) {
-            return false;
+            return;
         }
 
         // 获取CAD的可插拔组件
@@ -122,11 +75,11 @@ public class PsiProvider implements ISpellBookProvider {
         // 从弹夹中随机选择一个有效的法术弹
         ItemStack bullet = getRandomBulletFromMagazine(sockets, maid);
         if (bullet.isEmpty() || !ISpellAcceptor.hasSpell(bullet)) {
-            return false;
+            return;
         }
 
         // 尝试施放法术
-        return attemptCastSpell(maid, cad, bullet);
+        attemptCastSpell(maid, cad, bullet);
     }
 
     /**
@@ -346,14 +299,6 @@ public class PsiProvider implements ISpellBookProvider {
             data.setCurrentSpell(null);
             data.setCastingTicks(0);
         }
-    }
-
-    /**
-     * 执行法术
-     */
-    @Override
-    public boolean castSpell(EntityMaid maid) {
-        return initiateCasting(maid);
     }
 
     /**

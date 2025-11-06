@@ -1,11 +1,11 @@
 package com.github.yimeng261.maidspell.item.bauble.hairpin;
 
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidAfterEatEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.mojang.logging.LogUtils;
@@ -22,7 +22,7 @@ import org.slf4j.Logger;
 /**
  * 发簪 Hairpin 饰品扩展行为
  */
-public class HairpinBauble implements IExtendBauble {
+public class HairpinBauble implements IMaidBauble {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public HairpinBauble() {

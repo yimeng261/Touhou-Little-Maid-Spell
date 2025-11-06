@@ -1,13 +1,9 @@
 package com.github.yimeng261.maidspell.spell.data;
 
-import com.github.yimeng261.maidspell.api.AbstractSpellData;
-import io.redspace.ironsspellbooks.api.spells.SpellData;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemStack;
+import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 女仆Psi法术数据管理类
  * 管理每个女仆的CAD、法术状态和冷却时间
  */
-public class MaidPsiSpellData extends AbstractSpellData {
+public class MaidPsiSpellData extends IMaidSpellData {
     private static final Logger LOGGER = LogUtils.getLogger();
     
     // 全局女仆数据存储

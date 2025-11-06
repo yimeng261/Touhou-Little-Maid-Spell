@@ -12,6 +12,7 @@
     "EntityMixin",
     "LivingEntityMixin",
     "MobMixin",
+    "OpenMaidGuiMessageMixin",
     "SynchedEntityDataMixin"
   ],
   "client": [
