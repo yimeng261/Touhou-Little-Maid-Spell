@@ -1,14 +1,10 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHandler;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.inventory.MaidAwareBaubleItemHandler;
-import com.github.yimeng261.maidspell.inventory.SpellBookAwareMaidBackpackHandler;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
-
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -16,9 +12,10 @@ import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
-import net.neoforged.neoforge.items.ItemStackHandler;
 import org.slf4j.Logger;
-import org.spongepowered.asm.mixin.*;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -40,32 +37,10 @@ public abstract class EntityMaidMixin extends TamableAnimal {
     @Shadow
     private boolean structureSpawn;
 
-    @Mutable
-    @Final
-    @Shadow
-    private ItemStackHandler maidInv;
-
-    @Mutable
-    @Final
-    @Shadow
-    private BaubleItemHandler maidBauble;
-
     protected EntityMaidMixin(EntityType<? extends TamableAnimal> entityType, Level level) {
         super(entityType, level);
     }
 
-    /**
-     * 在构造函数完成后替换字段值
-     */
-    @Inject(method = "<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V",
-            at = @At("TAIL"))
-    private void replaceHandlers(EntityType<EntityMaid> type, Level world, CallbackInfo ci) {
-        // 使用Shadow字段直接替换背包处理器
-        this.maidInv = new SpellBookAwareMaidBackpackHandler(36, (EntityMaid)(Object)this);
-
-        // 使用Shadow字段直接替换饰品处理器
-        this.maidBauble = new MaidAwareBaubleItemHandler(EntityMaid.BAUBLE_INV_SIZE, (EntityMaid)(Object)this);
-    }
 
     /**
      * 修改finalizeSpawn方法，阻止hidden_retreat结构中的女仆进行随机模型选择

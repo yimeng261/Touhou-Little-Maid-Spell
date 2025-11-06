@@ -21,9 +21,8 @@ public class SimplifiedSpellCaster {
 
     public static double MELEE_RANGE;
     public static double FAR_RANGE;
-    private static final double MOVEMENT_SPEED = 0.6;
 
-    private SpellBookManager spellBookManager;
+    private final SpellBookManager spellBookManager;
 
     public SimplifiedSpellCaster(EntityMaid maid) {
         this.maid = maid;
@@ -38,7 +37,7 @@ public class SimplifiedSpellCaster {
         this.target = target;
         // 同时设置给SpellBookManager
         if (spellBookManager != null) {
-            for (ISpellBookProvider provider : spellBookManager.getProviders()) {
+            for (ISpellBookProvider<?> provider : spellBookManager.getProviders()) {
                 provider.setTarget(maid,target);
             }
         }
@@ -91,7 +90,7 @@ public class SimplifiedSpellCaster {
     public static void clearLookTarget(EntityMaid maid) {
         maid.getBrain().getMemory(MemoryModuleType.LOOK_TARGET).ifPresent(lookTarget -> {
             if(lookTarget instanceof EntityTracker tracker) {
-                if (tracker.getEntity() instanceof Player player) {
+                if (tracker.getEntity() instanceof Player) {
                     maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
                 }
             }

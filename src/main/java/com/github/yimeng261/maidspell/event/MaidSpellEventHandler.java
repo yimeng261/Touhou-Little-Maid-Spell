@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.event;
 
+import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBackpackChangeEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidEquipEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
@@ -66,14 +67,13 @@ public class MaidSpellEventHandler {
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.setMaid(maid);
-            manager.updateSpellBooks();
+            manager.initSpellBooks();
             LivingEntity owner = maid.getOwner();
             Global.maidList.add(maid);
             if(owner != null) {
                 Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
             }
             addStepHeightToMaid(maid);
-            BaubleStateManager.updateAndCheckBaubleState(maid);
 
             // 检查女仆的区块加载状态
             if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
@@ -90,6 +90,26 @@ public class MaidSpellEventHandler {
                 }
             }
         }
+    }
+
+    @SubscribeEvent
+    public static void onMaidInvPutOn(MaidBackpackChangeEvent.PutOn event) {
+        EntityMaid maid = event.getMaid();
+        if (maid.level().isClientSide()) {
+            return;
+        }
+        SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
+        manager.addSpellItem(maid,event.getItemStack());
+    }
+
+    @SubscribeEvent
+    public static void onMaidInvTakeOff(MaidBackpackChangeEvent.TakeOff event) {
+        EntityMaid maid = event.getMaid();
+        if (maid.level().isClientSide()) {
+            return;
+        }
+        SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
+        manager.removeSpellItem(maid,event.getItemStack());
     }
 
     /**
@@ -140,7 +160,6 @@ public class MaidSpellEventHandler {
             if (manager != null) {
                 manager.stopAllCasting();
             }
-            BaubleStateManager.removeMaidBaubles(maid);
 
             LivingEntity owner = maid.getOwner();
             if(owner != null) {
@@ -164,7 +183,7 @@ public class MaidSpellEventHandler {
                 SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
                 if (manager != null) {
                     // 更新法术书
-                    manager.updateSpellBooks();
+                    manager.initSpellBooks();
                 }
             } catch (Exception e) {
                 LOGGER.error("Error handling maid equip event for maid {}: {}",
@@ -250,7 +269,7 @@ public class MaidSpellEventHandler {
                 if (manager != null) {
                     manager.tick();
                 }
-                // 每20个tick更新一次结盟状态和区块加载
+                // 每20个tick更新一次结盟状态
                 if(maid.tickCount%20 == 0){
                     if(maid.isNoAi() && maid.getTask().getUid().toString().startsWith("maidspell")){
                         maid.setNoAi(false);
@@ -262,7 +281,6 @@ public class MaidSpellEventHandler {
                     }else{
                         AllianceManager.setMaidAlliance(maid, false);
                     }
-                    Global.LOGGER.debug("女仆 {} 区块仍加载", maid.getUUID());
                 }
             } catch (Exception e) {
                 LOGGER.error("Error in maid tick handler for maid {}: {}",
@@ -368,13 +386,12 @@ public class MaidSpellEventHandler {
             // 通过SpellBookManager获取提供者并停止所有正在进行的施法
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             if (manager != null) {
-                for (ISpellBookProvider provider : manager.getProviders()) {
+                for (ISpellBookProvider<?> provider : manager.getProviders()) {
                     if (provider.isCasting(maid)) {
                         provider.stopCasting(maid);
                     }
                 }
             }
-            BaubleStateManager.removeMaidBaubles(maid);
             // MaidSlashBladeData.remove(maid.getUUID());
             SpellBookManager.removeManager(maid);
         } catch (Exception e) {

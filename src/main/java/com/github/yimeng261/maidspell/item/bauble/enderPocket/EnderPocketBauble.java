@@ -1,10 +1,11 @@
 package com.github.yimeng261.maidspell.item.bauble.enderPocket;
 
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -14,9 +15,9 @@ import java.util.List;
  * 末影腰包饰品实现
  * 不需要特殊的事件处理，主要功能通过按键和GUI实现
  */
-public class EnderPocketBauble implements IExtendBauble {
+public class EnderPocketBauble implements IMaidBauble {
     @Override
-    public void onAdd(EntityMaid maid) {
+    public void onPutOn(EntityMaid maid, ItemStack baubleItem) {
         try {
             // 在客户端更新本地数据
             if (maid.level().isClientSide()) {
@@ -33,7 +34,7 @@ public class EnderPocketBauble implements IExtendBauble {
     }
 
     @Override
-    public void onRemove(EntityMaid maid) {
+    public void onTakeOff(EntityMaid maid, ItemStack baubleItem) {
         try {
             // 在客户端更新本地数据
             if (maid.level().isClientSide()) {

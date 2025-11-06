@@ -1,6 +1,6 @@
 package com.github.yimeng261.maidspell.spell.data;
 
-import com.github.yimeng261.maidspell.api.AbstractSpellData;
+import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 
@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 女仆Psi法术数据管理类
  * 管理每个女仆的CAD、法术状态和冷却时间
  */
-public class MaidPsiSpellData extends AbstractSpellData {
+public class MaidPsiSpellData extends IMaidSpellData {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     // 全局女仆数据存储

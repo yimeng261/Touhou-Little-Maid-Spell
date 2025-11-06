@@ -18,9 +18,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -30,8 +27,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
 import oshi.util.tuples.Pair;
+
+import java.util.List;
 
 /**
  * LivingEntity的Mixin，用于修改setHealth方法
@@ -86,11 +84,7 @@ public abstract class LivingEntityMixin {
     private void maidspell$handelHpDecrease(LivingEntity entity, float health, CallbackInfo ci) {
         //处理玩家hurt
         if(entity instanceof ServerPlayer player) {
-            // 检查GameProfile是否为null，防止在玩家初始化过程中出现空指针异常
-            if(player.getGameProfile()==null){
-                return;
-            }
-            if(SoulBookBauble.maidSoulBookCount.getOrDefault(player.getGameProfile().getId(), 0) == 0) {
+            if(SoulBookBauble.maidSoulBookCount.getOrDefault(player.getUUID(), 0) == 0) {
                 return;
             }
 

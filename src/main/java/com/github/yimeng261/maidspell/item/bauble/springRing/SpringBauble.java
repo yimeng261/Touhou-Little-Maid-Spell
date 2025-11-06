@@ -1,11 +1,11 @@
 package com.github.yimeng261.maidspell.item.bauble.springRing;
 
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 
-public class SpringBauble implements IExtendBauble {
+public class SpringBauble implements IMaidBauble {
     static {
         Global.bauble_damageCalc_pre.put(MaidSpellItems.SPRING_RING.get(),(event, maid) -> {
             Float percent = 1 - maid.getHealth()/maid.getMaxHealth();

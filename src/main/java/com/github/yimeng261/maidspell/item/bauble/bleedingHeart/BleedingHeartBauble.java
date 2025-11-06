@@ -1,12 +1,12 @@
 package com.github.yimeng261.maidspell.item.bauble.bleedingHeart;
 
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import net.minecraft.world.entity.player.Player;
 
-public class BleedingHeartBauble implements IExtendBauble {
+public class BleedingHeartBauble implements IMaidBauble {
     static {
         Global.bauble_damageCalc_aft.put(MaidSpellItems.BLEEDING_HEART.get(),(event, maid) -> {
             float amount = event.getOriginalDamage();

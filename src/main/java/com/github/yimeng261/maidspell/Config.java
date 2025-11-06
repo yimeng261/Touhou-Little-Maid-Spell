@@ -344,7 +344,7 @@ public class Config {
     // 触发条件相关
     public static int silverCercisTriggerCount;
     public static int silverCercisCooldownTicks;
-    public static int woundRimeBladeRecordDuration;
+    public static int woundRimeBladeRecordTimes;
 
     // 好感度相关
     public static int hairpinFavorabilityGain;
@@ -394,7 +394,7 @@ public class Config {
         // 触发条件相关
         silverCercisTriggerCount = SILVER_CERCIS_TRIGGER_COUNT.get();
         silverCercisCooldownTicks = SILVER_CERCIS_COOLDOWN_TICKS.get();
-        woundRimeBladeRecordDuration = WOUND_RIME_BLADE_RECORD_DURATION.get();
+        woundRimeBladeRecordTimes = WOUND_RIME_BLADE_RECORD_DURATION.get();
 
         // 好感度相关
         hairpinFavorabilityGain = HAIRPIN_FAVORABILITY_GAIN.get();

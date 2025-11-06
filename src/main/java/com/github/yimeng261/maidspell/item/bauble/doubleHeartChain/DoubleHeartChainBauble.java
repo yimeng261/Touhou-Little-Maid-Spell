@@ -1,14 +1,14 @@
 package com.github.yimeng261.maidspell.item.bauble.doubleHeartChain;
 
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.api.IExtendBauble;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import net.minecraft.world.entity.player.Player;
 
-public class DoubleHeartChainBauble implements IExtendBauble {
+public class DoubleHeartChainBauble implements IMaidBauble {
     static {
         // 女仆受到伤害时，平摊给主人
         Global.bauble_hurtCalc_final.put(MaidSpellItems.DOUBLE_HEART_CHAIN.get(), (data) -> {

@@ -12,7 +12,8 @@
     "EntityMixin",
     "LivingEntityAccessor",
     "LivingEntityMixin",
-    "MobMixin"
+    "MobMixin",
+    "OpenMaidGuiPackageMixin"
   ],
   "client": [
   ],
