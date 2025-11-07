@@ -42,7 +42,6 @@ public class ChunkLoadingManager {
     private static final int CHECK_INTERVAL_TICKS = 20; // 每20tick检查一次
     private static final int DEFAULT_CHUNK_LIFETIME_TICKS = CHECK_INTERVAL_TICKS*10; // 10秒 (20 ticks/秒 * 10秒)
 
-
     /**
      * 区块键类，用于唯一标识一个区块
      */
@@ -90,10 +89,7 @@ public class ChunkLoadingManager {
         public boolean isExpired() {
             return remainingTicks <= 0;
         }
-        
-        public int getRemainingTicks() {
-            return remainingTicks;
-        }
+    
         
         @Override
         public String toString() {
@@ -111,20 +107,22 @@ public class ChunkLoadingManager {
             return;
         }
         
+        UUID maidId = maid.getUUID();
         ServerLevel serverLevel = (ServerLevel) maid.level();
         ChunkPos chunkPos = maid.chunkPosition();
-        UUID maidId = maid.getUUID();
         
+
+
         ChunkKey chunkKey = new ChunkKey(chunkPos, serverLevel);
         
         Global.LOGGER.debug("为女仆 {} 启用区块加载: {}", maidId, chunkKey);
         
         // 使用新的计时器系统
         enableChunkLoadingWithTimer(maidId, serverLevel, chunkKey, DEFAULT_CHUNK_LIFETIME_TICKS);
-        
-        // 更新女仆位置记录
         maidChunkPositions.put(maidId, chunkKey);
+
     }
+
     
     /**
      * 使用计时器系统启用区块加载
@@ -136,7 +134,7 @@ public class ChunkLoadingManager {
             // 创建新的计时器并加载区块
             timer = new ChunkTimer(chunkKey, lifetimeTicks);
             timer.addMaid(maidId);
-            
+            Global.LOGGER.debug("准备进行区块加载");
             boolean success = performChunkOperation(serverLevel, maidId, chunkKey.chunkPos, true);
             if (success) {
                 chunkTimers.put(chunkKey, timer);
@@ -206,15 +204,14 @@ public class ChunkLoadingManager {
         if (server == null) {
             return;
         }
-        
-        Global.LOGGER.debug("检查 {} 个区块计时器", chunkTimers.size());
+
+        //Global.LOGGER.debug("检查 {} 个区块计时器", chunkTimers.size());
         
         for (Map.Entry<ChunkKey, ChunkTimer> entry : chunkTimers.entrySet()) {
             ChunkKey chunkKey = entry.getKey();
             ChunkTimer timer = entry.getValue();
 
-            Global.LOGGER.debug("区块计时器: {} 剩余{}秒，关联女仆: {}",
-                    chunkKey, timer.getRemainingTicks() / 20, timer.getAssociatedMaids().size());
+            //Global.LOGGER.debug("区块计时器: {} 剩余{}秒，关联女仆: {}", chunkKey, timer.getRemainingTicks() / 20, timer.getAssociatedMaids().size());
 
             Set<UUID> validMaids = new HashSet<>();
 
@@ -359,38 +356,33 @@ public class ChunkLoadingManager {
 
     private static boolean performChunkOperation(ServerLevel serverLevel, UUID maidId,
                                                         ChunkPos chunkPos, boolean enable) {
-        
-        return ForgeChunkManager.forceChunk(
-                serverLevel,
-                MaidSpellMod.MOD_ID,
-                maidId,
-                chunkPos.x,
-                chunkPos.z,
-                enable,
-                true
-        );
-    }
-    
-    /**
-     * 获取指定维度的ServerLevel
-     */
-    private static ServerLevel getServerLevelForDimension(EntityMaid maid, ResourceKey<Level> dimension) {
-        ServerLevel currentLevel = (ServerLevel) maid.level();
-        
-        if (currentLevel.dimension().equals(dimension)) {
-            return currentLevel;
+
+        try {
+            Global.LOGGER.debug("before force load: chunk=[{}, {}], enable={}, maid={}", 
+                chunkPos.x, chunkPos.z, enable, maidId);
+
+            if (enable && serverLevel.getForcedChunks().contains(chunkPos.toLong())) {
+                Global.LOGGER.debug("区块 {} 已经被强制加载，跳过", chunkPos);
+                return true;
+            }
+
+            return ForgeChunkManager.forceChunk(
+                    serverLevel,
+                    MaidSpellMod.MOD_ID,
+                    maidId,
+                    chunkPos.x,
+                    chunkPos.z,
+                    enable,
+                    true
+            );
+        } catch (Exception e) {
+            Global.LOGGER.error("区块操作失败: chunk=[{}, {}], enable={}, error={}", 
+                chunkPos.x, chunkPos.z, enable, e.getMessage(), e);
+            return false;
         }
-        
-        ServerLevel targetLevel = currentLevel.getServer().getLevel(dimension);
-        if (targetLevel == null) {
-            Global.LOGGER.warn("无法找到维度 {} 来操作女仆 {} 的区块加载", 
-                dimension.location(), maid.getUUID());
-        }
-        
-        return targetLevel;
     }
 
-    
+
     /**
      * 在指定位置恢复区块加载
      */

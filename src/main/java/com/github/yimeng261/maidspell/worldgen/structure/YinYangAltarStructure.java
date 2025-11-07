@@ -34,11 +34,8 @@ public class YinYangAltarStructure extends Structure {
     protected @NotNull Optional<GenerationStub> findGenerationPoint(GenerationContext context) {
         // 检查goety模组是否已安装
         boolean isGoetyLoaded = ModList.get().isLoaded("goety");
-        MaidSpellMod.LOGGER.info("YinYangAltar generation check - Goety loaded: {}, ChunkPos: {}", 
-            isGoetyLoaded, context.chunkPos());
         
         if (!isGoetyLoaded) {
-            MaidSpellMod.LOGGER.warn("Goety mod not loaded, skipping YinYangAltar generation");
             return Optional.empty();
         }
 

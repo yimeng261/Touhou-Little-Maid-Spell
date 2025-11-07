@@ -84,18 +84,33 @@ public class MaidSpellEventHandler {
             }
             addStepHeightToMaid(maid);
             
-            // 检查女仆的区块加载状态
+            // 检查女仆的区块加载状态 - 异步处理避免卡死
             if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
                 ServerLevel serverLevel = (ServerLevel) maid.level();
                 MinecraftServer server = serverLevel.getServer();
                 
-                // 使用完全基于SavedData的检查方法
-                if (ChunkLoadingManager.shouldEnableChunkLoading(maid, server)) {
-                    // 从全局SavedData恢复区块加载
-                    ChunkLoadingManager.restoreChunkLoadingFromSavedData(maid, server);
-                } else {
-                    // 首次装备，启用区块加载
-                    ChunkLoadingManager.enableChunkLoading(maid);
+                // 延迟异步处理区块加载，完全避免在实体加载过程中触发
+                if (server != null) {
+                    UUID maidId = maid.getUUID();
+
+                    server.execute(() -> {
+                        try {
+                            // 重新获取女仆实体，确保引用有效
+                            Entity delayedEntity = serverLevel.getEntity(maidId);
+                            if (delayedEntity instanceof EntityMaid delayedMaid) {
+                                // 使用完全基于SavedData的检查方法
+                                if (ChunkLoadingManager.shouldEnableChunkLoading(delayedMaid, server)) {
+                                    // 从全局SavedData恢复区块加载
+                                    ChunkLoadingManager.restoreChunkLoadingFromSavedData(delayedMaid, server);
+                                } else {
+                                    // 首次装备，启用区块加载
+                                    ChunkLoadingManager.enableChunkLoading(delayedMaid);
+                                }
+                            }
+                        } catch (Exception e) {
+                            LOGGER.error("处理女仆区块加载时发生错误: {}", e.getMessage(), e);
+                        }
+                    });
                 }
             }
         }
