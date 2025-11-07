@@ -32,7 +32,7 @@ import java.lang.reflect.Method;
  * 全局只有一个实例，通过MaidGoetySpellData管理各女仆的数据
  * 自动检测Goety版本并使用对应的API调用方式
  */
-public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData> {
+public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ISpell> {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAX_INFINITE_CASTING_TIME = 45;
@@ -50,7 +50,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData> {
      * 构造函数，绑定 MaidGoetySpellData 数据类型
      */
     public GoetyProvider() {
-        super(MaidGoetySpellData::getOrCreate);
+        super(MaidGoetySpellData::getOrCreate,ISpell.class);
     }
 
     /**
@@ -66,6 +66,25 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData> {
             }
         }
         return useNewAPI;
+    }
+
+    @Override
+    protected List<ISpell> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
+        List<ISpell> availableFoci = new ArrayList<>();
+        MaidGoetySpellData data = getData(maid);
+        FocusBagItemHandler bagHandler = FocusBagItemHandler.get(spellBook);
+        // 遍历FocusBag中所有槽位的聚晶
+        for (int i = 0; i < bagHandler.getSlots(); i++) {
+            ItemStack focusStack = bagHandler.getStackInSlot(i);
+            if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
+                ISpell spell = focus.getSpell();
+                if (spell != null && !data.isSpellOnCooldown(getSpellId(spell))) {
+                    availableFoci.add(focus.getSpell());
+                }
+            }
+        }
+
+        return availableFoci;
     }
 
     /**
@@ -168,11 +187,6 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData> {
         }
     }
 
-
-    private boolean isValidTarget(MaidGoetySpellData data) {
-        LivingEntity target = data.getTarget();
-        return target != null && target.isAlive();
-    }
     
     private ISpell selectSpell(EntityMaid maid) {
         MaidGoetySpellData data = getData(maid);
@@ -183,7 +197,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData> {
             return null;
         }
         
-        List<IFocus> availableFoci = collectAllAvailableFoci(maid, data, data.getSpellBook());
+        List<ISpell> availableFoci = collectSpellFromAvailableSpellBooks(maid);
         
         LOGGER.debug("[selectSpell] Found {} available foci for maid: {}", 
             availableFoci.size(), maid.getName().getString());
@@ -196,33 +210,10 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData> {
         
         // 随机选择一个可用的聚晶
         int randomIndex = (int) (Math.random() * availableFoci.size());
-        ISpell spell = availableFoci.get(randomIndex).getSpell();
+        ISpell spell = availableFoci.get(randomIndex);
         LOGGER.debug("[selectSpell] Selected spell: {} from {} available foci", 
             spell != null ? spell.getClass().getSimpleName() : "null", availableFoci.size());
         return spell;
-    }
-    
-    private List<IFocus> collectAllAvailableFoci(EntityMaid maid, MaidGoetySpellData data, ItemStack focusBag) {
-        List<IFocus> availableFoci = new ArrayList<>();
-
-
-        try {
-            FocusBagItemHandler bagHandler = FocusBagItemHandler.get(focusBag);
-            // 遍历FocusBag中所有槽位的聚晶
-            for (int i = 0; i < bagHandler.getSlots(); i++) {
-                ItemStack focusStack = bagHandler.getStackInSlot(i);
-                if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
-                    ISpell spell = focus.getSpell();
-                    if (spell != null && !data.isSpellOnCooldown(getSpellId(spell))) {
-                        availableFoci.add(focus);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            LOGGER.warn("Failed to access focus bag handler for maid: {}", maid.getUUID(), e);
-        }
-        
-        return availableFoci;
     }
 
     

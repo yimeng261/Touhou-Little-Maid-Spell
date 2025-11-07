@@ -40,6 +40,11 @@ public class MaidYHSpellData extends IMaidSpellData {
     private MaidYHSpellData(UUID uuid) {
     }
 
+    @Override
+    protected boolean canAddSpellBook(ItemStack spellBook){
+        return true;
+    }
+
     /**
      * 获取或创建女仆的弹幕数据
      */
@@ -95,16 +100,7 @@ public class MaidYHSpellData extends IMaidSpellData {
             castingTime++;
         }
     }
-    
-    /**
-     * 发射一发弹幕
-     */
-    public void fireDanmaku() {
-        if (shotsFired < maxShots) {
-            shotsFired++;
-        }
-    }
-    
+
     /**
      * 检查是否完成施法
      */
@@ -121,26 +117,6 @@ public class MaidYHSpellData extends IMaidSpellData {
         this.maxCastingTime = 0;
         this.shotsFired = 0;
         this.maxShots = 1;
-    }
-    
-
-    
-    /**
-     * 安全地比较两个ItemStack是否相同（处理null情况）
-     */
-    private boolean isSameItemStackSafely(ItemStack stack1, ItemStack stack2) {
-        // 处理null情况
-        if (stack1 == null && stack2 == null) {
-            return true;
-        }
-        if (stack1 == null || stack2 == null) {
-            // 一个为null，另一个不为null，检查非null的是否为空
-            ItemStack nonNull = stack1 != null ? stack1 : stack2;
-            return nonNull.isEmpty();
-        }
-        
-        // 都不为null，使用原始方法
-        return ItemStack.isSameItemSameTags(stack1, stack2);
     }
 
 

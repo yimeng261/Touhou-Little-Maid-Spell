@@ -1,11 +1,11 @@
 package com.github.yimeng261.maidspell.api;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -14,21 +14,50 @@ import java.util.function.Function;
  * 用于支持不同模组的法术书系统
  * 
  * @param <T> 对应的法术数据类型，必须继承自 IMaidSpellData
+ * @param <S> 对应的法术类型（不是法术物品类）
  */
-public abstract class ISpellBookProvider<T extends IMaidSpellData> {
+public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
 
     /**
      * 数据工厂方法，用于获取或创建指定女仆的法术数据
      */
     protected final Function<UUID, T> dataFactory;
+    
+    /**
+     * 法术类的Class对象，用于类型识别
+     */
+    protected final Class<S> spellClass;
 
     /**
      * 构造函数
      * @param dataFactory 数据工厂方法，根据女仆UUID获取或创建对应的法术数据
+     * @param spellClass 法术类的Class对象
      */
-    protected ISpellBookProvider(Function<UUID, T> dataFactory) {
+    protected ISpellBookProvider(Function<UUID, T> dataFactory, Class<S> spellClass) {
         this.dataFactory = dataFactory;
+        this.spellClass = spellClass;
     }
+
+    /**
+     * 从所有可用的法术书中收集法术
+     * @param maid 女仆实体
+     * @return 收集到的法术列表
+     */
+    protected List<S> collectSpellFromAvailableSpellBooks(EntityMaid maid){
+        List<S> spells = new ArrayList<>();
+        for(ItemStack spellBook : getData(maid).getSpellBooks()){
+            spells.addAll(collectSpellFromSingleSpellBook(spellBook,maid));
+        }
+        return spells;
+    }
+    
+    /**
+     * 从单个法术书中收集法术
+     * @param spellBook 法术书物品
+     * @param maid 女仆
+     * @return 该法术书中的所有法术
+     */
+    protected abstract List<S> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid);
 
     /**
      * 获取指定女仆的法术数据

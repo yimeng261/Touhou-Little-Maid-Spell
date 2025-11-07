@@ -28,7 +28,7 @@ import java.util.*;
  * Youkai-Homecoming弹幕物品提供者
  * 支持女仆使用弹幕物品、法术卡和激光武器
  */
-public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData> {
+public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData, ItemStack> {
     
     private static final Logger LOGGER = LogUtils.getLogger();
     
@@ -37,17 +37,29 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
     private static final int MAX_DANMAKU_COUNT = 10;  // 最多发射数量
     private static final float FAN_ANGLE = 45.0f;    // 扇形角度（度）
 
-    private static final HashSet<Class<?>> DANMAKU_CLASSES = new HashSet<>(Arrays.asList(DanmakuItem.class,SpellItem.class,LaserItem.class,ItemDanmakuEntity.class,ItemLaserEntity.class));
+    private static final HashSet<Class<?>> DANMAKU_CLASSES = new HashSet<>(Arrays.asList(DanmakuItem.class,SpellItem.class,LaserItem.class));
     
     /**
-     * 构造函数，绑定 MaidYHSpellData 数据类型
+     * 构造函数，绑定 MaidYHSpellData 数据类型和 ItemStack 法术类型
+     * 注：对于Youkai-Homecoming，弹幕物品本身就是"法术"
      */
     public YoukaiHomecomingProvider() {
-        super(MaidYHSpellData::getOrCreate);
+        super(MaidYHSpellData::getOrCreate, ItemStack.class);
         LOGGER.info("YoukaiHomecomingProvider initialized");
     }
     
     // === ISpellBookProvider 接口实现 ===
+    
+    /**
+     * 从单个弹幕物品中收集"法术"
+     * 对于Youkai-Homecoming，弹幕物品本身就是法术，所以返回包含该物品的列表
+     * @param spellBook 弹幕物品堆栈
+     * @return 包含该物品的列表
+     */
+    @Override
+    protected List<ItemStack> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
+        return List.of(spellBook);
+    }
     
     /**
      * 检查物品是否为Youkai-Homecoming的弹幕物品

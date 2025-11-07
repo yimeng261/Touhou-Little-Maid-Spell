@@ -23,20 +23,48 @@ import mods.flammpfeil.slashblade.registry.combo.ComboState;
 import mods.flammpfeil.slashblade.util.AttackManager;
 import mods.flammpfeil.slashblade.util.KnockBacks;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * SlashBlade模组的法术提供者
  * 为女仆提供拔刀剑SA使用能力
  */
-public class SlashBladeProvider extends ISpellBookProvider<MaidSlashBladeData> {
+public class SlashBladeProvider extends ISpellBookProvider<MaidSlashBladeData, ResourceLocation> {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     /**
-     * 构造函数
+     * 构造函数，绑定 MaidSlashBladeData 数据类型和 ResourceLocation 法术类型
+     * 注：对于SlashBlade，SA（Slash Art）通过ResourceLocation标识
      */
     public SlashBladeProvider() {
-        super(MaidSlashBladeData::getOrCreate);
+        super(MaidSlashBladeData::getOrCreate, ResourceLocation.class);
     }
 
+    /**
+     * 从单个拔刀剑中收集SA
+     * @param spellBook 拔刀剑物品堆栈
+     * @return 该拔刀剑的SA列表（通常只有一个）
+     */
+    @Override
+    protected List<ResourceLocation> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
+        List<ResourceLocation> slashArts = new ArrayList<>();
+        
+        if (spellBook == null || spellBook.isEmpty() || !isSpellBook(spellBook)) {
+            return slashArts;
+        }
+        
+        // 从拔刀剑的BladeState中获取SA
+        spellBook.getCapability(ItemSlashBlade.BLADESTATE).ifPresent(state -> {
+            ResourceLocation slashArtKey = state.getSlashArtsKey();
+            if (slashArtKey != null && !slashArtKey.equals(SlashArtsRegistry.NONE.getId())) {
+                slashArts.add(slashArtKey);
+            }
+        });
+        
+        return slashArts;
+    }
+    
     @Override
     public boolean isSpellBook(ItemStack itemStack) {
         return itemStack != null && !itemStack.isEmpty() && itemStack.getItem() instanceof ItemSlashBlade;

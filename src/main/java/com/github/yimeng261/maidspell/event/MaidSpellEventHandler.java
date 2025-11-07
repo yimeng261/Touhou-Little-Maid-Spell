@@ -436,7 +436,7 @@ public class MaidSpellEventHandler {
             // 通过SpellBookManager获取提供者并停止所有正在进行的施法
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             if (manager != null) {
-                for (ISpellBookProvider<?> provider : manager.getProviders()) {
+                for (ISpellBookProvider<?, ?> provider : manager.getProviders()) {
                     if (provider.isCasting(maid)) {
                         provider.stopCasting(maid);
                     }

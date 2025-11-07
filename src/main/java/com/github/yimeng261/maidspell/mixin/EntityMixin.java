@@ -47,7 +47,7 @@ public class EntityMixin {
                     ) {
                         cir.setReturnValue(false);
                         Global.LOGGER.debug("[MaidSpell] Illegal Save called for {} (anchor_core protection)", maid);
-                        //return;
+                        return;
                     }
                 }
             }

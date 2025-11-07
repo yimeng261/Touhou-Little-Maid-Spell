@@ -45,18 +45,46 @@ import com.mojang.logging.LogUtils;
  * - MagicSwordItem: 魔剑（带有法术容器功能的剑）
  * - 其他继承自CastingItem的物品
  */
-public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellData> {
+public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellData, SpellData> {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final List<String> spellBlacklist = List.of("irons_spellbooks:spectral_hammer");
 
     /**
-     * 构造函数，绑定 MaidIronsSpellData 数据类型
+     * 构造函数，绑定 MaidIronsSpellData 数据类型和 SpellData 法术类型
      */
     public IronsSpellbooksProvider() {
-        super(MaidIronsSpellData::getOrCreate);
+        super(MaidIronsSpellData::getOrCreate, SpellData.class);
     }
     
     // === 核心方法（接受EntityMaid参数） ===
+    
+    /**
+     * 从单个法术容器中收集所有法术
+     * @param spellBook 法术容器物品堆栈
+     * @return 该法术容器中的所有法术数据列表
+     */
+    @Override
+    protected List<SpellData> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
+        List<SpellData> spells = new ArrayList<>();
+        
+        if (spellBook == null || spellBook.isEmpty() || !isSpellBook(spellBook)) {
+            return spells;
+        }
+        
+        // 获取法术容器接口
+        ISpellContainer spellContainer = ISpellContainer.get(spellBook);
+        if (spellContainer.isEmpty()) {
+            return spells;
+        }
+        
+        // 收集所有法术数据
+        SpellData[] allSpells = spellContainer.getAllSpells();
+        if (allSpells != null) {
+            spells.addAll(Arrays.asList(allSpells));
+        }
+        
+        return spells;
+    }
     
     /**
      * 检查物品是否为法术容器
@@ -92,14 +120,8 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             return;
         }
 
-        // 尝试施放可用的法术
-        List<SpellData> availableSpells = new ArrayList<>();
-        data.getSpellBooks().forEach(container -> {
-            ISpellContainer spellContainer = ISpellContainer.get(container);
-            if(!spellContainer.isEmpty()){
-                availableSpells.addAll(Arrays.asList(spellContainer.getAllSpells()));
-            }
-        });
+        // 从所有法术容器中收集法术
+        List<SpellData> availableSpells = collectSpellFromAvailableSpellBooks(maid);
 
         // 过滤掉无效、冷却中或黑名单中的法术
         availableSpells.removeIf(spellData -> {

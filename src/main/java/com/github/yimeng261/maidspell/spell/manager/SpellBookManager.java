@@ -1,9 +1,7 @@
 package com.github.yimeng261.maidspell.spell.manager;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
-import com.github.yimeng261.maidspell.utils.VersionUtil;
 
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.ModList;
@@ -30,7 +28,7 @@ public class SpellBookManager {
 
     
     // 实例相关的提供者列表 - 每个管理器可以有自己的提供者实例
-    private static final List<ISpellBookProvider<?>> instanceProviders = new ArrayList<>();
+    private static final List<ISpellBookProvider<?, ?>> instanceProviders = new ArrayList<>();
 
     public static final List<String> loadedMods = new ArrayList<>();
     
@@ -71,7 +69,7 @@ public class SpellBookManager {
         try {
             // 检查模组是否加载
             if (ModList.get().isLoaded(modId)) {
-                instanceProviders.add((ISpellBookProvider<?>) providerClass.getConstructor().newInstance());
+                instanceProviders.add((ISpellBookProvider<?, ?>) providerClass.getConstructor().newInstance());
                 loadedMods.add(modId);
                 LOGGER.debug("Mod {} loaded, finished {} registration", modId, providerName);
             }
@@ -81,62 +79,6 @@ public class SpellBookManager {
         }
     }
     
-    /**
-     * 通用的版本检测Provider注册方法
-     * 根据模组版本决定使用哪个Provider实现
-     * 
-     * @param modId 模组ID
-     * @param minVersionForNewProvider 使用新Provider的最低版本要求
-     * @param defaultProviderClass 默认Provider类
-     * @param newProviderClass 新Provider类的完整类名（可选）
-     * @param providerName Provider名称（用于日志）
-     */
-    private static void registerProviderWithVersionCheck(String modId, String minVersionForNewProvider, 
-            Class<?> defaultProviderClass, Class<?> newProviderClass, String providerName) {
-        try {
-            // 检查模组是否加载
-            if (!ModList.get().isLoaded(modId)) {
-                LOGGER.debug("Mod {} not loaded, skipping provider registration", modId);
-                return;
-            }
-            
-            // 获取当前版本
-            String currentVersion = VersionUtil.getModVersion(modId);
-            if (currentVersion == null) {
-                LOGGER.warn("Could not determine {} mod version, using default provider", modId);
-                registerProviderFactoryByClass(modId, providerName, defaultProviderClass);
-                return;
-            }
-            
-            // 检查版本是否满足要求使用新Provider
-            boolean useNewProvider = minVersionForNewProvider != null && 
-                    VersionUtil.isVersionGreaterOrEqual(currentVersion, minVersionForNewProvider);
-            
-            if (useNewProvider && newProviderClass != null) {
-                LOGGER.info("{} version {} >= {}, attempting to load enhanced provider", 
-                        modId, currentVersion, minVersionForNewProvider);
-                
-                // 尝试加载新版本的Provider（如果存在）
-                instanceProviders.add((ISpellBookProvider<?>) newProviderClass.getConstructor().newInstance());
-                loadedMods.add(modId);
-                LOGGER.info("Successfully loaded enhanced {} for {} version {}",
-                        newProviderClass.getSimpleName(), modId, currentVersion);
-            } else {
-                if (minVersionForNewProvider != null) {
-                    LOGGER.info("{} version {} < {}, using standard provider", 
-                            modId, currentVersion, minVersionForNewProvider);
-                } else {
-                    LOGGER.info("Using standard provider for {} version {}", modId, currentVersion);
-                }
-                registerProviderFactoryByClass(modId, providerName, defaultProviderClass);
-            }
-            
-        } catch (Exception e) {
-            LOGGER.error("Failed to register {} provider with version check: {}", modId, e.getMessage());
-            // 发生错误时回退到标准Provider
-            registerProviderFactoryByClass(modId, providerName, defaultProviderClass);
-        }
-    }
     
     /**
      * 为特定女仆创建管理器实例（私有构造函数）
@@ -188,7 +130,7 @@ public class SpellBookManager {
      * 执行法术
      */
     public void castSpell(EntityMaid maid) {
-        for (ISpellBookProvider<?> provider : instanceProviders) {
+        for (ISpellBookProvider<?, ?> provider : instanceProviders) {
             provider.castSpell(maid);
         }
     }
@@ -196,13 +138,13 @@ public class SpellBookManager {
     /**
      * 获取当前实例的提供者列表
      */
-    public List<ISpellBookProvider<?>> getProviders() {
+    public List<ISpellBookProvider<?, ?>> getProviders() {
         return new ArrayList<>(instanceProviders);
     }
 
 
     public void stopAllCasting() {
-        for (ISpellBookProvider<?> provider : getProviders()) {
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
             if (provider.isCasting(maid)) {
                 provider.stopCasting(maid);
             }
@@ -225,7 +167,7 @@ public class SpellBookManager {
      * 更新法术冷却：每次一秒
      */
     public void updateCooldown(){
-        for (ISpellBookProvider<?> provider : instanceProviders) {
+        for (ISpellBookProvider<?, ?> provider : instanceProviders) {
             provider.updateCooldown(maid);
         }
     }
@@ -234,7 +176,7 @@ public class SpellBookManager {
     public void tick(){
         // 处理持续性施法
         
-        for (ISpellBookProvider<?> provider : getProviders()) {
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
             if(provider.getTarget(maid) != null){
                 provider.getTarget(maid).invulnerableTime = 0;
             }
@@ -249,7 +191,7 @@ public class SpellBookManager {
 
     public void initSpellBooks(){
         // 先清理所有法术容器
-        for (ISpellBookProvider<?> provider : getProviders()) {
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
             provider.clearSpellItems(maid);
         }
         
@@ -258,7 +200,7 @@ public class SpellBookManager {
         for(int i=0;i< wrapper.getSlots();i++){
             ItemStack itemStack = wrapper.getStackInSlot(i);
             // 更新每个提供者的法术书
-            for (ISpellBookProvider<?> provider : getProviders()) {
+            for (ISpellBookProvider<?, ?> provider : getProviders()) {
                 provider.handleItemStack(maid, itemStack, true);
             }
         }
@@ -266,13 +208,13 @@ public class SpellBookManager {
     }
 
     public void removeSpellItem(EntityMaid maid, ItemStack itemStack) {
-        for(ISpellBookProvider<?> provider : getProviders()) {
+        for(ISpellBookProvider<?,?> provider : getProviders()) {
             provider.handleItemStack(maid, itemStack, false);
         }
     }
 
     public void addSpellItem(EntityMaid maid, ItemStack itemStack) {
-        for(ISpellBookProvider<?> provider : getProviders()) {
+        for(ISpellBookProvider<?,?> provider : getProviders()) {
             provider.handleItemStack(maid, itemStack, true);
         }
     }
