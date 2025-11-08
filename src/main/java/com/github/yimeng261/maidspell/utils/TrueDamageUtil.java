@@ -50,8 +50,7 @@ public class TrueDamageUtil {
             target.remove(Entity.RemovalReason.KILLED);
         }
         
-        LOGGER.debug("[TrueDamage] Damage {} applied: {} -> {} (success: {})", 
-                   damage, originalHealth, target.getHealth(), success);
+        //LOGGER.debug("[TrueDamage] Damage {} applied: {} -> {} (success: {})", damage, originalHealth, target.getHealth(), success);
         return success;
     }
 
@@ -75,8 +74,7 @@ public class TrueDamageUtil {
             target.die(new DamageSource(Holder.direct(new DamageType("info_damage", 0.0f)),attacker));
         }
 
-        LOGGER.debug("[TrueDamage] NewHealth {} applied: {} -> {} (success: {})",
-                newHealth, originalHealth, target.getHealth(), success);
+        //LOGGER.debug("[TrueDamage] NewHealth {} applied: {} -> {} (success: {})", newHealth, originalHealth, target.getHealth(), success);
         return success;
     }
     
@@ -104,7 +102,7 @@ public class TrueDamageUtil {
                         (SynchedEntityData.DataItem<Float>) itemsById.get(healthId);
                     target.getEntityData().set(dataItem.getAccessor(), newHealth);
                     modified = true;
-                    LOGGER.debug("[TrueDamage] Modified EntityData ID {}: {}", healthId, newHealth);
+                    //LOGGER.debug("[TrueDamage] Modified EntityData ID {}: {}", healthId, newHealth);
                 } catch (Exception e) {
                     LOGGER.debug("[TrueDamage] Failed to modify EntityData ID {}: {}", healthId, e.getMessage());
                 }

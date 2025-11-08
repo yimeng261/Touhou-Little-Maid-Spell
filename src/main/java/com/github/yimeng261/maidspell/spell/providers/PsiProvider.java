@@ -337,15 +337,4 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
         }
     }
 
-    /**
-     * 更新冷却时间
-     */
-    @Override
-    public void updateCooldown(EntityMaid maid) {
-        MaidPsiSpellData data = getData(maid);
-        if (data != null) {
-            data.updateCooldowns();
-        }
-    }
-
 } 

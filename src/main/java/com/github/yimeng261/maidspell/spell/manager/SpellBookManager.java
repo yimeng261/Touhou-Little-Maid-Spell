@@ -130,7 +130,7 @@ public class SpellBookManager {
      * 执行法术
      */
     public void castSpell(EntityMaid maid) {
-        for (ISpellBookProvider<?, ?> provider : instanceProviders) {
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
             provider.castSpell(maid);
         }
     }
@@ -167,7 +167,7 @@ public class SpellBookManager {
      * 更新法术冷却：每次一秒
      */
     public void updateCooldown(){
-        for (ISpellBookProvider<?, ?> provider : instanceProviders) {
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
             provider.updateCooldown(maid);
         }
     }
@@ -208,7 +208,9 @@ public class SpellBookManager {
     }
 
     public void removeSpellItem(EntityMaid maid, ItemStack itemStack) {
+        //LOGGER.debug("Removing spell item for maid {}", maid.getUUID());
         for(ISpellBookProvider<?,?> provider : getProviders()) {
+            //LOGGER.debug("Removing spell item for provider: {}", provider);
             provider.handleItemStack(maid, itemStack, false);
         }
     }

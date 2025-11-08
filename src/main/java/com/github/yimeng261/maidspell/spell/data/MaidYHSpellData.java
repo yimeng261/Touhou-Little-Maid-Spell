@@ -1,8 +1,10 @@
 package com.github.yimeng261.maidspell.spell.data;
 
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
+import dev.xkmc.youkaishomecoming.content.spell.spellcard.SpellCardWrapper;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
 import java.util.UUID;
@@ -17,22 +19,9 @@ public class MaidYHSpellData extends IMaidSpellData {
     // 全局女仆数据存储
     private static final ConcurrentHashMap<UUID, MaidYHSpellData> DATA_MAP = new ConcurrentHashMap<>();
 
-    
-    // 当前目标
-    private LivingEntity target;
-    
-    // 施法状态
-    private boolean isCasting = false;
     private int castingTime = 0;
-    private int maxCastingTime = 0;
-    
-    // 冷却系统
-    private final ConcurrentHashMap<String, Integer> cooldowns = new ConcurrentHashMap<>();
-    
-    // 弹幕发射计数
-    private int shotsFired = 0;
-    private int maxShots = 1;
-
+    private final int maxCastingTime = 400;
+    private SpellCardWrapper activeSpellCard = null;
     
     /**
      * 私有构造函数
@@ -58,13 +47,6 @@ public class MaidYHSpellData extends IMaidSpellData {
     public static void remove(UUID maidUUID) {
         DATA_MAP.remove(maidUUID);
     }
-
-
-    
-    @Override
-    public void setTarget(LivingEntity target) {
-        this.target = target;
-    }
     
     @Override
     public LivingEntity getTarget() {
@@ -73,22 +55,7 @@ public class MaidYHSpellData extends IMaidSpellData {
     
     @Override
     public boolean isCasting() {
-        return false;
-    }
-
-    @Override
-    public void setCasting(boolean casting) {
-    }
-
-    @Override
-    public boolean isSpellOnCooldown(String spellId) {
-        return false;
-    }
-
-
-    @Override
-    public int getSpellCooldown(String spellId) {
-        return 0;
+        return isCasting;
     }
 
     
@@ -105,7 +72,7 @@ public class MaidYHSpellData extends IMaidSpellData {
      * 检查是否完成施法
      */
     public boolean isSpellComplete() {
-        return shotsFired >= maxShots || castingTime >= maxCastingTime;
+        return castingTime >= maxCastingTime;
     }
     
     /**
@@ -114,9 +81,6 @@ public class MaidYHSpellData extends IMaidSpellData {
     public void resetCastingState() {
         this.isCasting = false;
         this.castingTime = 0;
-        this.maxCastingTime = 0;
-        this.shotsFired = 0;
-        this.maxShots = 1;
     }
 
 
@@ -126,14 +90,46 @@ public class MaidYHSpellData extends IMaidSpellData {
     public boolean isValidTarget() {
         return target != null && target.isAlive();
     }
+
+    
+    // === 符卡系统方法 ===
     
     /**
-     * 清理无效目标
+     * 激活符卡
+     * @param spellCard 符卡包装器
      */
-    public void cleanupTarget() {
-        if (target != null && !target.isAlive()) {
-            target = null;
+    public void activateSpellCard(SpellCardWrapper spellCard) {
+        this.isCasting = true;
+        this.activeSpellCard = spellCard;
+        
+        // 重置符卡状态
+        if (spellCard != null && spellCard.card != null) {
+            spellCard.card.reset();
         }
     }
-
+    
+    /**
+     * 获取当前激活的符卡
+     */
+    @Nullable
+    public SpellCardWrapper getActiveSpellCard() {
+        return activeSpellCard;
+    }
+    
+    /**
+     * 检查是否有激活的符卡
+     */
+    public boolean hasActiveSpellCard() {
+        return activeSpellCard != null;
+    }
+    
+    /**
+     * 停用符卡
+     */
+    public void deactivateSpellCard() {
+        if (activeSpellCard != null && activeSpellCard.card != null) {
+            activeSpellCard.card.reset();
+        }
+        activeSpellCard = null;
+    }
 }

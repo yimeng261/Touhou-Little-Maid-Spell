@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.api;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
@@ -75,9 +76,12 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
      * 处理物品堆栈，用于初始化或更新法术书
      */
     public void handleItemStack(EntityMaid maid, ItemStack spellBook, boolean isAddOperation) {
+        if(maid.level().isClientSide){
+            return;
+        }
         if(isAddOperation) {
             if (isSpellBook(spellBook)) {
-                getData(maid).addSpellBook(spellBook);
+                getData(maid).addSpellBook(spellBook,maid);
             }
         }else{
             clearSpellItem(maid,spellBook);
@@ -119,7 +123,9 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
     /**
      * 更新法术冷却：每次一秒
      */
-    public abstract void updateCooldown(EntityMaid maid);
+    public void updateCooldown(EntityMaid maid){
+        getData(maid).updateCooldowns();
+    }
     
     /**
      * 设置当前目标

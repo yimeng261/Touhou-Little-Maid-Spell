@@ -64,6 +64,24 @@ public class Config {
             .comment("女仆法术冷却倍率 (默认: 1.0，仅在法术战斗任务下生效)")
             .comment("Maid cooldown multiplier(default:1.0,only effective on spellCombatTask)")
             .defineInRange("maidCooldownMultiplier", 1.0, 0, 50.0);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.IntValue MELEE_ATTACK_INTERVAL = BUILDER
+            .comment("近战法术任务攻击间隔（单位：tick，默认: 8）")
+            .comment("Melee spell task attack interval (in ticks, default: 8)")
+            .defineInRange("meleeAttackInterval", 8, 1, 100);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.IntValue FAR_ATTACK_INTERVAL = BUILDER
+            .comment("远程法术任务攻击间隔（单位：tick，默认: 5）")
+            .comment("Far spell task attack interval (in ticks, default: 5)")
+            .defineInRange("farAttackInterval", 5, 1, 100);
     
     static {
         BUILDER.pop();
@@ -318,6 +336,8 @@ public class Config {
     public static double farRange;
     public static double spellDamageMultiplier;
     public static double coolDownMultiplier;
+    public static int meleeAttackInterval;
+    public static int farAttackInterval;
 
     // 饰品配置缓存值
     // 伤害相关
@@ -368,6 +388,8 @@ public class Config {
         spellDamageMultiplier = SPELL_DAMAGE_MULTIPLIER.get();
         coolDownMultiplier = COOLDOWN_MULITIPLIER.get();
         farRange = FAR_RANGE.get();
+        meleeAttackInterval = MELEE_ATTACK_INTERVAL.get();
+        farAttackInterval = FAR_ATTACK_INTERVAL.get();
         
         // 加载饰品配置值
         // 伤害相关

@@ -71,11 +71,6 @@ public class SlashBladeProvider extends ISpellBookProvider<MaidSlashBladeData, R
     }
 
     @Override
-    public void updateCooldown(EntityMaid maid) {
-        getData(maid).updateCooldowns();
-    }
-
-    @Override
     public void setTarget(EntityMaid maid, LivingEntity target) {
         MaidSlashBladeData data = getData(maid);
         data.setTarget(target);

@@ -66,41 +66,26 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
     @Override
     protected List<SpellData> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
         List<SpellData> spells = new ArrayList<>();
-        
-        if (spellBook == null || spellBook.isEmpty() || !isSpellBook(spellBook)) {
-            return spells;
-        }
-        
+
         // 获取法术容器接口
         ISpellContainer spellContainer = ISpellContainer.get(spellBook);
         if (spellContainer.isEmpty()) {
             return spells;
         }
         
-        // 收集所有法术数据
-        SpellData[] allSpells = spellContainer.getAllSpells();
-        if (allSpells != null) {
-            spells.addAll(Arrays.asList(allSpells));
-        }
-        
-        return spells;
+        return spellContainer.getActiveSpells();
     }
     
     /**
      * 检查物品是否为法术容器
-     * 支持以下类型：
-     * 1. SpellBook - 传统法术书
-     * 2. CastingItem - 法杖等施法物品（包括StaffItem）
-     * 3. MagicSwordItem - 魔剑
-     * 4. 任何包含法术容器数据的物品
+     * 支持任何包含法术容器数据的物品
      */
     @Override
     public boolean isSpellBook(ItemStack itemStack) {
         if (itemStack == null || itemStack.isEmpty()) {
             return false;
         }
-        
-        // 检查是否包含法术容器数据（通用检查）
+
         return ISpellContainer.isSpellContainer(itemStack);
     }
 
@@ -125,7 +110,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
 
         // 过滤掉无效、冷却中或黑名单中的法术
         availableSpells.removeIf(spellData -> {
-            if (spellData == null || spellData.getSpell() == null) {
+            if(spellData == null || spellData.getSpell() == null) {
                 return true;
             }
             String spellId = spellData.getSpell().getSpellId();
@@ -140,6 +125,8 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             return false;
         });
 
+        //LOGGER.debug("[MaidSpell] {} spells available, {} spellbooks added", availableSpells.size(), data.getSpellBooks().size());
+
         if (availableSpells.isEmpty()) {
             return;
         }
@@ -147,6 +134,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
         // 随机选择一个可用的法术
         int index = (int) (Math.random() * availableSpells.size());
         SpellData spellData = availableSpells.get(index);
+        //LOGGER.debug("Spell {} selected", spellData.getSpell().getSpellId());
         if(BaubleStateManager.hasBauble(maid,MaidSpellItems.BLUE_NOTE)){
             ItemStack bauble = null;
             BaubleItemHandler baubleItemHandler = maid.getMaidBauble();
@@ -163,7 +151,6 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
         }
 
         actualCasting(maid, spellData);
-
     }
     
     /**
@@ -171,12 +158,6 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
      */
     private void actualCasting(EntityMaid maid, SpellData spellData) {
         MaidIronsSpellData data = getData(maid);
-        if (spellData == null || spellData.getSpell() == null || maid == null || data == null) {
-            return;
-        }
-        if (data.isCasting()) {
-            return; // 如果正在施法，不能开始新的施法
-        }
         
         try {
             AbstractSpell spell = spellData.getSpell();
@@ -191,6 +172,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             
             // 检查前置条件
             if (!spell.checkPreCastConditions(maid.level(), spellData.getLevel(), maid, magicData)) {
+                LOGGER.debug("spell check failed : {}", spellData.getSpell().getSpellId());
                 return;
             }
             
@@ -208,6 +190,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
 
         } catch (Exception e) {
             // 重置状态以防出错
+            LOGGER.debug("[MaidSpell] error: {}",e.getMessage());
             data.resetCastingState();
         }
     }
@@ -279,18 +262,6 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
         forceCompleteCasting(maid);
     }
 
-    
-    /**
-     * 更新冷却时间
-     */
-    @Override
-    public void updateCooldown(EntityMaid maid) {
-        MaidIronsSpellData data = getData(maid);
-        if (data != null) {
-            data.updateCooldowns();
-        }
-    }
-
     // === 私有辅助方法 ===
     
     /**
@@ -326,7 +297,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             if (spellContainer.isEmpty()) continue;
             
             // 检查此容器是否包含当前法术
-            for (SpellData spellData : spellContainer.getAllSpells()) {
+            for (SpellData spellData : spellContainer.getActiveSpells()) {
                 if (spellData.equals(currentSpell)) {
                     return getCastSource(container);
                 }

@@ -1,6 +1,8 @@
 package com.github.yimeng261.maidspell.spell;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import net.minecraft.world.InteractionHand;
@@ -65,11 +67,10 @@ public class SimplifiedSpellCaster {
         if (!hasValidTarget()) {
             return; // 没有有效目标，退出
         }
-
-        clearLookTarget(maid);
         
-        if (maid.tickCount % 8 == 0) {
+        if (maid.tickCount % Config.meleeAttackInterval == 0) {
             // 执行战斗逻辑
+            clearLookTarget(maid);
             double distance = maid.distanceTo(target);
             executeCombat(distance);
         }
@@ -84,12 +85,9 @@ public class SimplifiedSpellCaster {
             return; // 没有有效目标，退出
         }
 
-        clearLookTarget(maid);
-
-        if (maid.tickCount % 5 == 0) {
-            // 执行战斗逻辑
-            double distance = maid.distanceTo(target);
-            executeCombatFar(distance);
+        if (maid.tickCount % Config.farAttackInterval == 0) {
+            clearLookTarget(maid);
+            executeCombatFar();
         }
     }
 
@@ -131,7 +129,7 @@ public class SimplifiedSpellCaster {
     /**
      * 执行战斗逻辑
      */
-    private void executeCombatFar(double distance) {
+    private void executeCombatFar() {
         // 确保目标无敌时间为0，允许法术伤害
         if (target == null) {
             return;

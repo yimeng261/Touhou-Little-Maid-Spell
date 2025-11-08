@@ -101,35 +101,22 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ISpell>
     @Override
     public void initiateCasting(EntityMaid maid) {
         MaidGoetySpellData data = getData(maid);
-        
-        // 调试：检查数据
-        LOGGER.debug("[initiateCasting] Maid: {}, SpellBook: {}, Target: {}", 
-            maid.getName().getString(), 
-            data.getSpellBook() != null ? data.getSpellBook().getItem() : "null",
-            data.getTarget() != null ? data.getTarget().getName().getString() : "null");
+
         
         // 检查目标（只在开始施法时检查一次）
         LivingEntity target = data.getTarget();
         if (target == null || !target.isAlive()) {
-            LOGGER.debug("[initiateCasting] Invalid target for maid: {}, skipping", maid.getName().getString());
             return;
         }
         
         ISpell spell = selectSpell(maid);
         if (spell == null) {
-            LOGGER.debug("[initiateCasting] No spell selected for maid: {}", maid.getName().getString());
             return;
         }
-        
-        LOGGER.debug("[initiateCasting] Selected spell: {} for maid: {}", 
-            spell.getClass().getSimpleName(), maid.getName().getString());
+
 
         updateMaidOrientation(maid, data);
         startSpellCasting(maid, spell);
-        
-        // 调试：检查是否成功设置 isCasting
-        LOGGER.debug("[initiateCasting] After start, isCasting: {}, spell: {}", 
-            data.isCasting(), data.getCurrentSpell() != null ? data.getCurrentSpell().getClass().getSimpleName() : "null");
     }
     
     /**
@@ -176,44 +163,25 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ISpell>
     }
 
     
-    /**
-     * 更新冷却时间
-     */
-    @Override
-    public void updateCooldown(EntityMaid maid) {
-        MaidGoetySpellData data = getData(maid);
-        if (data != null) {
-            data.updateCooldowns();
-        }
-    }
-
-    
     private ISpell selectSpell(EntityMaid maid) {
         MaidGoetySpellData data = getData(maid);
         
         // 调试：检查 spellBook
         if (data.getSpellBook() == null || data.getSpellBook().isEmpty()) {
-            LOGGER.debug("[selectSpell] SpellBook is null or empty for maid: {}", maid.getName().getString());
             return null;
         }
         
         List<ISpell> availableFoci = collectSpellFromAvailableSpellBooks(maid);
         
-        LOGGER.debug("[selectSpell] Found {} available foci for maid: {}", 
-            availableFoci.size(), maid.getName().getString());
+
         
         if (availableFoci.isEmpty()) {
-            LOGGER.debug("[selectSpell] No available foci (all on cooldown or empty bag) for maid: {}", 
-                maid.getName().getString());
             return null;
         }
         
         // 随机选择一个可用的聚晶
         int randomIndex = (int) (Math.random() * availableFoci.size());
-        ISpell spell = availableFoci.get(randomIndex);
-        LOGGER.debug("[selectSpell] Selected spell: {} from {} available foci", 
-            spell != null ? spell.getClass().getSimpleName() : "null", availableFoci.size());
-        return spell;
+        return availableFoci.get(randomIndex);
     }
 
     
@@ -257,12 +225,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ISpell>
     private void initiateCastingState(EntityMaid maid, ISpell spell, int duration) {
         MaidGoetySpellData data = getData(maid);
         if (data != null) {
-            LOGGER.debug("[initiateCastingState] Setting up casting state for maid: {}, spell: {}, duration: {}", 
-                maid.getName().getString(), spell.getClass().getSimpleName(), duration);
             data.initiateCastingState(spell, duration);
-            LOGGER.debug("[initiateCastingState] After setup, isCasting: {}", data.isCasting());
-        } else {
-            LOGGER.warn("[initiateCastingState] Data is null for maid: {}", maid.getName().getString());
         }
     }
     
