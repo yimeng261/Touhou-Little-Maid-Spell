@@ -15,15 +15,15 @@ import java.util.Set;
 
 public abstract class IMaidSpellData {
 
-    private static final Logger LOGGER = LogUtils.getLogger();
+    protected static final Logger LOGGER = LogUtils.getLogger();
 
-    private final Map<String, Integer> spellCooldowns = new HashMap<>();
+    protected final Map<String, Integer> spellCooldowns = new HashMap<>();
 
     // === 基本状态 ===
-    private LivingEntity target;
-    private final Set<ItemStack> spellBooks = new HashSet<>();
-    private final Set<Class<?>> spellBookKinds = new HashSet<>();
-    private boolean isCasting = false;
+    protected LivingEntity target;
+    protected final Set<ItemStack> spellBooks = new HashSet<>();
+    protected final Set<Class<?>> spellBookKinds = new HashSet<>();
+    protected boolean isCasting = false;
 
 
     public LivingEntity getTarget() {
@@ -52,21 +52,27 @@ public abstract class IMaidSpellData {
 
     /**
      * 添加一本法术书
-     *
      * @param spellBook 要添加的法术书
      */
     public void addSpellBook(ItemStack spellBook) {
         if(spellBook==null||spellBook.isEmpty()){
             return;
         }
+        if(!canAddSpellBook(spellBook)){
+            return;
+        }
+        spellBooks.add(spellBook);
+        spellBookKinds.add(spellBook.getItem().getClass());
+    }
+
+    protected boolean canAddSpellBook(ItemStack spellBook) {
         Class<?> spellBookClass = spellBook.getItem().getClass();
         for(Class<?> spellBookKind : spellBookKinds) {
             if(spellBookKind.isAssignableFrom(spellBookClass)||spellBookClass.isAssignableFrom(spellBookKind)) {
-                return;
+                return false;
             }
         }
-        spellBooks.add(spellBook);
-        spellBookKinds.add(spellBookClass);
+        return true;
     }
 
     /**

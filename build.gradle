@@ -167,14 +167,16 @@ dependencies {
     // 不兼容
     // implementation("maven.modrinth:goety:2.5.34.3-forge,${minecraft_version}")
     // implementation("maven.modrinth:slashblade-resharped:1.6.54-forge,${minecraft_version}")
-    // implementation("maven.modrinth:youkaishomecoming:${youkaishomecoming_version}")
 
     // 下面是一些前置
     implementation("vazkii.patchouli:Patchouli:${patchouli_version}")
     implementation("software.bernie.geckolib:geckolib-neoforge-${minecraft_version}:${geckolib_version}")
     implementation("maven.modrinth:jade:${jade_version}")
     runtimeOnly("maven.modrinth:appleskin:${appleskin_version}")
+    runtimeOnly("maven.modrinth:farmers-delight:${farmers_delight_version}")
     runtimeOnly("maven.modrinth:playeranimator:${playeranimator_version}")
+    // 妖怪的归家
+    runtimeOnly("maven.modrinth:youkaishomecoming:${youkaishomecoming_version}")
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

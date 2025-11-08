@@ -3,6 +3,9 @@ package com.github.yimeng261.maidspell.utils;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -14,9 +17,6 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.core.BlockPos;
-import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -42,7 +42,6 @@ public class ChunkLoadingManager {
 
     private static final int CHECK_INTERVAL_TICKS = 20; // 每20tick检查一次
     private static final int DEFAULT_CHUNK_LIFETIME_TICKS = CHECK_INTERVAL_TICKS*10; // 10秒 (20 ticks/秒 * 10秒)
-
 
     /**
      * 区块键类，用于唯一标识一个区块
@@ -92,9 +91,6 @@ public class ChunkLoadingManager {
             return remainingTicks <= 0;
         }
 
-        public int getRemainingTicks() {
-            return remainingTicks;
-        }
 
         @Override
         public String toString() {
@@ -112,9 +108,11 @@ public class ChunkLoadingManager {
             return;
         }
 
+        UUID maidId = maid.getUUID();
         ServerLevel serverLevel = (ServerLevel) maid.level();
         ChunkPos chunkPos = maid.chunkPosition();
-        UUID maidId = maid.getUUID();
+
+
 
         ChunkKey chunkKey = new ChunkKey(chunkPos, serverLevel);
 
@@ -122,10 +120,10 @@ public class ChunkLoadingManager {
 
         // 使用新的计时器系统
         enableChunkLoadingWithTimer(maidId, serverLevel, chunkKey, DEFAULT_CHUNK_LIFETIME_TICKS);
-
-        // 更新女仆位置记录
         maidChunkPositions.put(maidId, chunkKey);
+
     }
+
 
     /**
      * 使用计时器系统启用区块加载
@@ -137,8 +135,8 @@ public class ChunkLoadingManager {
             // 创建新的计时器并加载区块
             timer = new ChunkTimer(chunkKey, lifetimeTicks);
             timer.addMaid(maidId);
-
-            boolean success = performChunkOperation(serverLevel, chunkKey.chunkPos, true);
+            Global.LOGGER.debug("准备进行区块加载");
+            boolean success = performChunkOperation(serverLevel, maidId, chunkKey.chunkPos, true);
             if (success) {
                 chunkTimers.put(chunkKey, timer);
                 Global.LOGGER.debug("新建区块计时器: {} ({}秒)", chunkKey, lifetimeTicks / 20);
@@ -208,14 +206,13 @@ public class ChunkLoadingManager {
             return;
         }
 
-        Global.LOGGER.debug("检查 {} 个区块计时器", chunkTimers.size());
+        //Global.LOGGER.debug("检查 {} 个区块计时器", chunkTimers.size());
 
         for (Map.Entry<ChunkKey, ChunkTimer> entry : chunkTimers.entrySet()) {
             ChunkKey chunkKey = entry.getKey();
             ChunkTimer timer = entry.getValue();
 
-            Global.LOGGER.debug("区块计时器: {} 剩余{}秒，关联女仆: {}",
-                    chunkKey, timer.getRemainingTicks() / 20, timer.getAssociatedMaids().size());
+            //Global.LOGGER.debug("区块计时器: {} 剩余{}秒，关联女仆: {}", chunkKey, timer.getRemainingTicks() / 20, timer.getAssociatedMaids().size());
 
             Set<UUID> validMaids = new HashSet<>();
 
@@ -270,7 +267,7 @@ public class ChunkLoadingManager {
 
         // 为每个关联的女仆卸载区块
         for (UUID maidId : timer.getAssociatedMaids()) {
-            boolean success = performChunkOperation(serverLevel, chunkKey.chunkPos, false);
+            boolean success = performChunkOperation(serverLevel, maidId, chunkKey.chunkPos, false);
             if (success) {
                 // 清理女仆位置记录
                 ChunkKey maidInfo = maidChunkPositions.get(maidId);
@@ -357,27 +354,24 @@ public class ChunkLoadingManager {
     }
 
     // ===== 私有辅助方法 =====
-    private static boolean performChunkOperation(ServerLevel serverLevel, ChunkPos chunkPos, boolean enable) {
-        return serverLevel.setChunkForced(chunkPos.x, chunkPos.z, enable);
-    }
 
-    /**
-     * 获取指定维度的ServerLevel
-     */
-    private static ServerLevel getServerLevelForDimension(EntityMaid maid, ResourceKey<Level> dimension) {
-        ServerLevel currentLevel = (ServerLevel) maid.level();
+    private static boolean performChunkOperation(ServerLevel serverLevel, UUID maidId,
+                                                        ChunkPos chunkPos, boolean enable) {
 
-        if (currentLevel.dimension().equals(dimension)) {
-            return currentLevel;
+        try {
+            Global.LOGGER.debug("before force load: chunk=[{}, {}], enable={}, maid={}",
+                chunkPos.x, chunkPos.z, enable, maidId);
+
+            if (enable && serverLevel.getForcedChunks().contains(chunkPos.toLong())) {
+                Global.LOGGER.debug("区块 {} 已经被强制加载，跳过", chunkPos);
+                return true;
+            }
+            return serverLevel.setChunkForced(chunkPos.x, chunkPos.z, true);
+        } catch (Exception e) {
+            Global.LOGGER.error("区块操作失败: chunk=[{}, {}], enable={}, error={}",
+                chunkPos.x, chunkPos.z, enable, e.getMessage(), e);
+            return false;
         }
-
-        ServerLevel targetLevel = currentLevel.getServer().getLevel(dimension);
-        if (targetLevel == null) {
-            Global.LOGGER.warn("无法找到维度 {} 来操作女仆 {} 的区块加载",
-                dimension.location(), maid.getUUID());
-        }
-
-        return targetLevel;
     }
 
 
@@ -386,7 +380,7 @@ public class ChunkLoadingManager {
      */
     private static void restoreChunkLoadingAtPosition(EntityMaid maid, ServerLevel serverLevel, ChunkKey savedInfo) {
         UUID maidId = maid.getUUID();
-        boolean success = performChunkOperation(serverLevel, savedInfo.chunkPos, true);
+        boolean success = performChunkOperation(serverLevel, maidId, savedInfo.chunkPos(), true);
 
         if (success) {
             maidChunkPositions.put(maidId, savedInfo);

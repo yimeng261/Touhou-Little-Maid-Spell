@@ -37,7 +37,7 @@ public class SimplifiedSpellCaster {
         this.target = target;
         // 同时设置给SpellBookManager
         if (spellBookManager != null) {
-            for (ISpellBookProvider<?> provider : spellBookManager.getProviders()) {
+            for (ISpellBookProvider<?, ?> provider : spellBookManager.getProviders()) {
                 provider.setTarget(maid,target);
             }
         }

@@ -9,6 +9,7 @@ import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellCo
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
+import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -47,6 +48,7 @@ public class MaidSpellMod {
         MaidSpellEntities.register(modEventBus);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modEventBus);
+        MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modEventBus);
 
         // 铁魔法属性修改器获取
         if (ModList.get().isLoaded("irons_spellbooks")) {

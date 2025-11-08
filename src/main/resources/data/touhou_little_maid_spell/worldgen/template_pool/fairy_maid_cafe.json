@@ -1,0 +1,15 @@
+{
+  "name": "touhou_little_maid_spell:fairy_maid_cafe",
+  "fallback": "minecraft:empty",
+  "elements": [
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:fairy_maid_cafe",
+        "projection": "rigid",
+        "processors": "minecraft:empty"
+      }
+    }
+  ]
+}

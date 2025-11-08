@@ -28,14 +28,50 @@ import java.util.List;
  * Psi模组的法术提供者
  * 使女仆能够使用Psi的CAD和法术弹进行施法
  */
-public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData> {
+public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     /**
-     * 构造函数，绑定 MaidPsiSpellData 数据类型
+     * 构造函数，绑定 MaidPsiSpellData 数据类型和 Spell 法术类型
      */
     public PsiProvider() {
-        super(MaidPsiSpellData::getOrCreate);
+        super(MaidPsiSpellData::getOrCreate, Spell.class);
+    }
+
+    /**
+     * 从单个CAD中收集所有法术
+     * @param spellBook CAD物品堆栈
+     * @return 该CAD中的所有法术列表
+     */
+    @Override
+    protected List<Spell> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
+        List<Spell> spells = new ArrayList<>();
+
+        if (spellBook == null || spellBook.isEmpty() || !isSpellBook(spellBook)) {
+            return spells;
+        }
+
+        // 获取CAD的可插拔组件
+        ISocketable sockets = spellBook.getCapability(PsiAPI.SOCKETABLE_CAPABILITY);
+        if (sockets == null) {
+            return spells;
+        }
+
+        // 遍历所有弹夹槽位，收集有效的法术
+        for (int i = 0; i <= sockets.getLastSlot(); i++) {
+            if (sockets.isSocketSlotAvailable(i)) {
+                ItemStack bullet = sockets.getBulletInSocket(i);
+                if (!bullet.isEmpty() && ISpellAcceptor.hasSpell(bullet)) {
+                    ISpellAcceptor spellContainer = ISpellAcceptor.acceptor(bullet);
+                    Spell spell = spellContainer.getSpell();
+                    if (spell != null) {
+                        spells.add(spell);
+                    }
+                }
+            }
+        }
+
+        return spells;
     }
 
     /**

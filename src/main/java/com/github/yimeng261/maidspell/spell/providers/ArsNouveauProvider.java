@@ -33,17 +33,47 @@ import java.util.List;
  * 新生魔艺模组的法术书提供者
  * 通过 MaidArsNouveauSpellData 管理各女仆的数据
  */
-public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellData> {
+public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellData, Spell> {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     /**
-     * 构造函数，绑定 MaidArsNouveauSpellData 数据类型
+     * 构造函数，绑定 MaidArsNouveauSpellData 数据类型和 Spell 法术类型
      */
     public ArsNouveauProvider() {
-        super(MaidArsNouveauSpellData::getOrCreate);
+        super(MaidArsNouveauSpellData::getOrCreate, Spell.class);
     }
 
     // === 核心方法（接受EntityMaid参数） ===
+
+    /**
+     * 从单个法术书中收集所有法术
+     * @param spellBook 法术书物品堆栈
+     * @return 该法术书中的所有法术列表
+     */
+    @Override
+    protected List<Spell> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
+        List<Spell> spells = new ArrayList<>();
+
+        if (spellBook == null || spellBook.isEmpty() || !isSpellBook(spellBook)) {
+            return spells;
+        }
+
+        // 获取法术书的施法者接口
+        var caster = SpellCasterRegistry.from(spellBook);
+        if (caster == null) {
+            return spells;
+        }
+
+        // 遍历法术书的所有槽位，收集有效法术
+        for (int i = 0; i < caster.getMaxSlots(); i++) {
+            Spell spell = caster.getSpell(i);
+            if (spell != null && spell.isValid() && !spell.isEmpty()) {
+                spells.add(spell);
+            }
+        }
+
+        return spells;
+    }
 
     /**
      * 检查物品是否为法术书
@@ -68,7 +98,7 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
         ensureManaCapability(maid);
 
         // 选择一个法术进行施放
-        Spell spell = selectRandomSpell(data);
+        Spell spell = selectRandomSpell(maid);
         if (spell == null) {
             return;
         }
@@ -161,30 +191,32 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
 
 
     /**
-     * 获取可用的法术列表
+     * 获取可用的法术列表（未在冷却中的法术）
+     * @param maid 女仆实体
+     * @return 可用的法术列表
      */
-    private List<Spell> getAvailableSpells(MaidArsNouveauSpellData data) {
+    private List<Spell> getAvailableSpells(EntityMaid maid) {
+        MaidArsNouveauSpellData data = getData(maid);
+        List<Spell> allSpells = collectSpellFromAvailableSpellBooks(maid);
         List<Spell> availableSpells = new ArrayList<>();
-        var caster = SpellCasterRegistry.from(data.getSpellBook());
-        if (caster == null) {
-            return availableSpells;
-        }
 
-        // 遍历法术书的所有槽位
-        for (int i = 0; i < caster.getMaxSlots(); i++) {
-            Spell spell = caster.getSpell(i);
-            if (spell.isValid() && !spell.isEmpty() && !data.isSpellOnCooldown(spell.name())) {
+        // 过滤掉冷却中的法术
+        for (Spell spell : allSpells) {
+            if (!data.isSpellOnCooldown(spell.name())) {
                 availableSpells.add(spell);
             }
         }
+
         return availableSpells;
     }
 
     /**
      * 随机选择一个可用的法术
+     * @param maid 女仆实体
+     * @return 随机选择的法术，如果没有可用法术则返回null
      */
-    private Spell selectRandomSpell(MaidArsNouveauSpellData data) {
-        List<Spell> availableSpells = getAvailableSpells(data);
+    private Spell selectRandomSpell(EntityMaid maid) {
+        List<Spell> availableSpells = getAvailableSpells(maid);
         if (availableSpells.isEmpty()) {
             return null;
         }
@@ -261,10 +293,12 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
 
                     } catch (Exception e) {
                         // 回退到标准方法
+                        resolver.onCastOnEntity(data.getSpellBook(), target, InteractionHand.MAIN_HAND);
                     }
                 } else {
                     // 非弹射物法术使用标准方法
                     resolver.hitResult = new EntityHitResult(target, targetPos);
+                    resolver.onCastOnEntity(data.getSpellBook(), target, InteractionHand.MAIN_HAND);
                 }
 
             } else {
@@ -274,10 +308,13 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
 
                 if (result instanceof EntityHitResult entityHitResult && entityHitResult.getEntity() instanceof LivingEntity) {
                     // 射线追踪到实体
+                    resolver.onCastOnEntity(data.getSpellBook(), entityHitResult.getEntity(), InteractionHand.MAIN_HAND);
                 } else if (result instanceof BlockHitResult blockHitResult) {
                     // 射线追踪到方块
+                    resolver.onCastOnBlock(blockHitResult);
                 } else {
                     // 没有特定目标，直接施法
+                    resolver.onCast(data.getSpellBook(), maid.level());
                 }
             }
         } catch (Exception ignored) {
