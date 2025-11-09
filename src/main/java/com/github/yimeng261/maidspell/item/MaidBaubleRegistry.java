@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.item;
 import com.github.tartaricacid.touhoulittlemaid.api.ILittleMaid;
 import com.github.tartaricacid.touhoulittlemaid.api.LittleMaidExtension;
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
+import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeartBauble;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNoteBauble;
 import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBookBauble;
@@ -10,14 +11,14 @@ import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartCh
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.HairpinBauble;
-import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
-import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
-import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.quickChantRing.QuickChantBauble;
 import com.github.yimeng261.maidspell.item.bauble.rockCrystal.RockCrystalBauble;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
+import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
+import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
+import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import net.neoforged.fml.ModList;
 
 /**
@@ -88,6 +89,10 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         if(MaidSpellItems.ANCHOR_CORE != null){
             manager.bind(MaidSpellItems.ANCHOR_CORE, new AnchorCoreBauble());
+        }
+
+        if(MaidSpellItems.SPELL_OVERLIMIT_CORE != null){
+            manager.bind(MaidSpellItems.SPELL_OVERLIMIT_CORE, new SpellOverlimitCoreBauble());
         }
     }
 }

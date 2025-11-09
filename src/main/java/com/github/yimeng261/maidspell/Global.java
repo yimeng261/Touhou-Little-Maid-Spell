@@ -21,18 +21,7 @@ public class Global {
 
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public static ArrayList<BiFunction<LivingIncomingDamageEvent, EntityMaid,Void>> commonDamageCalc = new ArrayList<>(){{
-        add((event,maid)->{
-            LivingEntity entity = event.getEntity();
-            if(entity instanceof EntityMaid){
-                event.setCanceled(true);
-            }else if(entity instanceof Player){
-                event.setCanceled(true);
-            }
-            return null;
-        });
-    }};
-
+    public static ArrayList<BiFunction<LivingIncomingDamageEvent, EntityMaid,Void>> commonDamageCalc = new ArrayList<>();
 
     public static ArrayList<BiFunction<LivingIncomingDamageEvent,Player,Void>> playerHurtCalcAft = new ArrayList<>();
 
@@ -60,4 +49,31 @@ public class Global {
 
     public static Map<Item,BiFunction<LivingDeathEvent,EntityMaid,Void>> baubleDeathCalc = new HashMap<>();
 
+
+    public static void resetCommonDamageCalc() {
+        commonDamageCalc.clear();
+        commonDamageCalc.add((event, maid) -> {
+            LivingEntity entity = event.getEntity();
+            if (entity instanceof EntityMaid) {
+                event.setCanceled(true);
+            } else if (entity instanceof Player) {
+                event.setCanceled(true);
+            }
+            return null;
+        });
+        commonDamageCalc.add((hurtEvent, maid)->{
+            if(maid.getTask().getUid().toString().startsWith("maidspell")) {
+                hurtEvent.setAmount((float) (hurtEvent.getAmount()*Config.spellDamageMultiplier));
+            }
+            return null;
+        });
+    }
+
+    public static void resetCommonCoolDownCalc() {
+        commonCoolDownCalc.clear();
+        commonCoolDownCalc.add((coolDown -> {
+            coolDown.cooldownticks= (int)(coolDown.cooldownticks*Config.coolDownMultiplier);
+            return null;
+        }));
+    }
 }

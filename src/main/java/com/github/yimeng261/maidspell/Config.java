@@ -66,6 +66,24 @@ public class Config {
             .defineInRange("maidCooldownMultiplier", 1.0, 0, 50.0);
 
     static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.IntValue MELEE_ATTACK_INTERVAL = BUILDER
+            .comment("近战法术任务攻击间隔（单位：tick，默认: 8）")
+            .comment("Melee spell task attack interval (in ticks, default: 8)")
+            .defineInRange("meleeAttackInterval", 8, 1, 100);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.IntValue FAR_ATTACK_INTERVAL = BUILDER
+            .comment("远程法术任务攻击间隔（单位：tick，默认: 5）")
+            .comment("Far spell task attack interval (in ticks, default: 5)")
+            .defineInRange("farAttackInterval", 5, 1, 100);
+
+    static {
         BUILDER.pop();
     }
 
@@ -318,6 +336,8 @@ public class Config {
     public static double farRange;
     public static double spellDamageMultiplier;
     public static double coolDownMultiplier;
+    public static int meleeAttackInterval;
+    public static int farAttackInterval;
 
     // 饰品配置缓存值
     // 伤害相关
@@ -361,13 +381,15 @@ public class Config {
 
 
     @SubscribeEvent
-    static void onLoad(final ModConfigEvent event) {
+    static void onLoad(final ModConfigEvent.Loading event) {
         // 加载配置值到缓存变量
         maxSpellRange = MAX_SPELL_RANGE.get();
         meleeRange = MELEE_RANGE.get();
         spellDamageMultiplier = SPELL_DAMAGE_MULTIPLIER.get();
         coolDownMultiplier = COOLDOWN_MULITIPLIER.get();
         farRange = FAR_RANGE.get();
+        meleeAttackInterval = MELEE_ATTACK_INTERVAL.get();
+        farAttackInterval = FAR_ATTACK_INTERVAL.get();
 
         // 加载饰品配置值
         // 伤害相关
@@ -414,17 +436,8 @@ public class Config {
         SimplifiedSpellCaster.MELEE_RANGE= (float) meleeRange;
         SimplifiedSpellCaster.FAR_RANGE= (float) farRange;
 
-        Global.commonDamageCalc.add((hurtEvent, maid)->{
-            if(maid.getTask().getUid().toString().startsWith("maidspell")) {
-                hurtEvent.setAmount((float) (hurtEvent.getAmount()*spellDamageMultiplier));
-            }
-            return null;
-        });
-
-        Global.commonCoolDownCalc.add((coolDown -> {
-            coolDown.cooldownticks= (int)(coolDown.cooldownticks*coolDownMultiplier);
-            return null;
-        }));
+        Global.resetCommonDamageCalc();
+        Global.resetCommonCoolDownCalc();
     }
 
 

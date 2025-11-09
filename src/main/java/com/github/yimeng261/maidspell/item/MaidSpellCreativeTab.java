@@ -43,6 +43,7 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.WOUND_RIME_BLADE.get());
                 output.accept(MaidSpellItems.SLIVER_CERCIS.get());
                 output.accept(MaidSpellItems.ANCHOR_CORE.get());
+                output.accept(MaidSpellItems.SPELL_OVERLIMIT_CORE.get());
 
                 // 管理员工具
                 output.accept(MaidSpellItems.OWNER_CLEAR_TOOL.get());

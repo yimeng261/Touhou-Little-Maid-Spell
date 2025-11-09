@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
 import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBook;
@@ -13,10 +14,9 @@ import com.github.yimeng261.maidspell.item.bauble.rockCrystal.RockCrystal;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercis;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBook;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementCore;
+import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCore;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringRing;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBlade;
-import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
-import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import net.minecraft.Util;
@@ -49,6 +49,7 @@ public class MaidSpellItems {
     public static final DeferredItem<Item> ENDER_POCKET = ITEMS.register("ender_pocket", EnderPocket::new);
     public static final DeferredItem<Item> WOUND_RIME_BLADE = ITEMS.register("wound_rime_blade", WoundRimeBlade::new);
     public static final DeferredItem<Item> ANCHOR_CORE = ITEMS.register("anchor_core", AnchorCore::new);
+    public static final DeferredItem<Item> SPELL_OVERLIMIT_CORE = ITEMS.register("spell_overlimit_core", SpellOverlimitCore::new);
 
     // 寻风之铃
     public static final DeferredItem<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);

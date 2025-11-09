@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
@@ -142,7 +143,7 @@ public abstract class EntityMaidMixin extends TamableAnimal {
         var structureManager = worldIn.getLevel().structureManager();
         var hiddenRetreatStructureSet = worldIn.registryAccess()
             .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
-            .getOptional(new ResourceLocation("touhou_little_maid_spell", "hidden_retreat"));
+            .getOptional(new ResourceLocation(MaidSpellMod.MOD_ID, "hidden_retreat"));
 
         if (hiddenRetreatStructureSet.isPresent()) {
             // 检查此位置是否在hidden_retreat结构的范围内

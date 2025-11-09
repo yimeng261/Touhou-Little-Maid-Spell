@@ -83,6 +83,11 @@
   "item.maidspell.anchor_core.desc3": "阻止非正常途径的数据复制或移除",
   "item.maidspell.anchor_core.desc4": "阻止女仆被其他模组的捕捉工具捕捉",
   "item.maidspell.anchor_core.desc5": "锚定此界，长驻相护",
+  "item.touhou_little_maid_spell.spell_overlimit_core": "法术超限核心",
+  "item.maidspell.spell_overlimit_core.desc1": "解放女仆法术演算限制",
+  "item.maidspell.spell_overlimit_core.desc2": "允许女仆突破常规法术限制",
+  "item.maidspell.spell_overlimit_core.desc3": "不再限制使用法术书的数量",
+  "item.maidspell.spell_overlimit_core.desc4": "法术，易如反掌啊",
   "item.touhou_little_maid_spell.wind_seeking_bell": "寻风之铃",
   "item.touhou_little_maid_spell.wind_seeking_bell.desc1": "用于寻找最近的隐世之境",
   "item.touhou_little_maid_spell.wind_seeking_bell.desc2": "铃声引你道路，微风献上祝福",
@@ -136,5 +141,7 @@
   "touhou_little_maid_spell.configuration.healing": "治疗相关饰品配置",
   "touhou_little_maid_spell.configuration.defense": "防御相关饰品配置",
   "touhou_little_maid_spell.configuration.damage": "伤害相关饰品配置",
-  "touhou_little_maid_spell.configuration.chaosBookTrueDamageMin": "混沌之书真实伤害最小值 (默认: 5.0)"
+  "touhou_little_maid_spell.configuration.chaosBookTrueDamageMin": "混沌之书真实伤害最小值 (默认: 5.0)",
+  "touhou_little_maid_spell.configuration.meleeAttackInterval": "近战法术任务攻击间隔（单位：tick，默认: 8）",
+  "touhou_little_maid_spell.configuration.farAttackInterval": "远程法术任务攻击间隔（单位：tick，默认: 5）"
 }

@@ -1,7 +1,6 @@
 package com.github.yimeng261.maidspell.event;
 
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBackpackChangeEvent;
-import com.github.tartaricacid.touhoulittlemaid.api.event.MaidEquipEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -18,17 +17,18 @@ import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -36,11 +36,11 @@ import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.entity.EntityTeleportEvent;
 import net.neoforged.neoforge.event.entity.EntityTravelToDimensionEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
-import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
+import net.neoforged.neoforge.event.entity.living.*;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import org.slf4j.Logger;
 
 import java.util.*;
@@ -81,28 +81,26 @@ public class MaidSpellEventHandler {
                 MinecraftServer server = serverLevel.getServer();
 
                 // 延迟异步处理区块加载，完全避免在实体加载过程中触发
-                if (server != null) {
-                    UUID maidId = maid.getUUID();
+                UUID maidId = maid.getUUID();
 
-                    server.execute(() -> {
-                        try {
-                            // 重新获取女仆实体，确保引用有效
-                            Entity delayedEntity = serverLevel.getEntity(maidId);
-                            if (delayedEntity instanceof EntityMaid delayedMaid) {
-                                // 使用完全基于SavedData的检查方法
-                                if (ChunkLoadingManager.shouldEnableChunkLoading(delayedMaid, server)) {
-                                    // 从全局SavedData恢复区块加载
-                                    ChunkLoadingManager.restoreChunkLoadingFromSavedData(delayedMaid, server);
-                                } else {
-                                    // 首次装备，启用区块加载
-                                    ChunkLoadingManager.enableChunkLoading(delayedMaid);
-                                }
+                server.execute(() -> {
+                    try {
+                        // 重新获取女仆实体，确保引用有效
+                        Entity delayedEntity = serverLevel.getEntity(maidId);
+                        if (delayedEntity instanceof EntityMaid delayedMaid) {
+                            // 使用完全基于SavedData的检查方法
+                            if (ChunkLoadingManager.shouldEnableChunkLoading(delayedMaid, server)) {
+                                // 从全局SavedData恢复区块加载
+                                ChunkLoadingManager.restoreChunkLoadingFromSavedData(delayedMaid, server);
+                            } else {
+                                // 首次装备，启用区块加载
+                                ChunkLoadingManager.enableChunkLoading(delayedMaid);
                             }
-                        } catch (Exception e) {
-                            LOGGER.error("处理女仆区块加载时发生错误: {}", e.getMessage(), e);
                         }
-                    });
-                }
+                    } catch (Exception e) {
+                        LOGGER.error("处理女仆区块加载时发生错误: {}", e.getMessage(), e);
+                    }
+                });
             }
         }
     }
@@ -125,6 +123,7 @@ public class MaidSpellEventHandler {
         }
         SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
         manager.removeSpellItem(maid,event.getItemStack());
+        LOGGER.debug("itemstack: {} take off", event.getItemStack());
     }
 
     /**
@@ -186,21 +185,17 @@ public class MaidSpellEventHandler {
      * 当女仆的主手或副手装备发生变化时，更新法术书管理器
      */
     @SubscribeEvent
-    public static void onMaidEquip(MaidEquipEvent event) {
-        EntityMaid maid = event.getMaid();
-        EquipmentSlot slot = event.getSlot();
-
-        // 只处理手部装备变化
-        if (!maid.level().isClientSide() && (slot == EquipmentSlot.MAINHAND || slot == EquipmentSlot.OFFHAND)) {
-            try {
+    public static void onMaidEquip(LivingEquipmentChangeEvent event) {
+        if(event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
+            if (!maid.level().isClientSide()) {
                 SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-                if (manager != null) {
-                    // 更新法术书
-                    manager.initSpellBooks();
+                LOGGER.debug("[MaidSpell] from: {}, to: {}",event.getFrom(), event.getTo());
+                if(event.getTo() != ItemStack.EMPTY){
+                    manager.addSpellItem(maid,event.getTo());
                 }
-            } catch (Exception e) {
-                LOGGER.error("Error handling maid equip event for maid {}: {}",
-                    maid.getName().getString(), e.getMessage(), e);
+                if(event.getFrom() != ItemStack.EMPTY){
+                    manager.removeSpellItem(maid,event.getFrom());
+                }
             }
         }
     }
@@ -279,9 +274,7 @@ public class MaidSpellEventHandler {
         if (!maid.level().isClientSide()) {
             try {
                 SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-                if (manager != null) {
-                    manager.tick();
-                }
+                manager.tick();
                 // 每20个tick更新一次结盟状态
                 if(maid.tickCount%20 == 0){
                     if(maid.isNoAi() && maid.getTask().getUid().toString().startsWith("maidspell")){
@@ -398,11 +391,9 @@ public class MaidSpellEventHandler {
         try {
             // 通过SpellBookManager获取提供者并停止所有正在进行的施法
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-            if (manager != null) {
-                for (ISpellBookProvider<?, ?> provider : manager.getProviders()) {
-                    if (provider.isCasting(maid)) {
-                        provider.stopCasting(maid);
-                    }
+            for (ISpellBookProvider<?, ?> provider : manager.getProviders()) {
+                if (provider.isCasting(maid)) {
+                    provider.stopCasting(maid);
                 }
             }
             // MaidSlashBladeData.remove(maid.getUUID());
@@ -456,6 +447,12 @@ public class MaidSpellEventHandler {
         }
     }
 
+    @SubscribeEvent
+    public static void onServerStart(ServerAboutToStartEvent event) {
+        Global.maidList.clear();
+        Global.maidInfos.clear();
+    }
+
     /**
      * 为玩家拥有的女仆恢复区块加载状态
      * 在玩家登录时调用，确保远距离的女仆也能恢复区块加载
@@ -487,7 +484,7 @@ public class MaidSpellEventHandler {
                     // 获取对应维度的服务器世界
                     ServerLevel targetLevel = info.level();
                     if (targetLevel == null) {
-                        LOGGER.warn("无法找到维度 {} 来恢复女仆 {} 的区块加载", info.level(), maidId);
+                        LOGGER.warn("无法找到维度 {} 来恢复女仆 {} 的区块加载", null, maidId);
                         continue;
                     }
 
@@ -533,8 +530,8 @@ public class MaidSpellEventHandler {
             // 使用结构管理器检查
             var structureManager = level.structureManager();
             var hiddenRetreatStructureSet = level.registryAccess()
-                .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
-                .getOptional(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("touhou_little_maid_spell", "hidden_retreat"));
+                .registryOrThrow(Registries.STRUCTURE)
+                .getOptional(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat"));
 
             if (hiddenRetreatStructureSet.isPresent()) {
                 // 检查此位置是否在hidden_retreat结构的范围内

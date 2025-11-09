@@ -156,19 +156,6 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
         data.resetCastingState();
     }
 
-    /**
-     * 更新冷却时间
-     */
-    @Override
-    public void updateCooldown(EntityMaid maid) {
-        // 新生魔艺法术没有内置冷却系统，这里预留接口供将来的魔力系统使用
-        MaidArsNouveauSpellData data = getData(maid);
-        data.updateCooldowns();
-        // 定期补充女仆的魔力
-        if (maid != null && maid.tickCount % 100 == 0) { // 每5秒检查一次
-            ensureManaCapability(maid);
-        }
-    }
 
     // === 私有辅助方法 ===
 

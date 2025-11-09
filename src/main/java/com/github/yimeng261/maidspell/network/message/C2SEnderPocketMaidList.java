@@ -36,9 +36,7 @@ public record C2SEnderPocketMaidList(boolean fromMaidBackpack) implements Custom
         List<EnderPocketService.EnderPocketMaidInfo> maidInfos =
                 EnderPocketService.getPlayerEnderPocketMaids(player);
 
-        if (!maidInfos.isEmpty()) {
-            S2CEnderPocketMaidList response = new S2CEnderPocketMaidList(maidInfos, fromMaidBackpack());
-            player.connection.send(response);
-        }
+        S2CEnderPocketMaidList response = new S2CEnderPocketMaidList(maidInfos, fromMaidBackpack());
+        player.connection.send(response);
     }
 }
