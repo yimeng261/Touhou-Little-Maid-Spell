@@ -25,6 +25,9 @@ public class MaidSlashBladeData extends IMaidSpellData {
     
     // SA冷却
     private int cooldown = 0;
+    
+    // 冲刺技能计数器 - 用于保证每3次必有一次冲刺
+    private int nonDashSkillCount = 0;
 
 
     private MaidSlashBladeData(UUID maidUUID) {
@@ -51,6 +54,11 @@ public class MaidSlashBladeData extends IMaidSpellData {
     
     public ResourceLocation getLastComboState() { return lastComboState; }
     public void setLastComboState(ResourceLocation lastComboState) { this.lastComboState = lastComboState; }
+    
+    // 冲刺计数器管理
+    public int getNonDashSkillCount() { return nonDashSkillCount; }
+    public void incrementNonDashSkillCount() { this.nonDashSkillCount++; }
+    public void resetNonDashSkillCount() { this.nonDashSkillCount = 0; }
 
     
     public void updateCooldowns() {

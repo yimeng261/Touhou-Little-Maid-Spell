@@ -11,6 +11,7 @@ import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
+import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
@@ -53,15 +54,6 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     @Override
     public boolean enableLookAndRandomWalk(@NotNull EntityMaid maid) {
         return false; // 对于战斗任务，通常禁用随机行为以保持专注
-    }
-
-    /**
-     * 检查女仆是否处于战斗状态
-     * 当女仆有攻击目标且目标不是玩家时，认为处于战斗状态
-     */
-    public static boolean isInCombat(@NotNull EntityMaid maid) {
-        LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-        return target != null && target.isAlive() && !(target instanceof Player);
     }
 
     @Override
@@ -184,7 +176,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         }
 
         @Override
-        protected boolean checkExtraStartConditions(ServerLevel level, EntityMaid maid) {
+        protected boolean checkExtraStartConditions(@NotNull ServerLevel level, EntityMaid maid) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
             if (target == null || !target.isAlive() || target instanceof Player) {
                 return false;
@@ -195,12 +187,12 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         }
 
         @Override
-        protected boolean canStillUse(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
+        protected boolean canStillUse(@NotNull ServerLevel level, @NotNull EntityMaid maid, long gameTime) {
             return checkExtraStartConditions(level, maid);
         }
 
         @Override
-        protected void start(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
+        protected void start(@NotNull ServerLevel level, @NotNull EntityMaid maid, long gameTime) {
             // 不再清理LookTarget，让CombatLookControlTask处理
             // SimplifiedSpellCaster.clearLookTarget(maid);
 
@@ -218,7 +210,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
 
         @Override
-        protected void tick(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
+        protected void tick(@NotNull ServerLevel level, @NotNull EntityMaid maid, long gameTime) {
             // 不再主动清理LookTarget，让CombatLookControlTask统一管理
             // SimplifiedSpellCaster.clearLookTarget(maid);
             if (currentSpellCaster != null) {
@@ -232,7 +224,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         }
 
         @Override
-        protected void stop(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
+        protected void stop(@NotNull ServerLevel level, @NotNull EntityMaid maid, long gameTime) {
             // 停止和清理SpellCaster
             if (currentSpellCaster != null) {
                 currentSpellCaster = null;
@@ -255,7 +247,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         }
 
         @Override
-        protected boolean checkExtraStartConditions(ServerLevel level, EntityMaid maid) {
+        protected boolean checkExtraStartConditions(@NotNull ServerLevel level, EntityMaid maid) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
             // 如果是铁魔法特殊情况（目标是主人），也允许启动
             if (target instanceof Player && isIronSpellSpecialCase(maid)) {
@@ -265,30 +257,31 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         }
 
         @Override
-        protected boolean canStillUse(ServerLevel level, EntityMaid maid, long gameTime) {
+        protected boolean canStillUse(@NotNull ServerLevel level, @NotNull EntityMaid maid, long gameTime) {
             return checkExtraStartConditions(level, maid);
         }
 
         @Override
-        protected void tick(ServerLevel level, EntityMaid maid, long gameTime) {
+        protected void tick(@NotNull ServerLevel level, EntityMaid maid, long gameTime) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
             if (target != null && target.isAlive()) {
                 // 检查是否是铁魔法特殊情况
                 if (target instanceof Player && isIronSpellSpecialCase(maid)) {
-                    // 特殊情况：女仆释放蓝色音符标记的法术时，允许看向主人
-                    maid.getLookControl().setLookAt(target.getX(), target.getEyeY(), target.getZ());
-                    // 不清除Look Memory，允许看向玩家
+                    BehaviorUtils.lookAtEntity(maid, target);
+                    maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
+                    maid.lookAt(EntityAnchorArgument.Anchor.EYES, target.getEyePosition());
                 } else if (!(target instanceof Player)) {
-                    // 正常战斗情况：强制设置视线目标为攻击目标，覆盖其他系统的设置
-                    maid.getLookControl().setLookAt(target.getX(), target.getEyeY(), target.getZ());
-                    // 清除可能导致看向玩家的Look Memory
                     maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+                    BehaviorUtils.lookAtEntity(maid, target);
+                    maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
+                    maid.lookAt(EntityAnchorArgument.Anchor.EYES, target.getEyePosition());
                 }
             }
         }
 
+
         @Override
-        protected void start(ServerLevel level, EntityMaid maid, long gameTime) {
+        protected void start(@NotNull ServerLevel level, EntityMaid maid, long gameTime) {
             // 开始时，只有在非特殊情况下才清除干扰视线目标
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
             if (!(target instanceof Player && isIronSpellSpecialCase(maid))) {
@@ -297,7 +290,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         }
 
         @Override
-        protected void stop(ServerLevel level, EntityMaid maid, long gameTime) {
+        protected void stop(@NotNull ServerLevel level, @NotNull EntityMaid maid, long gameTime) {
             // 战斗结束时不做特殊处理，让其他系统接管
         }
         
@@ -333,9 +326,9 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     static class SpellStrafingTask extends Behavior<EntityMaid> {
-        private boolean strafingClockwise;
-        private boolean strafingBackwards;
-        private int strafingTime = -1;
+        protected boolean strafingClockwise;
+        protected boolean strafingBackwards;
+        protected int strafingTime = -1;
         private final double optimalMinDistance = SimplifiedSpellCaster.MELEE_RANGE - 1; // 最佳最小距离
         private final double maxAttackDistance = SPELL_RANGE;
         private final double rangeRange = 1.5;
@@ -350,13 +343,13 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
 
         @Override
-        protected boolean checkExtraStartConditions(ServerLevel worldIn, EntityMaid maid) {
+        protected boolean checkExtraStartConditions(@NotNull ServerLevel worldIn, EntityMaid maid) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
             return target != null && target.isAlive() && !(target instanceof Player);
         }
 
         @Override
-        protected void tick(ServerLevel worldIn, EntityMaid maid, long gameTime) {
+        protected void tick(@NotNull ServerLevel worldIn, EntityMaid maid, long gameTime) {
 
             maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
                 double distance = maid.distanceTo(target);
@@ -391,8 +384,6 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
                     float forwardSpeed = this.strafingBackwards ? -0.7F : 0.7F;
                     float strafeSpeed = this.strafingClockwise ? 0.7F : -0.7F;
 
-                    // 移除BehaviorUtils.lookAtEntity调用，让CombatLookControlTask统一管理视线
-                    // BehaviorUtils.lookAtEntity(maid, target);
                     maid.getMoveControl().strafe(forwardSpeed, strafeSpeed);
                     maid.setYRot(Mth.rotateIfNecessary(maid.getYRot(), maid.yHeadRot, 0.0F));
                 }
@@ -402,18 +393,18 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         }
 
         @Override
-        protected void start(ServerLevel worldIn, EntityMaid entityIn, long gameTimeIn) {
+        protected void start(@NotNull ServerLevel worldIn, EntityMaid entityIn, long gameTimeIn) {
             entityIn.setSwingingArms(true);
         }
 
         @Override
-        protected void stop(ServerLevel worldIn, EntityMaid entityIn, long gameTimeIn) {
+        protected void stop(@NotNull ServerLevel worldIn, EntityMaid entityIn, long gameTimeIn) {
             entityIn.setSwingingArms(false);
             entityIn.getMoveControl().strafe(0, 0);
         }
 
         @Override
-        protected boolean canStillUse(ServerLevel worldIn, EntityMaid entityIn, long gameTimeIn) {
+        protected boolean canStillUse(@NotNull ServerLevel worldIn, @NotNull EntityMaid entityIn, long gameTimeIn) {
             return this.checkExtraStartConditions(worldIn, entityIn);
         }
     }
