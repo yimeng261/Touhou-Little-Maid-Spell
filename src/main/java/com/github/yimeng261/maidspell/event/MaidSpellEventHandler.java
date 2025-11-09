@@ -583,7 +583,7 @@ public class MaidSpellEventHandler {
             var structureManager = level.structureManager();
             var hiddenRetreatStructureSet = level.registryAccess()
                 .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
-                .getOptional(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("touhou_little_maid_spell", "hidden_retreat"));
+                .getOptional(new ResourceLocation("touhou_little_maid_spell", "hidden_retreat"));
 
             if (hiddenRetreatStructureSet.isPresent()) {
                 // 检查此位置是否在hidden_retreat结构的范围内

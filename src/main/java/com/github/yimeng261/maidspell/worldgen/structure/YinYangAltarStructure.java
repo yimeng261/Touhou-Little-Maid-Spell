@@ -53,7 +53,7 @@ public class YinYangAltarStructure extends Structure {
         // 获取地表高度
         int y = context.chunkGenerator().getFirstOccupiedHeight(
             x, z, 
-            Heightmap.Types.WORLD_SURFACE_WG, 
+            Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
             context.heightAccessor(), 
             context.randomState()
         );
@@ -67,12 +67,6 @@ public class YinYangAltarStructure extends Structure {
             MaidSpellMod.LOGGER.error("YinYangAltar template not found: {}", TEMPLATE_LOCATION);
             return;
         }
-
-        // 创建放置设置
-        StructurePlaceSettings settings = new StructurePlaceSettings()
-            .setRotation(rotation)
-            .setMirror(Mirror.NONE)
-            .setKeepLiquids(false);
 
         BlockPos pos = new BlockPos(x, y, z);
         

@@ -50,7 +50,7 @@ public class FairyMaidCafeStructure extends Structure {
         // 获取地表高度
         int y = context.chunkGenerator().getFirstOccupiedHeight(
             x, z, 
-            Heightmap.Types.WORLD_SURFACE_WG, 
+            Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
             context.heightAccessor(), 
             context.randomState()
         );
@@ -64,13 +64,7 @@ public class FairyMaidCafeStructure extends Structure {
             return;
         }
 
-        // 创建放置设置
-        StructurePlaceSettings settings = new StructurePlaceSettings()
-            .setRotation(rotation)
-            .setMirror(Mirror.NONE)
-            .setKeepLiquids(false);
-
-        BlockPos pos = new BlockPos(x, y, z);
+        BlockPos pos = new BlockPos(x, y-1, z);
         
         // 添加结构片段
         builder.addPiece(new SingleTemplatePiece(
