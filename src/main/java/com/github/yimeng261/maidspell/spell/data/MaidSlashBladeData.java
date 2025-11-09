@@ -16,10 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MaidSlashBladeData extends IMaidSpellData {
     private static final Map<UUID, MaidSlashBladeData> DATA_MAP = new ConcurrentHashMap<>();
 
-    private WeakReference<LivingEntity> target = new WeakReference<>(null);
     
     // 施法状态
-    private boolean isCasting = false;
     private long saExecutionStartTime = 0;
     private ResourceLocation lastComboState = null;
 
@@ -40,12 +38,7 @@ public class MaidSlashBladeData extends IMaidSpellData {
         DATA_MAP.remove(maidUUID);
     }
     
-    public LivingEntity getTarget() { return target.get(); }
-    public void setTarget(LivingEntity target) { this.target = new WeakReference<>(target); }
-    
     // 施法状态
-    public boolean isCasting() { return isCasting; }
-    public void setCasting(boolean casting) { this.isCasting = casting; }
     public void setSAExecutionStartTime(long time) { this.saExecutionStartTime = time; }
     public long getSAExecutionStartTime() { return saExecutionStartTime; }
     
@@ -66,7 +59,7 @@ public class MaidSlashBladeData extends IMaidSpellData {
 
     
     public void reset() {
-        this.target = new WeakReference<>(null);
+        this.target = null;
         this.isCasting = false;
         this.saExecutionStartTime = 0;
         this.targetUseTime = 0;

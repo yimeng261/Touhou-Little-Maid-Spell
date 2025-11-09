@@ -377,41 +377,6 @@ public class MaidSpellEventHandler {
     }
 
     /**
-     * 为女仆附加INPUT_STATE能力，确保拔刀剑能正常工作
-     * 使用不同的键名以避免与拔刀剑模组的能力冲突
-     */
-    @SubscribeEvent
-    public static void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
-        // 只在服务器端处理，避免客户端渲染问题
-        if (event.getObject().level().isClientSide()) {
-            return;
-        }
-        
-        if (event.getObject() instanceof EntityMaid) {
-            // 检查拔刀剑模组是否加载
-            if (!net.minecraftforge.fml.ModList.get().isLoaded("slashblade")) {
-                return;
-            }
-            
-            Entity entity = event.getObject();
-            
-            // 使用我们自己的键名，以防拔刀剑的能力没有正确附加
-            ResourceLocation maidInputStateKey = new ResourceLocation(MaidSpellMod.MOD_ID, "maid_inputstate");
-            
-            try {
-                // 检查是否已经有这个能力，避免重复添加
-                if (!entity.getCapability(mods.flammpfeil.slashblade.capability.inputstate.CapabilityInputState.INPUT_STATE).isPresent()) {
-                    event.addCapability(maidInputStateKey, new InputStateCapabilityProvider());
-                    LOGGER.debug("Added INPUT_STATE capability to maid entity");
-                }
-            } catch (Exception e) {
-                LOGGER.warn("Failed to add INPUT_STATE capability to maid: {}", e.getMessage());
-                // 不要重新抛出异常，避免影响其他模组
-            }
-        }
-    }
-
-    /**
      * 当女仆死亡时处理饰品逻辑并清理数据
      */
     @SubscribeEvent
