@@ -11,6 +11,7 @@
     "EntityMaidMixin",
     "EntityMixin",
     "LivingEntityMixin",
+    "MinecraftServerMixin",
     "MobMixin",
     "MobUtilMixin",
     "OpenMaidGuiMessageMixin",
