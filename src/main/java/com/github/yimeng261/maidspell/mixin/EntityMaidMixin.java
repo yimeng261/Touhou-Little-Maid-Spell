@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
@@ -37,6 +38,10 @@ public abstract class EntityMaidMixin extends TamableAnimal {
      */
     @Shadow
     private boolean structureSpawn;
+
+    @Shadow
+    public boolean guiOpening;
+
 
     protected EntityMaidMixin(EntityType<? extends TamableAnimal> entityType, Level level) {
         super(entityType, level);
@@ -103,6 +108,18 @@ public abstract class EntityMaidMixin extends TamableAnimal {
 
         } catch (Exception e) {
             Global.LOGGER.error("Failed to check maid removal source", e);
+        }
+    }
+
+    @Inject(method = "customServerAiStep", at = @At("TAIL"))
+    protected void afterCustomServerAiStep(CallbackInfo ci) {
+        if (guiOpening) {
+            // 打开 GUI 时停止施法和走位
+            EntityMaid maid = (EntityMaid)(Object)this;
+            SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
+            manager.stopAllCasting();
+            maid.getNavigation().stop();
+            maid.getMoveControl().strafe(0, 0);
         }
     }
 
