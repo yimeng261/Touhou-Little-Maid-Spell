@@ -130,14 +130,12 @@ public class EnderPocketMessage {
             case REQUEST_MAID_LIST:
                 List<EnderPocketService.EnderPocketMaidInfo> maidInfos = 
                         EnderPocketService.getPlayerEnderPocketMaids(player);
-                
-                if (!maidInfos.isEmpty()) {
-                    EnderPocketMessage response = new EnderPocketMessage(Type.RESPONSE_MAID_LIST, maidInfos, message.fromMaidBackpack);
-                    NetworkHandler.CHANNEL.sendTo(
-                            response, player.connection.connection,
-                            net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT
-                    );
-                }
+
+                EnderPocketMessage response = new EnderPocketMessage(Type.RESPONSE_MAID_LIST, maidInfos, message.fromMaidBackpack);
+                NetworkHandler.CHANNEL.sendTo(
+                        response, player.connection.connection,
+                        net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT
+                );
                 break;
                 
             case OPEN_MAID_INVENTORY:
