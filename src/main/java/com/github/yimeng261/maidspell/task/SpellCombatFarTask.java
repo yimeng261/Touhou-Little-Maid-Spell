@@ -56,21 +56,6 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
     }
 
     @Override
-    public boolean enableLookAndRandomWalk(@NotNull EntityMaid maid) {
-        return false;
-    }
-
-    /**
-     * 检查女仆是否处于战斗状态
-     * 当女仆有攻击目标且目标不是玩家时，认为处于战斗状态
-     */
-    public static boolean isInCombat(@NotNull EntityMaid maid) {
-        LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-        return target != null && target.isAlive() && !(target instanceof Player);
-    }
-
-
-    @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
@@ -90,7 +75,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         );
     }
 
-    private class FarSpellCombatBehavior extends SpellCombatBehavior {
+    private static class FarSpellCombatBehavior extends SpellCombatBehavior {
         private SimplifiedSpellCaster currentSpellCaster;
 
         private FarSpellCombatBehavior() {
@@ -98,11 +83,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         }
 
         @Override
-        protected void start(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
-            // 不再清理LookTarget，让CombatLookControlTask处理
-            // SimplifiedSpellCaster.clearLookTarget(maid);
-
-            // 创建SpellCaster并设置初始目标
+        protected void start(net.minecraft.server.level.@NotNull ServerLevel level, @NotNull EntityMaid maid, long gameTime) {
             currentSpellCaster = new SimplifiedSpellCaster(maid);
 
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
@@ -115,10 +96,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         }
 
         @Override
-        protected void tick(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
-            // 不再主动清理LookTarget，让CombatLookControlTask统一管理
-            // SimplifiedSpellCaster.clearLookTarget(maid);
-
+        protected void tick(net.minecraft.server.level.@NotNull ServerLevel level, @NotNull EntityMaid maid, long gameTime) {
             if (currentSpellCaster != null) {
                 // 确保目标同步 - 这是唯一的目标更新点
                 LivingEntity currentTarget = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
@@ -130,7 +108,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         }
 
         @Override
-        protected void stop(net.minecraft.server.level.ServerLevel level, EntityMaid maid, long gameTime) {
+        protected void stop(net.minecraft.server.level.@NotNull ServerLevel level, @NotNull EntityMaid maid, long gameTime) {
             // 停止和清理SpellCaster
             if (currentSpellCaster != null) {
                 currentSpellCaster = null;
@@ -138,22 +116,17 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         }
     }
 
-    class SpellStrafingTask extends SpellCombatMeleeTask.SpellStrafingTask {
-        private boolean strafingClockwise;
-        private boolean strafingBackwards;
-        private int strafingTime = -1;
-        private double optimalMinDistance = SimplifiedSpellCaster.FAR_RANGE; // 最佳最小距离
-        private double maxAttackDistance = SPELL_RANGE;
-        private double rangeRange = 5;
+    static class SpellStrafingTask extends SpellCombatMeleeTask.SpellStrafingTask {
+        private final double optimalMinDistance = SimplifiedSpellCaster.FAR_RANGE; // 最佳最小距离
+        private final double maxAttackDistance = SPELL_RANGE;
+        private final double rangeRange = 5;
 
         public SpellStrafingTask() {
             super();
         }
 
-
-
         @Override
-        protected void tick(ServerLevel worldIn, EntityMaid maid, long gameTime) {
+        protected void tick(@NotNull ServerLevel worldIn, EntityMaid maid, long gameTime) {
             // 修正：检查法术书而不是投射武器
             SpellCombatFarTask task = new SpellCombatFarTask();
             if (!task.hasSpellBook(maid)) {
