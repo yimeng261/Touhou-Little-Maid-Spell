@@ -12,6 +12,7 @@
     "EntityMixin",
     "LivingEntityAccessor",
     "LivingEntityMixin",
+    "MinecraftServerMixin",
     "MobMixin",
     "OpenMaidGuiPackageMixin"
   ],
