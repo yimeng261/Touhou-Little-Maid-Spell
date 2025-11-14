@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.spell.data;
 
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
 
@@ -63,6 +64,17 @@ public class MaidSlashBladeData extends IMaidSpellData {
     
     public void updateCooldowns() {
         cooldown-=20;
+    }
+
+    @Override
+    public void removeSpellBook(ItemStack spellBook){
+        for(ItemStack oldSpellBook : spellBooks){
+            if(ItemStack.isSameItem(oldSpellBook, spellBook)){
+                spellBookKinds.remove(spellBook.getItem().getClass());
+                spellBooks.remove(oldSpellBook);
+                return;
+            }
+        }
     }
 
     

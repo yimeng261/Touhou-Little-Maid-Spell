@@ -90,7 +90,7 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
             
             // 创建ServerLevel
             ServerLevelData serverLevelData = (ServerLevelData) overworld.getLevelData();
-            long seed = BiomeManager.obfuscateSeed((long)(0xee0000*0x66ccff*Math.random()));
+            long seed = BiomeManager.obfuscateSeed((long)(0x66ccff*Math.random()));
             
             // 创建一个简单的ChunkProgressListener
             ChunkProgressListener progressListener = new ChunkProgressListener() {

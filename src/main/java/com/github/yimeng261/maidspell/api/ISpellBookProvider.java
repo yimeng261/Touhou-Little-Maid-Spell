@@ -84,7 +84,7 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
                 getData(maid).addSpellBook(spellBook,maid);
             }
         }else{
-            clearSpellItem(maid,spellBook);
+            getData(maid).removeSpellBook(spellBook);
         }
 
     }
@@ -95,13 +95,6 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
     public void clearSpellItems(EntityMaid maid) {
         getData(maid).clearSpellBooks();
         stopCasting(maid);
-    }
-
-    /**
-     * 清除女仆的法术物品数据
-     */
-    public void clearSpellItem(EntityMaid maid, ItemStack spellItem) {
-        getData(maid).removeSpellBook(spellItem);
     }
 
     /**
