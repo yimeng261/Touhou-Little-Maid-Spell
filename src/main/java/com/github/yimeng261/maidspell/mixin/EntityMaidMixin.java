@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 
 import net.minecraft.resources.ResourceLocation;
@@ -37,6 +38,9 @@ public class EntityMaidMixin {
      */
     @Shadow
     private boolean structureSpawn;
+
+    @Shadow
+    public boolean guiOpening;
 
     
     /**
@@ -102,6 +106,18 @@ public class EntityMaidMixin {
 
         } catch (Exception e) {
             Global.LOGGER.error("Failed to check maid removal source", e);
+        }
+    }
+
+    @Inject(method = "customServerAiStep", at = @At("TAIL"))
+    protected void afterCustomServerAiStep(CallbackInfo ci) {
+        if (guiOpening) {
+            // 打开 GUI 时停止施法和走位
+            EntityMaid maid = (EntityMaid)(Object)this;
+            SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
+            manager.stopAllCasting();
+            maid.getNavigation().stop();
+            maid.getMoveControl().strafe(0, 0);
         }
     }
 
