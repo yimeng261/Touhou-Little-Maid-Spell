@@ -350,6 +350,10 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
         @Override
         protected void tick(@NotNull ServerLevel worldIn, EntityMaid maid, long gameTime) {
+            // 如果女仆处于坐下状态，不执行走位逻辑
+            if (maid.isOrderedToSit()) {
+                return;
+            }
 
             maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
                 double distance = maid.distanceTo(target);

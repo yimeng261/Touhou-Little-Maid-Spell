@@ -133,7 +133,10 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
         @Override
         protected void tick(@NotNull ServerLevel worldIn, EntityMaid maid, long gameTime) {
-            // 修正：检查法术书而不是投射武器
+            // 如果女仆处于坐下状态，不执行走位逻辑
+            if (maid.isOrderedToSit()) {
+                return;
+            }
             SpellCombatFarTask task = new SpellCombatFarTask();
             if (!task.hasSpellBook(maid)) {
                 return;

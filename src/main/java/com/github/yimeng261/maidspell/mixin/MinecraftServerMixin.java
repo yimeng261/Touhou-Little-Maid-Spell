@@ -118,7 +118,7 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 overworld.isDebug(),
                 seed,
                 ImmutableList.of(),
-                false,
+                true,
                 overworld.getRandomSequences()
             );
             
