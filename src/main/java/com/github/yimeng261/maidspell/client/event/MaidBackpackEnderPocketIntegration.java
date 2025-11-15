@@ -14,7 +14,9 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -112,7 +114,7 @@ public class MaidBackpackEnderPocketIntegration {
             Button maidButton = new TransparentButton(
                 buttonX, buttonY, buttonWidth, buttonHeight,
                 Component.literal(maidInfo.maidName),
-                button -> handleMaidButtonClick(maidInfo.maidEntityId,event.getGui())
+                button -> handleMaidButtonClick(maidInfo.levelKey, maidInfo.maidEntityId)
             );
 
             event.addButton("maid_button_" + i, maidButton);
@@ -255,8 +257,8 @@ public class MaidBackpackEnderPocketIntegration {
     /**
      * 处理女仆按钮点击（通过事件系统调用）
      */
-    private static void handleMaidButtonClick(int maidEntityId,AbstractMaidContainerGui<?> gui) {
-        mc.getConnection().send(new C2SEnderPocketOpenInventory(maidEntityId));
+    private static void handleMaidButtonClick(ResourceKey<Level> maidLevelKey, int maidEntityId) {
+        mc.getConnection().send(new C2SEnderPocketOpenInventory(maidLevelKey, maidEntityId));
     }
 
 

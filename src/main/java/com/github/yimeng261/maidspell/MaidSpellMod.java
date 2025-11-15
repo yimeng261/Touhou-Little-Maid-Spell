@@ -8,9 +8,12 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
+import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -21,6 +24,7 @@ import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +42,8 @@ public class MaidSpellMod {
         modEventBus.addListener(NetworkHandler::registerMessages);
         // 注册额外物品数据标签
         MaidSpellDataComponents.DATA_COMPONENTS.register(modEventBus);
+
+        Registry.register(NeoForgeRegistries.ATTACHMENT_TYPES, ResourceLocation.fromNamespaceAndPath(MOD_ID, "maid-chunks"), ChunkLoadingData.ATTACHMENT_TYPE);
 
         // 手动注册事件处理器，确保事件能被正确监听
         NeoForge.EVENT_BUS.register(MaidSpellEventHandler.class);

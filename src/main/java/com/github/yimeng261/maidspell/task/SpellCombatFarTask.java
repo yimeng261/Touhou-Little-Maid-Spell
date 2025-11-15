@@ -75,6 +75,22 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         );
     }
 
+    @Override
+    public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(EntityMaid maid) {
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
+        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
+        BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
+        // 添加高优先级的视线控制任务，阻止女仆看向玩家
+        BehaviorControl<EntityMaid> lookControlTask = new CombatLookControlTask();
+
+        return Lists.newArrayList(
+                Pair.of(1, lookControlTask),      // 最高优先级，控制视线
+                Pair.of(2, supplementedTask),     // 提高战斗行为优先级
+                Pair.of(2, findTargetTask),
+                Pair.of(2, spellCastingTask)
+        );
+    }
+
     private static class FarSpellCombatBehavior extends SpellCombatBehavior {
         private SimplifiedSpellCaster currentSpellCaster;
 
@@ -127,7 +143,10 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
         @Override
         protected void tick(@NotNull ServerLevel worldIn, EntityMaid maid, long gameTime) {
-            // 修正：检查法术书而不是投射武器
+            // 如果女仆处于坐下状态，不执行走位逻辑
+            if (maid.isOrderedToSit()) {
+                return;
+            }
             SpellCombatFarTask task = new SpellCombatFarTask();
             if (!task.hasSpellBook(maid)) {
                 return;

@@ -205,9 +205,9 @@ public class SpellBookManager {
     }
 
     public void removeSpellItem(EntityMaid maid, ItemStack itemStack) {
-        //LOGGER.debug("Removing spell item for maid {}", maid.getUUID());
+        LOGGER.debug("Removing spell item for maid {}", maid.getUUID());
         for(ISpellBookProvider<?,?> provider : getProviders()) {
-            //LOGGER.debug("Removing spell item for provider: {}", provider);
+            LOGGER.debug("Removing spell item for provider: {}", provider);
             provider.handleItemStack(maid, itemStack, false);
         }
     }

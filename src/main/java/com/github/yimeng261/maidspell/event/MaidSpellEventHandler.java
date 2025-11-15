@@ -7,43 +7,45 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
+import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
-import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.ChunkPos;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.entity.EntityTeleportEvent;
-import net.neoforged.neoforge.event.entity.EntityTravelToDimensionEvent;
 import net.neoforged.neoforge.event.entity.living.*;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
-import net.neoforged.neoforge.event.server.ServerStartedEvent;
-import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import org.slf4j.Logger;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * 女仆法术事件处理器
@@ -74,34 +76,6 @@ public class MaidSpellEventHandler {
                 Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
             }
             addStepHeightToMaid(maid);
-
-            // 检查女仆的区块加载状态 - 异步处理避免卡死
-            if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
-                ServerLevel serverLevel = (ServerLevel) maid.level();
-                MinecraftServer server = serverLevel.getServer();
-
-                // 延迟异步处理区块加载，完全避免在实体加载过程中触发
-                UUID maidId = maid.getUUID();
-
-                server.execute(() -> {
-                    try {
-                        // 重新获取女仆实体，确保引用有效
-                        Entity delayedEntity = serverLevel.getEntity(maidId);
-                        if (delayedEntity instanceof EntityMaid delayedMaid) {
-                            // 使用完全基于SavedData的检查方法
-                            if (ChunkLoadingManager.shouldEnableChunkLoading(delayedMaid, server)) {
-                                // 从全局SavedData恢复区块加载
-                                ChunkLoadingManager.restoreChunkLoadingFromSavedData(delayedMaid, server);
-                            } else {
-                                // 首次装备，启用区块加载
-                                ChunkLoadingManager.enableChunkLoading(delayedMaid);
-                            }
-                        }
-                    } catch (Exception e) {
-                        LOGGER.error("处理女仆区块加载时发生错误: {}", e.getMessage(), e);
-                    }
-                });
-            }
         }
     }
 
@@ -208,18 +182,17 @@ public class MaidSpellEventHandler {
     public static void onEntityTeleport(EntityTeleportEvent event) {
         if (event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
             try {
+                AnchoredEntityMaid anchoredEntityMaid = (AnchoredEntityMaid) maid;
                 // 检查女仆是否装备了锚定核心
-                if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                if (anchoredEntityMaid.maidSpell$isAnchored()) {
                     UUID maidId = maid.getUUID();
                     Global.LOGGER.debug("检测到女仆 {} 传送事件，准备更新区块加载", maidId);
 
                     // 预加载目标区块
                     if(maid.level() instanceof ServerLevel level) {
-                        ChunkLoadingManager.preloadTeleportTarget(
-                                maid,
-                                new Vec3(event.getTargetX(), event.getTargetY(), event.getTargetZ()),
-                                level
-                        );
+                        ChunkPos chunkPos = new ChunkPos(SectionPos.blockToSectionCoord(event.getTargetX()), SectionPos.blockToSectionCoord(event.getTargetZ()));
+                        TicketType<ChunkPos> maidTicket = TicketType.create("maid_anchor", Comparator.comparingLong(ChunkPos::toLong), 300);
+                        level.getChunkSource().addRegionTicket(maidTicket, chunkPos, 3, chunkPos);
                         Global.LOGGER.debug("预加载女仆 {} 传送目标区块", maidId);
                     }
 
@@ -229,40 +202,6 @@ public class MaidSpellEventHandler {
             }
         }
     }
-
-    /**
-     * 监听实体跨维度传送事件
-     * 当女仆跨维度传送时，更新其区块加载状态
-     */
-    @SubscribeEvent
-    public static void onEntityTravelToDimension(EntityTravelToDimensionEvent event) {
-        if (event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
-            try {
-                // 检查女仆是否装备了锚定核心
-                if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
-
-                    UUID maidId = maid.getUUID();
-                    Global.LOGGER.debug("女仆 {} 跨维度传送，禁用当前维度区块加载", maidId);
-
-                    // 启用新维度的区块加载
-                    MinecraftServer server = maid.getServer();
-                    if (server != null) {
-                        // 重新获取女仆实体（可能在新维度）
-                        Entity newMaid = Objects.requireNonNull(server.getLevel(event.getDimension()))
-                            .getEntity(maidId);
-                        if (newMaid instanceof EntityMaid newMaidEntity) {
-                            ChunkLoadingManager.enableChunkLoading(newMaidEntity);
-                            Global.LOGGER.debug("女仆 {} 跨维度传送完成，启用新维度区块加载", maidId);
-                        }
-
-                    }
-                }
-            } catch (Exception e) {
-                Global.LOGGER.error("处理女仆跨维度传送事件时发生错误: {}", e.getMessage(), e);
-            }
-        }
-    }
-
 
     /**
      * 监听女仆tick事件
@@ -460,12 +399,8 @@ public class MaidSpellEventHandler {
      */
     private static void restorePlayerMaidChunkLoading(ServerPlayer player) {
         try {
-            MinecraftServer server = player.getServer();
-            if (server == null) return;
-
-            // 获取全局区块加载数据
-            ChunkLoadingManager.ChunkLoadingData data = ChunkLoadingManager.ChunkLoadingData.get(server);
-            Map<UUID, ChunkLoadingManager.ChunkKey> savedPositions = data.getSavedPositions();
+            ChunkLoadingData chunkLoadingData = player.getData(ChunkLoadingData.ATTACHMENT_TYPE);
+            var savedPositions = chunkLoadingData.maidChunks();
 
             if (savedPositions.isEmpty()) {
                 return; // 没有需要恢复的数据
@@ -476,31 +411,26 @@ public class MaidSpellEventHandler {
 
             LOGGER.info("开始为玩家 {} 恢复 {} 个女仆的区块加载状态", player.getName().getString(), totalCount);
 
-            for (Map.Entry<UUID, ChunkLoadingManager.ChunkKey> entry : savedPositions.entrySet()) {
+            MinecraftServer server = player.server;
+            for (var iterator = savedPositions.entrySet().iterator(); iterator.hasNext(); ) {
+                var entry = iterator.next();
+                iterator.remove();
                 UUID maidId = entry.getKey();
-                ChunkLoadingManager.ChunkKey info = entry.getValue();
+                var info = entry.getValue();
 
                 try {
                     // 获取对应维度的服务器世界
-                    ServerLevel targetLevel = info.level();
+                    ServerLevel targetLevel = server.getLevel(info.levelKey());
                     if (targetLevel == null) {
                         LOGGER.warn("无法找到维度 {} 来恢复女仆 {} 的区块加载", null, maidId);
                         continue;
                     }
 
-                    // 直接基于SavedData恢复区块加载，不需要等待实体加载
-                    boolean success = targetLevel.setChunkForced(info.chunkPos().x, info.chunkPos().z, true);
-                    if (success) {
-                        // 同时更新内存中的记录
-                        ChunkLoadingManager.maidChunkPositions.put(maidId, info);
-                        restoredCount++;
-
-                        LOGGER.debug("成功恢复女仆 {} 的区块加载: {} ({})",
-                            maidId, info.chunkPos(), info.level());
-                    } else {
-                        LOGGER.warn("无法恢复女仆 {} 的区块加载: {} ({})",
-                            maidId, info.chunkPos(), info.level());
-                    }
+                    // 直接加载该区块
+                    ChunkPos chunkPos = new ChunkPos(info.chunkX(), info.chunkZ());
+                    TicketType<ChunkPos> maidTicket = TicketType.create("maid_anchor", Comparator.comparingLong(ChunkPos::toLong), 300);
+                    targetLevel.getChunkSource().addRegionTicket(maidTicket, chunkPos, 3, chunkPos);
+                    restoredCount++;
                 } catch (Exception e) {
                     LOGGER.warn("恢复女仆 {} 区块加载时发生错误: {}", maidId, e.getMessage());
                 }

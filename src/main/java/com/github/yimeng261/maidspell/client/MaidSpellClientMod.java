@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.client;
 
+import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.gui.BlueNoteScreen;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
@@ -11,7 +12,7 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
-@EventBusSubscriber(modid = "touhou_little_maid_spell", value = Dist.CLIENT)
+@EventBusSubscriber(modid = MaidSpellMod.MOD_ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class MaidSpellClientMod {
 
     @SubscribeEvent

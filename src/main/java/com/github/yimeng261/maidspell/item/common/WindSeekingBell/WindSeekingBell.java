@@ -85,9 +85,12 @@ public class WindSeekingBell extends Item {
     @Override
     public @NotNull InteractionResultHolder<ItemStack> use(@Nonnull Level level, @Nonnull Player player, @Nonnull InteractionHand hand) {
         ItemStack itemStack = player.getItemInHand(hand);
-        player.startUsingItem(hand);
 
         if (level instanceof ServerLevel serverLevel) {
+            if (!serverLevel.dimension().equals(Level.OVERWORLD)) {
+                return InteractionResultHolder.consume(itemStack);
+            }
+            player.startUsingItem(hand);
             BlockPos playerPos = player.blockPosition();
 
             // 异步搜索结构，避免主线程卡顿

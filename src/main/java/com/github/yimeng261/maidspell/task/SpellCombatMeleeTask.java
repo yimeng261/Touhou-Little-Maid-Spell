@@ -106,6 +106,23 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     @Override
+    public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(EntityMaid maid) {
+        // 使用近战索敌方法 - 它已经内置了优先攻击最近目标的逻辑
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
+        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
+        BehaviorControl<EntityMaid> spellCastingTask = new SpellCombatBehavior();
+        // 添加高优先级的视线控制任务，阻止女仆看向玩家
+        BehaviorControl<EntityMaid> lookControlTask = new CombatLookControlTask();
+
+        return Lists.newArrayList(
+                Pair.of(1, lookControlTask),      // 最高优先级，控制视线
+                Pair.of(2, supplementedTask),     // 提高战斗行为优先级
+                Pair.of(2, findTargetTask),
+                Pair.of(2, spellCastingTask)
+        );
+    }
+
+    @Override
     public void performRangedAttack(@NotNull EntityMaid shooter, @NotNull LivingEntity target, float distanceFactor) {
     }
 
@@ -350,6 +367,10 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
         @Override
         protected void tick(@NotNull ServerLevel worldIn, EntityMaid maid, long gameTime) {
+            // 如果女仆处于坐下状态，不执行走位逻辑
+            if (maid.isOrderedToSit()) {
+                return;
+            }
 
             maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
                 double distance = maid.distanceTo(target);

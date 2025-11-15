@@ -12,7 +12,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  * 女仆法术战斗系统配置类
  * 管理所有可配置的参数和设置
  */
-@EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
+@EventBusSubscriber(modid = MaidSpellMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public class Config {
 
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
