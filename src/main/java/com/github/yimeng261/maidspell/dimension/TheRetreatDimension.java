@@ -45,6 +45,7 @@ public class TheRetreatDimension {
      * 获取玩家专属的归隐之地维度ResourceKey
      * 格式：touhou_little_maid_spell:the_retreat_<player_uuid>
      */
+    @SuppressWarnings("removal")
     public static ResourceKey<Level> getPlayerRetreatDimension(UUID playerUUID) {
         return ResourceKey.create(
             Registries.DIMENSION,

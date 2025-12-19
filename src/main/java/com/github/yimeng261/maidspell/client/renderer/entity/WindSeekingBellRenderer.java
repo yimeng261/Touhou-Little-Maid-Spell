@@ -52,6 +52,7 @@ public class WindSeekingBellRenderer extends EntityRenderer<WindSeekingBellEntit
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
     }
 
+    @SuppressWarnings("removal")
     @Override
     public ResourceLocation getTextureLocation(WindSeekingBellEntity entity) {
         // 不需要单独的纹理，因为我们直接渲染物品

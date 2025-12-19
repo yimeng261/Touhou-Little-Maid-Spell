@@ -28,6 +28,7 @@ public class SpellEnhancementBauble implements IMaidBauble {
 
     // 支持的属性列表
     private static final List<AttributeConfig> ATTRIBUTES = new ArrayList<>();
+    @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
     
     static {
@@ -93,19 +94,6 @@ public class SpellEnhancementBauble implements IMaidBauble {
     }
 
 
-    /**
-     * 清理女仆的所有属性修饰符
-     */
-    private void clearAllEnhancements(EntityMaid maid) {
-        for (AttributeConfig config : ATTRIBUTES) {
-            AttributeInstance maidAttr = maid.getAttribute(config.attribute);
-            if (maidAttr != null && config.uuid != null) {
-                maidAttr.removeModifier(config.uuid);
-                LOGGER.debug("Removed modifier {} for attribute {} from maid {}",
-                    config.uuid, config.attributeName, maid.getName().getString());
-            }
-        }
-    }
 
     /**
      * 属性配置类

@@ -2,7 +2,6 @@ package com.github.yimeng261.maidspell.spell;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import net.minecraft.world.InteractionHand;
@@ -23,6 +22,7 @@ import mods.flammpfeil.slashblade.registry.SlashArtsRegistry;
  * 简化版的女仆法术施放AI - 不再独立处理索敌，依赖外部传入目标
  */
 public class SimplifiedSpellCaster {
+    @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
     private final EntityMaid maid;
     private LivingEntity target;

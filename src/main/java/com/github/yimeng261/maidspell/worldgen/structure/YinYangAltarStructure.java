@@ -5,13 +5,11 @@ import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.NotNull;
@@ -24,6 +22,7 @@ import java.util.Optional;
  */
 public class YinYangAltarStructure extends Structure {
     public static final Codec<YinYangAltarStructure> CODEC = simpleCodec(YinYangAltarStructure::new);
+    @SuppressWarnings("removal")
     private static final ResourceLocation TEMPLATE_LOCATION = new ResourceLocation("touhou_little_maid_spell", "yin_yang_altar");
 
     public YinYangAltarStructure(StructureSettings settings) {

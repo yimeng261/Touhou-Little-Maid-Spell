@@ -97,7 +97,7 @@ public class TrueDamageUtil {
             boolean modified = false;
             for (Integer healthId : healthIds) {
                 try {
-                    @SuppressWarnings("unchecked")
+                    @SuppressWarnings({ "unchecked", "deprecation" })
                     SynchedEntityData.DataItem<Float> dataItem = 
                         (SynchedEntityData.DataItem<Float>) itemsById.get(healthId);
                     target.getEntityData().set(dataItem.getAccessor(), newHealth);
@@ -198,6 +198,7 @@ public class TrueDamageUtil {
             List<Integer> validIds = new ArrayList<>();
             for (Integer id : cachedIds) {
                 try {
+                    @SuppressWarnings("deprecation")
                     SynchedEntityData.DataItem<?> item = itemsById.get(id);
                     if (item != null && item.getValue() instanceof Float) {
                         validIds.add(id);

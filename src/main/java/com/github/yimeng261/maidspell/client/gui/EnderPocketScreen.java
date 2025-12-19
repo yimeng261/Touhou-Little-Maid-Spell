@@ -23,6 +23,7 @@ import java.util.List;
  */
 @OnlyIn(Dist.CLIENT)
 public class EnderPocketScreen extends Screen {
+    @SuppressWarnings("removal")
     private static final ResourceLocation BACKGROUND_TEXTURE = 
             new ResourceLocation("touhou_little_maid_spell", "textures/gui/ender_pocket.png");
     

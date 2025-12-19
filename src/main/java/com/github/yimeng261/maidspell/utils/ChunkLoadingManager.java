@@ -411,6 +411,7 @@ public class ChunkLoadingManager {
             load(tag);
         }
         
+        @SuppressWarnings("removal")
         public static ChunkLoadingData load(CompoundTag tag) {
             ChunkLoadingData data = new ChunkLoadingData();
             

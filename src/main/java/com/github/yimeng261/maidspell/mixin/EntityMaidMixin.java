@@ -100,7 +100,6 @@ public class EntityMaidMixin {
                     Global.LOGGER.debug("Prevented non-TLM removal of maid {} with health {} (anchor_core protection)",
                             maid.getUUID(), maid.getHealth());
                     ci.cancel();
-                    return;
                 }
             }
 
@@ -156,6 +155,7 @@ public class EntityMaidMixin {
         // 检查当前位置是否在hidden_retreat结构中
         // 使用结构管理器检查
         var structureManager = worldIn.getLevel().structureManager();
+        @SuppressWarnings("removal")
         var hiddenRetreatStructureSet = worldIn.registryAccess()
             .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
             .getOptional(new ResourceLocation("touhou_little_maid_spell", "hidden_retreat"));

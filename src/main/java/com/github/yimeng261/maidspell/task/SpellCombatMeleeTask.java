@@ -42,7 +42,9 @@ import java.util.function.Predicate;
  * 负责统一的目标搜索、验证和管理
  */
 public class SpellCombatMeleeTask implements IRangedAttackTask {
+    @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
+    @SuppressWarnings("removal")
     public static final ResourceLocation UID = new ResourceLocation("maidspell", "spell_combat_melee");
     private static final MutableComponent NAME = Component.translatable("task.maidspell.spell_combat");
     private static float SPELL_RANGE;

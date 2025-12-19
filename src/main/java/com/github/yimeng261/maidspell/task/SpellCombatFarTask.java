@@ -35,7 +35,9 @@ import java.util.List;
  * - 简化代码并确保与其他攻击任务的一致性
  */
 public class SpellCombatFarTask extends SpellCombatMeleeTask {
+    @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
+    @SuppressWarnings("removal")
     public static final ResourceLocation UID = new ResourceLocation("maidspell", "spell_combat_far");
     private static final MutableComponent NAME = Component.translatable("task.maidspell.spell_combat_far");
     private static float SPELL_RANGE;

@@ -28,6 +28,7 @@ public class MaidSpellMod {
     public static final SpellCombatMeleeTask SPELL_COMBAT_TASK = new SpellCombatMeleeTask();
     
 
+    @SuppressWarnings("removal")
     public MaidSpellMod() {
         
         var modBus = FMLJavaModLoadingContext.get().getModEventBus();

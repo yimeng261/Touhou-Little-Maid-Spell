@@ -32,6 +32,7 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class MaidBackpackEnderPocketIntegration {
 
+    @SuppressWarnings("removal")
     private static final ResourceLocation ENDER_POCKET_TEXTURE =
             new ResourceLocation("touhou_little_maid_spell", "textures/gui/ender_pocket.png");
     

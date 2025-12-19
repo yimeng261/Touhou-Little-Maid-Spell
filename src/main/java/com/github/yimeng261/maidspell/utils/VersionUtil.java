@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 /**
  * 版本比较工具类
@@ -15,12 +14,8 @@ import java.util.regex.Pattern;
 public class VersionUtil {
     private static final Logger LOGGER = LogUtils.getLogger();
     
-    // 版本号正则表达式，匹配类似 "2.5.37.0" 或 "2.5.37" 的格式
-    private static final Pattern VERSION_PATTERN = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)(?:\\.(\\d+))?");
-    
     /**
      * 获取指定模组的版本号
-     * 
      * @param modId 模组ID
      * @return 版本号字符串，如果模组未加载则返回null
      */

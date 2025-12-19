@@ -38,6 +38,7 @@ import java.util.ArrayList;
  * 通过 MaidArsNouveauSpellData 管理各女仆的数据
  */
 public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellData, Spell> {
+    @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
 
     /**

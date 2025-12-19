@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 
 public class BlueNoteScreen extends AbstractContainerScreen<BlueNoteContainer> {
+    @SuppressWarnings("removal")
     private static final ResourceLocation TEXTURE = new ResourceLocation("touhou_little_maid_spell", "textures/gui/blue_note.png");
     
     public BlueNoteScreen(BlueNoteContainer container, Inventory playerInventory, Component title) {

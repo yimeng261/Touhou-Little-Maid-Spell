@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class StructureSearchEngine {
     
     // 结构验证优化：提取静态常量避免重复创建
+    @SuppressWarnings("removal")
     private static final ResourceLocation HIDDEN_RETREAT_LOCATION =
         new ResourceLocation("touhou_little_maid_spell", "hidden_retreat");
     private static final ResourceKey<Structure> HIDDEN_RETREAT_KEY =

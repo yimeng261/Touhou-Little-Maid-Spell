@@ -16,6 +16,7 @@ public class MaidSpellSounds {
         DeferredRegister.create(ForgeRegistries.SOUND_EVENTS, MaidSpellMod.MOD_ID);
     
     // 铃声音效
+    @SuppressWarnings("removal")
     public static final RegistryObject<SoundEvent> WIND_SEEKING_BELL = SOUNDS.register("wind_seeking_bell",
         () -> SoundEvent.createFixedRangeEvent(new ResourceLocation(MaidSpellMod.MOD_ID, "wind_seeking_bell"),16f));
 

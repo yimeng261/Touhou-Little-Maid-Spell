@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 管理每个女仆的CAD、法术状态和冷却时间
  */
 public class MaidPsiSpellData extends IMaidSpellData {
+    @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
     
     // 全局女仆数据存储

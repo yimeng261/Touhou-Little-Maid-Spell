@@ -1,12 +1,8 @@
 package com.github.yimeng261.maidspell.spell.data;
 
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
-import com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider;
-import com.hollingsworth.arsnouveau.api.spell.ISpellCaster;
 import com.hollingsworth.arsnouveau.api.spell.Spell;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.hollingsworth.arsnouveau.api.util.CasterUtil;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;

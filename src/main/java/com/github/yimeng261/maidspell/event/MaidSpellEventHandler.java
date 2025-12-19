@@ -2,7 +2,6 @@ package com.github.yimeng261.maidspell.event;
 
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBackpackChangeEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
-import com.github.tartaricacid.touhoulittlemaid.api.event.MaidEquipEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
@@ -22,7 +21,6 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
 
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerLevel;
@@ -48,10 +46,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
-
-// SlashBlade相关导入
-import mods.flammpfeil.slashblade.capability.inputstate.InputStateCapabilityProvider;
 
 /**
  * 女仆法术事件处理器
@@ -553,6 +547,7 @@ public class MaidSpellEventHandler {
             // 检查当前位置是否在hidden_retreat结构中
             // 使用结构管理器检查
             var structureManager = level.structureManager();
+            @SuppressWarnings("removal")
             var hiddenRetreatStructureSet = level.registryAccess()
                 .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
                 .getOptional(new ResourceLocation("touhou_little_maid_spell", "hidden_retreat"));

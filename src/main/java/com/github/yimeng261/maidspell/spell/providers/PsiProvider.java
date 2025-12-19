@@ -32,6 +32,7 @@ import java.util.List;
  * 使女仆能够使用Psi的CAD和法术弹进行施法
  */
 public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
+    @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
 
     /**

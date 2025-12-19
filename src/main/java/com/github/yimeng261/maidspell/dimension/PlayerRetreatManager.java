@@ -37,6 +37,7 @@ public class PlayerRetreatManager {
     /**
      * 为玩家创建专属的归隐之地维度
      */
+    @SuppressWarnings("removal")
     public static ServerLevel createPlayerRetreat(MinecraftServer server, UUID playerUUID) {
         // 检查是否已存在
         if (playerRetreats.containsKey(playerUUID)) {

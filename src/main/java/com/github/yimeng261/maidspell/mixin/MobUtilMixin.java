@@ -2,7 +2,6 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.Polarice3.Goety.utils.MobUtil;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.spell.data.MaidGoetySpellData;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;

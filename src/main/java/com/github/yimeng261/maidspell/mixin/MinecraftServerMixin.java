@@ -21,6 +21,8 @@ import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.ServerLevelData;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.level.LevelEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
@@ -124,6 +126,20 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
             
             // 添加到世界Map
             levels.put(key, newLevel);
+
+            // 注册世界边界监听器
+            server.getPlayerList().addWorldborderListener(newLevel);
+
+            // 触发 Forge 的世界加载事件，这是确保世界正常 Tick 和实体加载的关键
+            MinecraftForge.EVENT_BUS.post(new LevelEvent.Load(newLevel));
+
+            // 尝试调用 Forge 注入的 markWorldsDirty 方法
+            // 该方法通知服务器世界列表已更改，确保 getAllLevels() 等方法能获取到最新列表
+            try {
+                server.getClass().getMethod("markWorldsDirty").invoke(server);
+            } catch (Exception ignored) {
+                // 如果方法不存在，说明是不同版本的 Forge，忽略即可
+            }
 
             MaidSpellMod.LOGGER.info("Successfully created dimension: {}", key.location());
             return true;
