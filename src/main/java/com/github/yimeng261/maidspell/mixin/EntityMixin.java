@@ -85,6 +85,7 @@ public class EntityMixin {
     @Unique
     private static boolean maidSpell$classInvalid(String className) {
         return !className.startsWith("net.minecraft") &&
+                !className.startsWith("net.neoforged") &&
                 !className.startsWith("java") &&
                 !className.startsWith("it.unimi.dsi") &&
                 !className.startsWith("com.github.tartaricacid") &&
