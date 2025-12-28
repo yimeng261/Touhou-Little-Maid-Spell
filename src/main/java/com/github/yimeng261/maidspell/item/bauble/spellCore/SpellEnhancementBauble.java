@@ -94,21 +94,6 @@ public class SpellEnhancementBauble implements IMaidBauble {
         }
     }
 
-
-    /**
-     * 清理女仆的所有属性修饰符
-     */
-    private void clearAllEnhancements(EntityMaid maid) {
-        for (AttributeConfig config : ATTRIBUTES) {
-            AttributeInstance maidAttr = maid.getAttribute(config.attribute);
-            if (maidAttr != null && config.renamedId != null) {
-                maidAttr.removeModifier(config.renamedId);
-                LOGGER.debug("Removed modifier {} for attribute {} from maid {}",
-                    config.renamedId, config.attribute.getKey(), maid.getName().getString());
-            }
-        }
-    }
-
     /**
      * 属性配置类
      */
