@@ -164,11 +164,11 @@ public class MaidSpellEventHandler {
             if (!maid.level().isClientSide()) {
                 SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
                 LOGGER.debug("[MaidSpell] from: {}, to: {}",event.getFrom(), event.getTo());
-                if(event.getTo() != ItemStack.EMPTY){
-                    manager.addSpellItem(maid,event.getTo());
-                }
                 if(event.getFrom() != ItemStack.EMPTY){
                     manager.removeSpellItem(maid,event.getFrom());
+                }
+                if(event.getTo() != ItemStack.EMPTY){
+                    manager.addSpellItem(maid,event.getTo());
                 }
             }
         }
