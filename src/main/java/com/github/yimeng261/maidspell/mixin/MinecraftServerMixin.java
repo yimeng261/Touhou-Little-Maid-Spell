@@ -66,15 +66,15 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
         try {
             MinecraftServer server = (MinecraftServer) (Object) this;
             
+            // 检查维度是否已存在
+            if (levels.containsKey(key)) {
+                MaidSpellMod.LOGGER.debug("Dimension already exists: {}", key.location());
+                return true;
+            }
+            
             // 获取注册表访问
             RegistryAccess registryAccess = server.registryAccess();
             Registry<LevelStem> dimensionRegistry = registryAccess.registryOrThrow(Registries.LEVEL_STEM);
-            
-            // 检查维度类型是否存在
-            if (!dimensionRegistry.containsKey(dimensionTypeKey)) {
-                MaidSpellMod.LOGGER.warn("Dimension type not found: {}", dimensionTypeKey);
-                return false;
-            }
             
             // 获取主世界作为模板
             ServerLevel overworld = levels.get(Level.OVERWORLD);
@@ -83,10 +83,11 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 return false;
             }
             
-            // 获取LevelStem
-            LevelStem levelStem = dimensionRegistry.get(dimensionTypeKey);
-            if (levelStem == null) {
-                MaidSpellMod.LOGGER.warn("LevelStem not found for: {}", dimensionTypeKey);
+            // 使用预定义的LevelStem模板（the_retreat）
+            ResourceLocation templateKey = new ResourceLocation(MaidSpellMod.MOD_ID, "the_retreat");
+            LevelStem templateStem = dimensionRegistry.get(templateKey);
+            if (templateStem == null) {
+                MaidSpellMod.LOGGER.error("Template LevelStem not found for: {}", templateKey);
                 return false;
             }
             
@@ -115,7 +116,7 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 storageSource,
                 serverLevelData,
                 key,
-                levelStem,
+                templateStem,
                 progressListener,
                 overworld.isDebug(),
                 seed,
@@ -132,6 +133,15 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
 
             // 触发 Forge 的世界加载事件，这是确保世界正常 Tick 和实体加载的关键
             MinecraftForge.EVENT_BUS.post(new LevelEvent.Load(newLevel));
+
+            // 确保新维度的数据目录被创建
+            try {
+                newLevel.getDataStorage();
+                // 强制保存维度数据，确保目录结构被创建
+                newLevel.save(null, false, false);
+            } catch (Exception e) {
+                MaidSpellMod.LOGGER.warn("Failed to initialize dimension data storage for: {}", key.location(), e);
+            }
 
             // 尝试调用 Forge 注入的 markWorldsDirty 方法
             // 该方法通知服务器世界列表已更改，确保 getAllLevels() 等方法能获取到最新列表

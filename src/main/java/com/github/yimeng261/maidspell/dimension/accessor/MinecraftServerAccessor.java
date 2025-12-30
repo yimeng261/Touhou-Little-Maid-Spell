@@ -11,7 +11,8 @@ import net.minecraft.world.level.Level;
 public interface MinecraftServerAccessor {
     /**
      * 创建新的世界/维度
-     * @param key 世界的ResourceKey
+     *
+     * @param key              世界的ResourceKey
      * @param dimensionTypeKey 维度类型的ResourceLocation
      * @return 是否创建成功
      */
@@ -23,4 +24,3 @@ public interface MinecraftServerAccessor {
      */
     void maidspell$removeWorld(ResourceKey<Level> key);
 }
-

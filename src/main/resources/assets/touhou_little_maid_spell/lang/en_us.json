@@ -98,7 +98,6 @@
   "item.touhou_little_maid_spell.wind_seeking_bell.sound": "Wind Seeking Bell rings",
   "item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat": "Entered The Retreat",
   "item.touhou_little_maid_spell.wind_seeking_bell.return_to_overworld": "Returned to Overworld",
-  "item.touhou_little_maid_spell.wind_seeking_bell.wrong_dimension": "Can only be used in Overworld or The Retreat",
   "item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed": "Teleportation failed, unable to create The Retreat",
   "subtitle.touhou_little_maid_spell.wind_seeking_bell": "Wind Seeking Bell rings",
   "item.touhou_little_maid_spell.wind_seeking_bell.first_use": "\nRing the bell to call cherry blossoms\nGentle wind comes through the silent deep forest\nOld friend waits with flowers\n",

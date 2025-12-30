@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.spell.data;
 
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
+import io.redspace.ironsspellbooks.api.spells.CastSource;
 import io.redspace.ironsspellbooks.api.spells.SpellData;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import net.minecraft.world.entity.LivingEntity;
@@ -25,6 +26,9 @@ public class MaidIronsSpellData extends IMaidSpellData {
     // === 施法状态 ===
     private SpellData currentCastingSpell = null;
     private final MagicData magicData;
+    
+    // === CastSource 缓存（避免每次施法时重复扫描容器）===
+    private CastSource cachedCastSource = null;
 
     // === 构造函数 ===
     private MaidIronsSpellData() {
@@ -86,6 +90,31 @@ public class MaidIronsSpellData extends IMaidSpellData {
         this.currentCastingSpell = spell;
     }
     
+    // === CastSource 缓存管理 ===
+    
+    /**
+     * 获取缓存的 CastSource
+     * @return 缓存的 CastSource，如果没有缓存返回 null
+     */
+    public CastSource getCachedCastSource() {
+        return cachedCastSource;
+    }
+    
+    /**
+     * 设置 CastSource 缓存（在开始施法时调用）
+     * @param castSource 施法来源
+     */
+    public void setCachedCastSource(CastSource castSource) {
+        this.cachedCastSource = castSource;
+    }
+    
+    /**
+     * 清除 CastSource 缓存（在施法结束时调用）
+     */
+    public void clearCachedCastSource() {
+        this.cachedCastSource = null;
+    }
+    
     public MagicData getMagicData() {
         return magicData;
     }
@@ -99,6 +128,7 @@ public class MaidIronsSpellData extends IMaidSpellData {
     public void resetCastingState() {
         setCasting(false);
         currentCastingSpell = null;
+        clearCachedCastSource();
         magicData.resetCastingState();
     }
 

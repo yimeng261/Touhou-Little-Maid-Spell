@@ -10,7 +10,9 @@ import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
@@ -21,6 +23,10 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import net.minecraft.world.item.ItemStack;
+
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,6 +45,7 @@ public class MaidBackpackEnderPocketIntegration {
     // 末影腰包面板的尺寸
     private static final int PANEL_WIDTH = 90;
     private static final int PANEL_HEIGHT = 153;
+    private static final int TOGGLE_BUTTON_SIZE = 20;
     
     // 存储当前显示的女仆信息
     private static List<EnderPocketService.EnderPocketMaidInfo> currentMaidInfos = new ArrayList<>();
@@ -57,6 +64,9 @@ public class MaidBackpackEnderPocketIntegration {
     
     // 界面状态跟踪
     private static Screen lastScreen = null;
+    
+    // 末影腰包UI开关状态（默认开启）
+    private static boolean isEnderPocketPanelEnabled = true;
     
     /**
      * 计算面板X坐标的统一方法
@@ -89,8 +99,39 @@ public class MaidBackpackEnderPocketIntegration {
     public static void onMaidGuiInit(MaidContainerGuiEvent.Init event) {
         if (event.getGui() instanceof IBackpackContainerScreen) {
             requestEnderPocketDataThrottled();
-            addMaidButtons(event);
+            addEnderPocketToggleButton(event);
+            if (isEnderPocketPanelEnabled) {
+                addMaidButtons(event);
+            }
         }
+    }
+    
+    /**
+     * 添加末影腰包开关按钮（位于面板右下角）
+     */
+    private static void addEnderPocketToggleButton(MaidContainerGuiEvent.Init event) {
+        int panelX = calculatePanelX(event.getLeftPos(), event.getGui());
+        int panelY = calculatePanelY(event.getTopPos());
+        
+        // 按钮位于面板右下角
+        int buttonX = panelX + PANEL_WIDTH - TOGGLE_BUTTON_SIZE - 2;
+        int buttonY = panelY + PANEL_HEIGHT + 4;
+        
+        EnderPocketToggleButton toggleButton = new EnderPocketToggleButton(
+            buttonX, buttonY, TOGGLE_BUTTON_SIZE, TOGGLE_BUTTON_SIZE, isEnderPocketPanelEnabled
+        ) {
+            @Override
+            public void onPress() {
+                this.isStateTriggered = !this.isStateTriggered;
+                isEnderPocketPanelEnabled = this.isStateTriggered;
+                // 重新初始化界面以更新女仆列表按钮的显示
+                if (mc.screen != null) {
+                    mc.screen.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+                }
+            }
+        };
+        
+        event.addButton("ender_pocket_toggle", toggleButton);
     }
     
     /**
@@ -126,9 +167,21 @@ public class MaidBackpackEnderPocketIntegration {
     @SubscribeEvent
     public static void onMaidGuiRender(MaidContainerGuiEvent.Render event) {
         if (event.getGui() instanceof IBackpackContainerScreen) {
-            renderEnderPocketPanel(event.getGraphics(), event.getLeftPos(), event.getTopPos(), 
-                                 event.getMouseX(), event.getMouseY(), event.getGui());
+            // 只有在开关开启时才渲染完整面板
+            if (isEnderPocketPanelEnabled) {
+                renderEnderPocketPanel(event.getGraphics(), event.getLeftPos(), event.getTopPos(), 
+                                     event.getMouseX(), event.getMouseY(), event.getGui());
+            }
+            // 开关按钮总是渲染（即使面板关闭）
+            renderToggleButton(event.getGraphics(), event.getLeftPos(), event.getTopPos(), event.getGui());
         }
+    }
+    
+    /**
+     * 渲染开关按钮的背景（按钮本身由事件系统渲染，这里只渲染额外的视觉效果）
+     */
+    private static void renderToggleButton(GuiGraphics graphics, int guiLeft, int guiTop, AbstractMaidContainerGui<?> gui) {
+        // 按钮的渲染由 AbstractButton 自己处理，这里不需要额外渲染
     }
     
     /**
@@ -309,5 +362,69 @@ public class MaidBackpackEnderPocketIntegration {
         dataRequested = false;
         lastRequestTime = 0;
         requestEnderPocketData();
+    }
+    
+    /**
+     * 末影腰包状态切换按钮，使用末影腰包物品图标
+     * 样式类似车万女仆的home模式/拾物模式按钮
+     */
+    public static abstract class EnderPocketToggleButton extends AbstractButton {
+        protected boolean isStateTriggered;
+        private ItemStack enderPocketIcon = null;
+        
+        public EnderPocketToggleButton(int x, int y, int width, int height, boolean initialState) {
+            super(x, y, width, height, Component.empty());
+            this.isStateTriggered = initialState;
+        }
+        
+        private ItemStack getEnderPocketIcon() {
+            if (enderPocketIcon == null) {
+                enderPocketIcon = new ItemStack(MaidSpellItems.ENDER_POCKET.get());
+            }
+            return enderPocketIcon;
+        }
+        
+        @Override
+        public void renderWidget(@Nonnull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+            // 渲染按钮背景
+            int bgColor;
+            if (this.isStateTriggered) {
+                // 按下状态（开启）- 绿色半透明背景
+                bgColor = this.isHovered() ? 0xA040FF40 : 0x8030DD30;
+            } else {
+                // 未按下状态（关闭）- 灰色半透明背景
+                bgColor = this.isHovered() ? 0xA0808080 : 0x80404040;
+            }
+            
+            // 绘制背景
+            guiGraphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bgColor);
+            
+            // 绘制边框
+            int borderColor = this.isStateTriggered ? 0xFF40FF40 : 0xFF808080;
+            if (this.isHovered()) {
+                borderColor = 0xFFFFFFFF;
+            }
+            guiGraphics.renderOutline(this.getX(), this.getY(), this.width, this.height, borderColor);
+            
+            // 使用物品渲染方法渲染末影腰包图标（自动处理动画帧）
+            // 计算居中位置，物品图标16x16，按钮20x20
+            int iconX = this.getX() + (this.width - 16) / 2;
+            int iconY = this.getY() + (this.height - 14) / 2;
+            
+            guiGraphics.renderItem(getEnderPocketIcon(), iconX, iconY);
+        }
+        
+        @Override
+        protected void updateWidgetNarration(@Nonnull NarrationElementOutput output) {
+            this.defaultButtonNarrationText(output);
+        }
+        
+        public boolean isStateTriggered() {
+            return isStateTriggered;
+        }
+        
+        public void setStateTriggered(boolean state) {
+            this.isStateTriggered = state;
+        }
     }
 }

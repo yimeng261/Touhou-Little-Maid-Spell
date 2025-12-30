@@ -14,6 +14,8 @@ import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
+import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
+import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
@@ -34,6 +36,7 @@ import net.minecraftforge.event.entity.EntityTeleportEvent;
 import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
 import net.minecraftforge.event.entity.living.*;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent.PlayerRespawnEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -73,7 +76,7 @@ public class MaidSpellEventHandler {
             LivingEntity owner = maid.getOwner();
             Global.maidList.add(maid);
             if(owner != null) {
-                Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
+                Global.getOrCreatePlayerMaidMap(owner.getUUID()).put(maid.getUUID(), maid);
             }
             addStepHeightToMaid(maid);
             
@@ -130,6 +133,7 @@ public class MaidSpellEventHandler {
     
     /**
      * 玩家登录时同步末影腰包数据并恢复女仆区块加载
+     * 同时检查玩家是否应该在隐世之境维度中
      */
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerLoggedInEvent event) {
@@ -137,9 +141,12 @@ public class MaidSpellEventHandler {
             for(EntityMaid maid : Global.maidList){
                 LivingEntity owner = maid.getOwner();
                 if(owner != null) {
-                    Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
+                    Global.getOrCreatePlayerMaidMap(owner.getUUID()).put(maid.getUUID(), maid);
                 }
             }
+            
+            // 注释掉手动维度位置检查，让游戏自动处理
+            // checkAndFixPlayerDimension(player);
             
             // 为该玩家拥有的女仆恢复区块加载状态
             restorePlayerMaidChunkLoading(player);
@@ -167,6 +174,19 @@ public class MaidSpellEventHandler {
             }
         }
     }
+    
+    /**
+     * 处理玩家重生事件 - 简化版本，主要用于日志记录
+     */
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            // 简单记录玩家重生信息
+            if (TheRetreatDimension.isInRetreat(player)) {
+                LOGGER.info("Player {} respawned in retreat dimension", player.getName().getString());
+            }
+        }
+    }
 
     /**
      * 当女仆离开世界时，停止所有施法但不移除管理器
@@ -180,9 +200,12 @@ public class MaidSpellEventHandler {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.stopAllCasting();
 
+            // 从全局女仆列表中移除，避免内存泄漏
+            Global.maidList.remove(maid);
+
             LivingEntity owner = maid.getOwner();
             if(owner != null) {
-                Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).remove(maid.getUUID());
+                Global.getOrCreatePlayerMaidMap(owner.getUUID()).remove(maid.getUUID());
             }
         }
     }
@@ -288,7 +311,7 @@ public class MaidSpellEventHandler {
                         maid.setNoAi(false);
                     }
                     if(maid.getTask().getUid().toString().startsWith("maidspell")) {
-                        if(!AllianceManager.getAllianceStatus().containsKey(maid.getUUID())) {
+                        if(!AllianceManager.isAllied(maid.getUUID())) {
                             AllianceManager.setMaidAlliance(maid, true);
                         }
                     }else{
@@ -388,6 +411,8 @@ public class MaidSpellEventHandler {
             // 如果事件未被取消，则清理女仆的法术数据
             if (!event.isCanceled()) {
                 cleanupMaidSpellData(maid);
+                // 从全局女仆列表中移除，避免内存泄漏
+                Global.maidList.remove(maid);
             }
         }
     }
@@ -464,40 +489,40 @@ public class MaidSpellEventHandler {
 
     /**
      * 为玩家拥有的女仆恢复区块加载状态
-     * 在玩家登录时调用，确保远距离的女仆也能恢复区块加载
-     * 完全基于全局SavedData，不依赖实体NBT访问
+     * 现在此方法主要用于检查和日志记录
+     * 实际的区块恢复已在服务器启动时由 ChunkLoadingManager.onServerStarting 完成
      */
     private static void restorePlayerMaidChunkLoading(ServerPlayer player) {
+        // 区块加载已在服务器启动时统一恢复，无需在每次玩家登录时重复操作
+        if (ChunkLoadingManager.isChunkLoadingRestored()) {
+            LOGGER.debug("玩家 {} 登录，区块加载已在服务器启动时恢复", player.getName().getString());
+            return;
+        }
+        
+        // 如果服务器启动时恢复失败，则尝试恢复（备用逻辑）
         try {
             MinecraftServer server = player.getServer();
             if (server == null) return;
             
-            // 获取全局区块加载数据
             ChunkLoadingManager.ChunkLoadingData data = ChunkLoadingManager.ChunkLoadingData.get(server);
             Map<UUID, ChunkLoadingManager.ChunkKey> savedPositions = data.getSavedPositions();
             
             if (savedPositions.isEmpty()) {
-                return; // 没有需要恢复的数据
+                return;
             }
             
+            LOGGER.info("备用恢复：为玩家 {} 恢复 {} 个女仆的区块加载状态", 
+                player.getName().getString(), savedPositions.size());
+            
             int restoredCount = 0;
-            int totalCount = savedPositions.size();
-            
-            LOGGER.info("开始为玩家 {} 恢复 {} 个女仆的区块加载状态", player.getName().getString(), totalCount);
-            
             for (Map.Entry<UUID, ChunkLoadingManager.ChunkKey> entry : savedPositions.entrySet()) {
                 UUID maidId = entry.getKey();
                 ChunkLoadingManager.ChunkKey info = entry.getValue();
                 
                 try {
-                    // 获取对应维度的服务器世界
-                    ServerLevel targetLevel = info.level();
-                    if (targetLevel == null) {
-                        LOGGER.warn("无法找到维度 {} 来恢复女仆 {} 的区块加载", null, maidId);
-                        continue;
-                    }
+                    ServerLevel targetLevel = info.getLevel();
+                    if (targetLevel == null) continue;
                     
-                    // 直接基于SavedData恢复区块加载，不需要等待实体加载
                     boolean success = ForgeChunkManager.forceChunk(
                         targetLevel,
                         MaidSpellMod.MOD_ID,
@@ -509,15 +534,8 @@ public class MaidSpellEventHandler {
                     );
                     
                     if (success) {
-                        // 同时更新内存中的记录
                         ChunkLoadingManager.maidChunkPositions.put(maidId, info);
                         restoredCount++;
-                        
-                        LOGGER.debug("成功恢复女仆 {} 的区块加载: {} ({})", 
-                            maidId, info.chunkPos(), info.level());
-                    } else {
-                        LOGGER.warn("无法恢复女仆 {} 的区块加载: {} ({})", 
-                            maidId, info.chunkPos(), info.level());
                     }
                 } catch (Exception e) {
                     LOGGER.warn("恢复女仆 {} 区块加载时发生错误: {}", maidId, e.getMessage());
@@ -525,14 +543,11 @@ public class MaidSpellEventHandler {
             }
             
             if (restoredCount > 0) {
-                LOGGER.info("为玩家 {} 成功恢复了 {}/{} 个女仆的区块加载", 
-                    player.getName().getString(), restoredCount, totalCount);
-            } else {
-                LOGGER.warn("为玩家 {} 恢复女仆区块加载失败，没有成功恢复任何女仆", 
-                    player.getName().getString());
+                LOGGER.info("备用恢复完成：成功恢复了 {}/{} 个女仆的区块加载", 
+                    restoredCount, savedPositions.size());
             }
         } catch (Exception e) {
-            LOGGER.error("为玩家 {} 恢复女仆区块加载时发生严重错误", player.getName().getString(), e);
+            LOGGER.error("备用恢复女仆区块加载时发生错误", e);
         }
     }
     
@@ -562,4 +577,5 @@ public class MaidSpellEventHandler {
         }
         return false;
     }
+    
 } 

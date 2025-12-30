@@ -32,11 +32,11 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * 寻风之铃 - 用于前往归隐之地维度并寻找隐世之境
+ * 寻风之铃 - 用于前往隐世之境维度并寻找隐世之境
  * 新功能：
- * 1. 在主世界使用：传送到玩家专属的归隐之地维度
- * 2. 在归隐之地使用：寻找隐世之境结构位置（每个维度只有一个）
- * 3. Shift+右键：从归隐之地返回主世界
+ * 1. 在主世界使用：传送到玩家专属的隐世之境维度
+ * 2. 在隐世之境使用：寻找隐世之境结构位置（每个维度只有一个）
+ * 3. Shift+右键：从隐世之境返回主世界
  * 优化策略（简化版）：
  * 1. 无需樱花林验证：隐世之境维度中所有区块都是固定的樱花林生物群系
  * 2. 维度级缓存：每个玩家的维度只有一个结构，按维度缓存结果，不受玩家位置影响
@@ -80,8 +80,8 @@ public class WindSeekingBell extends Item {
             
             // 检查是否按住Shift键（返回主世界）
             if (player.isShiftKeyDown() && TheRetreatDimension.isInRetreat(player)) {
-                // 从归隐之地返回主世界
-                TheRetreatDimension.teleportFromRetreat(serverPlayer, playerPos);
+                // 从隐世之境返回主世界
+                TheRetreatDimension.teleportFromRetreat(serverPlayer);
                 
                 player.displayClientMessage(
                     Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.return_to_overworld")
@@ -97,21 +97,22 @@ public class WindSeekingBell extends Item {
             if (TheRetreatDimension.isInRetreat(player)) {
                 findNearestHiddenRetreatAsync(serverLevel, playerPos, player, itemStack);
             } else {
-                teleportToRetreat(serverPlayer, playerPos, itemStack);
+                teleportToRetreat(serverPlayer, itemStack);
             }
             
             // 立即返回成功，实际结果将异步处理
             return InteractionResultHolder.success(itemStack);
         }
-        
-        return InteractionResultHolder.consume(itemStack);
+
+        return InteractionResultHolder.pass(itemStack);
+
     }
     
     /**
-     * 传送玩家到归隐之地维度
+     * 传送玩家到隐世之境维度
      */
-    private void teleportToRetreat(ServerPlayer player, BlockPos playerPos, ItemStack itemStack) {
-        // 获取或创建玩家专属的归隐之地
+    private void teleportToRetreat(ServerPlayer player, ItemStack itemStack) {
+        // 获取或创建玩家专属的隐世之境
         ServerLevel retreatLevel = PlayerRetreatManager.getOrCreatePlayerRetreat(
             player.getServer(), 
             player.getUUID()
@@ -127,17 +128,17 @@ public class WindSeekingBell extends Item {
             return;
         }
         
-        // 传送到归隐之地（使用相同坐标）
-        TheRetreatDimension.teleportToRetreat(player, playerPos);
+        // 传送到隐世之境
+        TheRetreatDimension.teleportToRetreat(player);
         
         player.displayClientMessage(
             Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
                 .withStyle(ChatFormatting.LIGHT_PURPLE), 
             true
         );
-        
-        // 消耗物品（如果不是创造模式）
-        if (!player.getAbilities().instabuild) {
+
+        // 消耗物品
+        if (!player.getAbilities().instabuild && TheRetreatDimension.isInRetreat(player)) {
             itemStack.shrink(1);
         }
         

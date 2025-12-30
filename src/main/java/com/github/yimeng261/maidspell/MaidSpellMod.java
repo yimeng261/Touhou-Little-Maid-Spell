@@ -1,6 +1,5 @@
 package com.github.yimeng261.maidspell;
 
-import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -25,8 +24,7 @@ public class MaidSpellMod {
     public static final String MOD_NAME = "Touhou Little Maid: Spell";
     
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
-    public static final SpellCombatMeleeTask SPELL_COMBAT_TASK = new SpellCombatMeleeTask();
-    
+
 
     @SuppressWarnings("removal")
     public MaidSpellMod() {
@@ -65,8 +63,7 @@ public class MaidSpellMod {
     }
     
     private boolean checkDependencies() {
-        boolean hasTouhouMaid = checkModLoaded("touhou_little_maid");
-        return hasTouhouMaid;
+        return checkModLoaded("touhou_little_maid");
     }
     
     private boolean checkModLoaded(String modId) {

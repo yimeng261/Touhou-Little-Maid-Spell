@@ -177,6 +177,8 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             
             int effectiveCastTime = spell.getEffectiveCastTime(spellData.getLevel(), maid);
             CastSource castSource = getCastSource(data, spellData);
+            // 缓存 CastSource，避免持续施法期间重复扫描
+            data.setCachedCastSource(castSource);
             magicData.initiateCast(spell, spellData.getLevel(), effectiveCastTime, castSource, "offhand");
             
             // 调用施法前处理
@@ -227,8 +229,12 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             // 对于持续性法术，每隔一定时间调用onCast
             if (spell.getCastType() == CastType.CONTINUOUS) {
                 // 每10tick调用一次onCast（与AbstractSpellCastingMob保持一致）
-                if ((remaining + 1) % 10 == 0) {    
-                    CastSource castSource = getCastSource(data, data.getCurrentCastingSpell());
+                if ((remaining + 1) % 10 == 0) {
+                    // 使用缓存的 CastSource，避免每次都扫描容器
+                    CastSource castSource = data.getCachedCastSource();
+                    if (castSource == null) {
+                        castSource = getCastSource(data, data.getCurrentCastingSpell());
+                    }
                     spell.onCast(maid.level(), data.getCurrentCastingSpell().getLevel(), maid, castSource, magicData);
                 }
             }
