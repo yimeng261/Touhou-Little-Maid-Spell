@@ -100,7 +100,6 @@
   "item.touhou_little_maid_spell.wind_seeking_bell.sound": "寻风之铃响起",
   "item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat": "已进入归隐之地",
   "item.touhou_little_maid_spell.wind_seeking_bell.return_to_overworld": "已返回主世界",
-  "item.touhou_little_maid_spell.wind_seeking_bell.wrong_dimension": "只能在主世界或归隐之地使用",
   "item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed": "传送失败，无法创建归隐之地",
   "subtitle.touhou_little_maid_spell.wind_seeking_bell": "寻风之铃响起",
   "item.touhou_little_maid_spell.wind_seeking_bell.first_use": "\n摇铃唤樱开\n深林寂里风徐来\n故人持花待\n",
@@ -112,7 +111,7 @@
   "item.touhou_little_maid_spell.owner_clear_tool.no_permission": "你没有权限使用此工具",
   "item.touhou_little_maid_spell.owner_clear_tool.success": "已成功清除女仆 %s 的主人 %s",
   "item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat": "您的手艺，一如既往呢",
-  "dimension.touhou_little_maid_spell.the_retreat": "归隐之地",
+  "dimension.touhou_little_maid_spell.the_retreat": "隐世之境",
 
   "touhou_little_maid_spell.configuration.maxSpellRange": "最大法术攻击范围 (默认: 24.0)",
   "touhou_little_maid_spell.configuration.maidCooldownMultiplier": "女仆法术冷却倍率 (默认: 1.0，仅在法术战斗任务下生效)",

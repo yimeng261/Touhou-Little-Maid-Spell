@@ -99,8 +99,27 @@ public class AllianceManager {
 
     /**
      * 获取所有结盟状态
+     * @deprecated 推荐使用 isAllied(UUID) 来检查单个女仆的结盟状态，避免不必要的 HashMap 复制
      */
+    @Deprecated
     public static Map<UUID, String> getAllianceStatus() {
         return new HashMap<>(maidTeamMap);
+    }
+
+    /**
+     * 检查指定女仆是否已结盟
+     * @param maidId 女仆UUID
+     * @return 如果女仆已结盟返回 true
+     */
+    public static boolean isAllied(UUID maidId) {
+        return maidTeamMap.containsKey(maidId);
+    }
+
+    /**
+     * 获取结盟状态的只读视图（不复制）
+     * @return 结盟状态的不可修改视图
+     */
+    public static Map<UUID, String> getAllianceStatusView() {
+        return java.util.Collections.unmodifiableMap(maidTeamMap);
     }
 }

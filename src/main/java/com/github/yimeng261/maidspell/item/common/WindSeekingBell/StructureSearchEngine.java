@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class StructureSearchEngine {
 
     // 结构验证优化：提取静态常量避免重复创建
+    @SuppressWarnings("removal")
     private static final ResourceLocation HIDDEN_RETREAT_LOCATION =
         new ResourceLocation("touhou_little_maid_spell", "hidden_retreat");
     private static final ResourceKey<Structure> HIDDEN_RETREAT_KEY =
@@ -64,6 +65,11 @@ public class StructureSearchEngine {
         // 1. 首先检查缓存（按维度缓存）
         SearchCacheManager.CacheCheckResult cacheResult = cacheManager.checkCache(level);
         if (cacheResult.hasCache) {
+            if (cacheResult.isNegativeCache) {
+                // 负缓存：之前搜索过但未找到，直接返回null避免重复搜索
+                Global.LOGGER.debug("Negative cache hit for dimension: {}, skipping search", level.dimension().location());
+                return CompletableFuture.completedFuture(null);
+            }
             Global.LOGGER.debug("Structure found in cache for dimension: {}", level.dimension().location());
             return CompletableFuture.completedFuture(cacheResult.structurePos);
         }
@@ -107,7 +113,8 @@ public class StructureSearchEngine {
         // 1. 首先检查缓存
         SearchCacheManager.CacheCheckResult cacheResult = cacheManager.checkCache(level);
         if (cacheResult.hasCache) {
-            return cacheResult.structurePos;
+            // 包括正缓存和负缓存
+            return cacheResult.structurePos; // 负缓存时为null
         }
 
         ChunkPos playerChunk = new ChunkPos(playerPos);
@@ -144,6 +151,7 @@ public class StructureSearchEngine {
 
     /**
      * 多线程并行搜索指定小方格层
+     * 使用 CompletableFuture.anyOf 替代忙等轮询，提高效率
      */
     private BlockPos searchSectorLayerParallel(ServerLevel level, ChunkPos centerChunk, int sectorLayer) {
         if (sectorLayer == 0) {
@@ -152,7 +160,6 @@ public class StructureSearchEngine {
 
         List<int[]> sectorCoords = generateSectorCoordinates(sectorLayer);
         List<CompletableFuture<BlockPos>> sectorTasks = new ArrayList<>();
-        AtomicReference<BlockPos> foundInLayer = new AtomicReference<>(null);
         AtomicBoolean layerComplete = new AtomicBoolean(false);
 
         for (final int[] coords : sectorCoords) {
@@ -167,49 +174,57 @@ public class StructureSearchEngine {
         }
 
         try {
-            CompletableFuture<BlockPos> monitorTask = CompletableFuture.supplyAsync(() -> {
+            // 使用 anyOf 等待任一任务完成，避免忙等轮询
+            BlockPos result = null;
+
+            while (!sectorTasks.isEmpty() && result == null) {
+                // 等待任一任务完成
+                @SuppressWarnings("rawtypes")
+                CompletableFuture<Object> anyCompleted = CompletableFuture.anyOf(
+                    sectorTasks.toArray(new CompletableFuture[0])
+                );
+
                 try {
-                    while (foundInLayer.get() == null && !areAllTasksCompleted(sectorTasks)) {
-                        Thread.sleep(50);
-
-                        for (CompletableFuture<BlockPos> task : sectorTasks) {
-                            if (task.isDone() && !task.isCancelled()) {
-                                try {
-                                    BlockPos result = task.get();
-                                    if (result != null && foundInLayer.compareAndSet(null, result)) {
-                                        layerComplete.set(true);
-                                        return result;
-                                    }
-                                } catch (Exception e) {
-                                    // 忽略单个任务的异常
-                                }
-                            }
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                    anyCompleted.get(120, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    // 忽略，继续检查已完成的任务
                 }
-                return foundInLayer.get();
-            });
 
-            BlockPos result = monitorTask.get(120, TimeUnit.SECONDS);
+                // 检查所有已完成的任务
+                List<CompletableFuture<BlockPos>> remainingTasks = new ArrayList<>();
+                for (CompletableFuture<BlockPos> task : sectorTasks) {
+                    if (task.isDone()) {
+                        try {
+                            BlockPos taskResult = task.get();
+                            if (taskResult != null && result == null) {
+                                result = taskResult;
+                                layerComplete.set(true);
+                            }
+                        } catch (Exception e) {
+                            // 忽略单个任务的异常
+                        }
+                    } else {
+                        remainingTasks.add(task);
+                    }
+                }
+                sectorTasks = remainingTasks;
 
-            if (result != null) {
-                sectorTasks.forEach(task -> task.cancel(true));
-            } else {
-                CompletableFuture.allOf(sectorTasks.toArray(new CompletableFuture[0])).get(60, TimeUnit.SECONDS);
+                // 如果找到结果，取消剩余任务
+                if (result != null) {
+                    for (CompletableFuture<BlockPos> task : sectorTasks) {
+                        task.cancel(true);
+                    }
+                    break;
+                }
             }
 
             return result;
 
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        } catch (Exception e) {
+            layerComplete.set(true);
             sectorTasks.forEach(task -> task.cancel(true));
             return null;
         }
-    }
-
-    private boolean areAllTasksCompleted(List<CompletableFuture<BlockPos>> tasks) {
-        return tasks.stream().allMatch(CompletableFuture::isDone);
     }
 
     private List<int[]> generateSectorCoordinates(int layer) {
@@ -280,6 +295,11 @@ public class StructureSearchEngine {
     private BlockPos searchSectorLayer(ServerLevel level, ChunkPos sectorCenter, int layer,
                                      int minX, int maxX, int minZ, int maxZ,
                                      BitSet sectorChecked) {
+        // 检查线程中断状态，支持任务取消
+        if (Thread.currentThread().isInterrupted()) {
+            return null;
+        }
+
         if (layer == 0) {
             if (isInSectorBounds(sectorCenter, minX, maxX, minZ, maxZ)) {
                 if (isSectorChunkUnchecked(sectorCenter, minX, minZ, sectorChecked, maxX - minX + 1)) {
@@ -291,6 +311,7 @@ public class StructureSearchEngine {
         }
 
         for (int x = -layer; x <= layer; x += SearchConfig.SEARCH_STEP) {
+            if (Thread.currentThread().isInterrupted()) return null;
             ChunkPos candidate = new ChunkPos(sectorCenter.x + x, sectorCenter.z + layer);
             if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
                 if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1)) {
@@ -302,6 +323,7 @@ public class StructureSearchEngine {
         }
 
         for (int z = layer - SearchConfig.SEARCH_STEP; z >= -layer; z -= SearchConfig.SEARCH_STEP) {
+            if (Thread.currentThread().isInterrupted()) return null;
             ChunkPos candidate = new ChunkPos(sectorCenter.x + layer, sectorCenter.z + z);
             if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
                 if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1)) {
@@ -313,6 +335,7 @@ public class StructureSearchEngine {
         }
 
         for (int x = layer - SearchConfig.SEARCH_STEP; x >= -layer; x -= SearchConfig.SEARCH_STEP) {
+            if (Thread.currentThread().isInterrupted()) return null;
             ChunkPos candidate = new ChunkPos(sectorCenter.x + x, sectorCenter.z - layer);
             if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
                 if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1)) {
@@ -324,6 +347,7 @@ public class StructureSearchEngine {
         }
 
         for (int z = -layer + SearchConfig.SEARCH_STEP; z <= layer - SearchConfig.SEARCH_STEP; z += SearchConfig.SEARCH_STEP) {
+            if (Thread.currentThread().isInterrupted()) return null;
             ChunkPos candidate = new ChunkPos(sectorCenter.x - layer, sectorCenter.z + z);
             if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
                 if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1)) {

@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -12,33 +13,66 @@ import java.util.concurrent.ConcurrentMap;
  * 搜索缓存管理器（简化版）
  * 在隐世之境中，每个玩家的维度只有一个结构，因此无需基于距离的复杂缓存
  * 只需按维度缓存结构位置即可
+ * 
+ * 优化：支持负缓存（未找到结构），避免反复触发昂贵搜索
  */
 public class SearchCacheManager {
     
-    // 简化的结构缓存：Key为维度ID，Value为结构位置
-    private final Map<String, BlockPos> structureCache = new ConcurrentHashMap<>();
+    // 结构缓存：Key为维度ID，Value为Optional（empty表示未找到结构）
+    private final Map<String, CacheEntry> structureCache = new ConcurrentHashMap<>();
     
     // 正在进行的搜索：避免对同一维度的重复搜索
     private final ConcurrentMap<String, CompletableFuture<BlockPos>> ongoingSearches = new ConcurrentHashMap<>();
+    
+    // 负缓存过期时间（毫秒），5分钟后允许重新搜索
+    private static final long NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000;
+    
+    /**
+     * 缓存条目，支持正缓存和负缓存
+     */
+    private static class CacheEntry {
+        final BlockPos position; // null 表示未找到（负缓存）
+        final long timestamp;
+        
+        CacheEntry(BlockPos position) {
+            this.position = position;
+            this.timestamp = System.currentTimeMillis();
+        }
+        
+        boolean isNegativeCache() {
+            return position == null;
+        }
+        
+        boolean isNegativeCacheExpired() {
+            return isNegativeCache() && 
+                   (System.currentTimeMillis() - timestamp) > NEGATIVE_CACHE_TTL_MS;
+        }
+    }
     
     /**
      * 缓存检查结果类
      */
     public static class CacheCheckResult {
         public final boolean hasCache;
+        public final boolean isNegativeCache; // 是否是负缓存（已搜索但未找到）
         public final BlockPos structurePos;
         
-        private CacheCheckResult(boolean hasCache, BlockPos pos) {
+        private CacheCheckResult(boolean hasCache, boolean isNegativeCache, BlockPos pos) {
             this.hasCache = hasCache;
+            this.isNegativeCache = isNegativeCache;
             this.structurePos = pos;
         }
         
         public static CacheCheckResult noCache() {
-            return new CacheCheckResult(false, null);
+            return new CacheCheckResult(false, false, null);
         }
         
         public static CacheCheckResult withResult(BlockPos pos) {
-            return new CacheCheckResult(true, pos);
+            return new CacheCheckResult(true, false, pos);
+        }
+        
+        public static CacheCheckResult withNegativeCache() {
+            return new CacheCheckResult(true, true, null);
         }
     }
     
@@ -51,10 +85,22 @@ public class SearchCacheManager {
         // 获取维度标识符
         String dimensionKey = serverLevel.dimension().location().toString();
         
-        // 检查该维度是否已有缓存的结构位置
-        BlockPos cachedPos = structureCache.get(dimensionKey);
-        if (cachedPos != null) {
-            return CacheCheckResult.withResult(cachedPos);
+        // 检查该维度是否已有缓存
+        CacheEntry entry = structureCache.get(dimensionKey);
+        if (entry != null) {
+            // 如果是负缓存且已过期，则移除并返回无缓存
+            if (entry.isNegativeCacheExpired()) {
+                structureCache.remove(dimensionKey);
+                return CacheCheckResult.noCache();
+            }
+            
+            // 如果是正缓存（找到了结构）
+            if (!entry.isNegativeCache()) {
+                return CacheCheckResult.withResult(entry.position);
+            }
+            
+            // 负缓存未过期，返回"已缓存但未找到"
+            return CacheCheckResult.withNegativeCache();
         }
         
         return CacheCheckResult.noCache();
@@ -63,14 +109,13 @@ public class SearchCacheManager {
     /**
      * 更新缓存
      * @param serverLevel 服务器世界级别
-     * @param result 搜索结果（可能为null）
+     * @param result 搜索结果（可能为null，null会被缓存为负缓存）
      */
     public void updateCache(ServerLevel serverLevel, BlockPos result) {
         String dimensionKey = serverLevel.dimension().location().toString();
-        // 只有在找到结构时才缓存，未找到结构时不缓存以便后续重试
-        if (result != null) {
-            structureCache.put(dimensionKey, result);
-        }
+        // 无论是否找到结构都缓存
+        // null 会被缓存为负缓存，带有TTL，过期后会重新搜索
+        structureCache.put(dimensionKey, new CacheEntry(result));
     }
 
     /**

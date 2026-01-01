@@ -17,20 +17,15 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.LevelEvent;
 
-import javax.annotation.Nullable;
 import java.util.UUID;
 
 /**
  * 归隐之地维度工具类
- *
  * 职责：
  * 1. 提供维度ResourceKey生成工具方法
  * 2. 提供玩家传送功能（传送到/从归隐之地）
  * 3. 提供维度状态检查方法
  * 4. 提供安全传送位置查找功能
- *
- * 注意：维度的创建、删除、生命周期管理由 PlayerRetreatManager 负责
- *
  * 维度特性：
  * 1. 坐标与主世界完全相同
  * 2. 单一樱花林群系
@@ -54,9 +49,8 @@ public class TheRetreatDimension {
     /**
      * 将玩家传送到归隐之地
      * @param player 要传送的玩家
-     * @param targetPos 目标位置（如果为null则使用玩家当前位置）
      */
-    public static void teleportToRetreat(ServerPlayer player, @Nullable BlockPos targetPos) {
+    public static void teleportToRetreat(ServerPlayer player) {
         MinecraftServer server = player.getServer();
         if (server == null) return;
 
@@ -68,41 +62,41 @@ public class TheRetreatDimension {
             return;
         }
 
-        // 确定传送位置
-        BlockPos finalPos = targetPos != null ? targetPos : player.blockPosition();
-
         // 确保目标位置是安全的
-        BlockPos safePos = findSafePosition(retreatLevel, finalPos);
+        BlockPos safePos = findSafePosition(retreatLevel, player.blockPosition());
 
         // 使用自定义传送器传送玩家
         DimensionTransition dimensionTransition = new DimensionTransition(retreatLevel, safePos.getCenter(), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.PLACE_PORTAL_TICKET);
         player.changeDimension(dimensionTransition);
 
-        MaidSpellMod.LOGGER.info("Teleported player {} to retreat dimension at {}",
+        // 设置玩家在隐世之境的重生点
+        player.setRespawnPosition(retreatLevel.dimension(), safePos, 0.0f, true, false);
+
+        MaidSpellMod.LOGGER.info("Teleported player {} to retreat dimension at {} and set respawn point",
             player.getName().getString(), safePos);
     }
 
     /**
      * 将玩家从归隐之地传送回主世界
      * @param player 要传送的玩家
-     * @param targetPos 目标位置（如果为null则使用玩家在归隐之地的位置）
      */
-    public static void teleportFromRetreat(ServerPlayer player, @Nullable BlockPos targetPos) {
+    public static void teleportFromRetreat(ServerPlayer player) {
         MinecraftServer server = player.getServer();
         if (server == null) return;
 
         ServerLevel overworld = server.getLevel(Level.OVERWORLD);
         if (overworld == null) return;
 
-        // 确定传送位置
-        BlockPos finalPos = targetPos != null ? targetPos : player.blockPosition();
-
         // 确保目标位置是安全的
-        BlockPos safePos = findSafePosition(overworld, finalPos);
+        BlockPos safePos = findSafePosition(overworld, player.blockPosition());
 
         // 使用自定义传送器传送玩家
         DimensionTransition dimensionTransition = new DimensionTransition(overworld, safePos.getCenter(), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.PLACE_PORTAL_TICKET);
         player.changeDimension(dimensionTransition);
+
+        // 恢复玩家在主世界的重生点（如果有的话）
+        // 这里可以选择清除重生点，让玩家回到世界重生点，或者保持原有重生点
+        // player.setRespawnPosition(Level.OVERWORLD, null, 0.0f, false, false);
 
         MaidSpellMod.LOGGER.info("Teleported player {} from retreat dimension to overworld at {}",
             player.getName().getString(), safePos);
@@ -131,23 +125,10 @@ public class TheRetreatDimension {
      */
     private static BlockPos findSafePosition(ServerLevel level, BlockPos targetPos) {
         // 如果目标位置已经安全，直接返回
-        if (isSafePosition(level, targetPos)) {
-            return targetPos;
-        }
-
-        // 向上搜索安全位置（最多20格）
-        for (int y = 0; y <= 20; y++) {
-            BlockPos upPos = targetPos.above(y);
-            if (isSafePosition(level, upPos)) {
-                return upPos;
-            }
-        }
-
-        // 向下搜索安全位置（最多10格）
-        for (int y = 1; y <= 10; y++) {
-            BlockPos downPos = targetPos.below(y);
-            if (isSafePosition(level, downPos)) {
-                return downPos;
+        for(int y=level.getMaxBuildHeight();y>=level.getMinBuildHeight();--y) {
+            BlockPos pos = new BlockPos(targetPos.getX(), y, targetPos.getZ());
+            if(level.getBlockState(pos).isSolid()) {
+                return pos.above();
             }
         }
 
@@ -155,18 +136,6 @@ public class TheRetreatDimension {
         return createSafePlatform(level, targetPos.above(2));
     }
 
-    /**
-     * 检查位置是否安全
-     */
-    private static boolean isSafePosition(ServerLevel level, BlockPos pos) {
-        // 检查脚下有方块（使用isSolidRender代替已弃用的isSolid）
-        if (!level.getBlockState(pos.below()).isSolidRender(level, pos.below())) {
-            return false;
-        }
-
-        // 检查头部和身体位置是否有空气
-        return level.getBlockState(pos).isAir() && level.getBlockState(pos.above()).isAir();
-    }
 
     /**
      * 创建安全平台

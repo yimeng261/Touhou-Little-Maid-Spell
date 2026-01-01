@@ -36,9 +36,9 @@ public class EntityMixin {
                 for(StackTraceElement stackTraceElement : stackTrace) {
                     String className = stackTraceElement.getClassName();
                     //Global.LOGGER.debug("[MaidSpell] Save className: {}", className);
-                    if(maidSpell$classInvalid(className)) {
+                    if(!maidSpell$classValid(className)) {
                         cir.setReturnValue(false);
-                        Global.LOGGER.debug("[MaidSpell] Illegal Save called for {} (anchor_core protection)", maid);
+                        Global.LOGGER.debug("[MaidSpell] Illegal Save called for {} (anchor_core protection), className: {}", maid, className);
                         return;
                     }
                 }
@@ -69,7 +69,7 @@ public class EntityMixin {
                     String className = stackTraceElement.getClassName();
                     //Global.LOGGER.debug("[MaidSpell] SaveWithoutId className: {}", className);
 
-                    if(maidSpell$classInvalid(className)) {
+                    if(!maidSpell$classValid(className)) {
                         cir.setReturnValue(new CompoundTag()); // 返回空标签
                         Global.LOGGER.warn("[MaidSpell] Illegal SaveWithoutId called for {} by {} (anchor_core protection)",
                                 maid.getUUID(), className);
@@ -83,17 +83,17 @@ public class EntityMixin {
     }
 
     @Unique
-    private static boolean maidSpell$classInvalid(String className) {
-        return !className.startsWith("net.minecraft") &&
-                !className.startsWith("net.neoforged") &&
-                !className.startsWith("java") &&
-                !className.startsWith("it.unimi.dsi") &&
-                !className.startsWith("com.github.tartaricacid") &&
-                !className.startsWith("com.github.yimeng261") &&
-                !className.startsWith("com.google") &&
-                !className.startsWith("com.mojang") &&
-                !className.contains("backup") &&
-                !className.contains("maid");
+    private static boolean maidSpell$classValid(String className) {
+        return className.startsWith("net.minecraft") ||
+                className.startsWith("net.neoforged") ||
+                className.startsWith("java") ||
+                className.startsWith("it.unimi.dsi") ||
+                className.startsWith("com.github.tartaricacid") ||
+                className.startsWith("com.github.yimeng261") ||
+                className.startsWith("com.google") ||
+                className.startsWith("com.mojang") ||
+                className.contains("backup") ||
+                className.contains("maid");
     }
 
 }

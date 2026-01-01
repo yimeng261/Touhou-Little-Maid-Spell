@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
+import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
@@ -73,7 +74,7 @@ public class MaidSpellEventHandler {
             LivingEntity owner = maid.getOwner();
             Global.maidList.add(maid);
             if(owner != null) {
-                Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
+                Global.getOrCreatePlayerMaidMap(owner.getUUID()).put(maid.getUUID(), maid);
             }
             addStepHeightToMaid(maid);
         }
@@ -102,6 +103,7 @@ public class MaidSpellEventHandler {
 
     /**
      * 玩家登录时同步末影腰包数据并恢复女仆区块加载
+     * 同时检查玩家是否应该在隐世之境维度中
      */
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
@@ -109,9 +111,12 @@ public class MaidSpellEventHandler {
             for(EntityMaid maid : Global.maidList){
                 LivingEntity owner = maid.getOwner();
                 if(owner != null) {
-                    Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
+                    Global.getOrCreatePlayerMaidMap(owner.getUUID()).put(maid.getUUID(), maid);
                 }
             }
+
+            // 注释掉手动维度位置检查，让游戏自动处理
+            // checkAndFixPlayerDimension(player);
 
             // 为该玩家拥有的女仆恢复区块加载状态
             restorePlayerMaidChunkLoading(player);
@@ -136,6 +141,19 @@ public class MaidSpellEventHandler {
     }
 
     /**
+     * 处理玩家重生事件 - 简化版本，主要用于日志记录
+     */
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            // 简单记录玩家重生信息
+            if (TheRetreatDimension.isInRetreat(player)) {
+                LOGGER.info("Player {} respawned in retreat dimension", player.getName().getString());
+            }
+        }
+    }
+
+    /**
      * 当女仆离开世界时，停止所有施法但不移除管理器
      * 因为女仆可能很快就会重新进入世界（魂符移动）
      * 同时禁用区块加载
@@ -147,9 +165,12 @@ public class MaidSpellEventHandler {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.stopAllCasting();
 
+            // 从全局女仆列表中移除，避免内存泄漏
+            Global.maidList.remove(maid);
+
             LivingEntity owner = maid.getOwner();
             if(owner != null) {
-                Global.maidInfos.computeIfAbsent(owner.getUUID(), k -> new HashMap<>()).remove(maid.getUUID());
+                Global.getOrCreatePlayerMaidMap(owner.getUUID()).remove(maid.getUUID());
             }
         }
     }
@@ -220,7 +241,7 @@ public class MaidSpellEventHandler {
                         maid.setNoAi(false);
                     }
                     if(maid.getTask().getUid().toString().startsWith("maidspell")) {
-                        if(!AllianceManager.getAllianceStatus().containsKey(maid.getUUID())) {
+                        if(!AllianceManager.isAllied(maid.getUUID())) {
                             AllianceManager.setMaidAlliance(maid, true);
                         }
                     }else{
@@ -317,6 +338,8 @@ public class MaidSpellEventHandler {
             // 如果事件未被取消，则清理女仆的法术数据
             if (!event.isCanceled()) {
                 cleanupMaidSpellData(maid);
+                // 从全局女仆列表中移除，避免内存泄漏
+                Global.maidList.remove(maid);
             }
         }
     }
@@ -394,10 +417,17 @@ public class MaidSpellEventHandler {
 
     /**
      * 为玩家拥有的女仆恢复区块加载状态
-     * 在玩家登录时调用，确保远距离的女仆也能恢复区块加载
-     * 完全基于全局SavedData，不依赖实体NBT访问
+     * 现在此方法主要用于检查和日志记录
+     * 实际的区块恢复已在服务器启动时由 ChunkLoadingManager.onServerStarting 完成
      */
     private static void restorePlayerMaidChunkLoading(ServerPlayer player) {
+        // 区块加载已在服务器启动时统一恢复，无需在每次玩家登录时重复操作
+        // if (ChunkLoadingManager.isChunkLoadingRestored()) {
+        //     LOGGER.debug("玩家 {} 登录，区块加载已在服务器启动时恢复", player.getName().getString());
+        //     return;
+        // }
+
+        // 如果服务器启动时恢复失败，则尝试恢复（备用逻辑）
         try {
             ChunkLoadingData chunkLoadingData = player.getData(ChunkLoadingData.ATTACHMENT_TYPE);
             var savedPositions = chunkLoadingData.maidChunks();

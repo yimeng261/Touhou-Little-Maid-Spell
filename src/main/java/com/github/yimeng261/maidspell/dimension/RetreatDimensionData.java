@@ -122,6 +122,9 @@ public class RetreatDimensionData extends SavedData {
             playerDimensions.put(playerUUID, new DimensionInfo(playerUUID));
             setDirty();
             MaidSpellMod.LOGGER.info("Registered new retreat dimension for player: " + playerUUID);
+        } else {
+            // 如果已存在，更新访问时间
+            updateAccessTime(playerUUID);
         }
     }
 

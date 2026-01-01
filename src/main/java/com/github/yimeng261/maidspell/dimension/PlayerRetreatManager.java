@@ -10,6 +10,7 @@ import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -60,8 +61,9 @@ public class PlayerRetreatManager {
             }
 
             // 使用Mixin accessor创建新维度
-            ResourceLocation dimensionType = new ResourceLocation(MaidSpellMod.MOD_ID, "the_retreat");
-            boolean success = ((MinecraftServerAccessor) server).maidspell$createWorld(dimensionKey, dimensionType);
+            // 注意：这里传递的是模板维度的ResourceLocation，用于查找LevelStem
+            ResourceLocation templateDimension = new ResourceLocation(MaidSpellMod.MOD_ID, "the_retreat");
+            boolean success = ((MinecraftServerAccessor) server).maidspell$createWorld(dimensionKey, templateDimension);
 
             if (success) {
                 ServerLevel newLevel = server.getLevel(dimensionKey);
@@ -150,6 +152,43 @@ public class PlayerRetreatManager {
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
         clearCache();
+    }
+
+    /**
+     * 服务器启动完成后，预加载已存在的玩家维度
+     * 这是确保玩家能正确回到隐世之境的关键步骤
+     */
+    @SubscribeEvent
+    public static void onServerStarted(ServerStartedEvent event) {
+        MinecraftServer server = event.getServer();
+
+        // 获取持久化数据
+        RetreatDimensionData data = RetreatDimensionData.get(server);
+
+        // 预加载所有已存在的玩家维度
+        for (UUID playerUUID : data.getAllDimensions().keySet()) {
+            ResourceKey<Level> dimensionKey = TheRetreatDimension.getPlayerRetreatDimension(playerUUID);
+
+            // 检查维度是否已经在服务器中存在
+            ServerLevel existingLevel = server.getLevel(dimensionKey);
+            if (existingLevel != null) {
+                // 添加到缓存
+                playerRetreats.put(playerUUID, existingLevel);
+                MaidSpellMod.LOGGER.info("Loaded existing retreat dimension for player: {}", playerUUID);
+            } else {
+                // 如果维度文件存在但未加载，重新创建维度
+                // 这确保了玩家登录时能找到正确的维度
+                MaidSpellMod.LOGGER.info("Recreating retreat dimension for player: {}", playerUUID);
+                ServerLevel recreatedLevel = createPlayerRetreat(server, playerUUID);
+                if (recreatedLevel != null) {
+                    MaidSpellMod.LOGGER.info("Successfully recreated retreat dimension for player: {}", playerUUID);
+                } else {
+                    MaidSpellMod.LOGGER.error("Failed to recreate retreat dimension for player: {}", playerUUID);
+                }
+            }
+        }
+
+        MaidSpellMod.LOGGER.info("Loaded {} retreat dimensions from save data", playerRetreats.size());
     }
 }
 
