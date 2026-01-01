@@ -3,19 +3,21 @@ package com.github.yimeng261.maidspell.item.bauble.spellCore;
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 
+import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.mojang.logging.LogUtils;
+
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.UUID;
 
 /**
@@ -27,7 +29,10 @@ import java.util.UUID;
 public class SpellEnhancementBauble implements IMaidBauble {
 
     // 支持的属性列表
-    private static final List<AttributeConfig> ATTRIBUTES = new ArrayList<>();
+    private static final ArrayList<AttributeConfig> ATTRIBUTES = new ArrayList<>();
+
+    private static final HashMap<UUID, HashMap<String,Double>> playerAttributeValues = new HashMap<>();
+
     @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
     
@@ -58,37 +63,36 @@ public class SpellEnhancementBauble implements IMaidBauble {
             return;
         }
 
-        // 获取女仆的主人
         LivingEntity owner = maid.getOwner();
-        if (!(owner instanceof Player player)) {
-            return;
+        if (owner instanceof ServerPlayer player) {
+            updateMaidEnhancements(maid, player);
         }
         
-        // 更新女仆的属性加成
-        updateMaidEnhancements(maid, player);
     }
     
     /**
-     * 更新女仆的属性加成，优化版本
+     * 更新女仆的属性加成
      */
-    private void updateMaidEnhancements(EntityMaid maid, Player player) {
+    private void updateMaidEnhancements(EntityMaid maid, ServerPlayer player) {
         for (AttributeConfig config : ATTRIBUTES) {
-            double bonus = 0.0;
-            if (player != null) {
-                // 计算玩家属性加成（超过默认值的部分）
-                double playerValue = player.getAttributeValue(config.attribute);
-                bonus = Math.max(0, playerValue - config.defaultValue);
+            double playerValue = player.getAttributeValue(config.attribute);
+            HashMap<String, Double> attributeValues = playerAttributeValues.computeIfAbsent(player.getUUID(), k -> new HashMap<>());
+
+            if (attributeValues.get(config.attributeName) == null || attributeValues.get(config.attributeName) != playerValue) {
+                attributeValues.put(config.attributeName, playerValue);
+            } else {
+                continue;
             }
 
-            AttributeInstance maidAttr=maid.getAttribute(config.attribute);
-            AttributeModifier modifier = new AttributeModifier("yimeng"+config.attributeName,bonus,AttributeModifier.Operation.ADDITION);
-            if(maidAttr == null) {
+            double bonus = Math.max(0, playerValue - config.defaultValue);
+
+            AttributeInstance maidAttr = maid.getAttribute(config.attribute);
+            UUID uuid = new UUID(MaidSpellMod.MOD_ID.hashCode(), config.attribute.getDescriptionId().hashCode());
+            AttributeModifier modifier = new AttributeModifier(uuid, "yimeng" + config.attributeName, bonus, AttributeModifier.Operation.ADDITION);
+            if (maidAttr == null) {
                 return;
             }
-            if (config.uuid != null) {
-                maidAttr.removeModifier(config.uuid);
-            }
-            config.uuid = modifier.getId();
+            maidAttr.removeModifier(uuid);
             maidAttr.addTransientModifier(modifier);
         }
     }
@@ -101,7 +105,6 @@ public class SpellEnhancementBauble implements IMaidBauble {
     private static class AttributeConfig {
         final Attribute attribute;
         final double defaultValue;
-        UUID uuid=null;
         String attributeName;
 
 

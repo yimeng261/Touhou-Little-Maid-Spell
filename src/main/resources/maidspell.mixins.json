@@ -15,7 +15,8 @@
     "MobMixin",
     "MobUtilMixin",
     "OpenMaidGuiMessageMixin",
-    "SynchedEntityDataMixin"
+    "SynchedEntityDataMixin",
+    "WandUtilMixin"
   ],
   "client": [
   ],

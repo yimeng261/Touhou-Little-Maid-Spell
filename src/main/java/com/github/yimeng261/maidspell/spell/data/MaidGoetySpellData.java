@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.spell.data;
 import com.Polarice3.Goety.api.magic.ISpell;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.Map;
 import java.util.UUID;
@@ -23,6 +24,7 @@ public class MaidGoetySpellData extends IMaidSpellData {
     private int maxCastingTime = 0;
     private ISpell currentSpell = null;
     private boolean spellUsed = false;
+    private ItemStack currentFocus = null;
     
     // === 蓄力法术状态 ===
     private int coolCounter = 0;
@@ -163,4 +165,11 @@ public class MaidGoetySpellData extends IMaidSpellData {
         this.setCasting(true);
     }
 
-} 
+    public ItemStack getCurrentFocus() {
+        return currentFocus;
+    }
+
+    public void setCurrentFocus(ItemStack currentFocus) {
+        this.currentFocus = currentFocus;
+    }
+}

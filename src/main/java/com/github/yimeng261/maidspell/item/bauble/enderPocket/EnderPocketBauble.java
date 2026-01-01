@@ -55,7 +55,7 @@ public class EnderPocketBauble implements IMaidBauble {
     /**
      * 在服务器端主动推送末影腰包数据到客户端
      */
-    private void pushEnderPocketDataToClient(ServerPlayer player) {
+    public static void pushEnderPocketDataToClient(ServerPlayer player) {
         try {
             List<EnderPocketService.EnderPocketMaidInfo> maidInfos = 
                     EnderPocketService.getPlayerEnderPocketMaids(player);

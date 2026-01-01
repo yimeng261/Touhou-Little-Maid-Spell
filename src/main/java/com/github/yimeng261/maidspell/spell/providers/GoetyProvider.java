@@ -32,7 +32,7 @@ import java.lang.reflect.Method;
  * 全局只有一个实例，通过MaidGoetySpellData管理各女仆的数据
  * 自动检测Goety版本并使用对应的API调用方式
  */
-public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ISpell> {
+public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemStack> {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAX_INFINITE_CASTING_TIME = 45;
@@ -50,7 +50,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ISpell>
      * 构造函数，绑定 MaidGoetySpellData 数据类型
      */
     public GoetyProvider() {
-        super(MaidGoetySpellData::getOrCreate,ISpell.class);
+        super(MaidGoetySpellData::getOrCreate,ItemStack.class);
     }
 
     /**
@@ -69,8 +69,8 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ISpell>
     }
 
     @Override
-    protected List<ISpell> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
-        List<ISpell> availableFoci = new ArrayList<>();
+    protected List<ItemStack> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
+        List<ItemStack> availableFoci = new ArrayList<>();
         MaidGoetySpellData data = getData(maid);
         FocusBagItemHandler bagHandler = FocusBagItemHandler.get(spellBook);
         // 遍历FocusBag中所有槽位的聚晶
@@ -79,7 +79,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ISpell>
             if (!focusStack.isEmpty() && focusStack.getItem() instanceof IFocus focus) {
                 ISpell spell = focus.getSpell();
                 if (spell != null && !data.isSpellOnCooldown(getSpellId(spell))) {
-                    availableFoci.add(focus.getSpell());
+                    availableFoci.add(focusStack);
                 }
             }
         }
@@ -171,17 +171,20 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ISpell>
             return null;
         }
         
-        List<ISpell> availableFoci = collectSpellFromAvailableSpellBooks(maid);
-        
+        List<ItemStack> availableFoci = collectSpellFromAvailableSpellBooks(maid);
 
-        
         if (availableFoci.isEmpty()) {
             return null;
         }
         
         // 随机选择一个可用的聚晶
         int randomIndex = (int) (Math.random() * availableFoci.size());
-        return availableFoci.get(randomIndex);
+        ItemStack focusStack = availableFoci.get(randomIndex);
+        if(focusStack.getItem() instanceof IFocus focus) {
+            getData(maid).setCurrentFocus(focusStack);
+            return focus.getSpell();
+        }
+        return null;
     }
 
     

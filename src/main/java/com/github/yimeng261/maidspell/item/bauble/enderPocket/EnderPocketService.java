@@ -34,7 +34,7 @@ public class EnderPocketService {
      * 获取玩家所有装备末影腰包的女仆信息
      */
     public static List<EnderPocketMaidInfo> getPlayerEnderPocketMaids(ServerPlayer player) {
-        Map<UUID, EntityMaid> maids = Global.maidInfos.get(player.getUUID());
+        Map<UUID, EntityMaid> maids = Global.getOrCreatePlayerMaidMap(player.getUUID());
         if (maids == null || maids.isEmpty()) {
             return Collections.emptyList();
         }
