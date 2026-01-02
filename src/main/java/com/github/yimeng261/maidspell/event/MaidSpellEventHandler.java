@@ -9,6 +9,7 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
@@ -406,8 +407,13 @@ public class MaidSpellEventHandler {
             if(maid.isOrderedToSit()&&!maid.isStructureSpawn()&&isInHiddenRetreatStructure(level, maid.blockPosition())){
                 player.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat").withStyle(ChatFormatting.LIGHT_PURPLE));
             }
+
+            // 推送末影腰包数据更新
+            Global.getOrCreatePlayerMaidMap(player.getUUID()).put(maid.getUUID(), maid);
+            EnderPocketBauble.pushEnderPocketDataToClient((ServerPlayer) player);
         }
     }
+
 
     @SubscribeEvent
     public static void onServerStart(ServerAboutToStartEvent event) {
