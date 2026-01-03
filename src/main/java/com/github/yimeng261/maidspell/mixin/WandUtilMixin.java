@@ -28,7 +28,7 @@ public class WandUtilMixin {
     @Inject(method = "findFocus", at = @At("HEAD"), cancellable = true, remap = false)
     private static void onFindFocus(LivingEntity livingEntity, CallbackInfoReturnable<ItemStack> cir) {
         if (livingEntity instanceof EntityMaid maid) {
-            MaidGoetySpellData spellData = MaidGoetySpellData.getOrCreate(maid.getUUID());
+            MaidGoetySpellData spellData = MaidGoetySpellData.getOrCreate(maid);
             ItemStack currentFocus = spellData.getCurrentFocus();
             if (currentFocus != null && !currentFocus.isEmpty()) {
                 cir.setReturnValue(currentFocus);

@@ -1,11 +1,11 @@
 package com.github.yimeng261.maidspell.event;
 
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBackpackChangeEvent;
-import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBaubleChangeEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -17,7 +17,7 @@ import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
-import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
+import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
@@ -41,6 +41,7 @@ import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerRespawnEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
@@ -75,6 +76,12 @@ public class MaidSpellEventHandler {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.setMaid(maid);
             manager.initSpellBooks();
+            if (ModList.get().isLoaded("irons_spellbooks")) {
+                MaidIronsSpellData ironsSpellData = MaidIronsSpellData.get(maid.getUUID());
+                if (ironsSpellData != null) {
+                    ironsSpellData.getMagicData().setSyncedData(new SyncedSpellData(maid));
+                }
+            }
             LivingEntity owner = maid.getOwner();
             Global.maidList.add(maid);
             if(owner != null) {
