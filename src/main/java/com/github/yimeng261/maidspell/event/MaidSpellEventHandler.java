@@ -1,11 +1,12 @@
 package com.github.yimeng261.maidspell.event;
 
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBackpackChangeEvent;
-import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBaubleChangeEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
+import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -17,7 +18,8 @@ import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
-import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
+import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
+import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
@@ -38,6 +40,8 @@ import net.minecraftforge.event.entity.living.*;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
@@ -56,7 +60,7 @@ import net.minecraft.resources.ResourceLocation;
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class MaidSpellEventHandler {
     private static final Logger LOGGER = LogUtils.getLogger();
-    
+
     // 女仆步高属性修饰符的UUID
     private static final UUID MAID_STEP_HEIGHT_UUID = UUID.fromString("8e2c4a16-7f9d-4b45-a3e2-1c8f5d9a6b47");
 
@@ -77,6 +81,13 @@ public class MaidSpellEventHandler {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.setMaid(maid);
             manager.initSpellBooks();
+
+            if (ModList.get().isLoaded("irons_spellbooks")) {
+                MaidIronsSpellData ironsSpellData = MaidIronsSpellData.get(maid.getUUID());
+                if (ironsSpellData != null) {
+                    ironsSpellData.getMagicData().setSyncedData(new SyncedSpellData(maid));
+                }
+            }
 
             Global.updateMaidInfo(maid,true);
 
@@ -104,7 +115,7 @@ public class MaidSpellEventHandler {
         manager.removeSpellItem(maid,event.getItemStack());
         LOGGER.debug("itemstack: {} take off", event.getItemStack());
     }
-    
+
     /**
      * 玩家登录时同步末影腰包数据并恢复女仆区块加载
      * 同时检查玩家是否应该在隐世之境维度中
@@ -116,7 +127,7 @@ public class MaidSpellEventHandler {
                 // 获取玩家的末影腰包女仆数据并推送给客户端
                 EnderPocketBauble.pushEnderPocketDataToClient(player);
             } catch (Exception e) {
-                LOGGER.error("[MaidSpell] Failed to sync ender pocket data for player {} on login: {}", 
+                LOGGER.error("[MaidSpell] Failed to sync ender pocket data for player {} on login: {}",
                             player.getName().getString(), e.getMessage(), e);
             }
         }
@@ -188,7 +199,7 @@ public class MaidSpellEventHandler {
             }
         }
     }
-    
+
     /**
      * 监听实体跨维度传送事件
      * 当女仆跨维度传送时，更新其区块加载状态
@@ -202,7 +213,7 @@ public class MaidSpellEventHandler {
 
                     UUID maidId = maid.getUUID();
                     Global.LOGGER.debug("女仆 {} 跨维度传送，禁用当前维度区块加载", maidId);
-                    
+
                     // 启用新维度的区块加载
                     MinecraftServer server = maid.getServer();
                     if (server != null) {
@@ -252,7 +263,7 @@ public class MaidSpellEventHandler {
                     Global.updateMaidInfo(maid,true);
                 }
             } catch (Exception e) {
-                LOGGER.error("Error in maid tick handler for maid {}: {}", 
+                LOGGER.error("Error in maid tick handler for maid {}: {}",
                     maid.getName().getString(), e.getMessage(), e);
             }
         }
@@ -277,14 +288,14 @@ public class MaidSpellEventHandler {
             });
         }
     }
-    
+
 
     @SubscribeEvent
     public static void onEntityDamage(LivingDamageEvent event) {
         Entity entity = event.getEntity();
         Entity direct = event.getSource().getDirectEntity();
         Entity source = event.getSource().getEntity();
-        
+
         if(source instanceof EntityMaid maid){
             processorAft(event, maid);
         }else if(direct instanceof EntityMaid maid){
@@ -340,7 +351,7 @@ public class MaidSpellEventHandler {
                     func.apply(event, maid);
                 }
             });
-            
+
             // 如果事件未被取消，则清理女仆的法术数据
             if (!event.isCanceled()) {
                 cleanupMaidSpellData(maid);
@@ -370,7 +381,7 @@ public class MaidSpellEventHandler {
             // 静默处理清理错误，避免影响游戏正常运行
         }
     }
-    
+
     /**
      * 为女仆添加步高属性，让她能够直接走上一格高的方块
      */
@@ -382,22 +393,22 @@ public class MaidSpellEventHandler {
                 LOGGER.warn("Maid {} does not have step height attribute", maid.getName().getString());
                 return;
             }
-            
+
             // 检查女仆是否已经有步高属性修饰符，避免重复添加
             if (stepHeightAttribute.getModifier(MAID_STEP_HEIGHT_UUID) == null) {
                 // 添加1.0的步高增加，让女仆能走上一格高的方块
                 AttributeModifier stepHeightModifier = new AttributeModifier(
-                    MAID_STEP_HEIGHT_UUID, 
-                    "Maid Step Height Addition", 
-                    1.0, 
+                    MAID_STEP_HEIGHT_UUID,
+                    "Maid Step Height Addition",
+                    1.0,
                     AttributeModifier.Operation.ADDITION
                 );
-                
+
                 stepHeightAttribute.addPermanentModifier(stepHeightModifier);
                 LOGGER.debug("Added step height attribute to maid: {}", maid.getName().getString());
             }
         } catch (Exception e) {
-            LOGGER.warn("Failed to add step height attribute to maid {}: {}", 
+            LOGGER.warn("Failed to add step height attribute to maid {}: {}",
                 maid.getName().getString(), e.getMessage());
         }
     }
@@ -406,18 +417,18 @@ public class MaidSpellEventHandler {
     public static void onMaidTamed(MaidTamedEvent event) {
         EntityMaid maid = event.getMaid();
         Player player = event.getPlayer();
-        
+
         if (!player.level().isClientSide() && player.level() instanceof ServerLevel level) {
             if(maid.isOrderedToSit()&&!maid.isStructureSpawn()&&isInHiddenRetreatStructure(level, maid.blockPosition())){
                 player.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat").withStyle(ChatFormatting.LIGHT_PURPLE));
             }
-            
+
             // 推送末影腰包数据更新
             Global.updateMaidInfo(maid,true);
             EnderPocketBauble.pushEnderPocketDataToClient((ServerPlayer) player);
         }
     }
-    
+
 
     @SubscribeEvent
     public static void onServerStart(ServerAboutToStartEvent event) {
@@ -451,5 +462,5 @@ public class MaidSpellEventHandler {
         }
         return false;
     }
-    
-} 
+
+}
