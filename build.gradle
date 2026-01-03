@@ -85,6 +85,15 @@ repositories {
             includeGroup "maven.modrinth"
         }
     }
+    maven {
+        name = 'GeckoLib'
+        url 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+        content {
+            includeGroup("software.bernie.geckolib")
+            includeGroup("com.eliotlash.mclib")
+        }
+    }
+    mavenLocal()
 }
 
 dependencies {
@@ -92,8 +101,12 @@ dependencies {
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
     // 女仆模组，必须使用 CurseForge 的，才能有源码
-    implementation fg.deobf("curse.maven:touhou-little-maid-355044:7184660-sources-7184661")
+    // implementation fg.deobf("curse.maven:touhou-little-maid-355044:7307720-sources-7307731")
     //implementation fg.deobf("maven.modrinth:touhou-little-maid:1.4.3-forge+mc1.20.1")
+    implementation fg.deobf("com.github.tartaricacid:touhoulittlemaid:1.4.7-forge+mc1.20.1:all") {
+        exclude group: "maven.modrinth", module: "sodium"
+        exclude group: "maven.modrinth", module: "embeddium"
+    }
 
 
     implementation fg.deobf("maven.modrinth:caelus:3.2.0+1.20.1-forge")
@@ -125,7 +138,9 @@ dependencies {
     runtimeOnly fg.deobf("maven.modrinth:jade:11.13.2+forge")
     runtimeOnly fg.deobf("maven.modrinth:justenoughcharacters:4.5.16-forge,1.20.1")
 
-
+    // Geckolib 动画
+    implementation fg.deobf("software.bernie.geckolib:geckolib-forge-${minecraft_version}:${geckolib_version}")
+    implementation("com.eliotlash.mclib:mclib:20")
 }
 
 tasks.named('processResources', ProcessResources).configure {
