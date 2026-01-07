@@ -102,6 +102,9 @@ public class MaidGoetySpellData extends IMaidSpellData {
     
     public void setCurrentSpell(ISpell currentSpell) {
         this.currentSpell = currentSpell;
+        if(currentSpell != null) {
+            setCurrentSpellId(currentSpell.getClass().getSimpleName());
+        }
     }
     
     // === 蓄力法术状态管理 ===

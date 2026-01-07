@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.item.bauble.hairpin;
+package com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity;
 
 import com.github.yimeng261.maidspell.Config;
 import net.minecraft.ChatFormatting;
@@ -13,12 +13,12 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * 发簪 Hairpin 饰品物品
- * 按照现有饰品格式创建的基础物品
+ * 馥郁巧思 Fragrant Ingenuity 饰品物品
+ * 女仆进食额外增加好感，女仆喂食主人会赋予随机的1级正面buff
  */
-public class Hairpin extends Item {
+public class FragrantIngenuity extends Item {
 
-    public Hairpin() {
+    public FragrantIngenuity() {
         super(new Properties()
             .stacksTo(1)
             .rarity(Rarity.EPIC)
@@ -34,10 +34,10 @@ public class Hairpin extends Item {
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
 
-        tooltip.add(Component.translatable("item.maidspell.hairpin.desc1").withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.maidspell.hairpin.desc2").withStyle(ChatFormatting.BLUE));
-        tooltip.add(Component.translatable("item.maidspell.hairpin.desc3",
-            String.format("%.0f", (Config.hairpinBeneficialEffectExtension - 1) * 100)).withStyle(ChatFormatting.YELLOW));
-        tooltip.add(Component.translatable("item.maidspell.hairpin.desc4").withStyle(ChatFormatting.YELLOW));
+        tooltip.add(Component.translatable("item.maidspell.fragrant_ingenuity.desc1").withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("item.maidspell.fragrant_ingenuity.desc2",
+            String.format("%d", Config.fragrantIngenuityFavorabilityGain)).withStyle(ChatFormatting.GOLD));
+        tooltip.add(Component.translatable("item.maidspell.fragrant_ingenuity.desc3").withStyle(ChatFormatting.AQUA));
     }
 }
+

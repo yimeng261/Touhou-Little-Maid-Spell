@@ -87,8 +87,6 @@ public class EntityMaidMixin {
                     return;
                 }
 
-                ChunkLoadingManager.enableChunkLoading(maid);
-
                 // 如果女仆血量为0，允许正常移除
                 Global.LOGGER.debug("remove called for {}", maid);
                 if (maid.getHealth() <= 0.0f) {

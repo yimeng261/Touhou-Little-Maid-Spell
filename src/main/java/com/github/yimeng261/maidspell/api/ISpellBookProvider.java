@@ -1,6 +1,8 @@
 package com.github.yimeng261.maidspell.api;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
@@ -110,6 +112,7 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
             return;
         }
         initiateCasting(entityMaid);
+        SpellSyncAPI.syncMaidSpellsToAllClients(entityMaid);
     }
 
     /**

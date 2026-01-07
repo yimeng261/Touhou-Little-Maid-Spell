@@ -74,6 +74,9 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
     
     public void setCurrentSpell(Spell spell) {
         this.currentSpell = spell;
+        if(spell != null) {
+            setCurrentSpellId(spell.name);
+        }
     }
 
     // === 施法参数 ===

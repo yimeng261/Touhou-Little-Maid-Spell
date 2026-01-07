@@ -21,6 +21,7 @@ public abstract class IMaidSpellData {
     protected final Set<ItemStack> spellBooks = new HashSet<>();
     protected final Set<Class<?>> spellBookKinds = new HashSet<>();
     protected boolean isCasting = false;
+    protected String currentSpellId = null;
 
 
     public LivingEntity getTarget() {
@@ -29,6 +30,14 @@ public abstract class IMaidSpellData {
 
     public void setTarget(LivingEntity target) {
         this.target = target;
+    }
+
+    public String getCurrentSpellId() {
+        return currentSpellId;
+    }
+
+    public void setCurrentSpellId(String spellId) {
+        this.currentSpellId = spellId;
     }
 
     public static IMaidSpellData getOrCreate(UUID maidUUID){

@@ -114,7 +114,6 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
             return;
         }
 
-
         updateMaidOrientation(maid, data);
         startSpellCasting(maid, spell);
     }

@@ -10,6 +10,7 @@ import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.world.ForgeChunkManager;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
@@ -34,6 +35,13 @@ public class MaidSpellMod {
         
         modBus.addListener(this::setup);
         forgeBus.register(this);
+        
+        // 注册区块强制加载回调 - 必须在 MOD 构造函数中注册
+        ForgeChunkManager.setForcedChunkLoadingCallback(MOD_ID, (level, ticketHelper) -> {
+            // 这个回调会在服务器启动和维度加载时被调用
+            // 我们使用 SavedData 来管理持久化，在 ServerStartedEvent 中恢复
+        });
+        LOGGER.info("ForgeChunkManager 回调已注册");
         
         // 手动注册事件处理器，确保事件能被正确监听
         forgeBus.register(MaidSpellEventHandler.class);

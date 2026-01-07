@@ -13,12 +13,15 @@ import com.github.yimeng261.maidspell.item.bauble.springRing.SpringRing;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.Hairpin;
 import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBook;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBook;
+import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuity;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocket;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBlade;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCore;
 import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
+import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
+import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
 import net.minecraft.Util;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -51,12 +54,17 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> WOUND_RIME_BLADE = ITEMS.register("wound_rime_blade", WoundRimeBlade::new);
     public static final RegistryObject<Item> ANCHOR_CORE = ITEMS.register("anchor_core", AnchorCore::new);
     public static final RegistryObject<Item> SPELL_OVERLIMIT_CORE = ITEMS.register("spell_overlimit_core", SpellOverlimitCore::new);
+    public static final RegistryObject<Item> FRAGRANT_INGENUITY = ITEMS.register("fragrant_ingenuity", FragrantIngenuity::new);
     
     // 寻风之铃
     public static final RegistryObject<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
     
     // 管理员工具
     public static final RegistryObject<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);
+
+    // 任务图标物品
+    public static final RegistryObject<Item> MELEE_TASK_ICON = ITEMS.register("melee_task_icon", MeleeTaskIcon::new);
+    public static final RegistryObject<Item> FAR_TASK_ICON = ITEMS.register("far_task_icon", FarTaskIcon::new);
 
     /**
      * 注册物品

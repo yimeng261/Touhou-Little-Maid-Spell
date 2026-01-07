@@ -8,6 +8,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitSounds;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
@@ -25,7 +26,6 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.NotNull;
@@ -70,7 +70,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public @NotNull ItemStack getIcon() {
-        return Items.ENCHANTED_BOOK.getDefaultInstance();
+        return MaidSpellItems.MELEE_TASK_ICON.get().getDefaultInstance();
     }
 
     @Override

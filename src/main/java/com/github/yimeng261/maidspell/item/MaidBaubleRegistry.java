@@ -10,6 +10,7 @@ import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.HairpinBauble;
 import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
+import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
@@ -94,6 +95,10 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         if(MaidSpellItems.SPELL_OVERLIMIT_CORE != null){
             manager.bind(MaidSpellItems.SPELL_OVERLIMIT_CORE, new SpellOverlimitCoreBauble());
+        }
+
+        if(MaidSpellItems.FRAGRANT_INGENUITY != null){
+            manager.bind(MaidSpellItems.FRAGRANT_INGENUITY, new FragrantIngenuityBauble());
         }
     }
 }

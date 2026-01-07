@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.spell.providers;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHandler;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
@@ -28,6 +29,7 @@ import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,7 +48,82 @@ import com.mojang.logging.LogUtils;
  */
 public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellData, SpellData> {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final List<String> spellBlacklist = List.of("irons_spellbooks:spectral_hammer");
+    
+    /**
+     * 版本兼容层 - 用于处理新旧版本的 Iron's Spellbooks API 差异
+     * 新版本：getActiveSpells() 返回 List<SpellSlot>
+     * 旧版本：getActiveSpells() 返回 List<SpellData>
+     */
+    public static class ApiCompatLayer {
+        // 是否为新版本API（使用SpellSlot）
+        private static final boolean IS_NEW_API;
+        // 缓存的SpellSlot类
+        private static final Class<?> SPELL_SLOT_CLASS;
+        // 缓存的spellData()方法
+        private static final Method SPELL_DATA_METHOD;
+        
+        static {
+            boolean isNewApi = false;
+            Class<?> spellSlotClass = null;
+            Method spellDataMethod = null;
+            
+            try {
+                // 尝试加载SpellSlot类
+                spellSlotClass = Class.forName("io.redspace.ironsspellbooks.api.spells.SpellSlot");
+                // 如果成功加载，说明是新版本API
+                isNewApi = true;
+                // 获取spellData()方法
+                spellDataMethod = spellSlotClass.getMethod("spellData");
+                LOGGER.info("[MaidSpell] 检测到新版本 Iron's Spellbooks API (SpellSlot)");
+            } catch (ClassNotFoundException e) {
+                // SpellSlot类不存在，说明是旧版本API
+                LOGGER.info("[MaidSpell] 检测到旧版本 Iron's Spellbooks API (直接使用 SpellData)");
+            } catch (NoSuchMethodException e) {
+                // 找到了SpellSlot类但没有spellData()方法，这种情况不应该发生
+                LOGGER.error("[MaidSpell] 发现 SpellSlot 类但无法获取 spellData() 方法", e);
+                isNewApi = false;
+            }
+            
+            IS_NEW_API = isNewApi;
+            SPELL_SLOT_CLASS = spellSlotClass;
+            SPELL_DATA_METHOD = spellDataMethod;
+        }
+        
+        /**
+         * 将 getActiveSpells() 返回的列表转换为 SpellData 列表
+         * @param rawList getActiveSpells() 返回的原始列表
+         * @return SpellData 列表
+         */
+        @SuppressWarnings("unchecked")
+        public static List<SpellData> convertToSpellDataList(List<?> rawList) {
+            if (rawList == null || rawList.isEmpty()) {
+                return new ArrayList<>();
+            }
+            
+            // 如果是旧版本API，直接返回（已经是List<SpellData>）
+            if (!IS_NEW_API) {
+                return (List<SpellData>) rawList;
+            }
+            
+            // 如果是新版本API，需要从SpellSlot中提取SpellData
+            List<SpellData> spellDataList = new ArrayList<>(rawList.size());
+            for (Object obj : rawList) {
+                try {
+                    if (SPELL_SLOT_CLASS.isInstance(obj)) {
+                        // 调用 spellData() 方法获取 SpellData
+                        SpellData spellData = (SpellData) SPELL_DATA_METHOD.invoke(obj);
+                        if (spellData != null) {
+                            spellDataList.add(spellData);
+                        }
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("[MaidSpell] 从 SpellSlot 提取 SpellData 时出错", e);
+                }
+            }
+            
+            return spellDataList;
+        }
+    }
 
     /**
      * 构造函数，绑定 MaidIronsSpellData 数据类型和 SpellData 法术类型
@@ -72,7 +149,8 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             return spells;
         }
         
-        return spellContainer.getActiveSpells();
+        // 使用兼容层转换：新版本会从 List<SpellSlot> 提取 SpellData，旧版本直接返回 List<SpellData>
+        return ApiCompatLayer.convertToSpellDataList(spellContainer.getActiveSpells());
     }
     
     /**
@@ -117,7 +195,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
                 return true;
             }
             // 检查法术是否在黑名单中
-            if (spellBlacklist.contains(spellId)) {
+            if (Config.spellBlacklist != null && Config.spellBlacklist.contains(spellId)) {
                 LOGGER.debug("法术 {} 在黑名单中，女仆 {} 跳过施放", spellId, maid.getUUID());
                 return true;
             }
@@ -302,7 +380,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             if (spellContainer.isEmpty()) continue;
             
             // 检查此容器是否包含当前法术
-            for (SpellData spellData : spellContainer.getActiveSpells()) {
+            for (SpellData spellData : ApiCompatLayer.convertToSpellDataList(spellContainer.getActiveSpells())) {
                 if (spellData.equals(currentSpell)) {
                     return getCastSource(container);
                 }

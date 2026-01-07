@@ -11,6 +11,7 @@
     "EntityMaidMixin",
     "EntityMixin",
     "LivingEntityMixin",
+    "TaskFeedOwnerMixin",
     "MinecraftServerMixin",
     "MobMixin",
     "MobUtilMixin",

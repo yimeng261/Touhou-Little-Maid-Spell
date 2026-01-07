@@ -5,6 +5,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedW
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.logging.LogUtils;
@@ -17,6 +18,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.*;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.NotNull;
@@ -61,6 +63,10 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         return super.enableLookAndRandomWalk(maid);
     }
 
+    @Override
+    public @NotNull ItemStack getIcon() {
+        return MaidSpellItems.FAR_TASK_ICON.get().getDefaultInstance();
+    }
 
 
     @Override

@@ -153,8 +153,8 @@ public class MaidBackpackEnderPocketIntegration {
 
             Button maidButton = new TransparentButton(
                 buttonX, buttonY, buttonWidth, buttonHeight,
-                Component.literal(maidInfo.maidName),
-                button -> handleMaidButtonClick(maidInfo.maidEntityId,event.getGui())
+                Component.literal(maidInfo.maidName()),
+                button -> handleMaidButtonClick(maidInfo.maidEntityId(),event.getGui())
             );
 
             event.addButton("maid_button_" + i, maidButton);
@@ -285,7 +285,7 @@ public class MaidBackpackEnderPocketIntegration {
                                mouseY >= buttonY && mouseY < buttonY + buttonHeight;
             
             // 检查是否是当前打开背包的女仆
-            boolean isCurrentMaid = maidInfo.maidEntityId == currentMaidId;
+            boolean isCurrentMaid = maidInfo.maidEntityId() == currentMaidId;
             
             // 渲染按钮背景
             if (isCurrentMaid) {
@@ -299,7 +299,7 @@ public class MaidBackpackEnderPocketIntegration {
             }
             
             // 渲染女仆名称
-            Component maidName = Component.literal(maidInfo.maidName);
+            Component maidName = Component.literal(maidInfo.maidName());
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
             // 当前女仆使用不同的文字颜色
             int textColor = isCurrentMaid ? 0xFFFF00 : 0xFFFFFF;
@@ -326,7 +326,7 @@ public class MaidBackpackEnderPocketIntegration {
         if (currentMaidInfos.size() == maidInfos.size()) {
             boolean dataChanged = false;
             for (int i = 0; i < maidInfos.size(); i++) {
-                if (currentMaidInfos.get(i).maidEntityId != maidInfos.get(i).maidEntityId || !currentMaidInfos.get(i).maidName.equals(maidInfos.get(i).maidName)) {
+                if (currentMaidInfos.get(i).maidEntityId() != maidInfos.get(i).maidEntityId() || !currentMaidInfos.get(i).maidName().equals(maidInfos.get(i).maidName())) {
                     dataChanged = true;
                     break;
                 }

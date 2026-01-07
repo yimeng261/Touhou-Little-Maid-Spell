@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.utils;
 
+import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
@@ -9,12 +10,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.ForcedChunksSavedData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.core.BlockPos;
 import net.minecraftforge.common.world.ForgeChunkManager;
 import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -31,7 +34,6 @@ import java.util.Iterator;
  * 区块加载管理器
  * 管理装备锚定核心的女仆的区块强加载
  * 支持数据持久化，确保服务器重启后能恢复区块加载状态
- * 
  * 修复说明：
  * 1. ChunkKey 不再直接持有 ServerLevel 引用，改用 ResourceKey<Level> 避免可变对象作为Map键
  * 2. ChunkTimer.associatedMaids 使用线程安全的 ConcurrentHashMap.newKeySet()
@@ -41,7 +43,7 @@ import java.util.Iterator;
 public class ChunkLoadingManager {
     
     // 存储每个女仆的区块加载状态，包含维度信息
-    public static final Map<UUID, ChunkKey> maidChunkPositions = new ConcurrentHashMap<>();
+    private static final Map<UUID, Set<ChunkKey>> maidChunkPositions = new ConcurrentHashMap<>();
     
     // 基于时间的区块加载管理系统
     private static final Map<ChunkKey, ChunkTimer> chunkTimers = new ConcurrentHashMap<>();
@@ -130,15 +132,7 @@ public class ChunkLoadingManager {
         }
         
         public Set<UUID> getAssociatedMaids() {
-            return associatedMaids;
-        }
-        
-        /**
-         * 使用 retainAll 安全地保留有效的女仆
-         * @param validMaids 有效的女仆UUID集合
-         */
-        public void retainMaids(Set<UUID> validMaids) {
-            associatedMaids.retainAll(validMaids);
+            return new HashSet<>(associatedMaids);
         }
 
         public void update() {
@@ -148,11 +142,6 @@ public class ChunkLoadingManager {
         public boolean isExpired() {
             return remainingTicks <= 0;
         }
-        
-        public boolean isEmpty() {
-            return associatedMaids.isEmpty();
-        }
-    
         
         @Override
         public String toString() {
@@ -175,40 +164,12 @@ public class ChunkLoadingManager {
         ChunkPos chunkPos = maid.chunkPosition();
 
         ChunkKey chunkKey = new ChunkKey(chunkPos, serverLevel);
-        
-        Global.LOGGER.debug("为女仆 {} 启用区块加载: {}", maidId, chunkKey);
+        //Global.LOGGER.debug("为女仆 {} 启用区块加载: {}", maidId, chunkKey);
         
         // 使用新的计时器系统
-        enableChunkLoadingWithTimer(maidId, serverLevel, chunkKey, DEFAULT_CHUNK_LIFETIME_TICKS);
-        maidChunkPositions.put(maidId, chunkKey);
+        performChunkOperation(maidId, chunkKey, true);
     }
 
-    
-    /**
-     * 使用计时器系统启用区块加载
-     */
-    private static void enableChunkLoadingWithTimer(UUID maidId, ServerLevel serverLevel, 
-                                                   ChunkKey chunkKey, int lifetimeTicks) {
-        ChunkTimer timer = chunkTimers.get(chunkKey);
-        if (timer == null) {
-            // 创建新的计时器并加载区块
-            timer = new ChunkTimer(chunkKey, lifetimeTicks);
-            timer.addMaid(maidId);
-            Global.LOGGER.debug("准备进行区块加载");
-            boolean success = performChunkOperation(serverLevel, maidId, chunkKey.chunkPos(), true);
-            if (success) {
-                chunkTimers.put(chunkKey, timer);
-                Global.LOGGER.debug("新建区块计时器: {} ({}秒)", chunkKey, lifetimeTicks / 20);
-                // 使用增量更新保存单个女仆的区块数据
-                saveToGlobalDataIncremental(serverLevel.getServer(), maidId, chunkKey);
-            } else {
-                Global.LOGGER.warn("无法为女仆 {} 启用区块加载: {}", maidId, chunkKey);
-            }
-        } else {
-            // 已有计时器，添加女仆到关联列表
-            timer.addMaid(maidId);
-        }
-    }
     
     /**
      * 预加载传送目标区块
@@ -231,13 +192,8 @@ public class ChunkLoadingManager {
             MinecraftServer server = maid.getServer();
             if (server == null) return;
 
-            if (level == null) {
-                Global.LOGGER.warn("无法找到目标维度来预加载区块");
-                return;
-            }
-            
             // 预加载目标区块，给予较长的生存时间
-            enableChunkLoadingWithTimer(maidId, level, targetKey, DEFAULT_CHUNK_LIFETIME_TICKS / 2);
+            performChunkOperation(maidId, targetKey, true, DEFAULT_CHUNK_LIFETIME_TICKS / 2);
             
         } catch (Exception e) {
             Global.LOGGER.error("预加载女仆 {} 传送目标区块时发生错误", maidId, e);
@@ -253,12 +209,23 @@ public class ChunkLoadingManager {
             return;
         }
         if (event.getServer().getTickCount() % CHECK_INTERVAL_TICKS == 0) {
+            //Global.LOGGER.debug("forced chunk size: {}",chunkTimers.size());
             processChunkTimers();
         }
     }
-    
+
+    @SubscribeEvent
+    public static void onoMaidTick(MaidTickEvent event) {
+        EntityMaid maid = event.getMaid();
+        if (maid.level().isClientSide()) {
+            return;
+        }
+        if(maid.tickCount % 20 == 0) {
+            //Global.LOGGER.debug("maid tick: {}", maid.getDisplayName());
+        }
+    }
+
     // 复用的集合，避免频繁创建临时对象
-    private static final Set<UUID> reusableValidMaids = ConcurrentHashMap.newKeySet();
     private static final List<ChunkKey> reusableExpiredChunks = new ArrayList<>();
     
     /**
@@ -316,7 +283,7 @@ public class ChunkLoadingManager {
             }
             
             // 如果没有有效女仆，开始倒计时
-            if (timer.isEmpty()) {
+            if (associatedMaids.isEmpty()) {
                 timer.update();
                 if (timer.isExpired()) {
                     reusableExpiredChunks.add(chunkKey);
@@ -326,7 +293,7 @@ public class ChunkLoadingManager {
         
         // 卸载过期的区块
         for (ChunkKey expiredChunk : reusableExpiredChunks) {
-            unloadExpiredChunk(expiredChunk, server);
+            unloadExpiredChunk(expiredChunk);
         }
         
         if (!reusableExpiredChunks.isEmpty()) {
@@ -339,7 +306,7 @@ public class ChunkLoadingManager {
     /**
      * 卸载过期的区块
      */
-    private static void unloadExpiredChunk(ChunkKey chunkKey, MinecraftServer server) {
+    private static void unloadExpiredChunk(ChunkKey chunkKey) {
         ChunkTimer timer = chunkTimers.remove(chunkKey);
         if (timer == null) {
             return;
@@ -353,16 +320,7 @@ public class ChunkLoadingManager {
         
         // 为每个关联的女仆卸载区块
         for (UUID maidId : timer.getAssociatedMaids()) {
-            boolean success = performChunkOperation(serverLevel, maidId, chunkKey.chunkPos(), false);
-            if (success) {
-                // 清理女仆位置记录
-                ChunkKey maidInfo = maidChunkPositions.get(maidId);
-                if (maidInfo != null && maidInfo.equals(chunkKey)) {
-                    maidChunkPositions.remove(maidId);
-                    // 使用增量更新保存
-                    saveToGlobalDataIncremental(server, maidId, null);
-                }
-            }
+            performChunkOperation(maidId, chunkKey, false);
         }
         
         Global.LOGGER.debug("卸载过期区块: {} (关联女仆: {})", chunkKey, timer.getAssociatedMaids());
@@ -375,119 +333,42 @@ public class ChunkLoadingManager {
         return net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
     }
 
-    /**
-     * 检查女仆是否应该启用区块加载
-     */
-    public static boolean shouldEnableChunkLoading(EntityMaid maid, MinecraftServer server) {
-        UUID maidId = maid.getUUID();
-        
-        // 1. 首先检查内存中是否已有记录
-        if (maidChunkPositions.containsKey(maidId)) {
-            return true;
-        }
-        
-        // 2. 检查全局SavedData中是否有记录
-        try {
-            ChunkLoadingData data = ChunkLoadingData.get(server);
-            return data.getSavedPositions().containsKey(maidId);
-        } catch (Exception e) {
-            Global.LOGGER.warn("检查全局区块加载数据时发生错误: {}", e.getMessage());
-            return false;
-        }
-    }
-    
-    
-    /**
-     * 从全局数据恢复女仆的区块加载状态
-     */
-    public static void restoreChunkLoadingFromSavedData(EntityMaid maid, MinecraftServer server) {
-        if (maid == null || maid.level().isClientSide()) {
-            return;
-        }
-        
-        UUID maidId = maid.getUUID();
-        
-        try {
-            ChunkLoadingData data = ChunkLoadingData.get(server);
-            ChunkKey savedInfo = data.getMaidRecord(maidId);
-            
-            if (savedInfo == null) {
-                // 没有保存的记录，启用新的区块加载
-                enableChunkLoading(maid);
-                return;
-            }
-            
-            ServerLevel serverLevel = (ServerLevel) maid.level();
-            ChunkPos currentChunk = maid.chunkPosition();
-            ResourceKey<Level> currentDimension = serverLevel.dimension();
-            
-            if (currentDimension.equals(savedInfo.dimension()) &&
-                currentChunk.equals(savedInfo.chunkPos())) {
-                // 女仆还在原来的位置，直接恢复
-                restoreChunkLoadingAtPosition(maid, serverLevel, savedInfo);
-            } else {
-                // 女仆位置发生了变化，更新到新位置
-                Global.LOGGER.debug("女仆 {} 位置已变化，更新区块加载到新位置: 从 {} 到 {}", 
-                    maid.getUUID(), savedInfo, new ChunkKey(currentChunk, serverLevel));
-                enableChunkLoading(maid);
-            }
-        } catch (Exception e) {
-            Global.LOGGER.error("从SavedData恢复女仆 {} 区块加载时发生错误", maid.getUUID(), e);
-        }
-    }
-    
     // ===== 私有辅助方法 =====
-
-    private static boolean performChunkOperation(ServerLevel serverLevel, UUID maidId,
-                                                        ChunkPos chunkPos, boolean enable) {
-
-        try {
-            Global.LOGGER.debug("before force load: chunk=[{}, {}], enable={}, maid={}", 
-                chunkPos.x, chunkPos.z, enable, maidId);
-
-            if (enable && serverLevel.getForcedChunks().contains(chunkPos.toLong())) {
-                Global.LOGGER.debug("区块 {} 已经被强制加载，跳过", chunkPos);
-                return true;
-            }
-
-            return ForgeChunkManager.forceChunk(
-                    serverLevel,
-                    MaidSpellMod.MOD_ID,
-                    maidId,
-                    chunkPos.x,
-                    chunkPos.z,
-                    enable,
-                    true
-            );
-        } catch (Exception e) {
-            Global.LOGGER.error("区块操作失败: chunk=[{}, {}], enable={}, error={}", 
-                chunkPos.x, chunkPos.z, enable, e.getMessage(), e);
-            return false;
-        }
+    private static boolean performChunkOperation(UUID maidId, ChunkKey info, boolean enable) {
+        return performChunkOperation(maidId, info, enable, DEFAULT_CHUNK_LIFETIME_TICKS);
     }
 
+    private static boolean performChunkOperation(UUID maidId, ChunkKey info, boolean enable, int lifetimeTicks) {
+        ServerLevel serverLevel = info.getLevel();
+        ChunkPos chunkPos = info.chunkPos();
+        //Global.LOGGER.debug("before force load: chunk=[{}, {}], enable={}, maid={}", chunkPos.x, chunkPos.z, enable, maidId);
 
-    /**
-     * 在指定位置恢复区块加载
-     */
-    private static void restoreChunkLoadingAtPosition(EntityMaid maid, ServerLevel serverLevel, ChunkKey savedInfo) {
-        UUID maidId = maid.getUUID();
-        boolean success = performChunkOperation(serverLevel, maidId, savedInfo.chunkPos(), true);
-        
-        if (success) {
-            maidChunkPositions.put(maidId, savedInfo);
+        if(serverLevel == null){
+            return false;
         }
+
+        ForgeChunkManager.forceChunk(serverLevel, MaidSpellMod.MOD_ID, maidId, chunkPos.x, chunkPos.z, enable, true);
+        //serverLevel.setChunkForced(chunkPos.x, chunkPos.z, enable);
+
+        ChunkLoadingData data = ChunkLoadingData.get(serverLevel.getServer());
+        data.updateMaidPosition(maidId, info, enable);
+        if (enable) {
+            // 创建或更新区块计时器
+            ChunkTimer timer = chunkTimers.computeIfAbsent(info, k->new ChunkTimer(info, lifetimeTicks));
+            timer.addMaid(maidId);
+        }
+
+        return true;
     }
     
     // ===== 全局数据保存类 =====
     
     /**
      * 全局区块加载数据保存类
-     * 使用 ResourceKey<Level> 存储维度信息，避免持有 ServerLevel 引用
+     * 直接操作静态变量 maidChunkPositions，只负责序列化/反序列化
      */
     public static class ChunkLoadingData extends SavedData {
         private static final String DATA_NAME = "maidspell_chunk_loading";
-        private final Map<UUID, ChunkKey> savedPositions = new HashMap<>();
         
         public ChunkLoadingData() {
         }
@@ -500,32 +381,48 @@ public class ChunkLoadingManager {
         public static ChunkLoadingData load(CompoundTag tag) {
             ChunkLoadingData data = new ChunkLoadingData();
             
+            // 从 NBT 加载数据到静态变量 maidChunkPositions
             CompoundTag maidsTag = tag.getCompound("maids");
+            int loadedCount = 0;
+            
             for (String uuidStr : maidsTag.getAllKeys()) {
                 try {
                     UUID maidId = UUID.fromString(uuidStr);
                     CompoundTag maidTag = maidsTag.getCompound(uuidStr);
                     
-                    int x = maidTag.getInt("x");
-                    int z = maidTag.getInt("z");
-                    String dimensionStr = maidTag.getString("level");
-
-                    // 解析维度资源键
-                    ResourceKey<Level> dimension = ResourceKey.create(
-                        net.minecraft.core.registries.Registries.DIMENSION,
-                        new ResourceLocation(dimensionStr)
-                    );
+                    // 加载该女仆的所有区块
+                    CompoundTag chunksTag = maidTag.getCompound("chunks");
+                    Set<ChunkKey> chunks = ConcurrentHashMap.newKeySet();
                     
-                    // 直接使用 ResourceKey 创建 ChunkKey，不需要 ServerLevel
-                    data.savedPositions.put(maidId, new ChunkKey(new ChunkPos(x, z), dimension));
-                    Global.LOGGER.debug("成功加载女仆 {} 的区块加载数据: 位置({}, {}) 维度{}", 
-                        maidId, x, z, dimensionStr);
+                    for (String chunkIdxStr : chunksTag.getAllKeys()) {
+                        CompoundTag chunkTag = chunksTag.getCompound(chunkIdxStr);
+                        
+                        // 读取区块位置
+                        int chunkX = chunkTag.getInt("x");
+                        int chunkZ = chunkTag.getInt("z");
+                        ChunkPos chunkPos = new ChunkPos(chunkX, chunkZ);
+                        
+                        // 读取维度
+                        String dimensionStr = chunkTag.getString("dimension");
+                        ResourceKey<Level> dimension = ResourceKey.create(
+                            net.minecraft.core.registries.Registries.DIMENSION,
+                            new ResourceLocation(dimensionStr)
+                        );
+                        ChunkKey chunkKey = new ChunkKey(chunkPos, dimension);
+                        chunkTimers.put(chunkKey,new ChunkTimer(chunkKey,DEFAULT_CHUNK_LIFETIME_TICKS));
+                        chunks.add(chunkKey);
+                    }
+                    
+                    if (!chunks.isEmpty()) {
+                        maidChunkPositions.put(maidId, chunks);
+                        loadedCount++;
+                    }
                 } catch (Exception e) {
-                    Global.LOGGER.warn("加载女仆 {} 区块加载数据时发生错误: {}", uuidStr, e.getMessage());
+                    Global.LOGGER.error("加载女仆 {} 的区块数据时发生错误", uuidStr, e);
                 }
             }
             
-            Global.LOGGER.info("成功加载 {} 个女仆的区块加载数据", data.savedPositions.size());
+            Global.LOGGER.info("成功加载 {} 个女仆的区块加载数据", loadedCount);
             return data;
         }
         
@@ -533,51 +430,60 @@ public class ChunkLoadingManager {
         public @NotNull CompoundTag save(@NotNull CompoundTag tag) {
             CompoundTag maidsTag = new CompoundTag();
             
-            for (Map.Entry<UUID, ChunkKey> entry : savedPositions.entrySet()) {
-                try {
-                    CompoundTag maidTag = new CompoundTag();
-                    ChunkKey info = entry.getValue();
-                    
-                    maidTag.putInt("x", info.chunkPos().x);
-                    maidTag.putInt("z", info.chunkPos().z);
-                    // 保存维度资源键
-                    maidTag.putString("level", info.dimension().location().toString());
-                    
-                    maidsTag.put(entry.getKey().toString(), maidTag);
-                    
-                    Global.LOGGER.debug("保存女仆 {} 的区块加载数据: 位置({}, {}) 维度{}", 
-                        entry.getKey(), info.chunkPos().x, info.chunkPos().z, 
-                        info.dimension().location().toString());
-                } catch (Exception e) {
-                    Global.LOGGER.warn("保存女仆 {} 区块加载数据时发生错误: {}", 
-                        entry.getKey(), e.getMessage());
+            // 从静态变量 maidChunkPositions 保存数据
+            for (Map.Entry<UUID, Set<ChunkKey>> entry : maidChunkPositions.entrySet()) {
+                UUID maidId = entry.getKey();
+                Set<ChunkKey> chunks = entry.getValue();
+                
+                if (chunks.isEmpty()) {
+                    continue;
                 }
+                
+                CompoundTag maidTag = new CompoundTag();
+                CompoundTag chunksTag = new CompoundTag();
+                
+                // 保存该女仆的所有区块
+                int idx = 0;
+                for (ChunkKey chunkKey : chunks) {
+                    CompoundTag chunkTag = new CompoundTag();
+                    chunkTag.putInt("x", chunkKey.chunkPos().x);
+                    chunkTag.putInt("z", chunkKey.chunkPos().z);
+                    chunkTag.putString("dimension", chunkKey.dimension().location().toString());
+                    
+                    chunksTag.put(String.valueOf(idx++), chunkTag);
+                }
+                
+                maidTag.put("chunks", chunksTag);
+                maidsTag.put(maidId.toString(), maidTag);
             }
-            
+
             tag.put("maids", maidsTag);
-            Global.LOGGER.debug("成功保存 {} 个女仆的区块加载数据", savedPositions.size());
+            Global.LOGGER.debug("成功保存 {} 个女仆的区块加载数据", maidChunkPositions.size());
             return tag;
         }
         
-        public void updateMaidPosition(UUID maidId, ChunkKey info) {
-            if (info != null) {
-                savedPositions.put(maidId, info);
+        /**
+         * 更新女仆的区块位置
+         * @param maidId 女仆ID
+         * @param info 区块信息
+         * @param add true=添加，false=移除
+         */
+        public void updateMaidPosition(UUID maidId, ChunkKey info, boolean add) {
+            if (add) {
+                // 添加区块
+                maidChunkPositions.computeIfAbsent(maidId, k -> ConcurrentHashMap.newKeySet()).add(info);
             } else {
-                savedPositions.remove(maidId);
+                // 移除区块
+                Set<ChunkKey> chunks = maidChunkPositions.get(maidId);
+                if (chunks != null) {
+                    chunks.remove(info);
+                    // 如果该女仆没有任何区块了，移除整个记录
+                    if (chunks.isEmpty()) {
+                        maidChunkPositions.remove(maidId);
+                    }
+                }
             }
             setDirty();
-        }
-        
-        public Map<UUID, ChunkKey> getSavedPositions() {
-            return new HashMap<>(savedPositions);
-        }
-        
-        public boolean hasMaidRecord(UUID maidId) {
-            return savedPositions.containsKey(maidId);
-        }
-        
-        public ChunkKey getMaidRecord(UUID maidId) {
-            return savedPositions.get(maidId);
         }
         
         public static ChunkLoadingData get(MinecraftServer server) {
@@ -588,110 +494,61 @@ public class ChunkLoadingManager {
             );
         }
     }
+
     
-    /**
-     * 保存单个女仆的区块加载数据到全局数据（增量更新）
-     * @param server 服务器实例
-     * @param maidId 女仆UUID
-     * @param info 区块信息（null 表示删除）
-     */
-    private static void saveToGlobalDataIncremental(MinecraftServer server, UUID maidId, ChunkKey info) {
-        try {
-            ChunkLoadingData data = ChunkLoadingData.get(server);
-            data.updateMaidPosition(maidId, info);
-        } catch (Exception e) {
-            Global.LOGGER.error("增量保存区块加载数据时发生错误: maid={}", maidId, e);
-        }
-    }
-    
-    /**
-     * 保存到全局数据（全量同步，仅在必要时使用）
-     */
-    private static void saveToGlobalData(MinecraftServer server) {
-        try {
-            ChunkLoadingData data = ChunkLoadingData.get(server);
-            // 同步当前内存中的数据到全局保存数据
-            for (Map.Entry<UUID, ChunkKey> entry : maidChunkPositions.entrySet()) {
-                data.updateMaidPosition(entry.getKey(), entry.getValue());
-            }
-        } catch (Exception e) {
-            Global.LOGGER.error("保存区块加载全局数据时发生错误", e);
-        }
-    }
     
     // ===== 服务器启动事件处理 =====
-    
-    // 标记是否已经在服务器启动时恢复了区块加载
-    private static volatile boolean chunkLoadingRestored = false;
+
     
     /**
-     * 服务器启动时恢复区块加载状态
-     * 在这里统一恢复所有区块加载，避免每个玩家登录时重复恢复
+     * 服务器启动时加载保存的区块加载数据
+     * ChunkLoadingData.get() 会自动触发 load()，数据会直接加载到 maidChunkPositions
      */
     @SubscribeEvent
     public static void onServerStarting(ServerStartingEvent event) {
         MinecraftServer server = event.getServer();
-        chunkLoadingRestored = false;
+        maidChunkPositions.clear();
         
         try {
-            // 从全局数据中加载保存的区块加载信息
-            ChunkLoadingData data = ChunkLoadingData.get(server);
-            Map<UUID, ChunkKey> savedPositions = data.getSavedPositions();
+            // 触发数据加载，load() 方法会自动将数据加载到 maidChunkPositions
+            ChunkLoadingData.get(server);
             
-            if (!savedPositions.isEmpty()) {
-                Global.LOGGER.info("服务器启动时发现 {} 个女仆的区块加载配置，开始恢复...", savedPositions.size());
-                
-                // 将保存的数据加载到内存中
-                maidChunkPositions.putAll(savedPositions);
-                
-                // 统一恢复所有区块加载
-                int restoredCount = 0;
-                for (Map.Entry<UUID, ChunkKey> entry : savedPositions.entrySet()) {
-                    UUID maidId = entry.getKey();
-                    ChunkKey info = entry.getValue();
-                    
-                    try {
-                        ServerLevel targetLevel = server.getLevel(info.dimension());
-                        if (targetLevel == null) {
-                            Global.LOGGER.warn("无法找到维度 {} 来恢复女仆 {} 的区块加载", 
-                                info.dimension().location(), maidId);
-                            continue;
-                        }
-                        
-                        boolean success = ForgeChunkManager.forceChunk(
-                            targetLevel,
-                            MaidSpellMod.MOD_ID,
-                            maidId,
-                            info.chunkPos().x,
-                            info.chunkPos().z,
-                            true,
-                            true
-                        );
-                        
-                        if (success) {
-                            restoredCount++;
-                            Global.LOGGER.debug("成功恢复女仆 {} 的区块加载: {} ({})", 
-                                maidId, info.chunkPos(), info.dimension().location());
-                        }
-                    } catch (Exception e) {
-                        Global.LOGGER.warn("恢复女仆 {} 区块加载时发生错误: {}", maidId, e.getMessage());
-                    }
-                }
-                
-                Global.LOGGER.info("服务器启动时成功恢复了 {}/{} 个女仆的区块加载", restoredCount, savedPositions.size());
+            if (!maidChunkPositions.isEmpty()) {
+                Global.LOGGER.info("服务器启动时发现 {} 个女仆的区块加载配置", maidChunkPositions.size());
             }
-            
-            chunkLoadingRestored = true;
         } catch (Exception e) {
             Global.LOGGER.error("服务器启动时加载区块加载数据发生错误", e);
         }
     }
     
     /**
-     * 检查区块加载是否已在服务器启动时恢复
+     * 服务器完全启动后恢复区块加载状态
+     * 在这里统一恢复所有区块加载，避免每个玩家登录时重复恢复
      */
-    public static boolean isChunkLoadingRestored() {
-        return chunkLoadingRestored;
+    @SubscribeEvent
+    public static void onServerStarted(ServerStartedEvent event) {
+        if (maidChunkPositions.isEmpty()) {
+            return;
+        }
+        
+        Global.LOGGER.info("服务器启动完成，开始恢复 {} 个女仆的区块加载配置...", maidChunkPositions.size());
+
+        // 统一恢复所有区块加载
+        int restoredCount = 0;
+        for (Map.Entry<UUID, Set<ChunkKey>> entry : maidChunkPositions.entrySet()) {
+            UUID maidId = entry.getKey();
+            Set<ChunkKey> chunks = entry.getValue();
+            
+            // 恢复该女仆的所有区块
+            for (ChunkKey info : chunks) {
+                if (performChunkOperation(maidId, info, true)) {
+                    restoredCount++;
+                }
+            }
+        }
+
+        Global.LOGGER.info("服务器启动时成功恢复了 {} 个区块的加载", restoredCount);
     }
+
     
 }

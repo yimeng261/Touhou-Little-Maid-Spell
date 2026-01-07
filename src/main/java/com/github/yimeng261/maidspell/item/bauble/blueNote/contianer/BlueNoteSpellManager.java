@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.blueNote.contianer;
 
+import com.github.yimeng261.maidspell.spell.providers.IronsSpellbooksProvider;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -112,7 +113,7 @@ public class BlueNoteSpellManager {
             if (!stack.isEmpty() && ISpellContainer.isSpellContainer(stack)) {
                 ISpellContainer container = ISpellContainer.get(stack);
                 if (!container.isEmpty()) {
-                    SpellData[] scrollSpells = container.getAllSpells();
+                    List<SpellData> scrollSpells = IronsSpellbooksProvider.ApiCompatLayer.convertToSpellDataList(List.of(container.getAllSpells()));
                     for (SpellData spellData : scrollSpells) {
                         if (spellData != null && spellData.getSpell() != null) {
                             spellIds.add(spellData.getSpell().getSpellId());

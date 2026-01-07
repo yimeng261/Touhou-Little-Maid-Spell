@@ -28,13 +28,11 @@ public class SpellBookManager {
     private static final Map<UUID, SpellBookManager> MAID_MANAGERS = new ConcurrentHashMap<>();
 
     
-    // 实例相关的提供者列表 - 每个管理器可以有自己的提供者实例
-    private static final List<ISpellBookProvider<?, ?>> instanceProviders = new ArrayList<>();
+    // modid 和 provider 的映射关系 - 使用 LinkedHashMap 保持注册顺序
+    private static final Map<String, ISpellBookProvider<?, ?>> providerMap = new ConcurrentHashMap<>();
     
     // 提供者列表的不可变视图，避免每次调用 getProviders 时创建新列表
     private static volatile List<ISpellBookProvider<?, ?>> immutableProviders = null;
-
-    public static final List<String> loadedMods = new ArrayList<>();
     
     // 女仆实体存储为每个管理器的上下文
     private EntityMaid maid;
@@ -73,8 +71,8 @@ public class SpellBookManager {
         try {
             // 检查模组是否加载
             if (ModList.get().isLoaded(modId)) {
-                instanceProviders.add((ISpellBookProvider<?, ?>) providerClass.getConstructor().newInstance());
-                loadedMods.add(modId);
+                ISpellBookProvider<?, ?> provider = (ISpellBookProvider<?, ?>) providerClass.getConstructor().newInstance();
+                providerMap.put(modId, provider);
                 LOGGER.debug("Mod {} loaded, finished {} registration", modId, providerName);
             }
             
@@ -147,11 +145,40 @@ public class SpellBookManager {
         if (immutableProviders == null) {
             synchronized (SpellBookManager.class) {
                 if (immutableProviders == null) {
-                    immutableProviders = Collections.unmodifiableList(new ArrayList<>(instanceProviders));
+                    immutableProviders = Collections.unmodifiableList(new ArrayList<>(providerMap.values()));
                 }
             }
         }
         return immutableProviders;
+    }
+    
+    /**
+     * 通过 modId 获取对应的 provider
+     * 
+     * @param modId 模组ID
+     * @return 对应的 provider，如果不存在则返回 null
+     */
+    public static ISpellBookProvider<?, ?> getProvider(String modId) {
+        return providerMap.get(modId);
+    }
+    
+    /**
+     * 检查是否存在指定 modId 的 provider
+     * 
+     * @param modId 模组ID
+     * @return 是否存在
+     */
+    public static boolean hasProvider(String modId) {
+        return providerMap.containsKey(modId);
+    }
+    
+    /**
+     * 获取所有已加载的 mod ID
+     * 
+     * @return 已加载的 mod ID 列表
+     */
+    public static List<String> getLoadedMods() {
+        return new ArrayList<>(providerMap.keySet());
     }
 
 

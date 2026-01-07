@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.spell.data;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
+import vazkii.psi.api.spell.Spell;
 
 import java.util.Map;
 import java.util.UUID;
@@ -23,7 +24,7 @@ public class MaidPsiSpellData extends IMaidSpellData {
     // 当前目标
     
     // 施法状态
-    private Object currentSpell; // 使用Object避免直接依赖Psi类
+    private Spell currentSpell;
     private int castingTicks = 0;
 
     private MaidPsiSpellData(UUID maidUUID) {
@@ -39,12 +40,15 @@ public class MaidPsiSpellData extends IMaidSpellData {
     }
 
 
-    public Object getCurrentSpell() {
+    public Spell getCurrentSpell() {
         return currentSpell;
     }
 
-    public void setCurrentSpell(Object spell) {
+    public void setCurrentSpell(Spell spell) {
         this.currentSpell = spell;
+        if(spell != null) {
+            setCurrentSpellId(spell.name);
+        }
     }
 
     public int getCastingTicks() {

@@ -26,6 +26,7 @@ ModularGolems
 Goety-2-1.20-2.5.34-
 Goety-2
 irons-spells-n-spellbooks-1.20.1
+irons-spells-n-spellbooks-new
 minecraft-1.20.1-src
 revelationfix
 Cataclysm
@@ -43,6 +44,6 @@ Enigmatic-Addons
 # other
 eclipse
 run
-
+*.md
 # Files from Forge MDK
 forge*changelog.txt

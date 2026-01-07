@@ -78,9 +78,9 @@ public class EnderPocketMessage {
         
         buf.writeInt(message.maidInfos.size());
         for (EnderPocketService.EnderPocketMaidInfo info : message.maidInfos) {
-            buf.writeUUID(info.maidUUID);
-            buf.writeUtf(info.maidName);
-            buf.writeInt(info.maidEntityId);
+            buf.writeUUID(info.maidUUID());
+            buf.writeUtf(info.maidName());
+            buf.writeInt(info.maidEntityId());
         }
     }
     

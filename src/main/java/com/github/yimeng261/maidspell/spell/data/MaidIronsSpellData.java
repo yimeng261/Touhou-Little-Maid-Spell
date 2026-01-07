@@ -88,6 +88,9 @@ public class MaidIronsSpellData extends IMaidSpellData {
     
     public void setCurrentCastingSpell(SpellData spell) {
         this.currentCastingSpell = spell;
+        if(spell != null && spell.getSpell() != null) {
+            setCurrentSpellId(spell.getSpell().getSpellId());
+        }
     }
     
     // === CastSource 缓存管理 ===
