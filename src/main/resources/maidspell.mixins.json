@@ -22,7 +22,6 @@
     "iss.SyncedSpellDataMixin"
   ],
   "client": [
-    "GeckoModelLoaderMixin",
     "iss.ClientMagicDataMixin",
     "iss.MaidEntityAnimateStateMixin"
   ],

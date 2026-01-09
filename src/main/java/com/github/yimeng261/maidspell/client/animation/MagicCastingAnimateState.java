@@ -18,7 +18,7 @@ public class MagicCastingAnimateState implements IMagicCastingState {
     private CastingPhase phase;
     private boolean cancelled;
 
-    private SpellData castingSpell;
+    private SpellData castingSpell = SpellData.EMPTY;
 
     private AbstractSpell instantCastSpellType = SpellRegistry.none();
 
@@ -86,10 +86,11 @@ public class MagicCastingAnimateState implements IMagicCastingState {
         }
 
         boolean oldIsCasting = clientIsCasting;
+        SpellData lastCastingSpell = castingSpell;
         castingSpell = new SpellData(SpellRegistry.getSpell(syncedSpellData.getCastingSpellId()), syncedSpellData.getCastingSpellLevel());
         clientIsCasting = syncedSpellData.isCasting();
 
-        if (castingSpell.getSpell() == SpellRegistry.none()) {
+        if (castingSpell.getSpell() == SpellRegistry.none() && lastCastingSpell.getSpell() == SpellRegistry.none()) {
             if (phase != CastingPhase.INSTANT) {
                 phase = CastingPhase.NONE;
             }
@@ -97,7 +98,7 @@ public class MagicCastingAnimateState implements IMagicCastingState {
         }
 
         if (!clientIsCasting && oldIsCasting) {
-            castingSpell = null;
+            castingSpell = lastCastingSpell;
             phase = CastingPhase.END;
             instantCastSpellType = SpellRegistry.none();
         } else if (clientIsCasting && !oldIsCasting) {
@@ -105,7 +106,7 @@ public class MagicCastingAnimateState implements IMagicCastingState {
             if (castingSpell.getSpell().getCastType() == CastType.INSTANT) {
                 instantCastSpellType = castingSpell.getSpell();
                 // castingSpell.getSpell().onClientPreCast(maid.level(), castingSpell.getLevel(), maid, InteractionHand.MAIN_HAND, data.getMagicData());
-                castingSpell = null;
+                castingSpell = SpellData.EMPTY;
                 phase = CastingPhase.INSTANT;
             } else  {
                 instantCastSpellType = SpellRegistry.none();
@@ -113,7 +114,7 @@ public class MagicCastingAnimateState implements IMagicCastingState {
         } else if (clientIsCasting) {
             phase = CastingPhase.CASTING;
         } else {
-            castingSpell = null;
+            castingSpell = SpellData.EMPTY;
             phase = CastingPhase.NONE;
             instantCastSpellType = SpellRegistry.none();
         }
