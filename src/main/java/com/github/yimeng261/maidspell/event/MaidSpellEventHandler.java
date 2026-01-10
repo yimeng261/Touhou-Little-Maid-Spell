@@ -13,10 +13,12 @@ import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
+import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.mojang.logging.LogUtils;
+import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -35,6 +37,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
@@ -72,6 +75,14 @@ public class MaidSpellEventHandler {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.setMaid(maid);
             manager.initSpellBooks();
+
+            if (ModList.get().isLoaded("irons_spellbooks")) {
+                MaidIronsSpellData ironsSpellData = MaidIronsSpellData.get(maid.getUUID());
+                if (ironsSpellData != null) {
+                    ironsSpellData.getMagicData().setSyncedData(new SyncedSpellData(maid));
+                }
+            }
+
             Global.updateMaidInfo(maid,true);
             addStepHeightToMaid(maid);
         }

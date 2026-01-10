@@ -181,7 +181,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             // 设置当前施法状态
             data.setCurrentCastingSpell(spellData);
             data.setCasting(true);
-            maid.swing(maid.getUsedItemHand());
+            // maid.swing(maid.getUsedItemHand());
 
         } catch (Exception e) {
             // 重置状态以防出错
