@@ -145,7 +145,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
 
         // 获取法术容器接口
         ISpellContainer spellContainer = ISpellContainer.get(spellBook);
-        if (spellContainer.isEmpty()) {
+        if (spellContainer==null || spellContainer.isEmpty()) {
             return spells;
         }
         

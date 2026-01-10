@@ -96,7 +96,7 @@ dependencies {
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
     // 女仆模组，必须使用 CurseForge 的，才能有源码
-    implementation fg.deobf("curse.maven:touhou-little-maid-355044:7184660-sources-7184661")
+    implementation fg.deobf("curse.maven:touhou-little-maid-355044:7307720-sources-7307731")
     //implementation fg.deobf("maven.modrinth:touhou-little-maid:1.4.3-forge+mc1.20.1")
 
 
