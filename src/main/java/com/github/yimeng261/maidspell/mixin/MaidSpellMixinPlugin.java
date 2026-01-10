@@ -19,11 +19,17 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String ISS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.iss.";
 
     private boolean isIronsSpellbooksLoaded = false;
+    private boolean isTlmMagicAnimationSupported = false;
 
     @Override
     public void onLoad(String mixinPackage) {
         // 检查 Iron's Spellbooks 模组是否已加载
         isIronsSpellbooksLoaded = LoadingModList.get().getModFileById(ISS_MOD_ID) != null;
+        try {
+            Class.forName("com.github.tartaricacid.touhoulittlemaid.api.animation.IMagicCastingAnimationProvider");
+            isTlmMagicAnimationSupported = true;
+        } catch (ClassNotFoundException ignored) {
+        }
     }
 
     @Override
@@ -35,7 +41,7 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         // 如果是 iss 包下的 Mixin，需要检查 Iron's Spellbooks 模组是否存在
         if (mixinClassName.startsWith(ISS_MIXIN_PACKAGE)) {
-            return isIronsSpellbooksLoaded;
+            return isIronsSpellbooksLoaded && isTlmMagicAnimationSupported;
         }
 
         // 其他 Mixin 正常加载
