@@ -5,6 +5,7 @@
   "package": "com.github.yimeng261.maidspell.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "maidspell.refmap.json",
+  "plugin": "com.github.yimeng261.maidspell.mixin.MaidSpellMixinPlugin",
   "mixins": [
     "AbstractMaidContainerMixin",
     "CombatTrackerMixin",
@@ -17,9 +18,12 @@
     "MobUtilMixin",
     "OpenMaidGuiMessageMixin",
     "SynchedEntityDataMixin",
-    "WandUtilMixin"
+    "WandUtilMixin",
+    "iss.SyncedSpellDataMixin"
   ],
   "client": [
+    "iss.ClientMagicDataMixin",
+    "iss.MaidEntityAnimateStateMixin"
   ],
   "injectors": {
     "defaultRequire": 1
