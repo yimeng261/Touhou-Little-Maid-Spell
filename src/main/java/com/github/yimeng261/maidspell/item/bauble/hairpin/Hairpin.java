@@ -38,7 +38,5 @@ public class Hairpin extends Item {
         tooltip.add(Component.translatable("item.maidspell.hairpin.desc3",
             String.format("%.0f", (Config.hairpinBeneficialEffectExtension - 1) * 100)).withStyle(ChatFormatting.YELLOW));
         tooltip.add(Component.translatable("item.maidspell.hairpin.desc4").withStyle(ChatFormatting.YELLOW));
-        tooltip.add(Component.translatable("item.maidspell.hairpin.desc5",
-            String.format("%d", Config.hairpinFavorabilityGain)).withStyle(ChatFormatting.GOLD));
     }
 }

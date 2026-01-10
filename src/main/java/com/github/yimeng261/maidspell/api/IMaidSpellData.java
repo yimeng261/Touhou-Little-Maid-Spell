@@ -87,10 +87,10 @@ public abstract class IMaidSpellData {
         for(ItemStack spellBookItem : spellBooks) {
             if (ItemStack.isSameItemSameComponents(spellBookItem, spellBook)) {
                 spellBooks.remove(spellBookItem);
-                break;
+                spellBookKinds.remove(spellBook.getItem().getClass());
+                return;
             }
         }
-        spellBookKinds.remove(spellBook.getItem().getClass());
     }
 
     /**

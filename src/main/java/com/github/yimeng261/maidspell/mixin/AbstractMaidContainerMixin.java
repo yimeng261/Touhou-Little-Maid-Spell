@@ -27,7 +27,10 @@ public class AbstractMaidContainerMixin {
      */
     @Inject(method = "stillValid", at = @At("HEAD"), cancellable = true, remap = true)
     public void stillValid(Player playerIn, CallbackInfoReturnable<Boolean> cir) {
-        if(maid.getMaidBauble().containsItem(MaidSpellItems.ENDER_POCKET.get())){
+        if (maid == null) {
+            return;
+        }
+        if (maid.getMaidBauble().containsItem(MaidSpellItems.ENDER_POCKET.get())) {
             boolean isValid = maid.isOwnedBy(playerIn) && !maid.isSleeping() && maid.isAlive();
             cir.setReturnValue(isValid);
         }

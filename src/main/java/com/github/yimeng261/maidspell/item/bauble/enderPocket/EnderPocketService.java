@@ -6,10 +6,16 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.UUIDUtil;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ChunkMap;
+import net.minecraft.server.level.ServerEntity;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 
 import java.util.*;
 
@@ -24,6 +30,7 @@ public class EnderPocketService {
     public static class EnderPocketMaidInfo {
         public final UUID maidUUID;
         public final String maidName;
+        public final ResourceKey<Level> levelKey;
         public final int maidEntityId;
 
         public static final StreamCodec<ByteBuf, EnderPocketMaidInfo> STREAM_CODEC = StreamCodec.composite(
@@ -31,14 +38,17 @@ public class EnderPocketService {
                 EnderPocketMaidInfo::getMaidUUID,
                 ByteBufCodecs.STRING_UTF8,
                 EnderPocketMaidInfo::getMaidName,
+                ResourceKey.streamCodec(Registries.DIMENSION),
+                EnderPocketMaidInfo::getLevelKey,
                 ByteBufCodecs.INT,
                 EnderPocketMaidInfo::getMaidEntityId,
                 EnderPocketMaidInfo::new
         );
 
-        public EnderPocketMaidInfo(UUID maidUUID, String maidName, int maidEntityId) {
+        public EnderPocketMaidInfo(UUID maidUUID, String maidName, ResourceKey<Level> levelKey, int maidEntityId) {
             this.maidUUID = maidUUID;
             this.maidName = maidName;
+            this.levelKey = levelKey;
             this.maidEntityId = maidEntityId;
         }
 
@@ -53,6 +63,10 @@ public class EnderPocketService {
         public int getMaidEntityId() {
             return maidEntityId;
         }
+
+        public ResourceKey<Level> getLevelKey() {
+            return levelKey;
+        }
     }
 
 
@@ -60,7 +74,7 @@ public class EnderPocketService {
      * 获取玩家所有装备末影腰包的女仆信息
      */
     public static List<EnderPocketMaidInfo> getPlayerEnderPocketMaids(ServerPlayer player) {
-        HashMap<UUID, EntityMaid> maids = Global.maidInfos.get(player.getUUID());
+        Map<UUID, EntityMaid> maids = Global.getOrCreatePlayerMaidMap(player.getUUID());
         if (maids == null || maids.isEmpty()) {
             return Collections.emptyList();
         }
@@ -72,6 +86,7 @@ public class EnderPocketService {
                 enderPocketMaids.add(new EnderPocketMaidInfo(
                         maid.getUUID(),
                         maid.getName().getString(),
+                        maid.level().dimension(),
                         maid.getId()
                 ));
             }
@@ -83,8 +98,9 @@ public class EnderPocketService {
     /**
      * 打开女仆背包
      */
-    public static boolean openMaidInventory(ServerPlayer player, int maidEntityId) {
-        Entity entity = player.level().getEntity(maidEntityId);
+    public static boolean openMaidInventory(ServerPlayer player, ResourceKey<Level> maidLevelKey, int maidEntityId) {
+        ServerLevel maidLevel = player.server.getLevel(maidLevelKey);
+        Entity entity = maidLevel.getEntity(maidEntityId);
         if (!(entity instanceof EntityMaid maid)) {
             return false;
         }
@@ -92,6 +108,16 @@ public class EnderPocketService {
         // 检查权限
         if (!maid.isOwnedBy(player) || maid.isSleeping() || !maid.isAlive()) {
             return false;
+        }
+
+        if (!maidLevel.getChunkSource().chunkMap.getPlayersWatching(maid).contains(player)) {
+            ChunkMap.TrackedEntity trackedEntity = maidLevel.getChunkSource().chunkMap.entityMap.get(maidEntityId);
+            if (trackedEntity == null) {
+                return false;
+            }
+            // 强行配对
+            ServerEntity serverEntity = trackedEntity.serverEntity;
+            serverEntity.addPairing(player);
         }
 
         // 使用车万女仆本体的GUI打开方法

@@ -9,6 +9,7 @@ import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,6 +28,9 @@ public class SpellBookManager {
 
     // 实例相关的提供者列表 - 每个管理器可以有自己的提供者实例
     private static final List<ISpellBookProvider<?, ?>> instanceProviders = new ArrayList<>();
+    
+    // 提供者列表的不可变视图，避免每次调用 getProviders 时创建新列表
+    private static volatile List<ISpellBookProvider<?, ?>> immutableProviders = null;
 
     public static final List<String> loadedMods = new ArrayList<>();
 
@@ -134,9 +138,17 @@ public class SpellBookManager {
 
     /**
      * 获取当前实例的提供者列表
+     * 返回不可变列表，避免每次调用都创建新的 ArrayList
      */
     public List<ISpellBookProvider<?, ?>> getProviders() {
-        return new ArrayList<>(instanceProviders);
+        if (immutableProviders == null) {
+            synchronized (SpellBookManager.class) {
+                if (immutableProviders == null) {
+                    immutableProviders = Collections.unmodifiableList(new ArrayList<>(instanceProviders));
+                }
+            }
+        }
+        return immutableProviders;
     }
 
 
@@ -205,9 +217,9 @@ public class SpellBookManager {
     }
 
     public void removeSpellItem(EntityMaid maid, ItemStack itemStack) {
-        //LOGGER.debug("Removing spell item for maid {}", maid.getUUID());
+        LOGGER.debug("Removing spell item for maid {}", maid.getUUID());
         for(ISpellBookProvider<?,?> provider : getProviders()) {
-            //LOGGER.debug("Removing spell item for provider: {}", provider);
+            LOGGER.debug("Removing spell item for provider: {}", provider);
             provider.handleItemStack(maid, itemStack, false);
         }
     }
