@@ -26,7 +26,7 @@ side = "BOTH"
 [[dependencies."${mod_id}"]]
 modId = "touhou_little_maid"
 mandatory = true
-versionRange = "[1.4.7,)"
+versionRange = "[1.4.3,)"
 ordering = "AFTER"
 side = "BOTH"
 
