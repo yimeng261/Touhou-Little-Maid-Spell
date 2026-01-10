@@ -59,7 +59,7 @@ public class HiddenRetreatStructure extends Structure {
     }
 
     @Override
-    protected @NotNull Optional<GenerationStub> findGenerationPoint(GenerationContext context) {
+    protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
         // 检查当前维度是否是the_retreat维度
         // 通过检查BiomeSource是否为Fixed且为cherry_grove来判断
         if (!isRetreatDimension(context)) {
@@ -112,28 +112,43 @@ public class HiddenRetreatStructure extends Structure {
     private boolean isValidGenerationLocation(GenerationContext context, ChunkPos centerChunk) {
         List<Integer> heightSamples = new ArrayList<>();
         int range = 2;
+        int totalSamples = 0;
+        int waterSamples = 0;
 
         // 检查以centerChunk为中心的5*5区块范围
         for (int dx = -range; dx <= range; dx++) {
             for (int dz = -range; dz <= range; dz++) {
                 ChunkPos checkChunk = new ChunkPos(centerChunk.x + dx, centerChunk.z + dz);
-                List<Integer> chunkHeightSamples = sampleChunkHeights(context, checkChunk);
-                heightSamples.addAll(chunkHeightSamples);
+                SamplingResult result = sampleChunkHeights(context, checkChunk);
+                heightSamples.addAll(result.heights);
+                totalSamples += result.totalSamples;
+                waterSamples += result.waterSamples;
             }
         }
 
-        // 3. 检查地形平坦度
+        // 1. 检查水上点的比例，如果超过一半的点在水上则放弃生成
+        if (totalSamples > 0 && waterSamples > totalSamples / 2) {
+            return false;
+        }
+
+        // 2. 检查地形平坦度
         return isTerrainFlat(heightSamples);
     }
+
+    /**
+     * 采样结果，包含高度列表和水上点的数量
+     */
+    private record SamplingResult(List<Integer> heights, int totalSamples, int waterSamples) {}
 
     /**
      * 在指定区块内随机采样高度
      * @param context 生成上下文
      * @param chunk 目标区块
-     * @return 采样点的高度列表
+     * @return 采样结果，包含高度列表、总采样数和水上点数量
      */
-    private List<Integer> sampleChunkHeights(GenerationContext context, ChunkPos chunk) {
+    private SamplingResult sampleChunkHeights(GenerationContext context, ChunkPos chunk) {
         List<Integer> heights = new ArrayList<>();
+        int waterCount = 0;
 
         // 创建基于区块坐标的确定性随机源，确保结果一致
         RandomSource random = RandomSource.create(chunk.toLong());
@@ -146,18 +161,31 @@ public class HiddenRetreatStructure extends Structure {
             int x = minX + random.nextInt(16);
             int z = minZ + random.nextInt(16);
 
-            // 获取该位置的地面高度
-            int height = context.chunkGenerator().getFirstOccupiedHeight(
+            // 获取该位置的地面高度（不包括树叶）
+            int surfaceHeight = context.chunkGenerator().getFirstOccupiedHeight(
                     x, z,
                     Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                     context.heightAccessor(),
                     context.randomState()
             );
 
-            heights.add(height);
+            // 获取海洋底部高度，用于判断是否有水
+            int oceanFloorHeight = context.chunkGenerator().getFirstOccupiedHeight(
+                    x, z,
+                    Heightmap.Types.OCEAN_FLOOR_WG,
+                    context.heightAccessor(),
+                    context.randomState()
+            );
+
+            // 如果海洋底部高度低于表面高度，说明这个位置有水
+            if (oceanFloorHeight < surfaceHeight) {
+                waterCount++;
+            }
+
+            heights.add(surfaceHeight);
         }
 
-        return heights;
+        return new SamplingResult(heights, SAMPLES_PER_CHUNK, waterCount);
     }
 
     /**
