@@ -5,8 +5,8 @@ import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import io.netty.buffer.Unpooled;
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
-import io.redspace.ironsspellbooks.network.ClientboundSyncEntityData;
-import io.redspace.ironsspellbooks.setup.Messages;
+import io.redspace.ironsspellbooks.network.casting.SyncEntityDataPacket;
+import io.redspace.ironsspellbooks.setup.PacketDistributor;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -33,8 +33,8 @@ public abstract class SyncedSpellDataMixin {
             if (spellData != null) {
                 FriendlyByteBuf byteBuf = new FriendlyByteBuf(Unpooled.buffer());
                 byteBuf.writeInt(maid.getId());
-                SyncedSpellData.SYNCED_SPELL_DATA.write(byteBuf, (SyncedSpellData)(Object)this);
-                Messages.sendToPlayersTrackingEntity(new ClientboundSyncEntityData(byteBuf), livingEntity);
+                SyncedSpellData.write(byteBuf, (SyncedSpellData)(Object)this);
+                PacketDistributor.sendToPlayersTrackingEntity(livingEntity, new SyncEntityDataPacket(byteBuf));
             }
         }
     }
