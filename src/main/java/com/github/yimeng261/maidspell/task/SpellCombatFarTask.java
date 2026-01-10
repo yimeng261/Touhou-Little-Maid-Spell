@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.task;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.google.common.collect.Lists;
@@ -19,6 +20,7 @@ import net.minecraft.world.entity.ai.behavior.StartAttacking;
 import net.minecraft.world.entity.ai.behavior.StopAttackingIfTargetInvalid;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -54,6 +56,17 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
     public @NotNull MutableComponent getName() {
         return NAME;
     }
+
+    @Override
+    public boolean enableLookAndRandomWalk(@NotNull EntityMaid maid) {
+        return super.enableLookAndRandomWalk(maid);
+    }
+
+    @Override
+    public @NotNull ItemStack getIcon() {
+        return MaidSpellItems.FAR_TASK_ICON.get().getDefaultInstance();
+    }
+
 
     @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {

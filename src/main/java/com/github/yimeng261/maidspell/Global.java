@@ -99,4 +99,19 @@ public class Global {
     public static Map<UUID, EntityMaid> getOrCreatePlayerMaidMap(UUID playerUUID) {
         return maidInfos.computeIfAbsent(playerUUID, k -> new ConcurrentHashMap<>());
     }
+
+    public static void updateMaidInfo(EntityMaid maid, Boolean add) {
+        UUID ownerUUID = maid.getOwnerUUID();
+        if(add){
+            maidList.add(maid);
+            if(ownerUUID != null){
+                getOrCreatePlayerMaidMap(ownerUUID).put(maid.getUUID(),maid);
+            }
+        }else{
+            maidList.remove(maid);
+            if(ownerUUID != null){
+                getOrCreatePlayerMaidMap(ownerUUID).remove(maid.getUUID());
+            }
+        }
+    }
 }

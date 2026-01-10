@@ -1,0 +1,31 @@
+{
+  "type": "touhou_little_maid:altar_recipe_serializers",
+  "category": "misc",
+  "entity": "minecraft:item",
+  "group": "altar_recipe",
+  "result": {
+    "id": "touhou_little_maid_spell:fragrant_ingenuity",
+    "count": 1
+  },
+  "power": 0.5,
+  "ingredients": [
+    {
+      "tag": "c:strings"
+    },
+    {
+      "tag": "c:leathers"
+    },
+    {
+      "item": "minecraft:cake"
+    },
+    {
+      "tag": "c:ingots/gold"
+    },
+    {
+      "tag": "c:strings"
+    },
+    {
+      "tag": "c:leathers"
+    }
+  ]
+}

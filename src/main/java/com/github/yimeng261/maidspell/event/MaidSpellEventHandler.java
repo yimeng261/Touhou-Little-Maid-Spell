@@ -72,11 +72,7 @@ public class MaidSpellEventHandler {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.setMaid(maid);
             manager.initSpellBooks();
-            LivingEntity owner = maid.getOwner();
-            Global.maidList.add(maid);
-            if(owner != null) {
-                Global.getOrCreatePlayerMaidMap(owner.getUUID()).put(maid.getUUID(), maid);
-            }
+            Global.updateMaidInfo(maid,true);
             addStepHeightToMaid(maid);
         }
     }
@@ -167,12 +163,7 @@ public class MaidSpellEventHandler {
             manager.stopAllCasting();
 
             // 从全局女仆列表中移除，避免内存泄漏
-            Global.maidList.remove(maid);
-
-            LivingEntity owner = maid.getOwner();
-            if(owner != null) {
-                Global.getOrCreatePlayerMaidMap(owner.getUUID()).remove(maid.getUUID());
-            }
+            Global.updateMaidInfo(maid,false);
         }
     }
 
@@ -340,7 +331,7 @@ public class MaidSpellEventHandler {
             if (!event.isCanceled()) {
                 cleanupMaidSpellData(maid);
                 // 从全局女仆列表中移除，避免内存泄漏
-                Global.maidList.remove(maid);
+                Global.updateMaidInfo(maid,false);
             }
         }
     }
@@ -409,7 +400,7 @@ public class MaidSpellEventHandler {
             }
 
             // 推送末影腰包数据更新
-            Global.getOrCreatePlayerMaidMap(player.getUUID()).put(maid.getUUID(), maid);
+            Global.updateMaidInfo(maid, true);
             EnderPocketBauble.pushEnderPocketDataToClient((ServerPlayer) player);
         }
     }
