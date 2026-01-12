@@ -107,11 +107,4 @@ public class HairpinBauble implements IMaidBauble {
         }
     }
 
-    @SubscribeEvent
-    public void afterMaidEat(MaidAfterEatEvent event){
-        EntityMaid maid = event.getMaid();
-        if(ItemsUtil.getBaubleSlotInMaid(maid,this)>=0){
-            maid.getFavorabilityManager().add(Config.hairpinFavorabilityGain);
-        }
-    }
 }

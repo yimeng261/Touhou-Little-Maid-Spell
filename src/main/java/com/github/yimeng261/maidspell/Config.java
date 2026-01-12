@@ -8,11 +8,14 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 女仆法术战斗系统配置类
  * 管理所有可配置的参数和设置
  */
-@EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
+@EventBusSubscriber(modid = MaidSpellMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public class Config {
 
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
@@ -82,6 +85,21 @@ public class Config {
             .comment("远程法术任务攻击间隔（单位：tick，默认: 5）")
             .comment("Far spell task attack interval (in ticks, default: 5)")
             .defineInRange("farAttackInterval", 5, 1, 100);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> SPELL_BLACKLIST = BUILDER
+            .comment("法术黑名单，女仆不会施放这些法术")
+            .comment("Spell blacklist, maids will not cast these spells")
+            .comment("示例: [\"irons_spellbooks:spectral_hammer\", \"irons_spellbooks:firecracker\"]")
+            .comment("Example: [\"irons_spellbooks:spectral_hammer\", \"irons_spellbooks:firecracker\"]")
+            .defineListAllowEmpty(
+                List.of("spellBlacklist"),
+                () -> List.of("irons_spellbooks:spectral_hammer"),
+                obj -> obj instanceof String
+            );
 
     static {
         BUILDER.pop();
@@ -205,15 +223,6 @@ public class Config {
         BUILDER.comment("");
     }
 
-    private static final ModConfigSpec.IntValue HAIRPIN_FAVORABILITY_GAIN = BUILDER
-            .comment("发簪进食好感度增长 (默认: 1)")
-            .comment("Hairpin favorability gain when eating")
-            .defineInRange("hairpinFavorabilityGain", 1, 1, 10);
-
-    static {
-        BUILDER.comment("");
-    }
-
     private static final ModConfigSpec.DoubleValue HAIRPIN_BENEFICIAL_EFFECT_EXTENSION = BUILDER
             .comment("发簪有益效果延长倍率 (默认: 1.15)")
             .comment("Hairpin beneficial effect extension multiplier")
@@ -227,6 +236,24 @@ public class Config {
             .comment("发簪有益效果最小延长时间 (tick) (默认: 300)")
             .comment("Hairpin minimum extension ticks for beneficial effects")
             .defineInRange("hairpinMinExtensionTicks", 300, 0, 10000);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.IntValue FRAGRANT_INGENUITY_FAVORABILITY_GAIN = BUILDER
+            .comment("馥郁巧思进食好感度增长 (默认: 2)")
+            .comment("Fragrant Ingenuity favorability gain when eating")
+            .defineInRange("fragrantIngenuityFavorabilityGain", 2, 1, 10);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.IntValue FRAGRANT_INGENUITY_BUFF_DURATION = BUILDER
+            .comment("馥郁巧思喂食buff持续时间 (tick)")
+            .comment("Fragrant Ingenuity buff duration when maid feeds owner")
+            .defineInRange("fragrantIngenuityBuffDuration", 2400, 200, 120000);
 
     static {
         BUILDER.pop(); // utility
@@ -338,6 +365,7 @@ public class Config {
     public static double coolDownMultiplier;
     public static int meleeAttackInterval;
     public static int farAttackInterval;
+    public static List<String> spellBlacklist;
 
     // 饰品配置缓存值
     // 伤害相关
@@ -367,9 +395,10 @@ public class Config {
     public static int woundRimeBladeRecordTimes;
 
     // 好感度相关
-    public static int hairpinFavorabilityGain;
     public static double hairpinBeneficialEffectExtension;
     public static int hairpinMinExtensionTicks;
+    public static int fragrantIngenuityFavorabilityGain;
+    public static int fragrantIngenuityBuffDuration;
 
     // 特殊饰品相关
     public static double chaosBookTrueDamageMin;
@@ -390,6 +419,7 @@ public class Config {
         farRange = FAR_RANGE.get();
         meleeAttackInterval = MELEE_ATTACK_INTERVAL.get();
         farAttackInterval = FAR_ATTACK_INTERVAL.get();
+        spellBlacklist = new ArrayList<>(SPELL_BLACKLIST.get());
 
         // 加载饰品配置值
         // 伤害相关
@@ -419,9 +449,10 @@ public class Config {
         woundRimeBladeRecordTimes = WOUND_RIME_BLADE_RECORD_DURATION.get();
 
         // 好感度相关
-        hairpinFavorabilityGain = HAIRPIN_FAVORABILITY_GAIN.get();
         hairpinBeneficialEffectExtension = HAIRPIN_BENEFICIAL_EFFECT_EXTENSION.get();
         hairpinMinExtensionTicks = HAIRPIN_MIN_EXTENSION_TICKS.get();
+        fragrantIngenuityFavorabilityGain = FRAGRANT_INGENUITY_FAVORABILITY_GAIN.get();
+        fragrantIngenuityBuffDuration = FRAGRANT_INGENUITY_BUFF_DURATION.get();
 
         // 特殊饰品相关
         chaosBookTrueDamageMin = CHAOS_BOOK_TRUE_DAMAGE_MIN.get();

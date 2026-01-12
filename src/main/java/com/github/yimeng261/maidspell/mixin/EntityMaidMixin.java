@@ -1,14 +1,18 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHandler;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
-import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.*;
@@ -30,8 +34,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * 3. 修改finalizeSpawn方法，使hidden_retreat结构中的女仆structureSpawn不为true
  */
 @Mixin(value = EntityMaid.class,remap = false)
-public abstract class EntityMaidMixin extends TamableAnimal {
+public abstract class EntityMaidMixin extends TamableAnimal implements AnchoredEntityMaid {
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    @Unique
+    private static final EntityDataAccessor<Boolean> MAID_SPELL_DATA_ANCHORED = SynchedEntityData.defineId(EntityMaidMixin.class, EntityDataSerializers.BOOLEAN);
 
     /**
      * Shadow字段，用于直接访问EntityMaid的私有字段
@@ -47,6 +54,8 @@ public abstract class EntityMaidMixin extends TamableAnimal {
         super(entityType, level);
     }
 
+
+    @Shadow public abstract BaubleItemHandler getMaidBauble();
 
     /**
      * 修改finalizeSpawn方法，阻止hidden_retreat结构中的女仆进行随机模型选择
@@ -90,8 +99,6 @@ public abstract class EntityMaidMixin extends TamableAnimal {
                     return;
                 }
 
-                ChunkLoadingManager.enableChunkLoading(maid);
-
                 // 如果女仆血量为0，允许正常移除
                 Global.LOGGER.debug("remove called for {}", maid);
                 if (maid.getHealth() <= 0.0f) {
@@ -121,6 +128,21 @@ public abstract class EntityMaidMixin extends TamableAnimal {
             maid.getNavigation().stop();
             maid.getMoveControl().strafe(0, 0);
         }
+    }
+
+    @Inject(method = "defineSynchedData", at = @At("TAIL"))
+    protected void afterDefineSynchedData(SynchedEntityData.Builder builder, CallbackInfo ci) {
+        builder.define(MAID_SPELL_DATA_ANCHORED, false);
+    }
+
+    @Override
+    public boolean maidSpell$isAnchored() {
+        return entityData.get(MAID_SPELL_DATA_ANCHORED);
+    }
+
+    @Override
+    public void maidSpell$setAnchored(boolean anchored) {
+        entityData.set(MAID_SPELL_DATA_ANCHORED, anchored);
     }
 
     /**

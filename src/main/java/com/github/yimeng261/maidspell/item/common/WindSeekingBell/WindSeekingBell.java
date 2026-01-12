@@ -1,6 +1,9 @@
 package com.github.yimeng261.maidspell.item.common.WindSeekingBell;
 
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
+import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.entity.WindSeekingBellEntity;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -29,32 +32,20 @@ import javax.annotation.Nonnull;
 import java.util.List;
 
 /**
- * 寻风之铃 - 用于寻找最近的隐世之境结构
- * 功能模仿末影之眼，成功找到结构后播放铃声音效
- * 性能优化说明：
- * 1. 采用基于Main算法的简化螺旋搜索，避免OptimizedWhitePoleFinder的复杂数据结构开销
- * 2. 针对hidden_retreat极稀少特性（1万格以上），使用大步长(4)减少无效检测
- * 3. 直接按距离层遍历，每层检查边界点，找到第一个符合条件的立即返回
- * 4. 简化3×3樱花林验证逻辑：检查中心+四角+四边中点，通过后直接验证结构
- * 5. 减少Minecraft API调用次数，每个候选点最多9次生物群系检测+1次结构验证
- * 6. 使用BitSet避免重复检测，类似C++中的bitvec，以O(1)时间复杂度记录已检测区块
- * 7. BitSet内存开销低：对于10000半径，仅需约50MB内存存储检测状态
- * 8. 添加ConcurrentHashMap缓存机制：缓存搜索结果5分钟，基于玩家移动距离复用
- * 9. 缓存支持负结果：记录"无结构"区域，避免重复搜索空区域
- * 10. 智能缓存失效：玩家移动超过5000方块（约31区块）时缓存失效，匹配搜索范围
- * 11. 异步搜索机制：使用CompletableFuture在后台线程执行搜索，避免主线程卡顿
- * 12. 重复搜索保护：同一区域的并发搜索会共享结果，避免资源浪费
- * 13. 智能区域搜索：动态检测500方块范围内的进行中搜索，避免网格边界问题
- * 14. 多线程并行搜索：将方形搜索区域分割为多个子方形，并行搜索以提升性能
- * 15. 早期终止机制：任意线程找到结构后立即停止其他线程，避免资源浪费
- * 16. 自适应线程数：根据搜索范围和CPU核心数动态调整并行线程数
- * 17. 方形分割策略：保持原有方形搜索逻辑，按象限或网格分割搜索区域
- * 18. 分段锁优化：使用基于ServerLevel的64段锁，同一世界串行，不同世界并发，保证线程安全
- * 19. 模块化设计：配置、缓存、验证逻辑分离，代码从952行优化到约750行，可维护性大幅提升
+ * 寻风之铃 - 用于前往隐世之境维度并寻找隐世之境
+ * 新功能：
+ * 1. 在主世界使用：传送到玩家专属的隐世之境维度
+ * 2. 在隐世之境使用：寻找隐世之境结构位置（每个维度只有一个）
+ * 3. Shift+右键：从隐世之境返回主世界
+ * 优化策略（简化版）：
+ * 1. 无需樱花林验证：隐世之境维度中所有区块都是固定的樱花林生物群系
+ * 2. 维度级缓存：每个玩家的维度只有一个结构，按维度缓存结果，不受玩家位置影响
+ * 3. 并行螺旋搜索：采用分块并行螺旋搜索算法，快速定位结构位置
+ * 4. 重复搜索保护：同一维度的并发搜索会共享结果，避免资源浪费
+ * 5. 异步搜索机制：使用CompletableFuture在后台线程执行搜索，避免主线程卡顿
+ * 6. 分段锁优化：使用基于ServerLevel的64段锁，保证线程安全同时提升并发性能
  */
 public class WindSeekingBell extends Item {
-
-    // 注意：所有搜索配置已迁移到 SearchConfig 类
 
     // 常用消息组件缓存：避免重复创建相同的本地化组件
     private static final Component NO_STRUCTURE_MESSAGE = Component.translatable(
@@ -69,11 +60,8 @@ public class WindSeekingBell extends Item {
     // 搜索缓存管理器：管理所有缓存和正在进行的搜索
     private static final SearchCacheManager cacheManager = new SearchCacheManager();
 
-    // 生物群系验证器：检查樱花林生物群系
-    private static final BiomeValidator biomeValidator = new BiomeValidator();
-
     // 结构搜索引擎：负责执行并行搜索
-    private static final StructureSearchEngine searchEngine = new StructureSearchEngine(biomeValidator, cacheManager);
+    private static final StructureSearchEngine searchEngine = new StructureSearchEngine(cacheManager);
 
     public WindSeekingBell() {
         super(new Properties()
@@ -87,17 +75,71 @@ public class WindSeekingBell extends Item {
         ItemStack itemStack = player.getItemInHand(hand);
         player.startUsingItem(hand);
 
-        if (level instanceof ServerLevel serverLevel) {
+        if (level instanceof ServerLevel serverLevel && player instanceof ServerPlayer serverPlayer) {
             BlockPos playerPos = player.blockPosition();
 
-            // 异步搜索结构，避免主线程卡顿
-            findNearestHiddenRetreatAsync(serverLevel, playerPos, player, itemStack);
+            // 检查是否按住Shift键（返回主世界）
+            if (player.isShiftKeyDown() && TheRetreatDimension.isInRetreat(player)) {
+                // 从归隐之地返回主世界
+                TheRetreatDimension.teleportFromRetreat(serverPlayer);
+
+                player.displayClientMessage(
+                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.return_to_overworld")
+                        .withStyle(ChatFormatting.GREEN),
+                    true
+                );
+
+                // 不消耗物品
+                return InteractionResultHolder.success(itemStack);
+            }
+
+            // 检查玩家所在维度
+            if (TheRetreatDimension.isInRetreat(player)) {
+                findNearestHiddenRetreatAsync(serverLevel, playerPos, player, itemStack);
+            } else {
+                teleportToRetreat(serverPlayer, itemStack);
+            }
 
             // 立即返回成功，实际结果将异步处理
             return InteractionResultHolder.success(itemStack);
         }
 
-        return InteractionResultHolder.consume(itemStack);
+        return InteractionResultHolder.pass(itemStack);
+    }
+
+    /**
+     * 传送玩家到隐世之境维度
+     */
+    private void teleportToRetreat(ServerPlayer player, ItemStack itemStack) {
+        // 获取或创建玩家专属的隐世之境
+        ServerLevel retreatLevel = PlayerRetreatManager.getOrCreatePlayerRetreat(
+            player.getServer(),
+            player.getUUID()
+        );
+
+        if (retreatLevel == null) {
+            player.displayClientMessage(
+                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed")
+                    .withStyle(ChatFormatting.RED),
+                true
+            );
+            Global.LOGGER.error("Failed to create or get retreat dimension for player: " + player.getName().getString());
+            return;
+        }
+
+        // 传送到隐世之境
+        TheRetreatDimension.teleportToRetreat(player);
+        player.displayClientMessage(
+            Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
+                .withStyle(ChatFormatting.LIGHT_PURPLE),
+            true
+        );
+
+        // 消耗物品
+        if (!player.getAbilities().instabuild && TheRetreatDimension.isInRetreat(player)) {
+            itemStack.shrink(1);
+        }
+
     }
 
     /**
@@ -206,6 +248,10 @@ public class WindSeekingBell extends Item {
             .withStyle(ChatFormatting.LIGHT_PURPLE));
         tooltip.add(Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.desc2")
             .withStyle(ChatFormatting.GOLD));
+        tooltip.add(Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.desc3")
+            .withStyle(ChatFormatting.AQUA));
+        tooltip.add(Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.desc4")
+            .withStyle(ChatFormatting.GREEN));
     }
 
     @Override
@@ -216,7 +262,7 @@ public class WindSeekingBell extends Item {
     /**
      * 服务器事件监听器：处理缓存清理
      */
-    @EventBusSubscriber(modid = "touhou_little_maid_spell")
+    @EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
     public static class ServerEventHandler {
 
         @SubscribeEvent

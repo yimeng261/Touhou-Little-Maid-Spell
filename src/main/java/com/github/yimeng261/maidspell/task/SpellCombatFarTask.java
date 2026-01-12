@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.task;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.google.common.collect.Lists;
@@ -19,6 +20,7 @@ import net.minecraft.world.entity.ai.behavior.StartAttacking;
 import net.minecraft.world.entity.ai.behavior.StopAttackingIfTargetInvalid;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -56,6 +58,17 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
     }
 
     @Override
+    public boolean enableLookAndRandomWalk(@NotNull EntityMaid maid) {
+        return super.enableLookAndRandomWalk(maid);
+    }
+
+    @Override
+    public @NotNull ItemStack getIcon() {
+        return MaidSpellItems.FAR_TASK_ICON.get().getDefaultInstance();
+    }
+
+
+    @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
@@ -72,6 +85,22 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
                 Pair.of(2, moveToTargetTask),
                 Pair.of(2, spellCastingTask),
                 Pair.of(2, strafingTask)
+        );
+    }
+
+    @Override
+    public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(EntityMaid maid) {
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
+        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
+        BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
+        // 添加高优先级的视线控制任务，阻止女仆看向玩家
+        BehaviorControl<EntityMaid> lookControlTask = new CombatLookControlTask();
+
+        return Lists.newArrayList(
+                Pair.of(1, lookControlTask),      // 最高优先级，控制视线
+                Pair.of(2, supplementedTask),     // 提高战斗行为优先级
+                Pair.of(2, findTargetTask),
+                Pair.of(2, spellCastingTask)
         );
     }
 
@@ -127,7 +156,10 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
         @Override
         protected void tick(@NotNull ServerLevel worldIn, EntityMaid maid, long gameTime) {
-            // 修正：检查法术书而不是投射武器
+            // 如果女仆处于坐下状态，不执行走位逻辑
+            if (maid.isOrderedToSit()) {
+                return;
+            }
             SpellCombatFarTask task = new SpellCombatFarTask();
             if (!task.hasSpellBook(maid)) {
                 return;

@@ -9,7 +9,9 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -68,7 +70,7 @@ public class EnderPocketScreen extends Screen {
             Button maidButton = new TransparentButton(
                 buttonX, buttonY, buttonWidth, buttonHeight,
                 Component.literal(maidInfo.maidName),
-                button -> openMaidInventory(maidInfo.maidEntityId)
+                button -> openMaidInventory(maidInfo.levelKey, maidInfo.maidEntityId)
             );
 
             this.addRenderableWidget(maidButton);
@@ -76,8 +78,8 @@ public class EnderPocketScreen extends Screen {
 
     }
 
-    private void openMaidInventory(int maidEntityId) {
-        getMinecraft().getConnection().send(new C2SEnderPocketOpenInventory(maidEntityId));
+    private void openMaidInventory(ResourceKey<Level> maidLevelKey, int maidEntityId) {
+        getMinecraft().getConnection().send(new C2SEnderPocketOpenInventory(maidLevelKey, maidEntityId));
     }
 
 

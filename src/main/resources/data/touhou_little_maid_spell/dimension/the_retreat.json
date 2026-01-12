@@ -1,0 +1,12 @@
+{
+  "type": "touhou_little_maid_spell:the_retreat",
+  "generator": {
+    "type": "minecraft:noise",
+    "settings": "minecraft:overworld",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "minecraft:cherry_grove"
+    }
+  }
+}
+
