@@ -47,3 +47,5 @@ run
 *.md
 # Files from Forge MDK
 forge*changelog.txt
+.claude
+.cursor
