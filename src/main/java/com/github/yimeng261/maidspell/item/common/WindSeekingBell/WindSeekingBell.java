@@ -136,11 +136,6 @@ public class WindSeekingBell extends Item {
                 .withStyle(ChatFormatting.LIGHT_PURPLE), 
             true
         );
-
-        // 消耗物品
-        if (!player.getAbilities().instabuild && TheRetreatDimension.isInRetreat(player)) {
-            itemStack.shrink(1);
-        }
         
     }
     

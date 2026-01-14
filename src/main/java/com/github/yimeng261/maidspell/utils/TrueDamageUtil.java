@@ -3,13 +3,11 @@ package com.github.yimeng261.maidspell.utils;
 import com.github.yimeng261.maidspell.mixin.SynchedEntityDataMixin;
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.damagesource.DamageType;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Entity;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -46,7 +44,10 @@ public class TrueDamageUtil {
         boolean success = tryEntityDataDamage(target, newHealth) || tryNBTDamage(target, originalHealth, newHealth);
 
         if(success&&newHealth<=0.0f){
-            target.die(new DamageSource(Holder.direct(new DamageType("info_damage", 0.0f)),attacker));
+            // 使用原版的方式获取DamageSource
+            // 如果有攻击者，使用mobAttack，否则使用generic
+            DamageSource damageSource = target.damageSources().generic();
+            target.die(damageSource);
             target.remove(Entity.RemovalReason.KILLED);
         }
         
@@ -71,7 +72,11 @@ public class TrueDamageUtil {
         boolean success = tryEntityDataDamage(target, newHealth) || tryNBTDamage(target, originalHealth, newHealth);
 
         if(success&&newHealth<=0.0f){
-            target.die(new DamageSource(Holder.direct(new DamageType("info_damage", 0.0f)),attacker));
+            // 使用原版的方式获取DamageSource
+            // 如果有攻击者，使用mobAttack，否则使用generic
+            DamageSource damageSource = target.damageSources().generic();
+            target.die(damageSource);
+            target.remove(Entity.RemovalReason.KILLED);
         }
 
         //LOGGER.debug("[TrueDamage] NewHealth {} applied: {} -> {} (success: {})", newHealth, originalHealth, target.getHealth(), success);
