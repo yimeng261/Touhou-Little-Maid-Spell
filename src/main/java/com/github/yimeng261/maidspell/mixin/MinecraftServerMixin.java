@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
+import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
 import com.google.common.collect.ImmutableList;
 import net.minecraft.core.LayeredRegistryAccess;
 import net.minecraft.core.Registry;
@@ -124,6 +125,12 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 true,
                 overworld.getRandomSequences()
             );
+            
+            // 设置ChunkGenerator的维度信息，用于结构生成判断
+            if (newLevel.getChunkSource().getGenerator() instanceof ChunkGeneratorAccessor accessor) {
+                accessor.maidspell$setDimensionKey(key);
+                MaidSpellMod.LOGGER.debug("Set dimension key for ChunkGenerator: {}", key.location());
+            }
             
             // 添加到世界Map
             levels.put(key, newLevel);

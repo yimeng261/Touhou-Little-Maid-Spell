@@ -237,7 +237,12 @@ public class MaidSpellEventHandler {
     public static void onMaidTick(MaidTickEvent event) {
         EntityMaid maid = event.getMaid();
         if (!maid.level().isClientSide()) {
-                ChunkLoadingManager.enableChunkLoading(maid);
+            if(maid.tickCount%2==0){
+                if(BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                    ChunkLoadingManager.enableChunkLoading(maid);
+                }
+            }
+
             try {
                 SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
                 manager.tick();

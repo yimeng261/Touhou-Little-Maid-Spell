@@ -6,23 +6,20 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
-import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pools.JigsawPlacement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
-import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.util.RandomSource;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 隐世之境结构
@@ -50,13 +47,11 @@ public class HiddenRetreatStructure extends Structure {
     private static final double MAX_TERRAIN_VARIANCE = 16.0; // 相当于标准差约4个方块
     // 每个区块的采样点数量
     private static final int SAMPLES_PER_CHUNK = 5;
-    // 结构碰撞检测范围（区块半径）
-    private static final int STRUCTURE_CHECK_RADIUS = 3;
-    // 隐世之境结构注册名，用于过滤自身
-    private static final ResourceLocation HIDDEN_RETREAT_ID = new ResourceLocation(MaidSpellMod.MOD_ID, "hidden_retreat");
     
     // 用于标记已生成过结构的维度（使用种子作为标识）
-    private static final Set<Long> GENERATED_DIMENSIONS = Collections.synchronizedSet(new HashSet<>());
+    // 使用ConcurrentHashMap确保原子性检查和添加
+    // 注意：配合ChunkGeneratorMixin使用，该Mixin会阻止其他结构在归隐之地生成
+    private static final Set<Long> GENERATED_DIMENSIONS = ConcurrentHashMap.newKeySet();
 
     public HiddenRetreatStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool, int size) {
         super(settings);
@@ -73,27 +68,18 @@ public class HiddenRetreatStructure extends Structure {
         }
 
         long worldSeed = context.seed();
-        
-        // 检查此维度（通过种子标识）是否已经生成过结构
-        if (GENERATED_DIMENSIONS.contains(worldSeed)) {
-            return Optional.empty();
-        }
-
         ChunkPos chunkPos = context.chunkPos();
-
 
         // 检查以当前区块为中心的5*5区块地形足够平坦
         if (!isValidGenerationLocation(context, chunkPos)) {
             return Optional.empty();
         }
 
-        // 检查附近是否有其他结构，避免重叠
-        if (hasNearbyStructures(context, chunkPos)) {
-            return Optional.empty();
+        if (!GENERATED_DIMENSIONS.add(worldSeed)) {
+            return Optional.empty(); // 已经生成过
         }
 
         BlockPos centerPos = new BlockPos(chunkPos.getMinBlockX() + 8, this.height, chunkPos.getMinBlockZ() + 8);
-        GENERATED_DIMENSIONS.add(worldSeed);
         
         return JigsawPlacement.addPieces(
                 context,
@@ -110,48 +96,6 @@ public class HiddenRetreatStructure extends Structure {
     @Override
     public @NotNull StructureType<?> type() {
         return MaidSpellStructures.HIDDEN_RETREAT.get();
-    }
-    
-    /**
-     * 检查附近是否有其他结构，以避免重叠
-     * @param context 生成上下文
-     * @param chunkPos 当前区块位置
-     * @return 如果附近有其他结构返回true，否则返回false
-     */
-    private boolean hasNearbyStructures(GenerationContext context, ChunkPos chunkPos) {
-        ChunkGeneratorStructureState structureState = ChunkGeneratorStructureState.createForNormal(
-                context.randomState(),
-                context.seed(),
-                context.biomeSource(),
-                context.registryAccess().lookupOrThrow(Registries.STRUCTURE_SET)
-        );
-
-        for (var holder : structureState.possibleStructureSets()) {
-            StructureSet structureSet = holder.value();
-
-            // 跳过包含隐世之境自身的结构集合，避免自判冲突
-            boolean isHiddenRetreatSet = structureSet.structures().stream().anyMatch(entry ->
-                    entry.structure().unwrapKey().map(key -> key.location().equals(HIDDEN_RETREAT_ID)).orElse(false)
-            );
-            if (isHiddenRetreatSet) {
-                continue;
-            }
-
-            try {
-                // 检查目标区块附近是否存在其他结构的生成区块
-                if (structureState.hasStructureChunkInRange(
-                        holder,
-                        chunkPos.x,
-                        chunkPos.z,
-                        STRUCTURE_CHECK_RADIUS)) {
-                    return true;
-                }
-            } catch (Exception e) {
-                MaidSpellMod.LOGGER.debug("Error checking structure overlap at chunk {}, {}: {}", 
-                    chunkPos.x, chunkPos.z, e.getMessage());
-            }
-        }
-        return false; // 附近没有其他结构
     }
     
     /**
