@@ -12,9 +12,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.ForcedChunksSavedData;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraftforge.common.world.ForgeChunkManager;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
@@ -27,8 +29,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Iterator;
+import java.util.concurrent.Executors;
 
 /**
  * 区块加载管理器
@@ -164,7 +168,7 @@ public class ChunkLoadingManager {
         ChunkPos chunkPos = maid.chunkPosition();
 
         ChunkKey chunkKey = new ChunkKey(chunkPos, serverLevel);
-        //Global.LOGGER.debug("为女仆 {} 启用区块加载: {}", maidId, chunkKey);
+        Global.LOGGER.debug("为女仆 {} 启用区块加载: {}", maidId, chunkKey);
         
         // 使用新的计时器系统
         performChunkOperation(maidId, chunkKey, true);
@@ -325,11 +329,11 @@ public class ChunkLoadingManager {
         
         Global.LOGGER.debug("卸载过期区块: {} (关联女仆: {})", chunkKey, timer.getAssociatedMaids());
     }
-    
+
     /**
      * 获取当前服务器实例
      */
-    private static MinecraftServer getCurrentServer() {
+    public static MinecraftServer getCurrentServer() {
         return net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
     }
 
@@ -347,9 +351,28 @@ public class ChunkLoadingManager {
             return false;
         }
 
-        ForgeChunkManager.forceChunk(serverLevel, MaidSpellMod.MOD_ID, maidId, chunkPos.x, chunkPos.z, enable, true);
+        //Global.LOGGER.debug("before force load: serverLevel={}", serverLevel);
+        
+        // 检查区块是否已生成，避免同步生成导致卡顿
+        boolean isChunkLoaded = isChunkGenerated(serverLevel, chunkPos);
+        
+        if (enable && !isChunkLoaded) {
+            // 使用 CompletableFuture 异步生成区块
+            generateChunkAsync(serverLevel, chunkPos, maidId, info, lifetimeTicks);
+            
+            // 先记录到计时器，避免数据丢失
+            ChunkTimer timer = chunkTimers.computeIfAbsent(info, k->new ChunkTimer(info, lifetimeTicks));
+            timer.addMaid(maidId);
+            
+            return true;
+        } else {
+            // 区块已加载或是卸载操作，直接执行
+            // ticking=true 确保区块内的实体和逻辑会正常运行
+            ForgeChunkManager.forceChunk(serverLevel, MaidSpellMod.MOD_ID, maidId, chunkPos.x, chunkPos.z, enable, true);
+        }
+        
         //serverLevel.setChunkForced(chunkPos.x, chunkPos.z, enable);
-
+        //Global.LOGGER.debug("after force load: serverLevel={}", serverLevel);
         ChunkLoadingData data = ChunkLoadingData.get(serverLevel.getServer());
         data.updateMaidPosition(maidId, info, enable);
         if (enable) {
@@ -359,6 +382,62 @@ public class ChunkLoadingManager {
         }
 
         return true;
+    }
+    
+    /**
+     * 异步生成区块（不阻塞主线程）
+     */
+    private static void generateChunkAsync(ServerLevel level, ChunkPos chunkPos, UUID maidId, ChunkKey info, int lifetimeTicks) {
+        // 使用 Minecraft 的异步区块加载系统
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                Global.LOGGER.debug("异步生成区块开始: [{}, {}]", chunkPos.x, chunkPos.z);
+                
+                // 使用服务器的区块生成器异步生成区块
+                ChunkAccess chunk = level.getChunkSource().getChunk(chunkPos.x, chunkPos.z, ChunkStatus.FULL, true);
+                
+                Global.LOGGER.debug("异步生成区块完成: [{}, {}]", chunkPos.x, chunkPos.z);
+                return chunk != null;
+            } catch (Exception e) {
+                Global.LOGGER.error("异步生成区块 [{}, {}] 时发生错误", chunkPos.x, chunkPos.z, e);
+                return false;
+            }
+        }, Executors.newSingleThreadExecutor()).thenAcceptAsync(success -> {
+            // 区块生成完成后，在主线程启用强制加载
+            if (success) {
+                level.getServer().execute(() -> {
+                    try {
+                        Global.LOGGER.debug("区块生成成功，启用强制加载: [{}, {}]", chunkPos.x, chunkPos.z);
+                        ForgeChunkManager.forceChunk(level, MaidSpellMod.MOD_ID, maidId, chunkPos.x, chunkPos.z, true, true);
+                        
+                        // 更新数据
+                        ChunkLoadingData data = ChunkLoadingData.get(level.getServer());
+                        data.updateMaidPosition(maidId, info, true);
+                    } catch (Exception e) {
+                        Global.LOGGER.error("启用强制加载失败: [{}, {}]", chunkPos.x, chunkPos.z, e);
+                    }
+                });
+            } else {
+                Global.LOGGER.warn("区块 [{}, {}] 生成失败，跳过强制加载", chunkPos.x, chunkPos.z);
+            }
+        });
+    }
+    
+    /**
+     * 检查区块是否已生成（非阻塞检查）
+     * @param level 服务器世界
+     * @param chunkPos 区块位置
+     * @return true 如果区块已生成
+     */
+    private static boolean isChunkGenerated(ServerLevel level, ChunkPos chunkPos) {
+        try {
+            // 使用 getChunkNow 进行非阻塞检查，如果区块未加载则返回null
+            return level.getChunkSource().getChunkNow(chunkPos.x, chunkPos.z) != null;
+        } catch (Exception e) {
+            Global.LOGGER.warn("检查区块 {} 是否生成时发生错误: {}", chunkPos, e.getMessage());
+            // 出错时保守处理，假定未生成
+            return false;
+        }
     }
     
     // ===== 全局数据保存类 =====

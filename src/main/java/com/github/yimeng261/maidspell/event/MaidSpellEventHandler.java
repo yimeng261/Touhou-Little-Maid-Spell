@@ -68,7 +68,9 @@ public class MaidSpellEventHandler {
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
 
             if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
-                ChunkLoadingManager.enableChunkLoading(maid);
+                ChunkLoadingManager.getCurrentServer().execute(()->{
+                    ChunkLoadingManager.enableChunkLoading(maid);
+                });
             }
 
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);

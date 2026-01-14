@@ -97,6 +97,9 @@ repositories {
             includeGroup("com.eliotlash.mclib")
         }
     }
+    flatDir {
+        dirs "libs", "TouhouLittleMaid/libs"
+    }
     mavenLocal()
 }
 
@@ -104,19 +107,13 @@ dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
-<<<<<<< HEAD
-    // 女仆模组，必须使用 CurseForge 的，才能有源码
-    implementation fg.deobf("curse.maven:touhou-little-maid-355044:7307720-sources-7307731")
-    //implementation fg.deobf("maven.modrinth:touhou-little-maid:1.4.3-forge+mc1.20.1")
-=======
-    // FIXME 使用本地编译的预览版本，待正式版发布后使用正式版
-    //implementation fg.deobf("curse.maven:touhou-little-maid-355044:7184660-sources-7184661")
-    implementation fg.deobf("com.github.tartaricacid:touhoulittlemaid:1.4.7-forge+mc1.20.1:all") {
-        exclude group: "maven.modrinth", module: "sodium"
-        exclude group: "maven.modrinth", module: "embeddium"
-    }
->>>>>>> 0cdf6f27a5dac1f4800c5b764444eb88713a951e
+    // 女仆模组 - 使用本地 dev jar（dev 版本已经是反混淆的，直接加载即可）
+    // dev jar 已经包含反混淆的类名，不需要再通过 fg.deobf() 处理
+    implementation files("TouhouLittleMaid/libs/touhoulittlemaid-1.4.7-forge+mc1.20.1-dev.jar")
 
+    //implementation fg.deobf("curse.maven:touhou-little-maid-355044:7184660-sources-7184661")
+
+    implementation fg.deobf("curse.maven:applied-energistics-2-223794:7148487")
 
     runtimeOnly fg.deobf("maven.modrinth:caelus:3.2.0+1.20.1-forge")
     runtimeOnly fg.deobf("maven.modrinth:playeranimator:1.0.2-rc1+1.20-forge")

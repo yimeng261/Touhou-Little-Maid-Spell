@@ -16,3 +16,6 @@ pluginManagement {
 plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.7.0'
 }
+
+// 包含本地的 TouhouLittleMaid 项目（已禁用，改用本地 jar）
+// include 'TouhouLittleMaid'

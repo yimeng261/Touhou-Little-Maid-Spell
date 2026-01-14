@@ -106,7 +106,7 @@ public class EntityMaidMixin {
         }
     }
 
-    @Inject(method = "customServerAiStep", at = @At("TAIL"), remap = true)
+    @Inject(method = "customServerAiStep()V", at = @At("TAIL"), remap = true)
     protected void afterCustomServerAiStep(CallbackInfo ci) {
         if (guiOpening) {
             // 打开 GUI 时停止施法和走位

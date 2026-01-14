@@ -19,7 +19,8 @@
     "OpenMaidGuiMessageMixin",
     "SynchedEntityDataMixin",
     "WandUtilMixin",
-    "iss.SyncedSpellDataMixin"
+    "iss.SyncedSpellDataMixin",
+    "ae2.CraftingServiceMixin"
   ],
   "client": [
     "iss.ClientMagicDataMixin",

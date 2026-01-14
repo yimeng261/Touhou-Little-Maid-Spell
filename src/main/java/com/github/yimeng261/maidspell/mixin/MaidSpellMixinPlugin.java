@@ -17,9 +17,12 @@ import java.util.Set;
 public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String ISS_MOD_ID = "irons_spellbooks";
     private static final String ISS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.iss.";
+    private static final String AE2_MOD_ID = "ae2";
+    private static final String AE2_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.ae2.";
 
     private boolean isIronsSpellbooksLoaded = false;
     private boolean isTlmMagicAnimationSupported = false;
+    private boolean isAE2Loaded = false;
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -30,6 +33,9 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
             isTlmMagicAnimationSupported = true;
         } catch (ClassNotFoundException ignored) {
         }
+        
+        // 检查 AE2 模组是否已加载
+        isAE2Loaded = LoadingModList.get().getModFileById(AE2_MOD_ID) != null;
     }
 
     @Override
@@ -42,6 +48,11 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         // 如果是 iss 包下的 Mixin，需要检查 Iron's Spellbooks 模组是否存在
         if (mixinClassName.startsWith(ISS_MIXIN_PACKAGE)) {
             return isIronsSpellbooksLoaded && isTlmMagicAnimationSupported;
+        }
+        
+        // 如果是 ae2 包下的 Mixin，需要检查 AE2 模组是否存在
+        if (mixinClassName.startsWith(AE2_MIXIN_PACKAGE)) {
+            return isAE2Loaded;
         }
 
         // 其他 Mixin 正常加载
