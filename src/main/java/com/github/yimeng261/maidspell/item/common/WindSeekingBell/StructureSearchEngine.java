@@ -413,7 +413,7 @@ public class StructureSearchEngine {
                     level,
                     structureSet,
                     chunkCenter,
-                    1,
+                    SearchConfig.SEARCH_STEP,
                     false
                 );
                 return result != null ? result.getFirst() : null;

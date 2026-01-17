@@ -168,7 +168,7 @@ public class ChunkLoadingManager {
         ChunkPos chunkPos = maid.chunkPosition();
 
         ChunkKey chunkKey = new ChunkKey(chunkPos, serverLevel);
-        Global.LOGGER.debug("为女仆 {} 启用区块加载: {}", maidId, chunkKey);
+        //Global.LOGGER.debug("为女仆 {} 启用区块加载: {}", maidId, chunkKey);
         
         // 使用新的计时器系统
         performChunkOperation(maidId, chunkKey, true);

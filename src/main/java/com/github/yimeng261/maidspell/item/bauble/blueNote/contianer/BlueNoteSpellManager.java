@@ -113,7 +113,7 @@ public class BlueNoteSpellManager {
             if (!stack.isEmpty() && ISpellContainer.isSpellContainer(stack)) {
                 ISpellContainer container = ISpellContainer.get(stack);
                 if (!container.isEmpty()) {
-                    List<SpellData> scrollSpells = IronsSpellbooksProvider.ApiCompatLayer.convertToSpellDataList(List.of(container.getAllSpells()));
+                    List<SpellData> scrollSpells = IronsSpellbooksProvider.ApiCompatLayer.convertToSpellDataList(container.getActiveSpells());
                     for (SpellData spellData : scrollSpells) {
                         if (spellData != null && spellData.getSpell() != null) {
                             spellIds.add(spellData.getSpell().getSpellId());
