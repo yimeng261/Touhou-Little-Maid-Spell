@@ -9,6 +9,7 @@
   "mixins": [
     "AbstractMaidContainerMixin",
     "ChunkGeneratorMixin",
+    "ChunkMapMixin",
     "CombatTrackerMixin",
     "EntityMaidMixin",
     "EntityMixin",

@@ -123,14 +123,8 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
             ResourceLocation dimensionLocation = maidspell$dimensionKey.location();
             
             // 检查命名空间和路径前缀
-            boolean isRetreat = dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID)
+            return dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID)
                     && dimensionLocation.getPath().startsWith("the_retreat");
-            
-            if (isRetreat) {
-                MaidSpellMod.LOGGER.debug("Detected retreat dimension: {}", dimensionLocation);
-            }
-            
-            return isRetreat;
         } catch (Exception e) {
             MaidSpellMod.LOGGER.error("Error checking if dimension is retreat", e);
             return false;

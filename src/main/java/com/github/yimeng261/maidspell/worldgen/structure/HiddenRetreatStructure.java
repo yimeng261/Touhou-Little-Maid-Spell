@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.worldgen.structure;
 
+import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.mojang.serialization.Codec;
@@ -51,7 +52,7 @@ public class HiddenRetreatStructure extends Structure {
     // 用于标记已生成过结构的维度（使用种子作为标识）
     // 使用ConcurrentHashMap确保原子性检查和添加
     // 注意：配合ChunkGeneratorMixin使用，该Mixin会阻止其他结构在归隐之地生成
-    private static final Set<Long> GENERATED_DIMENSIONS = ConcurrentHashMap.newKeySet();
+    public static final Set<Long> GENERATED_DIMENSIONS = ConcurrentHashMap.newKeySet();
 
     public HiddenRetreatStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool, int size) {
         super(settings);
@@ -70,18 +71,22 @@ public class HiddenRetreatStructure extends Structure {
         long worldSeed = context.seed();
         ChunkPos chunkPos = context.chunkPos();
 
+        // 先检查是否已经生成过（避免重复生成）
+        if (GENERATED_DIMENSIONS.contains(worldSeed)) {
+            Global.LOGGER.debug("[findGenerationPoint] 维度种子 {} 已标记为已生成，跳过区块 {}", worldSeed, chunkPos);
+            return Optional.empty(); // 已经生成过
+        }
+        
+        Global.LOGGER.debug("[findGenerationPoint] 维度种子 {} 未标记，开始检查区块 {} 的地形", worldSeed, chunkPos);
+
         // 检查以当前区块为中心的5*5区块地形足够平坦
         if (!isValidGenerationLocation(context, chunkPos)) {
             return Optional.empty();
         }
 
-        if (!GENERATED_DIMENSIONS.add(worldSeed)) {
-            return Optional.empty(); // 已经生成过
-        }
-
         BlockPos centerPos = new BlockPos(chunkPos.getMinBlockX() + 8, this.height, chunkPos.getMinBlockZ() + 8);
         
-        return JigsawPlacement.addPieces(
+        Optional<GenerationStub> result = JigsawPlacement.addPieces(
                 context,
                 this.startPool,
                 Optional.empty(), // 无可选目标池
@@ -91,6 +96,14 @@ public class HiddenRetreatStructure extends Structure {
                 Optional.empty(), // 无投影
                 150 // 最大距离 - 增加以支持大型结构和垂直连接
         );
+        
+        // 只有在成功生成时才标记（返回有效的GenerationStub）
+        if (result.isPresent()) {
+            //GENERATED_DIMENSIONS.add(worldSeed);
+            MaidSpellMod.LOGGER.info("隐世之境结构生成成功，标记维度种子: {}，位置: {}", worldSeed, centerPos);
+        }
+        
+        return result;
     }
 
     @Override
@@ -105,6 +118,7 @@ public class HiddenRetreatStructure extends Structure {
      * @return 如果区块地形平坦则返回true，否则返回false
      */
     private boolean isValidGenerationLocation(GenerationContext context, ChunkPos centerChunk) {
+        //Global.LOGGER.debug("检查以给定区块为中心的5*5区块地形足够平坦，中心区块位置: {}", centerChunk);
         List<Integer> heightSamples = new ArrayList<>();
         int range = 2;
         int totalSamples = 0;

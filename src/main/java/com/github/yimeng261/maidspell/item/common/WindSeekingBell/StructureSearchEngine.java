@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item.common.WindSeekingBell;
 
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
@@ -16,7 +17,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 结构搜索引擎
@@ -38,11 +39,22 @@ public class StructureSearchEngine {
     // 结构检查分段锁
     private static final StripedLock STRUCTURE_CHECK_LOCK = new StripedLock(SearchConfig.LOCK_STRIPE_COUNT);
     
-    // 线程池
+    // 搜索线程池（3/4线程用于搜索扇区）
     private static final ThreadPoolExecutor SEARCH_EXECUTOR = (ThreadPoolExecutor) Executors.newFixedThreadPool(
         SearchConfig.getRecommendedThreadPoolSize(),
         r -> {
             Thread t = new Thread(r, SearchConfig.THREAD_NAME_PREFIX + System.currentTimeMillis());
+            t.setDaemon(true);
+            t.setPriority(SearchConfig.THREAD_PRIORITY);
+            return t;
+        }
+    );
+    
+    // 验证线程池（1/4线程专门用于结构验证，避免线程池饥饿）
+    private static final ThreadPoolExecutor VERIFICATION_EXECUTOR = (ThreadPoolExecutor) Executors.newFixedThreadPool(
+        SearchConfig.getRecommendedVerificationThreadPoolSize(),
+        r -> {
+            Thread t = new Thread(r, SearchConfig.VERIFICATION_THREAD_NAME_PREFIX + System.currentTimeMillis());
             t.setDaemon(true);
             t.setPriority(SearchConfig.THREAD_PRIORITY);
             return t;
@@ -67,10 +79,8 @@ public class StructureSearchEngine {
         if (cacheResult.hasCache) {
             if (cacheResult.isNegativeCache) {
                 // 负缓存：之前搜索过但未找到，直接返回null避免重复搜索
-                Global.LOGGER.debug("Negative cache hit for dimension: {}, skipping search", level.dimension().location());
                 return CompletableFuture.completedFuture(null);
             }
-            Global.LOGGER.debug("Structure found in cache for dimension: {}", level.dimension().location());
             return CompletableFuture.completedFuture(cacheResult.structurePos);
         }
         
@@ -78,12 +88,12 @@ public class StructureSearchEngine {
         String searchKey = cacheManager.generateDimensionKey(level);
         CompletableFuture<BlockPos> existingSearch = cacheManager.getOngoingSearch(searchKey);
         if (existingSearch != null) {
-            Global.LOGGER.debug("Reusing ongoing search for dimension: {}", level.dimension().location());
             return existingSearch;
         }
         
         // 3. 启动新的异步搜索
-        Global.LOGGER.info("Starting new structure search for dimension: {}", level.dimension().location());
+        Global.LOGGER.info("开始结构搜索 - 维度: {}", level.dimension().location());
+        
         CompletableFuture<BlockPos> searchFuture = CompletableFuture.supplyAsync(() -> {
             try {
                 return searchParallel(level, playerPos);
@@ -94,11 +104,9 @@ public class StructureSearchEngine {
         }, SEARCH_EXECUTOR).whenComplete((result, throwable) -> {
             cacheManager.removeSearch(searchKey);
             if (result != null) {
-                Global.LOGGER.info("Structure search completed successfully for dimension: {}, found at: {}", 
-                    level.dimension().location(), result);
+                Global.LOGGER.info("结构搜索完成 - 找到位置: {}", result);
             } else {
-                Global.LOGGER.warn("Structure search completed but no structure found in dimension: {}", 
-                    level.dimension().location());
+                Global.LOGGER.warn("结构搜索完成 - 未找到结构");
             }
         });
         
@@ -132,19 +140,25 @@ public class StructureSearchEngine {
      * 多线程并行小方格螺旋搜索
      */
     private BlockPos parallelSquareSearch(ServerLevel level, ChunkPos centerChunk) {
-        int availableThreads = SearchConfig.getRecommendedThreadPoolSize();
-
-        Global.LOGGER.debug("Starting parallel search with {} threads, radius: {}", 
-                           availableThreads, SearchConfig.MAX_SEARCH_RADIUS);
-        
         int maxSectorLayer = (SearchConfig.MAX_SEARCH_RADIUS + SearchConfig.SECTOR_SIZE - 1) / SearchConfig.SECTOR_SIZE;
         
+        // 计算总搜索范围
+        int totalSearchArea = (2 * SearchConfig.MAX_SEARCH_RADIUS + 1) * (2 * SearchConfig.MAX_SEARCH_RADIUS + 1);
+        AtomicInteger checkedChunks = new AtomicInteger(0);
+        
+        long searchStartTime = System.currentTimeMillis();
+        
         for (int sectorLayer = 0; sectorLayer <= maxSectorLayer; sectorLayer++) {
-            BlockPos result = searchSectorLayerParallel(level, centerChunk, sectorLayer);
+            BlockPos result = searchSectorLayerParallel(level, centerChunk, sectorLayer, checkedChunks, totalSearchArea);
             if (result != null) {
+                long searchTime = System.currentTimeMillis() - searchStartTime;
+                Global.LOGGER.info("找到结构 - 位置: {}, 耗时: {} ms", result, searchTime);
                 return result;
             }
         }
+        
+        long searchTime = System.currentTimeMillis() - searchStartTime;
+        Global.LOGGER.warn("搜索完成但未找到结构 - 耗时: {} ms", searchTime);
         
         return null;
     }
@@ -153,22 +167,27 @@ public class StructureSearchEngine {
      * 多线程并行搜索指定小方格层
      * 使用 CompletableFuture.anyOf 替代忙等轮询，提高效率
      */
-    private BlockPos searchSectorLayerParallel(ServerLevel level, ChunkPos centerChunk, int sectorLayer) {
-        if (sectorLayer == 0) {
-            return searchSectorComplete(level, centerChunk, 0, 0);
-        }
-        
+    private BlockPos searchSectorLayerParallel(ServerLevel level, ChunkPos centerChunk, int sectorLayer, 
+                                              AtomicInteger checkedChunks, int totalSearchArea) {
         List<int[]> sectorCoords = generateSectorCoordinates(sectorLayer);
         List<CompletableFuture<BlockPos>> sectorTasks = new ArrayList<>();
         AtomicBoolean layerComplete = new AtomicBoolean(false);
+        AtomicInteger completedSectors = new AtomicInteger(0);
+        int totalSectors = sectorCoords.size();
 
         for (final int[] coords : sectorCoords) {
             final int sectorX = coords[0];
             final int sectorZ = coords[1];
+            final int sectorIndex = sectorTasks.size();
 
-            CompletableFuture<BlockPos> sectorTask = CompletableFuture.supplyAsync(() ->
-                            searchSectorWithTermination(level, centerChunk, sectorX, sectorZ, layerComplete),
-                    SEARCH_EXECUTOR);
+            CompletableFuture<BlockPos> sectorTask = CompletableFuture.supplyAsync(() -> {
+                BlockPos result = searchSectorWithTermination(level, centerChunk, sectorX, sectorZ, 
+                    layerComplete, checkedChunks, totalSearchArea, sectorIndex, totalSectors);
+                if (result != null) {
+                    completedSectors.incrementAndGet();
+                }
+                return result;
+            }, SEARCH_EXECUTOR);
 
             sectorTasks.add(sectorTask);
         }
@@ -179,7 +198,6 @@ public class StructureSearchEngine {
             
             while (!sectorTasks.isEmpty() && result == null) {
                 // 等待任一任务完成
-                @SuppressWarnings("rawtypes")
                 CompletableFuture<Object> anyCompleted = CompletableFuture.anyOf(
                     sectorTasks.toArray(new CompletableFuture[0])
                 );
@@ -255,15 +273,17 @@ public class StructureSearchEngine {
     }
     
     private BlockPos searchSectorWithTermination(ServerLevel level, ChunkPos centerChunk, int sectorX, int sectorZ,
-                                                 AtomicBoolean layerComplete) {
+                                                 AtomicBoolean layerComplete, AtomicInteger checkedChunks, 
+                                                 int totalSearchArea, int sectorIndex, int totalSectors) {
         if (layerComplete.get()) {
             return null;
         }
         
-        return searchSectorComplete(level, centerChunk, sectorX, sectorZ);
+        return searchSectorComplete(level, centerChunk, sectorX, sectorZ, checkedChunks, totalSearchArea, sectorIndex, totalSectors);
     }
     
-    private BlockPos searchSectorComplete(ServerLevel level, ChunkPos centerChunk, int sectorX, int sectorZ) {
+    private BlockPos searchSectorComplete(ServerLevel level, ChunkPos centerChunk, int sectorX, int sectorZ,
+                                         AtomicInteger checkedChunks, int totalSearchArea, int sectorIndex, int totalSectors) {
         int sectorStartX = centerChunk.x + sectorX * SearchConfig.SECTOR_SIZE - SearchConfig.SECTOR_SIZE / 2;
         int sectorEndX = sectorStartX + SearchConfig.SECTOR_SIZE - 1;
         int sectorStartZ = centerChunk.z + sectorZ * SearchConfig.SECTOR_SIZE - SearchConfig.SECTOR_SIZE / 2;
@@ -276,7 +296,8 @@ public class StructureSearchEngine {
         
         int sectorWidth = sectorEndX - sectorStartX + 1;
         int sectorHeight = sectorEndZ - sectorStartZ + 1;
-        BitSet sectorChecked = new BitSet(sectorWidth * sectorHeight);
+        int sectorAreaChunks = sectorWidth * sectorHeight;
+        BitSet sectorChecked = new BitSet(sectorAreaChunks);
         
         ChunkPos sectorCenter = new ChunkPos((sectorStartX + sectorEndX) / 2, (sectorStartZ + sectorEndZ) / 2);
         int sectorRadius = Math.max(sectorWidth, sectorHeight) / 2;
@@ -284,6 +305,7 @@ public class StructureSearchEngine {
         for (int layer = 0; layer <= sectorRadius; layer += SearchConfig.SEARCH_STEP) {
             BlockPos result = searchSectorLayer(level, sectorCenter, layer, sectorStartX, sectorEndX, 
                                               sectorStartZ, sectorEndZ, sectorChecked);
+            
             if (result != null) {
                 return result;
             }
@@ -300,24 +322,27 @@ public class StructureSearchEngine {
             return null;
         }
         
+        int sectorWidth = maxX - minX + 1;
+        int sectorHeight = maxZ - minZ + 1;
+        
         if (layer == 0) {
             if (isInSectorBounds(sectorCenter, minX, maxX, minZ, maxZ)) {
-                if (isSectorChunkUnchecked(sectorCenter, minX, minZ, sectorChecked, maxX - minX + 1)) {
-                    setSectorChunkChecked(sectorCenter, minX, minZ, sectorChecked, maxX - minX + 1);
+                if (isSectorChunkUnchecked(sectorCenter, minX, minZ, sectorChecked, sectorWidth, sectorHeight)) {
+                    setSectorChunkChecked(sectorCenter, minX, minZ, sectorChecked, sectorWidth, sectorHeight);
                     return checkPotentialCenter(level, sectorCenter);
                 }
             }
             return null;
         }
-        
+
         for (int x = -layer; x <= layer; x += SearchConfig.SEARCH_STEP) {
             if (Thread.currentThread().isInterrupted()) return null;
             ChunkPos candidate = new ChunkPos(sectorCenter.x + x, sectorCenter.z + layer);
             if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
-                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1)) {
-                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1);
-                BlockPos result = checkPotentialCenter(level, candidate);
-                if (result != null) return result;
+                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight)) {
+                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight);
+                    BlockPos result = checkPotentialCenter(level, candidate);
+                    if (result != null) return result;
                 }
             }
         }
@@ -326,10 +351,10 @@ public class StructureSearchEngine {
             if (Thread.currentThread().isInterrupted()) return null;
             ChunkPos candidate = new ChunkPos(sectorCenter.x + layer, sectorCenter.z + z);
             if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
-                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1)) {
-                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1);
-                BlockPos result = checkPotentialCenter(level, candidate);
-                if (result != null) return result;
+                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight)) {
+                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight);
+                    BlockPos result = checkPotentialCenter(level, candidate);
+                    if (result != null) return result;
                 }
             }
         }
@@ -338,10 +363,10 @@ public class StructureSearchEngine {
             if (Thread.currentThread().isInterrupted()) return null;
             ChunkPos candidate = new ChunkPos(sectorCenter.x + x, sectorCenter.z - layer);
             if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
-                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1)) {
-                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1);
-                BlockPos result = checkPotentialCenter(level, candidate);
-                if (result != null) return result;
+                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight)) {
+                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight);
+                    BlockPos result = checkPotentialCenter(level, candidate);
+                    if (result != null) return result;
                 }
             }
         }
@@ -350,37 +375,43 @@ public class StructureSearchEngine {
             if (Thread.currentThread().isInterrupted()) return null;
             ChunkPos candidate = new ChunkPos(sectorCenter.x - layer, sectorCenter.z + z);
             if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
-                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1)) {
-                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, maxX - minX + 1);
-                BlockPos result = checkPotentialCenter(level, candidate);
-                if (result != null) return result;
+                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight)) {
+                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight);
+                    BlockPos result = checkPotentialCenter(level, candidate);
+                    if (result != null) return result;
                 }
             }
         }
-        
+
         return null;
     }
+
 
     private boolean isInSectorBounds(ChunkPos pos, int minX, int maxX, int minZ, int maxZ) {
         return pos.x >= minX && pos.x <= maxX && pos.z >= minZ && pos.z <= maxZ;
     }
     
-    private boolean isSectorChunkUnchecked(ChunkPos chunk, int sectorMinX, int sectorMinZ, BitSet sectorChecked, int sectorWidth) {
+    private boolean isSectorChunkUnchecked(ChunkPos chunk, int sectorMinX, int sectorMinZ, BitSet sectorChecked, int sectorWidth, int sectorHeight) {
         int x = chunk.x - sectorMinX;
         int z = chunk.z - sectorMinZ;
-        if (x < 0 || z < 0 || x >= sectorWidth) return false;
+        // 边界检查：超出范围的区块视为未检查（需要检查）
+        if (x < 0 || z < 0 || x >= sectorWidth || z >= sectorHeight) return false;
         
         int index = z * sectorWidth + x;
-        return index < 0 || index >= sectorChecked.size() || !sectorChecked.get(index);
+        int sectorAreaChunks = sectorWidth * sectorHeight;
+        // 使用容量而不是size()：BitSet.size()返回最高设置位+1，初始为0会导致所有区块被跳过
+        if (index < 0 || index >= sectorAreaChunks) return false;
+        return !sectorChecked.get(index);
     }
     
-    private void setSectorChunkChecked(ChunkPos chunk, int sectorMinX, int sectorMinZ, BitSet sectorChecked, int sectorWidth) {
+    private void setSectorChunkChecked(ChunkPos chunk, int sectorMinX, int sectorMinZ, BitSet sectorChecked, int sectorWidth, int sectorHeight) {
         int x = chunk.x - sectorMinX;
         int z = chunk.z - sectorMinZ;
-        if (x < 0 || z < 0 || x >= sectorWidth) return;
+        if (x < 0 || z < 0 || x >= sectorWidth || z >= sectorHeight) return;
         
         int index = z * sectorWidth + x;
-        if (index >= 0 && index < sectorChecked.size()) {
+        int sectorAreaChunks = sectorWidth * sectorHeight;
+        if (index >= 0 && index < sectorAreaChunks) {
             sectorChecked.set(index);
         }
     }
@@ -408,25 +439,43 @@ public class StructureSearchEngine {
                 chunk.getMinBlockZ() + SearchConfig.CHUNK_CENTER_OFFSET
             );
             
-            return STRUCTURE_CHECK_LOCK.executeWithLock(level, () -> {
-                var result = level.getChunkSource().getGenerator().findNearestMapStructure(
+            // 使用独立的验证线程池，避免与搜索任务争抢线程导致死锁
+            CompletableFuture<BlockPos> verificationFuture = CompletableFuture.supplyAsync(() -> STRUCTURE_CHECK_LOCK.executeWithLock(level, () -> {
+                var structureResult = level.getChunkSource().getGenerator().findNearestMapStructure(
                     level,
                     structureSet,
                     chunkCenter,
-                    SearchConfig.SEARCH_STEP,
+                    2,
                     false
                 );
-                return result != null ? result.getFirst() : null;
-            });
+                return structureResult != null ? structureResult.getFirst() : null;
+            }), VERIFICATION_EXECUTOR);
+            
+            BlockPos result;
+            try {
+                // 设置超时，避免永久阻塞
+                result = verificationFuture.get(SearchConfig.STRUCTURE_VERIFICATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException e) {
+                verificationFuture.cancel(true);
+                return null;
+            } catch (Exception e) {
+                return null;
+            }
+            
+            if (result != null) {
+                HiddenRetreatStructure.GENERATED_DIMENSIONS.add(level.getSeed());
+            }
+            
+            return result;
         } catch (Exception e) {
             synchronized (STRUCTURE_SET_LOCK) {
                 cachedStructureSet = null;
             }
-            Global.LOGGER.debug("Structure verification failed, cache cleared", e);
+            Global.LOGGER.error("结构验证失败", e);
             return null;
         }
     }
-    
+
     private static HolderSet<Structure> getOrInitStructureSet(ServerLevel level) {
         if (cachedStructureSet == null) {
             synchronized (STRUCTURE_SET_LOCK) {
@@ -435,9 +484,8 @@ public class StructureSearchEngine {
                         var structureRegistry = level.registryAccess().registryOrThrow(Registries.STRUCTURE);
                         Holder<Structure> structureHolder = structureRegistry.getHolderOrThrow(HIDDEN_RETREAT_KEY);
                         cachedStructureSet = HolderSet.direct(structureHolder);
-                        Global.LOGGER.debug("Initialized structure set for hidden_retreat");
                     } catch (Exception e) {
-                        Global.LOGGER.error("Failed to initialize hidden_retreat structure set", e);
+                        Global.LOGGER.error("初始化结构集失败", e);
                         return null;
                     }
                 }
@@ -445,13 +493,5 @@ public class StructureSearchEngine {
         }
         return cachedStructureSet;
     }
-    
-    /**
-     * 清空缓存
-     */
-    public static void clearCaches() {
-        synchronized (STRUCTURE_SET_LOCK) {
-            cachedStructureSet = null;
-        }
-    }
+
 }
