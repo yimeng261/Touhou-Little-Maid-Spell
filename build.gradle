@@ -107,13 +107,11 @@ dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
-    // 女仆模组 - 使用本地 dev jar（dev 版本已经是反混淆的，直接加载即可）
-    // dev jar 已经包含反混淆的类名，不需要再通过 fg.deobf() 处理
-    implementation files("TouhouLittleMaid/libs/touhoulittlemaid-1.4.7-forge+mc1.20.1-dev.jar")
-
-    //implementation fg.deobf("curse.maven:touhou-little-maid-355044:7184660-sources-7184661")
+    implementation fg.deobf("curse.maven:touhou-little-maid-355044:7510714-sources-7510716")
 
     implementation fg.deobf("curse.maven:applied-energistics-2-223794:7148487")
+    implementation fg.deobf("curse.maven:guideme-1173950:7127447")
+
 
     runtimeOnly fg.deobf("maven.modrinth:caelus:3.2.0+1.20.1-forge")
     runtimeOnly fg.deobf("maven.modrinth:playeranimator:1.0.2-rc1+1.20-forge")
