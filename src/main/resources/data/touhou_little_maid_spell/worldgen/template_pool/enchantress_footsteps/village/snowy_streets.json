@@ -1,0 +1,14 @@
+{
+  "elements": [
+    {
+      "element": {
+        "element_type": "minecraft:legacy_single_pool_element",
+        "location": "touhou_little_maid_spell:enchantress_footsteps/village/snowy_street",
+        "processors": "minecraft:street_snowy_or_taiga",
+        "projection": "terrain_matching"
+      },
+      "weight": 1
+    }
+  ],
+  "fallback": "minecraft:village/snowy/terminators"
+}
