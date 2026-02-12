@@ -217,12 +217,6 @@ public class WindSeekingBell extends Item {
                 }
 
                 player.awardStat(Stats.ITEM_USED.get(this));
-            
-                
-                // 消耗物品（如果不是创造模式）
-                if (!player.getAbilities().instabuild) {
-                    itemStack.shrink(1);
-                }
             } else {
                 Component timingMessage = Component.translatable(
                         "item.touhou_little_maid_spell.wind_seeking_bell.search_time",
