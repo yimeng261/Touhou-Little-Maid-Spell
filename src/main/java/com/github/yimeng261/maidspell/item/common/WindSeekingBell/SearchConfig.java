@@ -12,7 +12,7 @@ public class SearchConfig {
     public static final int MAX_SEARCH_RADIUS = 300;
     
     /** 搜索步长 */
-    public static final int SEARCH_STEP = 1;
+    public static final int SEARCH_STEP = 4;
 
     // ========== 多线程搜索配置 ==========
     
@@ -20,7 +20,7 @@ public class SearchConfig {
     public static final int MIN_THREADS = 2;
     
     /** 最大线程数，避免过多线程造成上下文切换开销 */
-    public static final int MAX_THREADS = 64;
+    public static final int MAX_THREADS = 16;
 
     /** 每个小方格的大小（区块） */
     public static final int SECTOR_SIZE = 10;

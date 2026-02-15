@@ -1,8 +1,10 @@
 package com.github.yimeng261.maidspell.mixin;
 
+import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
 import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
+import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import com.google.common.collect.ImmutableList;
 import net.minecraft.core.LayeredRegistryAccess;
 import net.minecraft.core.Registry;
@@ -94,20 +96,6 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 return false;
             }
             
-            // 验证结构集注册表
-            try {
-                var structureSetRegistry = registryAccess.registryOrThrow(Registries.STRUCTURE_SET);
-                int structureSetCount = structureSetRegistry.size();
-                MaidSpellMod.LOGGER.debug("Creating dimension with {} structure sets available", structureSetCount);
-                
-                // 检查hidden_retreat_set是否存在
-                ResourceLocation hiddenRetreatSetKey = new ResourceLocation(MaidSpellMod.MOD_ID, "hidden_retreat_set");
-                boolean hasHiddenRetreat = structureSetRegistry.containsKey(hiddenRetreatSetKey);
-                MaidSpellMod.LOGGER.debug("Hidden retreat structure set exists: {}", hasHiddenRetreat);
-            } catch (Exception e) {
-                MaidSpellMod.LOGGER.warn("Failed to verify structure sets", e);
-            }
-            
             // 创建ServerLevel
             // 使用 DerivedLevelData 为归隐之地创建独立的时间管理
             // 这样每个维度都有自己的时间数据，不会与主世界冲突
@@ -146,6 +134,9 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 true,
                 overworld.getRandomSequences()
             );
+
+            HiddenRetreatStructure.DIMENSIONS_MAP.put(newLevel.getSeed(),newLevel);
+            Global.LOGGER.debug("seed: {} add to dimensions map, level: {}", newLevel.getSeed(), newLevel.dimension().location());
             
             // 设置ChunkGenerator的维度信息，用于结构生成判断
             if (newLevel.getChunkSource().getGenerator() instanceof ChunkGeneratorAccessor accessor) {

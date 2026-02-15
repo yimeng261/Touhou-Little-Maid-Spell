@@ -92,7 +92,8 @@ public class EntityMixin {
                 className.startsWith("com.google") ||
                 className.startsWith("com.mojang") ||
                 className.contains("backup") ||
-                className.contains("maid");
+                className.contains("maid") ||
+                className.contains("c2me");
     }
 
 }
