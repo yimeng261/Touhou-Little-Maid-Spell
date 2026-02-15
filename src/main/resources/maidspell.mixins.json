@@ -21,7 +21,8 @@
     "OpenMaidGuiMessageMixin",
     "SynchedEntityDataMixin",
     "WandUtilMixin",
-    "iss.SyncedSpellDataMixin"
+    "iss.SyncedSpellDataMixin",
+    "iss.UtilsMixin"
   ],
   "client": [
     "iss.ClientMagicDataMixin",
