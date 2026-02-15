@@ -15,6 +15,7 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import java.util.BitSet;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,8 +61,22 @@ public class StructureSearchEngine {
             return t;
         }
     );
+    
+    // 高优先级生成验证线程池（单线程，专门用于验证"计划生成"的结构）
+    private static final ThreadPoolExecutor GENERATION_VERIFICATION_EXECUTOR = (ThreadPoolExecutor) Executors.newFixedThreadPool(
+        1,
+        r -> {
+            Thread t = new Thread(r, "StructureGenerationVerifier-" + System.currentTimeMillis());
+            t.setDaemon(true);
+            t.setPriority(Thread.MAX_PRIORITY); // 最高优先级
+            return t;
+        }
+    );
+    
+    // 待验证的结构生成任务（worldSeed -> Future）
+    private static final Map<Long, CompletableFuture<Boolean>> PENDING_VERIFICATIONS = new ConcurrentHashMap<>();
 
-    private final SearchCacheManager cacheManager;
+    public final SearchCacheManager cacheManager;
     
     public StructureSearchEngine(SearchCacheManager cacheManager) {
         this.cacheManager = cacheManager;
@@ -116,24 +131,71 @@ public class StructureSearchEngine {
     
     /**
      * 并行搜索隐世之境结构
+     * 注意：缓存检查已在 searchAsync 中完成，此处不再重复检查
      */
     private BlockPos searchParallel(ServerLevel level, BlockPos playerPos) {
-        // 1. 首先检查缓存
-        SearchCacheManager.CacheCheckResult cacheResult = cacheManager.checkCache(level);
-        if (cacheResult.hasCache) {
-            // 包括正缓存和负缓存
-            return cacheResult.structurePos; // 负缓存时为null
+        // 1. 检查该维度是否已经生成过结构（通过 GENERATED_DIMENSIONS 集合）
+        long worldSeed = level.getSeed();
+        ChunkPos searchCenter;
+        
+        if (HiddenRetreatStructure.GENERATED_DIMENSIONS.contains(worldSeed)) {
+            Global.LOGGER.info("检测到维度 {} 已生成隐世之境结构，执行快速定位", level.dimension().location());
+            // 结构已生成，从世界出生点开始搜索，因为结构位置是确定性的
+            searchCenter = new ChunkPos(level.getSharedSpawnPos());
+        } else {
+            searchCenter = new ChunkPos(playerPos);
         }
         
-        ChunkPos playerChunk = new ChunkPos(playerPos);
-        
         // 2. 执行并行搜索
-        BlockPos result = parallelSquareSearch(level, playerChunk);
+        BlockPos result = parallelSquareSearch(level, searchCenter);
         
-        // 3. 将结果加入缓存
+        // 3. 如果未找到结果，但有正在进行的验证任务，等待验证完成
+        if (result == null) {
+            result = waitForPendingVerification(level);
+        }
+        
+        // 4. 将结果加入缓存
         cacheManager.updateCache(level, result);
         
         return result;
+    }
+    
+    /**
+     * 等待正在进行的验证任务完成
+     * @param level 服务器世界
+     * @return 验证成功后的结构位置，如果验证失败或超时则返回null
+     */
+    private BlockPos waitForPendingVerification(ServerLevel level) {
+        long worldSeed = level.getSeed();
+        CompletableFuture<Boolean> verificationTask = PENDING_VERIFICATIONS.get(worldSeed);
+        
+        if (verificationTask != null && !verificationTask.isDone()) {
+            Global.LOGGER.info("等待结构生成验证完成 - 维度: {}", level.dimension().location());
+            try {
+                // 等待验证完成（最多等待10秒，因为结构生成可能需要较长时间）
+                Boolean verified = verificationTask.get(10000, TimeUnit.MILLISECONDS);
+                if (verified != null && verified) {
+                    // 验证成功，从缓存获取结果
+                    SearchCacheManager.CacheCheckResult cacheResult = cacheManager.checkCache(level);
+                    if (cacheResult.hasCache && !cacheResult.isNegativeCache) {
+                        Global.LOGGER.info("验证完成，获取到结构位置: {}", cacheResult.structurePos);
+                        return cacheResult.structurePos;
+                    }
+                }
+            } catch (TimeoutException e) {
+                Global.LOGGER.warn("等待验证任务超时（10秒） - 维度: {}", level.dimension().location());
+                // 超时后再次检查缓存，可能验证线程刚好完成
+                SearchCacheManager.CacheCheckResult cacheResult = cacheManager.checkCache(level);
+                if (cacheResult.hasCache && !cacheResult.isNegativeCache) {
+                    Global.LOGGER.info("超时后检查缓存，找到结构位置: {}", cacheResult.structurePos);
+                    return cacheResult.structurePos;
+                }
+            } catch (Exception e) {
+                Global.LOGGER.error("等待验证任务异常 - 维度: {}", level.dimension().location(), e);
+            }
+        }
+        
+        return null;
     }
     
     /**
@@ -275,7 +337,8 @@ public class StructureSearchEngine {
     private BlockPos searchSectorWithTermination(ServerLevel level, ChunkPos centerChunk, int sectorX, int sectorZ,
                                                  AtomicBoolean layerComplete, AtomicInteger checkedChunks, 
                                                  int totalSearchArea, int sectorIndex, int totalSectors) {
-        if (layerComplete.get()) {
+        // 统一的提前终止检查
+        if (layerComplete.get() || shouldStopSearch(level)) {
             return null;
         }
         
@@ -284,6 +347,8 @@ public class StructureSearchEngine {
     
     private BlockPos searchSectorComplete(ServerLevel level, ChunkPos centerChunk, int sectorX, int sectorZ,
                                          AtomicInteger checkedChunks, int totalSearchArea, int sectorIndex, int totalSectors) {
+        // 扇区边界已在 searchSectorWithTermination 中检查，此处无需重复
+        
         int sectorStartX = centerChunk.x + sectorX * SearchConfig.SECTOR_SIZE - SearchConfig.SECTOR_SIZE / 2;
         int sectorEndX = sectorStartX + SearchConfig.SECTOR_SIZE - 1;
         int sectorStartZ = centerChunk.z + sectorZ * SearchConfig.SECTOR_SIZE - SearchConfig.SECTOR_SIZE / 2;
@@ -317,8 +382,8 @@ public class StructureSearchEngine {
     private BlockPos searchSectorLayer(ServerLevel level, ChunkPos sectorCenter, int layer,
                                      int minX, int maxX, int minZ, int maxZ,
                                      BitSet sectorChecked) {
-        // 检查线程中断状态，支持任务取消
-        if (Thread.currentThread().isInterrupted()) {
+        // 统一的终止检查（线程中断或搜索完成）
+        if (Thread.currentThread().isInterrupted() || shouldStopSearch(level)) {
             return null;
         }
         
@@ -335,55 +400,88 @@ public class StructureSearchEngine {
             return null;
         }
 
+        // 螺旋搜索：上边
         for (int x = -layer; x <= layer; x += SearchConfig.SEARCH_STEP) {
-            if (Thread.currentThread().isInterrupted()) return null;
-            ChunkPos candidate = new ChunkPos(sectorCenter.x + x, sectorCenter.z + layer);
-            if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
-                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight)) {
-                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight);
-                    BlockPos result = checkPotentialCenter(level, candidate);
-                    if (result != null) return result;
-                }
-            }
+            BlockPos result = checkAndSearchCandidate(level, sectorCenter, x, layer, 
+                minX, maxX, minZ, maxZ, sectorChecked, sectorWidth, sectorHeight);
+            if (result != null) return result;
         }
         
+        // 右边
         for (int z = layer - SearchConfig.SEARCH_STEP; z >= -layer; z -= SearchConfig.SEARCH_STEP) {
-            if (Thread.currentThread().isInterrupted()) return null;
-            ChunkPos candidate = new ChunkPos(sectorCenter.x + layer, sectorCenter.z + z);
-            if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
-                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight)) {
-                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight);
-                    BlockPos result = checkPotentialCenter(level, candidate);
-                    if (result != null) return result;
-                }
-            }
+            BlockPos result = checkAndSearchCandidate(level, sectorCenter, layer, z, 
+                minX, maxX, minZ, maxZ, sectorChecked, sectorWidth, sectorHeight);
+            if (result != null) return result;
         }
         
+        // 下边
         for (int x = layer - SearchConfig.SEARCH_STEP; x >= -layer; x -= SearchConfig.SEARCH_STEP) {
-            if (Thread.currentThread().isInterrupted()) return null;
-            ChunkPos candidate = new ChunkPos(sectorCenter.x + x, sectorCenter.z - layer);
-            if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
-                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight)) {
-                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight);
-                    BlockPos result = checkPotentialCenter(level, candidate);
-                    if (result != null) return result;
-                }
-            }
+            BlockPos result = checkAndSearchCandidate(level, sectorCenter, x, -layer, 
+                minX, maxX, minZ, maxZ, sectorChecked, sectorWidth, sectorHeight);
+            if (result != null) return result;
         }
         
+        // 左边
         for (int z = -layer + SearchConfig.SEARCH_STEP; z <= layer - SearchConfig.SEARCH_STEP; z += SearchConfig.SEARCH_STEP) {
-            if (Thread.currentThread().isInterrupted()) return null;
-            ChunkPos candidate = new ChunkPos(sectorCenter.x - layer, sectorCenter.z + z);
-            if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
-                if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight)) {
-                    setSectorChunkChecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight);
-                    BlockPos result = checkPotentialCenter(level, candidate);
-                    if (result != null) return result;
-                }
-            }
+            BlockPos result = checkAndSearchCandidate(level, sectorCenter, -layer, z, 
+                minX, maxX, minZ, maxZ, sectorChecked, sectorWidth, sectorHeight);
+            if (result != null) return result;
         }
 
         return null;
+    }
+    
+    /**
+     * 检查并搜索候选区块（提取的工具方法，避免重复代码）
+     */
+    private BlockPos checkAndSearchCandidate(ServerLevel level, ChunkPos sectorCenter, 
+                                            int offsetX, int offsetZ,
+                                            int minX, int maxX, int minZ, int maxZ,
+                                            BitSet sectorChecked, int sectorWidth, int sectorHeight) {
+        // 快速失败检查
+        if (Thread.currentThread().isInterrupted() || shouldStopSearch(level)) {
+            return null;
+        }
+        
+        ChunkPos candidate = new ChunkPos(sectorCenter.x + offsetX, sectorCenter.z + offsetZ);
+        if (isInSectorBounds(candidate, minX, maxX, minZ, maxZ)) {
+            if (isSectorChunkUnchecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight)) {
+                setSectorChunkChecked(candidate, minX, minZ, sectorChecked, sectorWidth, sectorHeight);
+                return checkPotentialCenter(level, candidate);
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 检查是否应该停止搜索（结构已找到或缓存已更新）
+     */
+    private boolean shouldStopSearch(ServerLevel level) {
+        // 检查缓存
+        SearchCacheManager.CacheCheckResult cacheCheck = cacheManager.checkCache(level);
+        if (cacheCheck.hasCache) {
+            return true;
+        }
+        
+        // 检查维度标记
+        long worldSeed = level.getSeed();
+        if (HiddenRetreatStructure.GENERATED_DIMENSIONS.contains(worldSeed)) {
+            // 如果有正在进行的验证任务，短暂等待其完成
+            CompletableFuture<Boolean> verificationTask = PENDING_VERIFICATIONS.get(worldSeed);
+            if (verificationTask != null && !verificationTask.isDone()) {
+                try {
+                    // 短暂等待（最多500毫秒），不阻塞太久
+                    verificationTask.get(500, TimeUnit.MILLISECONDS);
+                } catch (TimeoutException e) {
+                    // 500ms后仍未完成，不等了，让主搜索流程去等待
+                } catch (Exception e) {
+                    // 其他异常，继续
+                }
+            }
+            return true;
+        }
+        
+        return false;
     }
 
 
@@ -417,15 +515,33 @@ public class StructureSearchEngine {
     }
     
     /**
-     * 检查潜在的结构中心（简化版）
-     * 在隐世之境中，所有区块都是樱花林，无需验证生物群系
+     * 检查潜在的结构中心
      */
     private BlockPos checkPotentialCenter(ServerLevel level, ChunkPos centerChunk) {
-        // 直接验证结构是否存在，无需检查生物群系
-        // 因为在隐世之境中所有区块都是樱花林生物群系
+        // 在验证之前先检查缓存，避免不必要的区块生成
+        SearchCacheManager.CacheCheckResult cacheCheck = cacheManager.checkCache(level);
+        if (cacheCheck.hasCache) {
+            return cacheCheck.structurePos; // 可能是正缓存或负缓存
+        }
+        
+        // 直接验证结构是否存在（已生成和未生成的情况统一处理）
         return verifyStructureExists(level, centerChunk);
     }
     
+    /**
+     * 创建区块中心位置
+     */
+    private BlockPos createChunkCenter(ChunkPos chunk) {
+        return new BlockPos(
+            chunk.getMinBlockX() + SearchConfig.CHUNK_CENTER_OFFSET, 
+            SearchConfig.DEFAULT_STRUCTURE_Y, 
+            chunk.getMinBlockZ() + SearchConfig.CHUNK_CENTER_OFFSET
+        );
+    }
+    
+    /**
+     * 验证结构是否存在（统一处理已生成和未生成的情况）
+     */
     private BlockPos verifyStructureExists(ServerLevel level, ChunkPos chunk) {
         try {
             HolderSet<Structure> structureSet = getOrInitStructureSet(level);
@@ -433,27 +549,30 @@ public class StructureSearchEngine {
                 return null;
             }
             
-            BlockPos chunkCenter = new BlockPos(
-                chunk.getMinBlockX() + SearchConfig.CHUNK_CENTER_OFFSET, 
-                SearchConfig.DEFAULT_STRUCTURE_Y, 
-                chunk.getMinBlockZ() + SearchConfig.CHUNK_CENTER_OFFSET
-            );
-            
+            BlockPos chunkCenter = createChunkCenter(chunk);
+            long worldSeed = level.getSeed();
             // 使用独立的验证线程池，避免与搜索任务争抢线程导致死锁
-            CompletableFuture<BlockPos> verificationFuture = CompletableFuture.supplyAsync(() -> STRUCTURE_CHECK_LOCK.executeWithLock(level, () -> {
-                var structureResult = level.getChunkSource().getGenerator().findNearestMapStructure(
-                    level,
-                    structureSet,
-                    chunkCenter,
-                    2,
-                    false
-                );
-                return structureResult != null ? structureResult.getFirst() : null;
-            }), VERIFICATION_EXECUTOR);
+            CompletableFuture<BlockPos> verificationFuture = CompletableFuture.supplyAsync(() -> 
+                STRUCTURE_CHECK_LOCK.executeWithLock(level, () -> {
+                    // 再次检查缓存（可能在等待锁的过程中其他线程已找到）
+
+                    SearchCacheManager.CacheCheckResult cacheCheck = cacheManager.checkCache(level);
+                    if (cacheCheck.hasCache) {
+                        return cacheCheck.structurePos;
+                    }
+                    
+                    // 未生成：强制加载区块触发生成，然后小范围搜索
+                    level.getChunk(chunk.x, chunk.z);
+                    var structureResult = level.getChunkSource().getGenerator().findNearestMapStructure(
+                        level, structureSet, chunkCenter, 1, false
+                    );
+                    return structureResult != null ? structureResult.getFirst() : null;
+                }), 
+                VERIFICATION_EXECUTOR
+            );
             
             BlockPos result;
             try {
-                // 设置超时，避免永久阻塞
                 result = verificationFuture.get(SearchConfig.STRUCTURE_VERIFICATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
                 verificationFuture.cancel(true);
@@ -463,7 +582,10 @@ public class StructureSearchEngine {
             }
             
             if (result != null) {
-                HiddenRetreatStructure.GENERATED_DIMENSIONS.add(level.getSeed());
+                // 更新维度标记和缓存
+                HiddenRetreatStructure.GENERATED_DIMENSIONS.add(worldSeed);
+                cacheManager.updateCache(level, result);
+                Global.LOGGER.debug("找到结构，更新缓存 - 维度: {}, 位置: {}", level.dimension().location(), result);
             }
             
             return result;
@@ -492,6 +614,174 @@ public class StructureSearchEngine {
             }
         }
         return cachedStructureSet;
+    }
+    
+    /**
+     * 提交结构生成验证任务（高优先级）
+     * 当结构被标记为"计划生成"后调用此方法，立即验证结构是否真正生成完成
+     * 
+     * @param level 服务器世界
+     * @param expectedPos 预期的结构位置
+     */
+    public void submitGenerationVerification(ServerLevel level, BlockPos expectedPos) {
+        long worldSeed = level.getSeed();
+        
+        // 如果已经有验证任务在运行，跳过
+        if (PENDING_VERIFICATIONS.containsKey(worldSeed)) {
+            Global.LOGGER.debug("验证任务已在运行 - 维度: {}", level.dimension().location());
+            return;
+        }
+        
+        Global.LOGGER.info("提交结构生成验证任务 - 维度: {}, 预期位置: {}", 
+            level.dimension().location(), expectedPos);
+        
+        // 创建高优先级验证任务
+        long startTime = System.currentTimeMillis();
+        
+        CompletableFuture<Boolean> verificationFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                return verifyGeneratedStructure(level, expectedPos);
+            } catch (Exception e) {
+                Global.LOGGER.error("结构生成验证异常 - 维度: {}", level.dimension().location(), e);
+                return false;
+            }
+        }, GENERATION_VERIFICATION_EXECUTOR).whenComplete((verified, throwable) -> {
+            // 验证完成后移除任务
+            PENDING_VERIFICATIONS.remove(worldSeed);
+            
+            long elapsed = System.currentTimeMillis() - startTime;
+            if (verified != null && verified) {
+                Global.LOGGER.info("结构生成验证成功 - 维度: {}, 位置: {}, 耗时: {} ms", 
+                    level.dimension().location(), expectedPos, elapsed);
+            } else {
+                Global.LOGGER.warn("结构生成验证失败或未找到 - 维度: {}, 耗时: {} ms", 
+                    level.dimension().location(), elapsed);
+            }
+        });
+        
+        PENDING_VERIFICATIONS.put(worldSeed, verificationFuture);
+    }
+    
+    /**
+     * 验证结构是否真正生成完成（高优先级线程执行）
+     * 使用重试机制，因为结构生成是异步的，可能需要多次检查
+     * 
+     * @param level 服务器世界
+     * @param expectedPos 预期的结构位置
+     * @return true 如果结构已生成完成，false 如果还未完成
+     */
+    private boolean verifyGeneratedStructure(ServerLevel level, BlockPos expectedPos) {
+        try {
+            HolderSet<Structure> structureSet = getOrInitStructureSet(level);
+            if (structureSet == null) {
+                return false;
+            }
+            
+            // 重试配置：结构生成可能需要时间，最多尝试10次
+            final int maxRetries = 5;
+            final long retryIntervalMs = 500; // 每次重试间隔500ms
+            
+            for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                final int currentAttempt = attempt;
+                
+                // 使用加锁的方式进行结构验证，确保线程安全
+                Boolean verifyResult = STRUCTURE_CHECK_LOCK.executeWithLock(level, () -> {
+                    // 先检查缓存（可能其他搜索线程已经找到）
+                    SearchCacheManager.CacheCheckResult cacheCheck = cacheManager.checkCache(level);
+                    if (cacheCheck.hasCache && !cacheCheck.isNegativeCache) {
+                        Global.LOGGER.info("高优先级验证：从缓存获取结果（第{}次尝试） - 位置: {}", 
+                            currentAttempt, cacheCheck.structurePos);
+                        
+                        // 确保维度标记已更新
+                        long worldSeed = level.getSeed();
+                        HiddenRetreatStructure.GENERATED_DIMENSIONS.add(worldSeed);
+                        return true;
+                    }
+                    
+                    // 使用小范围搜索验证结构是否存在
+                    // 强制加载区块以确保结构生成流程完成
+                    ChunkPos targetChunk = new ChunkPos(expectedPos);
+                    level.getChunk(targetChunk.x, targetChunk.z);
+                    
+                    // 短暂等待，确保 StructureStart 已完全存储和索引
+                    // 这解决了区块加载完成到结构可查询之间的时间差
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return false;
+                    }
+                    
+                    var structureResult = level.getChunkSource().getGenerator().findNearestMapStructure(
+                        level, structureSet, expectedPos, 4, false
+                    );
+                    
+                    if (structureResult != null) {
+                        BlockPos foundPos = structureResult.getFirst();
+                        
+                        // 验证找到的位置是否与预期位置接近（允许一定偏差）
+                        if (foundPos != null && foundPos.distSqr(expectedPos) < 256 * 256) {
+                            // 更新缓存，确保后续搜索能快速找到
+                            cacheManager.updateCache(level, foundPos);
+                            
+                            // 双重确认：检查 GENERATED_DIMENSIONS 是否已标记
+                            long worldSeed = level.getSeed();
+                            HiddenRetreatStructure.GENERATED_DIMENSIONS.add(worldSeed);
+                            
+                            Global.LOGGER.info("高优先级验证成功（第{}次尝试）：结构已生成 - 位置: {}", 
+                                currentAttempt, foundPos);
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+                
+                if (verifyResult != null && verifyResult) {
+                    return true;
+                }
+                
+                // 如果不是最后一次尝试，等待后重试
+                if (attempt < maxRetries) {
+                    Global.LOGGER.debug("高优先级验证（第{}次尝试）：结构尚未生成，{}ms后重试 - 预期位置: {}", 
+                        attempt, retryIntervalMs, expectedPos);
+                    try {
+                        Thread.sleep(retryIntervalMs);
+                    } catch (InterruptedException e) {
+                        Global.LOGGER.warn("验证等待被中断");
+                        Thread.currentThread().interrupt();
+                        return false;
+                    }
+                }
+            }
+            
+            Global.LOGGER.warn("高优先级验证失败（已尝试{}次）：结构未生成 - 预期位置: {}", 
+                maxRetries, expectedPos);
+            return false;
+            
+        } catch (Exception e) {
+            Global.LOGGER.error("验证结构生成时发生异常", e);
+            return false;
+        }
+    }
+    
+    /**
+     * 获取当前待验证任务数量（用于监控和调试）
+     */
+    public int getPendingVerificationCount() {
+        return PENDING_VERIFICATIONS.size();
+    }
+    
+    /**
+     * 清理所有待验证任务（用于服务器关闭时）
+     */
+    public void cancelAllPendingVerifications() {
+        PENDING_VERIFICATIONS.forEach((seed, task) -> {
+            if (task != null && !task.isDone()) {
+                task.cancel(false);
+            }
+        });
+        PENDING_VERIFICATIONS.clear();
+        Global.LOGGER.info("已清理所有待验证的结构生成任务");
     }
 
 }

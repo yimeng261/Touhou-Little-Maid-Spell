@@ -30,6 +30,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 寻风之铃 - 用于前往隐世之境维度并寻找隐世之境
@@ -61,7 +62,28 @@ public class WindSeekingBell extends Item {
     private static final SearchCacheManager cacheManager = new SearchCacheManager();
     
     // 结构搜索引擎：负责执行并行搜索
-    private static final StructureSearchEngine searchEngine = new StructureSearchEngine(cacheManager);
+    public static final StructureSearchEngine searchEngine = new StructureSearchEngine(cacheManager);
+    
+    /**
+     * 当结构生成成功时调用此方法，终止该维度的搜索并更新缓存
+     * @param level 服务器世界
+     * @param structurePos 结构位置
+     */
+    public static void onStructureGenerated(ServerLevel level, BlockPos structurePos) {
+        // 生成维度键
+        String dimensionKey = cacheManager.generateDimensionKey(level);
+        
+        // 更新缓存
+        cacheManager.updateCache(level, structurePos);
+        
+        // 获取并取消正在进行的搜索
+        CompletableFuture<BlockPos> ongoingSearch = cacheManager.getOngoingSearch(dimensionKey);
+        if (ongoingSearch != null) {
+            ongoingSearch.cancel(true);
+            cacheManager.removeSearch(dimensionKey);
+            Global.LOGGER.debug("结构已生成，终止维度 {} 的搜索任务", level.dimension().location());
+        }
+    }
     
     public WindSeekingBell() {
         super(new Properties()
