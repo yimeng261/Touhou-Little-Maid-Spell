@@ -8,16 +8,19 @@
   "plugin": "com.github.yimeng261.maidspell.mixin.MaidSpellMixinPlugin",
   "mixins": [
     "AbstractMaidContainerMixin",
+    "ChunkGeneratorMixin",
     "CombatTrackerAccessor",
     "EntityMaidMixin",
     "EntityMixin",
     "LivingEntityAccessor",
     "LivingEntityMixin",
-    "TaskFeedOwnerMixin",
     "MinecraftServerMixin",
     "MobMixin",
     "OpenMaidGuiPackageMixin",
-    "iss.SyncedSpellDataMixin"
+    "ServerLevelMixin",
+    "TaskFeedOwnerMixin",
+    "iss.SyncedSpellDataMixin",
+    "iss.UtilsMixin"
   ],
   "client": [
     "ClientLevelMixin",

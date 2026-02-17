@@ -1,7 +1,10 @@
 package com.github.yimeng261.maidspell.mixin;
 
+import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
+import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
+import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import com.google.common.collect.ImmutableList;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
@@ -17,8 +20,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.dimension.LevelStem;
+import net.minecraft.world.level.storage.DerivedLevelData;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.ServerLevelData;
+import net.minecraft.world.level.storage.WorldData;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import org.jetbrains.annotations.NotNull;
@@ -83,7 +88,12 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
             }
 
             // 创建ServerLevel
-            ServerLevelData serverLevelData = (ServerLevelData) overworld.getLevelData();
+            // 使用 DerivedLevelData 为归隐之地创建独立的时间管理
+            // 这样每个维度都有自己的时间数据，不会与主世界冲突
+            ServerLevelData overworldLevelData = (ServerLevelData) overworld.getLevelData();
+            WorldData worldData = server.getWorldData();
+            DerivedLevelData derivedLevelData = new DerivedLevelData(worldData, overworldLevelData);
+
             long seed = BiomeManager.obfuscateSeed((long)(0x66ccff*Math.random()));
 
             // 创建一个简单的ChunkProgressListener
@@ -105,7 +115,7 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 server,
                 executor,
                 storageSource,
-                serverLevelData,
+                    derivedLevelData,  // 使用独立的 DerivedLevelData
                 key,
                 templateStem,
                 progressListener,
@@ -115,6 +125,15 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 false,
                 overworld.getRandomSequences()
             );
+
+            HiddenRetreatStructure.DIMENSIONS_MAP.put(newLevel.getSeed(), newLevel);
+            Global.LOGGER.debug("seed: {} add to dimensions map, level: {}", newLevel.getSeed(), newLevel.dimension().location());
+
+            // 设置ChunkGenerator的维度信息，用于结构生成判断
+            if (newLevel.getChunkSource().getGenerator() instanceof ChunkGeneratorAccessor accessor) {
+                accessor.maidspell$setDimensionKey(key);
+                MaidSpellMod.LOGGER.debug("Set dimension key for ChunkGenerator: {}", key.location());
+            }
 
             // 添加到世界Map
             levels.put(key, newLevel);

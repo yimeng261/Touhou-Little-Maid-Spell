@@ -112,6 +112,7 @@ public class MaidSpellEventHandler {
     /**
      * 玩家登录时同步末影腰包数据并恢复女仆区块加载
      * 同时检查玩家是否应该在隐世之境维度中
+     * 检查并发送节日祝福
      */
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
@@ -144,6 +145,14 @@ public class MaidSpellEventHandler {
             } catch (Exception e) {
                 LOGGER.error("[MaidSpell] Failed to sync ender pocket data for player {} on login: {}",
                             player.getName().getString(), e.getMessage(), e);
+            }
+
+            // 检查并发送节日祝福
+            try {
+                FestivalGreetingManager.checkAndSendGreeting(player);
+            } catch (Exception e) {
+                LOGGER.error("[MaidSpell] Failed to check/send festival greeting for player {} on login: {}",
+                        player.getName().getString(), e.getMessage(), e);
             }
         }
     }
