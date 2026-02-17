@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
+import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
@@ -95,16 +96,24 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
 
         ResourceLocation structureId = structureKey.get().location();
 
-        // 如果是HiddenRetreatStructure，允许生成
+        // 如果是HiddenRetreatStructure，检查是否已生成
+        // seed参数就是世界种子，直接使用即可
         if (HIDDEN_RETREAT_ID.equals(structureId)) {
-            MaidSpellMod.LOGGER.debug("Allowing HiddenRetreat structure generation at chunk {}, {}",
+            if (!HiddenRetreatStructure.GENERATED_DIMENSIONS.contains(seed)) {
+                MaidSpellMod.LOGGER.debug("Allowing HiddenRetreat structure generation at chunk {}, {}",
                     chunkPos.x, chunkPos.z);
-            return;
+                return;
+            } else {
+                // 世界种子已标记，不再生成
+                MaidSpellMod.LOGGER.debug("HiddenRetreat already generated in this dimension, blocking at chunk {}, {}",
+                        chunkPos.x, chunkPos.z);
+                cir.setReturnValue(false);
+                return;
+            }
         }
 
         // 其他所有结构在归隐之地中都不允许生成
-        MaidSpellMod.LOGGER.debug("Blocking structure {} generation in retreat dimension at chunk {}, {}",
-                structureId, chunkPos.x, chunkPos.z);
+        //MaidSpellMod.LOGGER.debug("Blocking structure {} generation in retreat dimension at chunk {}, {}", structureId, chunkPos.x, chunkPos.z);
         cir.setReturnValue(false);
     }
 
