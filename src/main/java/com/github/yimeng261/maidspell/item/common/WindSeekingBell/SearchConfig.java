@@ -12,24 +12,8 @@ public class SearchConfig {
     public static final int MAX_SEARCH_RADIUS = 64000;
     
     /** 搜索步长，基于hidden_retreat稀少特性增大步长 */
-    public static final int SEARCH_STEP = 4;
-    
-    /** 樱花林3×3区域检查半径 */
-    public static final int CHERRY_GROVE_CHECK_RADIUS = 2;
-    
-    
-    // ========== 缓存机制常量 ==========
-    
-    /** 缓存过期时间：5分钟（毫秒） */
-    public static final int CACHE_EXPIRY_TIME = 300000;
-    
-    /** 缓存失效的移动阈值（方块）- 约31个区块 */
-    public static final int CACHE_MOVE_THRESHOLD = 5000;
-    
-    /** 搜索区域大小（方块）- 用于生成searchKey */
-    public static final int SEARCH_REGION_SIZE = 1000;
-    
-    
+    public static final int SEARCH_STEP = 2;
+
     // ========== 多线程搜索配置 ==========
     
     /** 最小线程数 */
@@ -39,7 +23,7 @@ public class SearchConfig {
     public static final int MAX_THREADS = 64;
     
     /** 每个小方格的大小（区块） */
-    public static final int SECTOR_SIZE = 1000;
+    public static final int SECTOR_SIZE = 300;
     
     
     // ========== 常用位置偏移量 ==========

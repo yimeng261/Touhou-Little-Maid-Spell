@@ -14,9 +14,11 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 结构搜索引擎
@@ -413,7 +415,7 @@ public class StructureSearchEngine {
                     level,
                     structureSet,
                     chunkCenter,
-                    1,
+                        SearchConfig.SEARCH_STEP,
                     false
                 );
                 return result != null ? result.getFirst() : null;
