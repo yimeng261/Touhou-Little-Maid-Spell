@@ -1,0 +1,33 @@
+{
+  "elements": [
+    {
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:hidden_cherry_tree",
+        "processors": [
+          {
+            "processor_type": "minecraft:block_ignore",
+            "blocks": [
+              {
+                "Name": "minecraft:air"
+              },
+              {
+                "Name": "minecraft:cave_air"
+              },
+              {
+                "Name": "minecraft:void_air"
+              }
+            ]
+          },
+          {
+            "processor_type": "minecraft:gravity",
+            "offset": 0
+          }
+        ],
+        "projection": "rigid"
+      },
+      "weight": 1
+    }
+  ],
+  "fallback": "minecraft:empty"
+}

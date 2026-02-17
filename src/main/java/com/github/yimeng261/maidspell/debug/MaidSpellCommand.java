@@ -1,9 +1,11 @@
 package com.github.yimeng261.maidspell.debug;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.event.FestivalGreetingManager;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
@@ -18,6 +20,7 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -54,10 +57,18 @@ public class MaidSpellCommand {
         return SharedSuggestionProvider.suggest(spellIds, builder);
     };
 
+    /**
+     * 节日 ID 自动补全提供器
+     */
+    private static final SuggestionProvider<CommandSourceStack> FESTIVAL_SUGGESTIONS = (context, builder) -> {
+        return SharedSuggestionProvider.suggest(FestivalGreetingManager.getAllFestivalIds(), builder);
+    };
+
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
 
+        // 女仆施法命令
         dispatcher.register(Commands.literal("maidspell")
                 .requires(source -> source.hasPermission(2)) // 需要 OP 权限
                 .then(Commands.argument("targets", EntityArgument.entities())
@@ -70,6 +81,15 @@ public class MaidSpellCommand {
                                         .executes(context -> executeSpell(context, IntegerArgumentType.getInteger(context, "level")))
                                 )
                         )
+                )
+        );
+
+        // 节日祝福测试命令
+        dispatcher.register(Commands.literal("maidspell_festival")
+                .requires(source -> source.hasPermission(2)) // 需要 OP 权限
+                .then(Commands.argument("festival_id", StringArgumentType.string())
+                        .suggests(FESTIVAL_SUGGESTIONS)
+                        .executes(context -> executeFestivalGreeting(context))
                 )
         );
     }
@@ -122,6 +142,21 @@ public class MaidSpellCommand {
         }
 
         return successCount;
+    }
+
+    /**
+     * 执行节日祝福测试命令
+     */
+    private static int executeFestivalGreeting(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        String festivalId = StringArgumentType.getString(context, "festival_id");
+
+        if (!(context.getSource().getEntity() instanceof ServerPlayer player)) {
+            context.getSource().sendFailure(Component.literal("此命令只能由玩家执行"));
+            return 0;
+        }
+
+        FestivalGreetingManager.sendTestGreeting(player, festivalId);
+        return 1;
     }
 
     /**

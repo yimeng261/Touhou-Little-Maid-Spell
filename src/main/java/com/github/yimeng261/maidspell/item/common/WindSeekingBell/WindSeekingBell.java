@@ -61,7 +61,7 @@ public class WindSeekingBell extends Item {
     private static final SearchCacheManager cacheManager = new SearchCacheManager();
 
     // 结构搜索引擎：负责执行并行搜索
-    private static final StructureSearchEngine searchEngine = new StructureSearchEngine(cacheManager);
+    public static final StructureSearchEngine searchEngine = new StructureSearchEngine(cacheManager);
 
     public WindSeekingBell() {
         super(new Properties()
