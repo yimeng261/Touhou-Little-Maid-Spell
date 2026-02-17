@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.spell.manager;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
@@ -46,8 +47,7 @@ public class AllianceManager {
         UUID maidUUID = maid.getUUID();
 
 
-
-        if (allied) {
+        if (allied && Config.autoAllianceEnabled) {
             // 创建或获取队伍
             String teamName = TEAM_PREFIX + maidUUID.toString().substring(0, 8);
             PlayerTeam team = scoreboard.getPlayerTeam(teamName);

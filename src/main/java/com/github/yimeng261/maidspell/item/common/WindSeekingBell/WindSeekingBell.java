@@ -264,8 +264,6 @@ public class WindSeekingBell extends Item {
             // 服务器启动时清空缓存，确保不会跨存档使用旧缓存
             clearAllCaches();
             Global.LOGGER.info("WindSeekingBell: Cleared caches on server startup");
-            Global.LOGGER.info("WindSeekingBell: Using striped lock with {} segments for improved concurrency",
-                SearchConfig.LOCK_STRIPE_COUNT);
         }
 
         @SubscribeEvent
@@ -283,8 +281,6 @@ public class WindSeekingBell extends Item {
         // 清空搜索缓存管理器
         cacheManager.clearAll();
 
-        // 清空搜索引擎的结构集合缓存
-        StructureSearchEngine.clearCaches();
 
         Global.LOGGER.debug("WindSeekingBell: All caches cleared");
     }

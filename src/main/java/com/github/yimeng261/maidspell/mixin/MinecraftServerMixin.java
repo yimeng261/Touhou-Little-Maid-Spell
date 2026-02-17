@@ -18,8 +18,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.dimension.LevelStem;
+import net.minecraft.world.level.storage.DerivedLevelData;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.ServerLevelData;
+import net.minecraft.world.level.storage.WorldData;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import org.jetbrains.annotations.NotNull;
@@ -83,8 +85,27 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 return false;
             }
 
+            // 验证结构集注册表
+            try {
+                var structureSetRegistry = registryAccess.registryOrThrow(Registries.STRUCTURE_SET);
+                int structureSetCount = structureSetRegistry.size();
+                MaidSpellMod.LOGGER.debug("Creating dimension with {} structure sets available", structureSetCount);
+
+                // 检查hidden_retreat_set是否存在
+                ResourceLocation hiddenRetreatSetKey = new ResourceLocation(MaidSpellMod.MOD_ID, "hidden_retreat_set");
+                boolean hasHiddenRetreat = structureSetRegistry.containsKey(hiddenRetreatSetKey);
+                MaidSpellMod.LOGGER.debug("Hidden retreat structure set exists: {}", hasHiddenRetreat);
+            } catch (Exception e) {
+                MaidSpellMod.LOGGER.warn("Failed to verify structure sets", e);
+            }
+
             // 创建ServerLevel
-            ServerLevelData serverLevelData = (ServerLevelData) overworld.getLevelData();
+            // 使用 DerivedLevelData 为归隐之地创建独立的时间管理
+            // 这样每个维度都有自己的时间数据，不会与主世界冲突
+            ServerLevelData overworldLevelData = (ServerLevelData) overworld.getLevelData();
+            WorldData worldData = server.getWorldData();
+            DerivedLevelData derivedLevelData = new DerivedLevelData(worldData, overworldLevelData);
+
             long seed = BiomeManager.obfuscateSeed((long)(0x66ccff*Math.random()));
 
             // 创建一个简单的ChunkProgressListener
@@ -106,7 +127,7 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 server,
                 executor,
                 storageSource,
-                serverLevelData,
+                    derivedLevelData,  // 使用独立的 DerivedLevelData
                 key,
                 templateStem,
                 progressListener,
