@@ -20,7 +20,8 @@
     "OpenMaidGuiPackageMixin",
     "ServerLevelMixin",
     "TaskFeedOwnerMixin",
-    "iss.SyncedSpellDataMixin"
+    "iss.SyncedSpellDataMixin",
+    "iss.UtilsMixin"
   ],
   "client": [
     "ClientLevelMixin",
