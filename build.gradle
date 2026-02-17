@@ -153,7 +153,7 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
     // 车万女仆
-    implementation("com.github.tartaricacid:touhoulittlemaid:1.4.7-neoforge+mc1.21.1:all") {
+    implementation("curse.maven:touhou-little-maid-355044:${tlm_curse_version}") {
         exclude group: "maven.modrinth", module: "sodium"
         exclude group: "maven.modrinth", module: "embeddium"
     }
