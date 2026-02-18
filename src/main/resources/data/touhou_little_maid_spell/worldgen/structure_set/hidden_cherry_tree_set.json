@@ -1,0 +1,15 @@
+{
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:hidden_cherry_tree",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 200,
+    "separation": 100,
+    "salt": 1856473921
+  }
+}
+
