@@ -18,6 +18,7 @@
     "MobMixin",
     "OpenMaidGuiPackageMixin",
     "ServerLevelMixin",
+    "StructureTemplateMixin",
     "TaskFeedOwnerMixin",
     "iss.SyncedSpellDataMixin",
     "iss.UtilsMixin"
