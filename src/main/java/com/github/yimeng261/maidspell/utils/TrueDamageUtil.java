@@ -1,6 +1,5 @@
 package com.github.yimeng261.maidspell.utils;
 
-import com.github.yimeng261.maidspell.mixin.LivingEntityAccessor;
 import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -86,9 +85,8 @@ public class TrueDamageUtil {
      */
     private static boolean tryEntityDataDamage(LivingEntity target, float newHealth) {
         try {
-            LivingEntityAccessor healthDataIdAccessor = (LivingEntityAccessor) target;
             SynchedEntityData entityData = target.getEntityData();
-            EntityDataAccessor<Float> dataHealthIdAccessor = healthDataIdAccessor.getDataHealthIdAccessor();
+            EntityDataAccessor<Float> dataHealthIdAccessor = LivingEntity.DATA_HEALTH_ID;
 
             // 修改所有匹配的EntityData项
             boolean modified = false;
@@ -183,9 +181,8 @@ public class TrueDamageUtil {
      */
     public static String getEntityDataInfo(LivingEntity entity) {
         try {
-            LivingEntityAccessor healthDataIdAccessor = (LivingEntityAccessor) entity;
             SynchedEntityData entityData = entity.getEntityData();
-            EntityDataAccessor<Float> dataHealthIdAccessor = healthDataIdAccessor.getDataHealthIdAccessor();
+            EntityDataAccessor<Float> dataHealthIdAccessor = LivingEntity.DATA_HEALTH_ID;
             float health = entity.getHealth();
             String className = entity.getClass().getSimpleName();
 

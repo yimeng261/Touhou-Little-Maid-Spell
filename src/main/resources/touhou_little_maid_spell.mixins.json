@@ -9,10 +9,8 @@
   "mixins": [
     "AbstractMaidContainerMixin",
     "ChunkGeneratorMixin",
-    "CombatTrackerAccessor",
     "EntityMaidMixin",
     "EntityMixin",
-    "LivingEntityAccessor",
     "LivingEntityMixin",
     "MinecraftServerMixin",
     "MobMixin",
@@ -24,7 +22,7 @@
     "iss.UtilsMixin"
   ],
   "client": [
-    "ClientLevelMixin",
+    "ClientPacketListenerMixin",
     "iss.ClientMagicDataMixin",
     "iss.MaidEntityAnimateStateMixin"
   ],
