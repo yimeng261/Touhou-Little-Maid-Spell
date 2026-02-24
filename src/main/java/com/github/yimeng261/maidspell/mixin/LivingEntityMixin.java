@@ -136,7 +136,7 @@ public abstract class LivingEntityMixin {
     @Unique
     private boolean maidspell$isCommonHurt(float health, LivingEntity entity) {
         float nowHealth = entity.getHealth();
-        List<CombatEntry> entries = ((CombatTrackerAccessor)(entity.getCombatTracker())).getEntries();
+        List<CombatEntry> entries = entity.getCombatTracker().entries;
 
         if(entries.isEmpty()){
             maidspell$LOGGER.debug("[MaidSpell] no combat entries found");

@@ -72,16 +72,4 @@ public class InfoDamageSource extends DamageSource {
         }
     }
 
-    /**
-     * 不推荐使用的无参构造函数，仅用于向后兼容
-     * @deprecated 使用 create(Level, String, DamageSource) 代替
-     */
-    @Deprecated
-    public InfoDamageSource() {
-        // 使用一个安全的默认伤害类型，避免网络同步问题
-        super(Holder.direct(new DamageType("info_damage", 0.0f)), null, null, null);
-        this.msg_type = "";
-        this.damage_source = null;
-    }
-
 }

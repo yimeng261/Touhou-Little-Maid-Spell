@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "exclusion_zone": {
+      "chunk_count": 10,
+      "other_set": "minecraft:villages"
+    },
+    "frequency": 0.2,
+    "salt": 5170262381,
+    "separation": 16,
+    "spacing": 36
+  },
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:enchantress_footsteps_outpost",
+      "weight": 1
+    }
+  ]
+}

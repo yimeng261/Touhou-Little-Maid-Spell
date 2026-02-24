@@ -1,0 +1,6 @@
+{
+  "type": "forge:add_structures",
+  "biomes": "#touhou_little_maid_spell:has_structure/hidden_cherry_tree",
+  "structures": "touhou_little_maid_spell:hidden_cherry_tree_set"
+}
+

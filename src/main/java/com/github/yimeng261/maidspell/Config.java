@@ -102,6 +102,17 @@ public class Config {
             );
 
     static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue AUTO_ALLIANCE_ENABLED = BUILDER
+            .comment("是否自动设置女仆与玩家结盟 (默认: true)")
+            .comment("Whether to automatically set alliance between maids and players")
+            .comment("结盟后，女仆与玩家将被加入同一队伍，禁止友军伤害")
+            .comment("When allied, maids and players will be in the same team with friendly fire disabled")
+            .define("autoAllianceEnabled", true);
+
+    static {
         BUILDER.pop();
     }
 
@@ -366,6 +377,7 @@ public class Config {
     public static int meleeAttackInterval;
     public static int farAttackInterval;
     public static List<String> spellBlacklist;
+    public static boolean autoAllianceEnabled;
 
     // 饰品配置缓存值
     // 伤害相关
@@ -420,6 +432,7 @@ public class Config {
         meleeAttackInterval = MELEE_ATTACK_INTERVAL.get();
         farAttackInterval = FAR_ATTACK_INTERVAL.get();
         spellBlacklist = new ArrayList<>(SPELL_BLACKLIST.get());
+        autoAllianceEnabled = AUTO_ALLIANCE_ENABLED.get();
 
         // 加载饰品配置值
         // 伤害相关

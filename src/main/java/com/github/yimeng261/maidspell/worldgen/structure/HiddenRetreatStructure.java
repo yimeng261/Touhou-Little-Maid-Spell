@@ -1,28 +1,42 @@
 package com.github.yimeng261.maidspell.worldgen.structure;
 
+import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.StructureManager;
+import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.Biomes;
-import net.minecraft.world.level.biome.FixedBiomeSource;
+import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.levelgen.structure.StructureType;
+import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
 import net.minecraft.world.level.levelgen.structure.pools.DimensionPadding;
 import net.minecraft.world.level.levelgen.structure.pools.JigsawPlacement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
-import org.jetbrains.annotations.NotNull;
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
 /**
  * 隐世之境结构
@@ -50,7 +64,10 @@ public class HiddenRetreatStructure extends Structure {
     private static final int SAMPLES_PER_CHUNK = 5;
 
     // 用于标记已生成过结构的维度（使用种子作为标识）
-    private static final Set<Long> GENERATED_DIMENSIONS = Collections.synchronizedSet(new HashSet<>());
+    public static final Set<Long> GENERATED_DIMENSIONS = ConcurrentHashMap.newKeySet();
+
+    // 用于查找种子对应的维度
+    public static final Map<Long, ServerLevel> DIMENSIONS_MAP = new ConcurrentHashMap<>();
 
     public HiddenRetreatStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool, int size) {
         super(settings);
@@ -59,31 +76,39 @@ public class HiddenRetreatStructure extends Structure {
     }
 
     @Override
-    protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
-        // 检查当前维度是否是the_retreat维度
-        // 通过检查BiomeSource是否为Fixed且为cherry_grove来判断
-        if (!isRetreatDimension(context)) {
-            return Optional.empty(); // 不在归隐之地维度，不生成
+    public void afterPlace(WorldGenLevel pLevel, StructureManager pStructureManager, ChunkGenerator pChunkGenerator, RandomSource pRandom, BoundingBox pBoundingBox, ChunkPos pChunkPos, PiecesContainer pPieces) {
+        Global.LOGGER.debug("[MaidSpell] afterPlace");
+    }
+
+    @Override
+    public @NotNull StructureStart generate(RegistryAccess pRegistryAccess, ChunkGenerator pChunkGenerator, BiomeSource pBiomeSource, RandomState pRandomState, StructureTemplateManager pStructureTemplateManager, long pSeed, ChunkPos pChunkPos, int pReferences, LevelHeightAccessor pHeightAccessor, Predicate<Holder<Biome>> pValidBiome) {
+        if (DIMENSIONS_MAP.containsKey(pSeed)) {
+            return super.generate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState, pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
         }
+        return StructureStart.INVALID_START;
+    }
+
+    @Override
+    protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
+        // 维度检查已在 ChunkGeneratorMixin 中完成，此处无需重复检查
+        // Mixin 确保了只有在归隐之地维度才会调用此方法
 
         long worldSeed = context.seed();
-
-        // 检查此维度（通过种子标识）是否已经生成过结构
-        if (GENERATED_DIMENSIONS.contains(worldSeed)) {
-            return Optional.empty();
-        }
-
         ChunkPos chunkPos = context.chunkPos();
+
+        // 检查在mixin中进行
+        Global.LOGGER.debug("[findGenerationPoint] 维度种子 {} 未标记，开始检查区块 {} 的地形", worldSeed, chunkPos);
 
         // 检查以当前区块为中心的5*5区块地形足够平坦
         if (!isValidGenerationLocation(context, chunkPos)) {
+            Global.LOGGER.debug("[findGenerationPoint] 区块 {} 地形检查未通过，放弃生成", chunkPos);
             return Optional.empty();
         }
 
         BlockPos centerPos = new BlockPos(chunkPos.getMinBlockX() + 8, this.height, chunkPos.getMinBlockZ() + 8);
-        GENERATED_DIMENSIONS.add(worldSeed);
+        Global.LOGGER.debug("[findGenerationPoint] 区块 {} 地形检查通过，尝试在 {} 生成结构", chunkPos, centerPos);
 
-        return JigsawPlacement.addPieces(
+        Optional<GenerationStub> result = JigsawPlacement.addPieces(
                 context,
                 this.startPool,
                 Optional.empty(), // 无可选目标池
@@ -96,6 +121,21 @@ public class HiddenRetreatStructure extends Structure {
                 DimensionPadding.ZERO,
                 LiquidSettings.IGNORE_WATERLOGGING // 忽略含水方块处理
         );
+
+        if (result.isPresent()) {
+            ServerLevel serverLevel = DIMENSIONS_MAP.get(worldSeed);
+            if (serverLevel != null) {
+                WindSeekingBell.searchEngine.cacheManager.updateCache(serverLevel, centerPos);
+
+                // 提交高优先级验证任务，确认结构真正生成完成
+                WindSeekingBell.searchEngine.submitGenerationVerification(serverLevel, centerPos);
+                MaidSpellMod.LOGGER.debug("隐世之境结构计划创建成功，位置: {}（已提交生成验证任务）", centerPos);
+            } else {
+                MaidSpellMod.LOGGER.warn("无法更新结构缓存：ServerLevel 为空 (种子: {})", worldSeed);
+            }
+        }
+
+        return result;
     }
 
     @Override
@@ -110,6 +150,7 @@ public class HiddenRetreatStructure extends Structure {
      * @return 如果区块地形平坦则返回true，否则返回false
      */
     private boolean isValidGenerationLocation(GenerationContext context, ChunkPos centerChunk) {
+        //Global.LOGGER.debug("检查以给定区块为中心的5*5区块地形足够平坦，中心区块位置: {}", centerChunk);
         List<Integer> heightSamples = new ArrayList<>();
         int range = 2;
         int totalSamples = 0;
@@ -218,27 +259,4 @@ public class HiddenRetreatStructure extends Structure {
         return variance <= MAX_TERRAIN_VARIANCE;
     }
 
-    /**
-     * 检查当前维度是否是归隐之地维度
-     * 通过检查BiomeSource是否为FixedBiomeSource且使用cherry_grove生物群系来判断
-     * @param context 生成上下文
-     * @return 如果是归隐之地维度返回true，否则返回false
-     */
-    private boolean isRetreatDimension(GenerationContext context) {
-        try {
-            // 归隐之地维度使用FixedBiomeSource且固定为cherry_grove生物群系
-            if (context.biomeSource() instanceof FixedBiomeSource) {
-                // 获取生物群系注册表
-                Holder<Biome> biome = context.biomeSource().getNoiseBiome(0, 0, 0, context.randomState().sampler());
-
-                // 检查是否是樱花林（cherry_grove）生物群系
-                // 归隐之地维度的特征：使用FixedBiomeSource + cherry_grove
-                return biome.is(Biomes.CHERRY_GROVE);
-            }
-            return false;
-        } catch (Exception e) {
-            MaidSpellMod.LOGGER.error("Error checking dimension type", e);
-            return false;
-        }
-    }
 }

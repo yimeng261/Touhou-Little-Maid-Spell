@@ -100,7 +100,7 @@ public class MagicCastingAnimateState implements IMagicCastingState {
         if (!clientIsCasting && oldIsCasting) {
             castingSpell = lastCastingSpell;
             phase = CastingPhase.END;
-            instantCastSpellType = SpellRegistry.none();
+            instantCastSpellType = lastCastingSpell.getSpell();
         } else if (clientIsCasting && !oldIsCasting) {
             phase = CastingPhase.START;
             if (castingSpell.getSpell().getCastType() == CastType.INSTANT) {
@@ -113,7 +113,7 @@ public class MagicCastingAnimateState implements IMagicCastingState {
             }
         } else if (clientIsCasting) {
             phase = CastingPhase.CASTING;
-        } else {
+        } else if (phase != CastingPhase.END) {
             castingSpell = SpellData.EMPTY;
             phase = CastingPhase.NONE;
             instantCastSpellType = SpellRegistry.none();

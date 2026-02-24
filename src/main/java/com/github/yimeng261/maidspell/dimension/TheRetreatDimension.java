@@ -72,7 +72,7 @@ public class TheRetreatDimension {
         // 设置玩家在隐世之境的重生点
         player.setRespawnPosition(retreatLevel.dimension(), safePos, 0.0f, true, false);
 
-        MaidSpellMod.LOGGER.info("Teleported player {} to retreat dimension at {} and set respawn point",
+        MaidSpellMod.LOGGER.debug("Teleported player {} to retreat dimension at {} and set respawn point",
             player.getName().getString(), safePos);
     }
 

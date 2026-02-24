@@ -61,7 +61,7 @@ public class WindSeekingBell extends Item {
     private static final SearchCacheManager cacheManager = new SearchCacheManager();
 
     // 结构搜索引擎：负责执行并行搜索
-    private static final StructureSearchEngine searchEngine = new StructureSearchEngine(cacheManager);
+    public static final StructureSearchEngine searchEngine = new StructureSearchEngine(cacheManager);
 
     public WindSeekingBell() {
         super(new Properties()
@@ -134,12 +134,6 @@ public class WindSeekingBell extends Item {
                 .withStyle(ChatFormatting.LIGHT_PURPLE),
             true
         );
-
-        // 消耗物品
-        if (!player.getAbilities().instabuild && TheRetreatDimension.isInRetreat(player)) {
-            itemStack.shrink(1);
-        }
-
     }
 
     /**
@@ -220,12 +214,6 @@ public class WindSeekingBell extends Item {
                 }
 
                 player.awardStat(Stats.ITEM_USED.get(this));
-
-
-                // 消耗物品（如果不是创造模式）
-                if (!player.getAbilities().instabuild) {
-                    itemStack.shrink(1);
-                }
             } else {
                 Component timingMessage = Component.translatable(
                         "item.touhou_little_maid_spell.wind_seeking_bell.search_time",
@@ -270,8 +258,6 @@ public class WindSeekingBell extends Item {
             // 服务器启动时清空缓存，确保不会跨存档使用旧缓存
             clearAllCaches();
             Global.LOGGER.info("WindSeekingBell: Cleared caches on server startup");
-            Global.LOGGER.info("WindSeekingBell: Using striped lock with {} segments for improved concurrency",
-                SearchConfig.LOCK_STRIPE_COUNT);
         }
 
         @SubscribeEvent
@@ -289,8 +275,6 @@ public class WindSeekingBell extends Item {
         // 清空搜索缓存管理器
         cacheManager.clearAll();
 
-        // 清空搜索引擎的结构集合缓存
-        StructureSearchEngine.clearCaches();
 
         Global.LOGGER.debug("WindSeekingBell: All caches cleared");
     }

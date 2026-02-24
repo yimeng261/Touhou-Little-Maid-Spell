@@ -1,13 +1,10 @@
 package com.github.yimeng261.maidspell.utils;
 
-import com.github.yimeng261.maidspell.mixin.LivingEntityAccessor;
 import com.mojang.logging.LogUtils;
-import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import org.slf4j.Logger;
@@ -43,8 +40,12 @@ public class TrueDamageUtil {
         // 尝试EntityData修改，失败则尝试NBT修改
         boolean success = tryEntityDataDamage(target, newHealth) || tryNBTDamage(target, originalHealth, newHealth);
 
-        if(success||newHealth<=0.0f){
-            target.die(new DamageSource(Holder.direct(new DamageType("info_damage", 0.0f)),attacker));
+        if (success && newHealth <= 0.0f) {
+            // 使用原版的方式获取DamageSource
+            // 如果有攻击者，使用mobAttack，否则使用generic
+            DamageSource damageSource = target.damageSources().generic();
+            target.die(damageSource);
+            target.remove(Entity.RemovalReason.KILLED);
         }
 
         //LOGGER.debug("[TrueDamage] Damage {} applied: {} -> {} (success: {})", damage, originalHealth, target.getHealth(), success);
@@ -67,8 +68,11 @@ public class TrueDamageUtil {
         // 尝试EntityData修改，失败则尝试NBT修改
         boolean success = tryEntityDataDamage(target, newHealth) || tryNBTDamage(target, originalHealth, newHealth);
 
-        if(newHealth<=0.0f){
-            target.die(new DamageSource(Holder.direct(new DamageType("info_damage", 0.0f)),attacker));
+        if (success && newHealth <= 0.0f) {
+            // 使用原版的方式获取DamageSource
+            // 如果有攻击者，使用mobAttack，否则使用generic
+            DamageSource damageSource = target.damageSources().generic();
+            target.die(damageSource);
             target.remove(Entity.RemovalReason.KILLED);
         }
 
@@ -81,9 +85,8 @@ public class TrueDamageUtil {
      */
     private static boolean tryEntityDataDamage(LivingEntity target, float newHealth) {
         try {
-            LivingEntityAccessor healthDataIdAccessor = (LivingEntityAccessor) target;
             SynchedEntityData entityData = target.getEntityData();
-            EntityDataAccessor<Float> dataHealthIdAccessor = healthDataIdAccessor.getDataHealthIdAccessor();
+            EntityDataAccessor<Float> dataHealthIdAccessor = LivingEntity.DATA_HEALTH_ID;
 
             // 修改所有匹配的EntityData项
             boolean modified = false;
@@ -178,9 +181,8 @@ public class TrueDamageUtil {
      */
     public static String getEntityDataInfo(LivingEntity entity) {
         try {
-            LivingEntityAccessor healthDataIdAccessor = (LivingEntityAccessor) entity;
             SynchedEntityData entityData = entity.getEntityData();
-            EntityDataAccessor<Float> dataHealthIdAccessor = healthDataIdAccessor.getDataHealthIdAccessor();
+            EntityDataAccessor<Float> dataHealthIdAccessor = LivingEntity.DATA_HEALTH_ID;
             float health = entity.getHealth();
             String className = entity.getClass().getSimpleName();
 

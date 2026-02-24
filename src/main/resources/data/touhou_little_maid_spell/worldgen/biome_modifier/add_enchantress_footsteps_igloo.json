@@ -1,0 +1,12 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
+  "type": "neoforge:add_structures",
+  "biomes": "#touhou_little_maid_spell:has_structure/enchantress_footsteps_igloo",
+  "structures": "touhou_little_maid_spell:enchantress_footsteps_igloo_set"
+}
+

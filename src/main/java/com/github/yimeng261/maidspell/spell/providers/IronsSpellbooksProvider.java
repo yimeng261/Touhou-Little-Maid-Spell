@@ -14,6 +14,7 @@ import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.api.spells.*;
 import io.redspace.ironsspellbooks.api.util.Utils;
+import io.redspace.ironsspellbooks.capabilities.magic.TargetEntityCastData;
 import io.redspace.ironsspellbooks.entity.spells.target_area.TargetedAreaEntity;
 import io.redspace.ironsspellbooks.spells.TargetAreaCastData;
 import io.redspace.ironsspellbooks.spells.ender.TeleportSpell;
@@ -403,6 +404,12 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
                     maid.level(), targetPosition, radius, Utils.packRGB(spell.getTargetingColor()));
                 magicData.setAdditionalCastData(new TargetAreaCastData(targetPosition, area));
             }
+        }
+        // 其它法术直接设置目标实体，即使该法术不需要目标实体
+        // 如果不设置目标实体，则施放需要目标实体的法术时会基于女仆视线进行射线检测，可能会锁定到非目标实体（#23）
+        // 另见 UtilsMixin
+        else {
+            magicData.setAdditionalCastData(new TargetEntityCastData(target));
         }
     }
 
