@@ -37,6 +37,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
+import top.theillusivec4.curios.api.CuriosApi;
+
 /**
  * 铁魔法模组的法术书提供者
  * 包含完整的施法逻辑，支持持续性法术和复杂的冷却系统
@@ -152,6 +154,56 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
         
         // 使用兼容层转换：新版本会从 List<SpellSlot> 提取 SpellData，旧版本直接返回 List<SpellData>
         return ApiCompatLayer.convertToSpellDataList(spellContainer.getActiveSpells());
+    }
+    
+    /**
+     * 从女仆的curios槽位收集所有法术书中的法术
+     * @param maid 女仆实体
+     * @return curios槽位中所有法术数据列表
+     */
+    protected List<SpellData> collectSpellsFromCuriosSlots(EntityMaid maid) {
+        List<SpellData> spells = new ArrayList<>();
+        
+        try {
+            // 使用CuriosApi获取女仆的curios物品栏
+            CuriosApi.getCuriosInventory(maid).ifPresent(handler -> {
+                // 查找所有包含法术容器的物品
+                handler.findCurios(ISpellContainer::isSpellContainer).forEach(slotResult -> {
+                    ItemStack curiosStack = slotResult.stack();
+                    if (!curiosStack.isEmpty()) {
+                        // 从curios中的法术书收集法术
+                        List<SpellData> curiosSpells = collectSpellFromSingleSpellBook(curiosStack, maid);
+                        spells.addAll(curiosSpells);
+                        LOGGER.debug("从女仆 {} 的curios槽位 {} 收集到 {} 个法术", 
+                            maid.getUUID(), slotResult.slotContext().identifier(), curiosSpells.size());
+                    }
+                });
+            });
+        } catch (Exception e) {
+            LOGGER.error("从女仆 {} 的curios槽位收集法术时出错: {}", maid.getUUID(), e.getMessage());
+        }
+        
+        return spells;
+    }
+    
+    /**
+     * 从所有可用的法术书中收集法术（包括背包中的和curios槽位中的）
+     * @param maid 女仆实体
+     * @return 收集到的所有法术列表
+     */
+    @Override
+    protected List<SpellData> collectSpellFromAvailableSpellBooks(EntityMaid maid) {
+        List<SpellData> spells = new ArrayList<>();
+        
+        // 收集背包中的法术书
+        for(ItemStack spellBook : getData(maid).getSpellBooks()) {
+            spells.addAll(collectSpellFromSingleSpellBook(spellBook, maid));
+        }
+        
+        // 收集curios槽位中的法术书
+        spells.addAll(collectSpellsFromCuriosSlots(maid));
+        
+        return spells;
     }
     
     /**

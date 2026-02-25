@@ -213,7 +213,7 @@ public class WindSeekingBellEntity extends Entity {
         this.level().playSound(
             null,
             this.getX(),
-            this.getY(), 
+            this.getY(),
             this.getZ(),
             MaidSpellSounds.WIND_SEEKING_BELL.get(),
             SoundSource.NEUTRAL,
@@ -228,31 +228,30 @@ public class WindSeekingBellEntity extends Entity {
             if (currentPlayer.isCreative()) {
                 currentPlayer.teleportTo(this.aX, this.aY, this.aZ);
             }
+        }
 
-            if (this.surviveAfterDeath && !currentPlayer.isCreative()) {
-                ItemStack item = this.getItem();
-                if (!item.isEmpty()) {
-                    ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
-                    this.level().addFreshEntity(itemEntity);
-                }
-            }
-        } else {
-            // 如果找不到玩家，仍然掉落物品（如果设置了surviveAfterDeath）
-            if (this.surviveAfterDeath) {
-                ItemStack item = this.getItem();
-                if (!item.isEmpty()) {
-                    ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
-                    this.level().addFreshEntity(itemEntity);
-                }
+        // 掉落物品（统一处理，不再区分玩家是否存在）
+        if (this.surviveAfterDeath && (currentPlayer == null || !currentPlayer.isCreative())) {
+            ItemStack item = this.getItem();
+            if (!item.isEmpty()) {
+                ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
+                this.level().addFreshEntity(itemEntity);
             }
         }
     }
 
     /**
-     * 检查是否可以击中实体（避免击中发射者）
+     * 检查是否可以击中实体（排除发射者自身）
      */
     protected boolean canHitEntity(Entity entity) {
-        return entity instanceof Player && !entity.isSpectator() && entity.isAlive();
+        if (!(entity instanceof Player) || entity.isSpectator() || !entity.isAlive()) {
+            return false;
+        }
+        // 排除发射者
+        if (this.playerUUID != null && entity.getUUID().equals(this.playerUUID)) {
+            return false;
+        }
+        return true;
     }
 
     @Override

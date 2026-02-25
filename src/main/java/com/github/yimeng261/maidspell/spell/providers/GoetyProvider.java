@@ -379,12 +379,13 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
     /**
      * 统一的stopSpell方法调用，根据版本自动选择合适的API
      * 支持新旧两种Goety版本的API调用方式
-     * 注意: FocusBag作为spellBook传入,focus参数使用空ItemStack
+     * 注意: FocusBag作为spellBook传入,focus参数从MaidGoetySpellData获取
      */
     private void stopSpellUnified(ISpell spell, ServerLevel serverLevel, EntityMaid maid, ItemStack focusBag, int remainingTime) {
         if (shouldUseNewAPI()) {
             // 使用新版本API
-            ItemStack focus = FocusBagItemHandler.get(focusBag).getSlot();
+            MaidGoetySpellData data = getData(maid);
+            ItemStack focus = data != null && data.getCurrentFocus() != null ? data.getCurrentFocus() : ItemStack.EMPTY;
             spell.stopSpell(serverLevel, maid, focusBag, focus, remainingTime, spell.defaultStats());
             //LOGGER.debug("Successfully called new version stopSpell method for spell: {}", spell.getClass().getSimpleName());
         } else {

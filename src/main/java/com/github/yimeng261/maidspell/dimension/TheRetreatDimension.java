@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.dimension;
 
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -13,7 +14,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.portal.PortalInfo;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.util.ITeleporter;
@@ -70,6 +71,7 @@ public class TheRetreatDimension {
             return;
         }
         
+        // 使用玩家当前坐标作为传送目标（私人和共享模式都一样）
         BlockPos targetPos = player.blockPosition();
         
         // 异步加载目标区块并查找安全位置
@@ -165,7 +167,7 @@ public class TheRetreatDimension {
         return level.getChunkSource().getChunkFuture(
             chunkPos.x, 
             chunkPos.z, 
-            ChunkStatus.FULL, 
+            ChunkStatus.FULL,
             true
         ).thenApply(either -> {
             // either.left()包含加载成功的区块，right()包含失败原因

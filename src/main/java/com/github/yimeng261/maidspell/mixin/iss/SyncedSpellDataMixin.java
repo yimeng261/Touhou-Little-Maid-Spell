@@ -98,9 +98,10 @@ public abstract class SyncedSpellDataMixin {
     private static boolean maidSpell$isOldIronsSpellBooks() {
         try {
             Class.forName("io.redspace.ironsspellbooks.network.ClientboundSyncEntityData");
+            MaidSpellMod.LOGGER.debug("检测到旧版本 Iron's Spellbooks，使用 ClientboundSyncEntityData");
             return true;
         } catch (ClassNotFoundException e) {
-            MaidSpellMod.LOGGER.warn("Could not find ClientboundSyncEntityData, use PacketDistributor", e);
+            MaidSpellMod.LOGGER.debug("检测到新版本 Iron's Spellbooks，使用 PacketDistributor");
             return false;
         }
     }
