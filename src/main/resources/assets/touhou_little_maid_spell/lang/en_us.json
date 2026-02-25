@@ -107,7 +107,6 @@
   "item.touhou_little_maid_spell.wind_seeking_bell.search_error": "An error occurred during search",
   "subtitle.touhou_little_maid_spell.wind_seeking_bell": "Wind Seeking Bell rings",
   "item.touhou_little_maid_spell.wind_seeking_bell.first_use": "\nRing the bell to call cherry blossoms\nGentle wind comes through the silent deep forest\nOld friend waits with flowers\n",
-  "item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared": "First time entering The Retreat, your exclusive Hidden Retreat has been assigned",
   "item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure": "No Hidden Retreat nearby, added to waiting queue...",
   "item.touhou_little_maid_spell.wind_seeking_bell.waiting_in_queue": "No Hidden Retreat nearby, waiting in queue... (Position %s/%s)",
   "item.touhou_little_maid_spell.wind_seeking_bell.structure_generated": "Your Hidden Retreat has been generated! Location: [%s, %s, %s] (%s blocks away)",

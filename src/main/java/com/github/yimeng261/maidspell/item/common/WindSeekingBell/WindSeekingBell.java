@@ -122,11 +122,15 @@ public class WindSeekingBell extends Item {
 
         // 修复：只有 info == null 才是首次使用，quota == 0 是配额已用完
         if (info == null) {
+            // 简化逻辑：每个玩家首次进入时总是分配配额1
+            // 未分配池中的结构会在玩家主动搜索时优先分配
             data.registerDimension(player.getUUID());
             info = data.getDimensionInfo(player.getUUID());
             info.structureQuota = 1;
             data.updateAccessTime(player.getUUID());
+            data.setDirty();
 
+            Global.LOGGER.info("玩家 {} 首次进入共享归隐之地，分配结构配额: 1", player.getUUID());
             player.displayClientMessage(
                 Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared")
                     .withStyle(ChatFormatting.LIGHT_PURPLE), true);

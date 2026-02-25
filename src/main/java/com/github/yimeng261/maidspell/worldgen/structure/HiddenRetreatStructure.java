@@ -34,6 +34,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -82,6 +83,36 @@ public class HiddenRetreatStructure extends Structure {
         }
     }
 
+    /**
+     * 从私人维度ResourceKey中提取玩家UUID
+     * 维度名称格式: touhou_little_maid_spell:the_retreat_<uuid_with_underscores>
+     * 例如: touhou_little_maid_spell:the_retreat_00000000_0000_3007_998f_fd45f81aa49b
+     */
+    @Nullable
+    private static UUID extractPlayerUUIDFromDimension(ResourceKey<Level> dimKey) {
+        String path = dimKey.location().getPath();
+        MaidSpellMod.LOGGER.debug("尝试从维度路径提取UUID - 路径: {}", path);
+        
+        if (!path.startsWith("the_retreat_")) {
+            MaidSpellMod.LOGGER.debug("路径不以 'the_retreat_' 开头，跳过");
+            return null;
+        }
+        
+        // 提取 UUID 部分（下划线分隔）
+        String uuidStr = path.substring("the_retreat_".length());
+        // 转换为标准 UUID 格式（连字符分隔）
+        uuidStr = uuidStr.replace("_", "-");
+        
+        try {
+            UUID result = UUID.fromString(uuidStr);
+            MaidSpellMod.LOGGER.debug("成功解析UUID: {}", result);
+            return result;
+        } catch (IllegalArgumentException e) {
+            MaidSpellMod.LOGGER.error("无法解析私人维度UUID - 路径: {}, UUID字符串: {}", path, uuidStr, e);
+            return null;
+        }
+    }
+
     @Override
     public void afterPlace(WorldGenLevel pLevel, StructureManager pStructureManager, ChunkGenerator pChunkGenerator,
                            RandomSource pRandom, BoundingBox pBoundingBox, ChunkPos pChunkPos, PiecesContainer pPieces) {
@@ -120,11 +151,8 @@ public class HiddenRetreatStructure extends Structure {
             RetreatManager.markStructureGenerated(dimKey);
         }
 
-        // 关键修复：在结构实际生成完成后才消耗配额（避免地形失败导致配额浪费）
-        if (!Config.enablePrivateDimensions) {
-            com.github.yimeng261.maidspell.dimension.SharedRetreatManager.consumeQuota(serverLevel.getServer());
-            MaidSpellMod.LOGGER.info("结构实际生成完成，消耗配额 - 位置: {}", structureCenter);
-        }
+        // 配额已在 findGenerationPoint 中预留，此处只记录生成成功
+        MaidSpellMod.LOGGER.info("结构生成成功 - 位置: {}", structureCenter);
 
         // FIFO 通知队列中第一个等待的玩家
         long worldSeed = serverLevel.getSeed();
@@ -134,6 +162,22 @@ public class HiddenRetreatStructure extends Structure {
             MaidSpellMod.LOGGER.info("隐世之境结构生成完成，通知玩家: {}", notifiedPlayer);
             // 将结构位置写入该玩家的缓存（私人/共享模式均适用）
             RetreatManager.updateCache(notifiedPlayer, structureCenter);
+        } else if (Config.enablePrivateDimensions) {
+            // 私人维度模式：如果队列为空，将结构分配给维度所有者
+            UUID ownerUUID = extractPlayerUUIDFromDimension(dimKey);
+            if (ownerUUID != null) {
+                RetreatManager.updateCache(ownerUUID, structureCenter);
+                MaidSpellMod.LOGGER.info("私人维度自然生成，分配给所有者: {}, 位置: {}", ownerUUID, structureCenter);
+            } else {
+                MaidSpellMod.LOGGER.warn("无法解析私人维度所有者 - 维度: {}", dimKey.location());
+            }
+        }
+
+        // 共享模式下的孤儿结构处理
+        if (notifiedPlayer == null && !Config.enablePrivateDimensions) {
+            // 修复孤儿结构问题：队列为空时，将结构加入未分配池（仅共享模式）
+            RetreatManager.addUnassignedStructure(worldSeed, structureCenter);
+            MaidSpellMod.LOGGER.info("共享维度自然生成，加入未分配池 - 位置: {}", structureCenter);
 
             // 共享模式：队列中还有等待的玩家，触发下一次搜索
             if (!Config.enablePrivateDimensions && StructureSearchQueue.hasWaitingRequests(worldSeed)) {
@@ -152,12 +196,6 @@ public class HiddenRetreatStructure extends Structure {
                     );
                 }
             });
-        } else {
-            // 修复孤儿结构问题：队列为空时，将结构加入未分配池（仅共享模式）
-            if (!Config.enablePrivateDimensions) {
-                RetreatManager.addUnassignedStructure(worldSeed, structureCenter);
-                MaidSpellMod.LOGGER.info("隐世之境自然生成，加入未分配池 - 位置: {}", structureCenter);
-            }
         }
         
         // 关键：取消强制加载，允许区块自然卸载
@@ -187,17 +225,20 @@ public class HiddenRetreatStructure extends Structure {
         ResourceKey<Level> dimKey = RetreatManager.findDimensionKeyBySeed(worldSeed);
         ServerLevel serverLevel = dimKey != null ? RetreatManager.getDimensionLevel(dimKey) : null;
 
-        // 共享模式下检查配额
-        if (!Config.enablePrivateDimensions && serverLevel != null) {
-            if (!SharedRetreatManager.hasAvailableQuota(serverLevel.getServer())) {
-                return Optional.empty();
-            }
-        }
-
         // 地形检查（返回平均高度，避免竞态条件）
         OptionalInt terrainHeight = checkTerrainAndGetHeight(context, chunkPos);
         if (terrainHeight.isEmpty()) {
             return Optional.empty();
+        }
+
+        // 共享模式下原子性地检查并预留配额（防止竞态条件）
+        if (!Config.enablePrivateDimensions && serverLevel != null) {
+            // 关键修复：tryConsumeQuota 原子性地检查并消耗配额
+            if (!SharedRetreatManager.tryConsumeQuota(serverLevel.getServer())) {
+                MaidSpellMod.LOGGER.debug("没有可用配额，跳过结构生成 - 区块: {}", chunkPos);
+                return Optional.empty();
+            }
+            // 配额已预留，如果生成失败需要在 afterPlace 中归还
         }
 
         int height = terrainHeight.getAsInt();
@@ -209,8 +250,11 @@ public class HiddenRetreatStructure extends Structure {
         );
 
         if (result.isPresent()) {
-            MaidSpellMod.LOGGER.info("隐世之境结构计划生成，位置: {}", centerPos);
-            // 注意：配额在 afterPlace 中消耗，确保结构真正生成后才消耗
+            MaidSpellMod.LOGGER.info("隐世之境结构计划生成，位置: {} (配额已预留)", centerPos);
+        } else if (!Config.enablePrivateDimensions && serverLevel != null) {
+            // 生成失败，归还配额
+            SharedRetreatManager.refundQuota(serverLevel.getServer());
+            MaidSpellMod.LOGGER.warn("结构生成失败，归还配额 - 区块: {}", chunkPos);
         }
 
         return result;

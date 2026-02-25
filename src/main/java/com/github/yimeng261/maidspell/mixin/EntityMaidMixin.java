@@ -119,8 +119,8 @@ public class EntityMaidMixin {
     }
 
     /**
-     * 检查调用栈是否来自touhou-little-maid模组
-     * @return 如果调用来自TLM模组返回true
+     * 检查调用栈是否来自touhou-little-maid模组或其他可信任的模组
+     * @return 如果调用来自可信任模组返回true
      */
     @Unique
     private boolean maidSpell$isCallValid() {
@@ -133,7 +133,10 @@ public class EntityMaidMixin {
             if(className.endsWith("EntityMaid")) {
                 continue;
             }
-            if (className.toLowerCase().contains("tlm") || className.toLowerCase().contains("maid")) {
+            if (className.toLowerCase().contains("tlm") || 
+                className.toLowerCase().contains("maid") ||
+                className.contains("ironsspellbooks") ||
+                className.contains("curios")) {
                 callFromTouhouLittleMaidMod = true;
                 break;
             }

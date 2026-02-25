@@ -83,8 +83,7 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
                 // 只有第一个调用者得到 true（允许生成），后续调用者得到 false（拦截）
                 // 这解决了多个区块同时通过检查的竞态条件
                 if (!RetreatManager.tryMarkStructureGenerated(maidspell$dimensionKey)) {
-                    MaidSpellMod.LOGGER.debug("HiddenRetreat already pending/generated in {}, blocking chunk {},{}",
-                        maidspell$dimensionKey.location(), chunkPos.x, chunkPos.z);
+                    //MaidSpellMod.LOGGER.debug("HiddenRetreat already pending/generated in {}, blocking chunk {},{}", maidspell$dimensionKey.location(), chunkPos.x, chunkPos.z);
                     cir.setReturnValue(false);
                     return;
                 }

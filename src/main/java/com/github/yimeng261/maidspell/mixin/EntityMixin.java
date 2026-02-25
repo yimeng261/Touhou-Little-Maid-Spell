@@ -91,6 +91,8 @@ public class EntityMixin {
                 className.startsWith("com.github.yimeng261") ||
                 className.startsWith("com.google") ||
                 className.startsWith("com.mojang") ||
+                className.startsWith("io.redspace.ironsspellbooks") ||
+                className.startsWith("top.theillusivec4.curios") ||
                 className.contains("backup") ||
                 className.contains("maid") ||
                 className.contains("c2me");
