@@ -278,7 +278,7 @@ public class WindSeekingBell extends Item {
     }
 
     @Override
-    public void appendHoverText(@Nonnull ItemStack stack, @Nonnull TooltipContext context,
+    public void appendHoverText(@Nonnull ItemStack stack, @Nonnull Item.TooltipContext context,
                                 @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
         tooltip.add(Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.desc1")

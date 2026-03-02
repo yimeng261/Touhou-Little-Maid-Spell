@@ -109,7 +109,6 @@
   "item.touhou_little_maid_spell.wind_seeking_bell.search_error": "搜索出现异常",
   "subtitle.touhou_little_maid_spell.wind_seeking_bell": "寻风之铃响起",
   "item.touhou_little_maid_spell.wind_seeking_bell.first_use": "\n摇铃唤樱开\n深林寂里风徐来\n故人持花待\n",
-  "item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared": "首次进入归隐之地，已为您分配专属隐世之境",
   "item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure": "附近没有隐世之境，已加入等待队列...",
   "item.touhou_little_maid_spell.wind_seeking_bell.waiting_in_queue": "附近没有隐世之境，等待队列中... (第 %s/%s 位)",
   "item.touhou_little_maid_spell.wind_seeking_bell.structure_generated": "你的隐世之境已生成！位置: [%s, %s, %s]（距离 %s 方块）",
