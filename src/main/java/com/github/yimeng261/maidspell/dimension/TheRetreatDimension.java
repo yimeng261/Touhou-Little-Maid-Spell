@@ -44,7 +44,7 @@ public class TheRetreatDimension {
     public static ResourceKey<Level> getPlayerRetreatDimension(UUID playerUUID) {
         return ResourceKey.create(
             Registries.DIMENSION,
-            new ResourceLocation(MaidSpellMod.MOD_ID, "the_retreat_" + playerUUID.toString().replace("-", "_"))
+                ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "the_retreat_" + playerUUID.toString().replace("-", "_"))
         );
     }
 

@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
+import com.github.yimeng261.maidspell.dimension.StructureSearchQueue;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
@@ -42,15 +43,13 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.entity.EntityTeleportEvent;
+import net.neoforged.neoforge.event.entity.EntityTravelToDimensionEvent;
 import net.neoforged.neoforge.event.entity.living.*;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import org.slf4j.Logger;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 女仆法术事件处理器
@@ -158,6 +157,16 @@ public class MaidSpellEventHandler {
     }
 
     /**
+     * 玩家断线时清理结构搜索队列，防止幽灵请求阻塞其他玩家
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            StructureSearchQueue.removePlayerFromAllQueues(player.getUUID());
+        }
+    }
+
+    /**
      * 处理玩家重生事件 - 简化版本，主要用于日志记录
      */
     @SubscribeEvent
@@ -232,6 +241,44 @@ public class MaidSpellEventHandler {
                 }
             } catch (Exception e) {
                 Global.LOGGER.error("处理女仆传送事件时发生错误: {}", e.getMessage(), e);
+            }
+        }
+    }
+
+    /**
+     * 监听实体跨维度传送事件
+     * 当女仆跨维度传送时，更新其区块加载状态
+     */
+    @SubscribeEvent
+    public static void onEntityTravelToDimension(EntityTravelToDimensionEvent event) {
+        if (event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
+            try {
+                AnchoredEntityMaid anchoredEntityMaid = (AnchoredEntityMaid) maid;
+                // 检查女仆是否装备了锚定核心
+                if (anchoredEntityMaid.maidSpell$isAnchored()) {
+
+                    UUID maidId = maid.getUUID();
+                    Global.LOGGER.debug("女仆 {} 跨维度传送，禁用当前维度区块加载", maidId);
+
+                    // 启用新维度的区块加载
+                    MinecraftServer server = maid.getServer();
+                    if (server != null) {
+                        // 重新获取女仆实体（可能在新维度）
+                        Entity newMaid = Objects.requireNonNull(server.getLevel(event.getDimension()))
+                                .getEntity(maidId);
+                        if (newMaid instanceof EntityMaid newMaidEntity) {
+                            AnchoredEntityMaid newAnchoredMaid = (AnchoredEntityMaid) newMaidEntity;
+                            ChunkPos chunkPos = newMaidEntity.chunkPosition();
+                            TicketType<ChunkPos> maidTicket = TicketType.create("maid_anchor", Comparator.comparingLong(ChunkPos::toLong), 300);
+                            ServerLevel targetLevel = Objects.requireNonNull(server.getLevel(event.getDimension()));
+                            targetLevel.getChunkSource().addRegionTicket(maidTicket, chunkPos, 3, chunkPos);
+                            Global.LOGGER.debug("女仆 {} 跨维度传送完成，启用新维度区块加载", maidId);
+                        }
+
+                    }
+                }
+            } catch (Exception e) {
+                Global.LOGGER.error("处理女仆跨维度传送事件时发生错误: {}", e.getMessage(), e);
             }
         }
     }

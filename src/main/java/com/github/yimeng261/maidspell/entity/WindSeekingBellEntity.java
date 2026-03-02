@@ -1,6 +1,5 @@
 package com.github.yimeng261.maidspell.entity;
 
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -57,16 +56,17 @@ public class WindSeekingBellEntity extends Entity {
         this.setPos(player.getX(), player.getY(), player.getZ());
     }
 
-    public void setItem(ItemStack stack) {
-        if (stack.isEmpty()) {
-            this.getEntityData().set(DATA_ITEM_STACK, getDefaultItem());
-        } else {
-            this.getEntityData().set(DATA_ITEM_STACK, stack.copyWithCount(1));
-        }
+    public void setItem(ItemStack itemStack) {
+        this.getEntityData().set(DATA_ITEM_STACK, itemStack.copy());
+    }
+
+    private ItemStack getItemRaw() {
+        return this.getEntityData().get(DATA_ITEM_STACK);
     }
 
     public ItemStack getItem() {
-        return this.getEntityData().get(DATA_ITEM_STACK);
+        ItemStack itemStack = this.getItemRaw();
+        return itemStack.isEmpty() ? ItemStack.EMPTY : itemStack;
     }
 
     /**
@@ -76,18 +76,18 @@ public class WindSeekingBellEntity extends Entity {
         if (this.player != null && this.player.isAlive()) {
             return this.player;
         }
-        
+
         if (this.playerUUID != null && this.level() instanceof ServerLevel serverLevel) {
             this.player = serverLevel.getPlayerByUUID(this.playerUUID);
             return this.player;
         }
-        
+
         return null;
     }
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
-        builder.define(DATA_ITEM_STACK, getDefaultItem());
+        builder.define(DATA_ITEM_STACK, ItemStack.EMPTY);
     }
 
     /**
@@ -227,36 +227,38 @@ public class WindSeekingBellEntity extends Entity {
             if (currentPlayer.isCreative()) {
                 currentPlayer.teleportTo(this.aX, this.aY, this.aZ);
             }
+        }
 
-            if (this.surviveAfterDeath && !currentPlayer.isCreative()) {
-                ItemStack item = this.getItem();
-                if (!item.isEmpty()) {
-                    ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
-                    this.level().addFreshEntity(itemEntity);
-                }
-            }
-        } else {
-            // 如果找不到玩家，仍然掉落物品（如果设置了surviveAfterDeath）
-            if (this.surviveAfterDeath) {
-                ItemStack item = this.getItem();
-                if (!item.isEmpty()) {
-                    ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
-                    this.level().addFreshEntity(itemEntity);
-                }
+        // 掉落物品（统一处理，不再区分玩家是否存在）
+        if (this.surviveAfterDeath && (currentPlayer == null || !currentPlayer.isCreative())) {
+            ItemStack item = this.getItem();
+            if (!item.isEmpty()) {
+                ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
+                this.level().addFreshEntity(itemEntity);
             }
         }
     }
 
     /**
-     * 检查是否可以击中实体（避免击中发射者）
+     * 检查是否可以击中实体（排除发射者自身）
      */
     protected boolean canHitEntity(Entity entity) {
-        return entity instanceof Player && !entity.isSpectator() && entity.isAlive();
+        if (!(entity instanceof Player) || entity.isSpectator() || !entity.isAlive()) {
+            return false;
+        }
+        // 排除发射者
+        if (this.playerUUID != null && entity.getUUID().equals(this.playerUUID)) {
+            return false;
+        }
+        return true;
     }
 
     @Override
     public void addAdditionalSaveData(@NotNull CompoundTag compound) {
-        compound.put("Item", this.getItem().save(this.registryAccess()));
+        ItemStack item = this.getItemRaw();
+        if (!item.isEmpty()) {
+            compound.put("Item", item.save(this.registryAccess()));
+        }
         compound.putDouble("TargetX", this.targetX);
         compound.putDouble("TargetY", this.targetY);
         compound.putDouble("TargetZ", this.targetZ);
@@ -265,7 +267,7 @@ public class WindSeekingBellEntity extends Entity {
         compound.putDouble("AZ", this.aZ);
         compound.putInt("Life", this.life);
         compound.putBoolean("SurviveAfterDeath", this.surviveAfterDeath);
-        
+
         // 保存玩家UUID
         if (this.playerUUID != null) {
             compound.putUUID("PlayerUUID", this.playerUUID);
@@ -274,9 +276,8 @@ public class WindSeekingBellEntity extends Entity {
 
     @Override
     public void readAdditionalSaveData(CompoundTag compound) {
-        if (compound.contains("Item", 10)) {
-            setItem(ItemStack.parse(registryAccess(), compound.getCompound("Item")).orElse(getDefaultItem()));
-        }
+        ItemStack item = ItemStack.parseOptional(this.registryAccess(), compound.getCompound("Item"));
+        this.setItem(item);
         this.targetX = compound.getDouble("TargetX");
         this.targetY = compound.getDouble("TargetY");
         this.targetZ = compound.getDouble("TargetZ");
@@ -285,7 +286,7 @@ public class WindSeekingBellEntity extends Entity {
         this.aZ = compound.getDouble("AZ");
         this.life = compound.getInt("Life");
         this.surviveAfterDeath = compound.getBoolean("SurviveAfterDeath");
-        
+
         // 加载玩家UUID
         if (compound.hasUUID("PlayerUUID")) {
             this.playerUUID = compound.getUUID("PlayerUUID");
@@ -300,9 +301,5 @@ public class WindSeekingBellEntity extends Entity {
     @Override
     public float getPickRadius() {
         return 0.0F;
-    }
-
-    private ItemStack getDefaultItem() {
-        return new ItemStack(MaidSpellItems.WIND_SEEKING_BELL.get());
     }
 }

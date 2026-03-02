@@ -366,6 +366,26 @@ public class Config {
         BUILDER.pop(); // baubles
     }
 
+    // ========== 归隐之地维度配置 ==========
+    static {
+        BUILDER.comment("归隐之地维度相关配置")
+                .comment("Retreat dimension configurations")
+                .push("retreat_dimension");
+    }
+
+    private static final ModConfigSpec.BooleanValue ENABLE_PRIVATE_DIMENSIONS = BUILDER
+            .comment("是否启用私人维度模式 (默认: true)")
+            .comment("true: 每个玩家拥有独立的归隐之地维度")
+            .comment("false: 所有玩家共享一个归隐之地维度，每个玩家拥有一个隐世之境结构")
+            .comment("Whether to enable private dimension mode (default: true)")
+            .comment("true: Each player has their own retreat dimension")
+            .comment("false: All players share one retreat dimension, each with one structure")
+            .define("enablePrivateDimensions", true);
+
+    static {
+        BUILDER.pop(); // retreat_dimension
+    }
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     // 缓存的配置值
@@ -419,6 +439,9 @@ public class Config {
     public static double chaosBookMinSplitDamage;
     public static double soulBookDamageThresholdPercent;
     public static int soulBookDamageIntervalThreshold;
+
+    // 归隐之地维度相关
+    public static boolean enablePrivateDimensions;
 
 
     @SubscribeEvent
@@ -474,6 +497,9 @@ public class Config {
         chaosBookMinSplitDamage = CHAOS_BOOK_MIN_SPLIT_DAMAGE.get();
         soulBookDamageThresholdPercent = SOUL_BOOK_DAMAGE_THRESHOLD_PERCENT.get();
         soulBookDamageIntervalThreshold = SOUL_BOOK_DAMAGE_INTERVAL_THRESHOLD.get();
+
+        // 归隐之地维度相关
+        enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

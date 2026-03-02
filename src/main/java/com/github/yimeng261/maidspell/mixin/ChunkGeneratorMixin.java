@@ -1,8 +1,9 @@
 package com.github.yimeng261.maidspell.mixin;
 
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
-import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
@@ -24,15 +25,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.Set;
-
 /**
  * Mixin到ChunkGenerator，阻止其他结构在归隐之地维度生成
- * <p>
- * 策略：
- * 1. 检测当前维度是否是归隐之地（通过维度名称：touhou_little_maid_spell:the_retreat_*）
- * 2. 如果是，只允许HiddenRetreatStructure生成，拦截其他所有结构
- * 3. 这样就不需要在HiddenRetreatStructure中检查重叠
  */
 @Mixin(ChunkGenerator.class)
 public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
@@ -40,21 +34,10 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
     @Shadow
     public abstract BiomeSource getBiomeSource();
 
-    /**
-     * 隐世之境结构ID
-     */
     @Unique
-    private static final ResourceLocation HIDDEN_RETREAT_ID = new ResourceLocation(MaidSpellMod.MOD_ID, "hidden_retreat");
+    private static final ResourceLocation HIDDEN_RETREAT_ID =
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat");
 
-    @Unique
-    private static final Set<ResourceLocation> maidspell$allowedStructures = Set.of(
-            HIDDEN_RETREAT_ID,
-            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_cherry_tree")
-    );
-
-    /**
-     * 存储当前ChunkGenerator所属的维度
-     */
     @Unique
     @Nullable
     private ResourceKey<Level> maidspell$dimensionKey = null;
@@ -70,15 +53,7 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
         return this.maidspell$dimensionKey;
     }
 
-    /**
-     * 拦截结构生成方法
-     * 在归隐之地维度中，只允许HiddenRetreatStructure生成
-     */
-    @Inject(
-            method = "tryGenerateStructure",
-            at = @At("HEAD"),
-            cancellable = true
-    )
+    @Inject(method = "tryGenerateStructure", at = @At("HEAD"), cancellable = true)
     private void onTryGenerateStructure(
             StructureSet.StructureSelectionEntry structureEntry,
             StructureManager structureManager,
@@ -91,12 +66,10 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
             SectionPos sectionPos,
             CallbackInfoReturnable<Boolean> cir
     ) {
-        // 检查当前维度是否是归隐之地
         if (!maidspell$isRetreatDimension()) {
-            return; // 不是归隐之地，允许正常生成
+            return;
         }
 
-        // 获取当前尝试生成的结构ID
         var structureKey = structureEntry.structure().unwrapKey();
         if (structureKey.isEmpty()) {
             return;
@@ -104,54 +77,35 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
 
         ResourceLocation structureId = structureKey.get().location();
 
-        // 如果是HiddenRetreatStructure，检查是否已生成
-        // seed参数就是世界种子，直接使用即可
         if (HIDDEN_RETREAT_ID.equals(structureId)) {
-            if (!HiddenRetreatStructure.GENERATED_DIMENSIONS.contains(seed)) {
-                MaidSpellMod.LOGGER.debug("Allowing HiddenRetreat structure generation at chunk {}, {}",
-                    chunkPos.x, chunkPos.z);
-                return;
-            } else {
-                // 世界种子已标记，不再生成
-                MaidSpellMod.LOGGER.debug("HiddenRetreat already generated in this dimension, blocking at chunk {}, {}",
-                        chunkPos.x, chunkPos.z);
-                cir.setReturnValue(false);
-                return;
+            if (Config.enablePrivateDimensions && maidspell$dimensionKey != null) {
+                // 原子性检查并标记：tryMarkStructureGenerated 基于 ConcurrentHashMap.add()
+                // 只有第一个调用者得到 true（允许生成），后续调用者得到 false（拦截）
+                // 这解决了多个区块同时通过检查的竞态条件
+                if (!RetreatManager.tryMarkStructureGenerated(maidspell$dimensionKey)) {
+                    MaidSpellMod.LOGGER.debug("HiddenRetreat already pending/generated in {}, blocking chunk {},{}",
+                            maidspell$dimensionKey.location(), chunkPos.x, chunkPos.z);
+                    cir.setReturnValue(false);
+                    return;
+                }
+                MaidSpellMod.LOGGER.debug("Allowing first HiddenRetreat generation in {}, chunk {},{}",
+                        maidspell$dimensionKey.location(), chunkPos.x, chunkPos.z);
             }
-        }
-
-        if (maidspell$allowedStructures.contains(structureId)) {
-            // 放过白名单结构
+            // 共享模式放行，配额在 findGenerationPoint 中检查
             return;
         }
 
-        // 其他所有结构在归隐之地中都不允许生成
-        //MaidSpellMod.LOGGER.debug("Blocking structure {} generation in retreat dimension at chunk {}, {}", structureId, chunkPos.x, chunkPos.z);
+        // 其他结构在归隐之地中不允许生成
         cir.setReturnValue(false);
     }
 
-    /**
-     * 检查当前维度是否是归隐之地
-     * 归隐之地特征：维度名称格式为 touhou_little_maid_spell:the_retreat_*
-     */
     @Unique
     private boolean maidspell$isRetreatDimension() {
-        try {
-            // 如果维度信息未设置，返回false
-            if (maidspell$dimensionKey == null) {
-                return false;
-            }
-
-            ResourceLocation dimensionLocation = maidspell$dimensionKey.location();
-
-            // 检查命名空间和路径前缀
-            return dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID)
-                    && dimensionLocation.getPath().startsWith("the_retreat");
-        } catch (Exception e) {
-            MaidSpellMod.LOGGER.error("Error checking if dimension is retreat", e);
+        if (maidspell$dimensionKey == null) {
             return false;
         }
+        ResourceLocation loc = maidspell$dimensionKey.location();
+        return loc.getNamespace().equals(MaidSpellMod.MOD_ID)
+                && loc.getPath().startsWith("the_retreat");
     }
 }
-
-
