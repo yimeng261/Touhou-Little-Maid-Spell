@@ -23,16 +23,26 @@ import java.util.List;
  */
 @Mod.EventBusSubscriber
 public class TemplatePoolModifier {
+    @SuppressWarnings("removal")
     private static final ResourceLocation VILLAGE_DESERT_STREETS_POOL = new ResourceLocation("minecraft", "village/desert/streets");
+    @SuppressWarnings("removal")
     private static final ResourceLocation VILLAGE_PLAINS_STREETS_POOL = new ResourceLocation("minecraft", "village/plains/streets");
+    @SuppressWarnings("removal")
     private static final ResourceLocation VILLAGE_SAVANNA_STREETS_POOL = new ResourceLocation("minecraft", "village/savanna/streets");
+    @SuppressWarnings("removal")
     private static final ResourceLocation VILLAGE_SNOWY_STREETS_POOL = new ResourceLocation("minecraft", "village/snowy/streets");
+    @SuppressWarnings("removal")
     private static final ResourceLocation VILLAGE_TAIGA_STREETS_POOL = new ResourceLocation("minecraft", "village/taiga/streets");
 
+    @SuppressWarnings("removal")
     private static final ResourceLocation ENCHANTRESS_FOOTSTEPS_VILLAGE_DESERT_STREETS_POOL = new ResourceLocation(MaidSpellMod.MOD_ID, "enchantress_footsteps/village/desert_streets");
+    @SuppressWarnings("removal")
     private static final ResourceLocation ENCHANTRESS_FOOTSTEPS_VILLAGE_PLAINS_STREETS_POOL = new ResourceLocation(MaidSpellMod.MOD_ID, "enchantress_footsteps/village/plains_streets");
+    @SuppressWarnings("removal")
     private static final ResourceLocation ENCHANTRESS_FOOTSTEPS_VILLAGE_SAVANNA_STREETS_POOL = new ResourceLocation(MaidSpellMod.MOD_ID, "enchantress_footsteps/village/savanna_streets");
+    @SuppressWarnings("removal")
     private static final ResourceLocation ENCHANTRESS_FOOTSTEPS_VILLAGE_SNOWY_STREETS_POOL = new ResourceLocation(MaidSpellMod.MOD_ID, "enchantress_footsteps/village/snowy_streets");
+    @SuppressWarnings("removal")
     private static final ResourceLocation ENCHANTRESS_FOOTSTEPS_VILLAGE_TAIGA_STREETS_POOL = new ResourceLocation(MaidSpellMod.MOD_ID, "enchantress_footsteps/village/taiga_streets");
 
     private static void mergeBuildingPool(Registry<StructureTemplatePool> templatePoolRegistry, ResourceLocation target, ResourceLocation from) {
