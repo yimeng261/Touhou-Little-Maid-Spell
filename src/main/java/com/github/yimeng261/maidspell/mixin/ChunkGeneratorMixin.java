@@ -11,7 +11,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.StructureManager;
-import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.RandomState;
@@ -19,24 +18,27 @@ import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.Set;
 
 /**
  * Mixin到ChunkGenerator，阻止其他结构在归隐之地维度生成
  */
 @Mixin(ChunkGenerator.class)
 public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
-
-    @Shadow
-    public abstract BiomeSource getBiomeSource();
-
     @Unique
     private static final ResourceLocation HIDDEN_RETREAT_ID =
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat");
+
+    @Unique
+    private static final Set<ResourceLocation> maidspell$allowedStructures = Set.of(
+            HIDDEN_RETREAT_ID,
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_cherry_tree")
+    );
 
     @Unique
     @Nullable
@@ -91,6 +93,11 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
                         maidspell$dimensionKey.location(), chunkPos.x, chunkPos.z);
             }
             // 共享模式放行，配额在 findGenerationPoint 中检查
+            return;
+        }
+
+        if (maidspell$allowedStructures.contains(structureId)) {
+            // 放过白名单结构
             return;
         }
 

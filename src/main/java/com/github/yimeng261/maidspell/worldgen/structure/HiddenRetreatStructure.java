@@ -209,11 +209,14 @@ public class HiddenRetreatStructure extends Structure {
                                             StructureTemplateManager pStructureTemplateManager, long pSeed,
                                             ChunkPos pChunkPos, int pReferences, LevelHeightAccessor pHeightAccessor,
                                             Predicate<Holder<Biome>> pValidBiome) {
-        // 通过 seed 查找对应的维度 key，确认是归隐之地维度
-        ResourceKey<Level> dimKey = RetreatManager.findDimensionKeyBySeed(pSeed);
-        if (dimKey != null) {
-            return super.generate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
-                    pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+        // 通过 ChunkGenerator 获取当前维度，确认是归隐之地维度
+        if (pChunkGenerator instanceof com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor accessor) {
+            ResourceKey<Level> dimKey = accessor.maidspell$getDimensionKey();
+            if (dimKey != null && dimKey.location().getNamespace().equals(MaidSpellMod.MOD_ID)
+                    && dimKey.location().getPath().startsWith("the_retreat")) {
+                return super.generate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                        pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+            }
         }
         return StructureStart.INVALID_START;
     }
