@@ -145,5 +145,6 @@
   "item.maidspell.crystal_circuit.virtual_cpu_name": "Maid Virtual CPU",
   "item.maidspell.crystal_circuit.virtual_cpu_name_with_maid": "%s's Virtual CPU",
   "item.maidspell.crystal_circuit.virtual_cpu_activated": "§a%s's Virtual CPU Activated! (64k Storage, 32 Co-processors)",
-  "item.maidspell.crystal_circuit.virtual_cpu_deactivated": "§e%s's Virtual CPU Deactivated"
+  "item.maidspell.crystal_circuit.virtual_cpu_deactivated": "§e%s's Virtual CPU Deactivated",
+  "maidspell.ascension_halo.maid_effects": "§6Ascension Halo now supports Maids! Equipped maids gain powerful defensive and combat abilities."
 }

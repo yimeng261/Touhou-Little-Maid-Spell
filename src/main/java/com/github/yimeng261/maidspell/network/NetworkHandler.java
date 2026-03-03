@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.network;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
+import com.github.yimeng261.maidspell.network.message.MaidBaubleSyncMessage;
 import com.github.yimeng261.maidspell.network.message.SpellSyncMessage;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
@@ -31,13 +32,21 @@ public class NetworkHandler {
                 EnderPocketMessage::decode,
                 EnderPocketMessage::handle
         );
-        
+
         CHANNEL.registerMessage(
                 id++,
                 SpellSyncMessage.class,
                 SpellSyncMessage::encode,
                 SpellSyncMessage::decode,
                 SpellSyncMessage::handle
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                MaidBaubleSyncMessage.class,
+                MaidBaubleSyncMessage::encode,
+                MaidBaubleSyncMessage::decode,
+                MaidBaubleSyncMessage::handle
         );
     }
 }

@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.mixin;
+package com.github.yimeng261.maidspell.mixin.tlm;
 
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -6,7 +6,6 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Final;
@@ -18,8 +17,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import javax.annotation.Nullable;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * Mixin用于移除女仆容器的距离检查限制

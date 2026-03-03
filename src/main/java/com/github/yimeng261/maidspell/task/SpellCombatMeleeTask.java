@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.task;
 
+import com.Polarice3.Goety.api.entities.IOwned;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
@@ -34,6 +35,7 @@ import com.mojang.logging.LogUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 /**
@@ -88,8 +90,8 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
-        // 使用近战索敌方法 - 它已经内置了优先攻击最近目标的逻辑
-        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
+        // 使用自定义索敌方法，排除自己召唤的 Goety 召唤物
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
         BehaviorControl<EntityMaid> spellCastingTask = new SpellCombatBehavior();
@@ -105,6 +107,31 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
                 Pair.of(2, spellCastingTask),
                 Pair.of(2, strafingTask)
         );
+    }
+    
+    /**
+     * 自定义索敌方法，排除女仆自己召唤的 Goety 召唤物
+     */
+    private Optional<? extends LivingEntity> findValidAttackTarget(EntityMaid maid) {
+        // 首先使用默认方法找到目标
+        Optional<? extends LivingEntity> defaultTarget = IAttackTask.findFirstValidAttackTarget(maid);
+        
+        // 如果没有找到目标，直接返回
+        if (defaultTarget.isEmpty()) {
+            return defaultTarget;
+        }
+        
+        LivingEntity target = defaultTarget.get();
+        
+        // 检查目标是否是 Goety 召唤物
+        if (ModList.get().isLoaded("goety") && target instanceof IOwned ownedEntity) {
+            LivingEntity owner = ownedEntity.getTrueOwner();
+            if (owner instanceof EntityMaid || owner instanceof Player) {
+                return Optional.empty();
+            }
+        }
+        
+        return defaultTarget;
     }
 
     @Override
@@ -237,7 +264,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     /**
      * 战斗状态下的视线控制任务
      * 高优先级任务，确保女仆在战斗时只看向攻击目标，不会看向玩家
-     * 特殊情况：当女仆释放蓝色音符标记的铁魔法法术时，允许看向主人
+     * 特殊情况：当女仆释放标记的铁魔法法术时，允许看向主人
      */
     static class CombatLookControlTask extends Behavior<EntityMaid> {
         
@@ -313,7 +340,6 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
                 }
                 
                 // 检查当前目标是否是原始目标切换到主人的结果
-                // 这表明女仆正在施放蓝色音符标记的法术
                 LivingEntity currentTarget = data.getTarget();
                 LivingEntity originTarget = data.getOriginTarget();
                 LivingEntity owner = maid.getOwner();
@@ -358,6 +384,10 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             }
 
             maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
+                if(target instanceof Player) {
+                    stop(worldIn, maid, gameTime);
+                    return;
+                }
                 double distance = maid.distanceTo(target);
                 double optimalMaxDistance = this.optimalMinDistance + this.rangeRange; // 最佳最大距离
 

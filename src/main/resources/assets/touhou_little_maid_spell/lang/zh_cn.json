@@ -145,5 +145,6 @@
   "item.maidspell.crystal_circuit.virtual_cpu_name": "女仆虚拟CPU",
   "item.maidspell.crystal_circuit.virtual_cpu_name_with_maid": "%s的虚拟CPU",
   "item.maidspell.crystal_circuit.virtual_cpu_activated": "§a%s 的虚拟CPU已激活！（64k存储，32并行）",
-  "item.maidspell.crystal_circuit.virtual_cpu_deactivated": "§e%s 的虚拟CPU已停用"
+  "item.maidspell.crystal_circuit.virtual_cpu_deactivated": "§e%s 的虚拟CPU已停用",
+  "maidspell.ascension_halo.maid_effects": "§6晋升之环现已支持女仆！女仆装备后将获得强大的防御和战斗能力。"
 }

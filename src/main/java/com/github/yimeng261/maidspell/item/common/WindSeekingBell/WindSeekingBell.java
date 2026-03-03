@@ -25,6 +25,8 @@ import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraftforge.fml.ModList;
+
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
@@ -54,6 +56,11 @@ public class WindSeekingBell extends Item {
 
     @Override
     public @NotNull InteractionResultHolder<ItemStack> use(@Nonnull Level level, @Nonnull Player player, @Nonnull InteractionHand hand) {
+
+        if(!ModList.get().isLoaded("irons_spellbooks")) {
+            return InteractionResultHolder.fail(player.getItemInHand(hand));
+        }
+
         ItemStack itemStack = player.getItemInHand(hand);
         player.startUsingItem(hand);
 

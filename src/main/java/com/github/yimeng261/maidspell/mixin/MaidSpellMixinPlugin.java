@@ -19,10 +19,16 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String ISS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.iss.";
     private static final String AE2_MOD_ID = "ae2";
     private static final String AE2_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.ae2.";
+    private static final String GOETY_MOD_ID = "goety";
+    private static final String GOETY_REVELATION_MOD_ID = "goety_revelation";
+    private static final String GOETY_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.goety.";
+    private static final String GOETY_REVELATION_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.goety.revelation.";
 
     private boolean isIronsSpellbooksLoaded = false;
     private boolean isTlmMagicAnimationSupported = false;
     private boolean isAE2Loaded = false;
+    private boolean isGoetyLoaded = false;
+    private boolean isGoetyRevelationLoaded = false;
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -36,6 +42,10 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         
         // 检查 AE2 模组是否已加载
         isAE2Loaded = LoadingModList.get().getModFileById(AE2_MOD_ID) != null;
+
+        // 检查 Goety 和 Goety Revelation 模组是否已加载
+        isGoetyLoaded = LoadingModList.get().getModFileById(GOETY_MOD_ID) != null;
+        isGoetyRevelationLoaded = LoadingModList.get().getModFileById(GOETY_REVELATION_MOD_ID) != null;
     }
 
     @Override
@@ -49,10 +59,15 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.startsWith(ISS_MIXIN_PACKAGE)) {
             return isIronsSpellbooksLoaded && isTlmMagicAnimationSupported;
         }
-        
-        // 如果是 ae2 包下的 Mixin，需要检查 AE2 模组是否存在
-        if (mixinClassName.startsWith(AE2_MIXIN_PACKAGE)) {
-            return isAE2Loaded;
+
+        // 先检查更具体的 goety.revelation 包（必须在 goety 包之前检查）
+        if(mixinClassName.startsWith(GOETY_REVELATION_MIXIN_PACKAGE)){
+            return isGoetyRevelationLoaded;
+        }
+
+        // 如果是 goety 包下的 Mixin，只需要检查 Goety 模组是否存在
+        if (mixinClassName.startsWith(GOETY_MIXIN_PACKAGE)) {
+            return isGoetyLoaded;
         }
 
         // 其他 Mixin 正常加载
