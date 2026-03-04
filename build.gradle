@@ -4,6 +4,7 @@ plugins {
     id 'idea'
     id 'net.neoforged.moddev' version '2.0.115'
     id "com.modrinth.minotaur" version "2.+"
+    id 'net.darkhax.curseforgegradle' version '1.+'
 }
 
 version = mod_version
@@ -70,7 +71,10 @@ base {
     archivesName = "$mod_id-$minecraft_version"
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
 
 neoForge {
     // 指定 NeoForge 版本
@@ -232,4 +236,62 @@ idea {
         downloadSources = true
         downloadJavadoc = true
     }
+}
+
+def getChangelogForVersion(String version) {
+    def changelogFile = file('CHANGELOG.md')
+    if (!changelogFile.exists()) {
+        return version
+    }
+
+    def lines = changelogFile.readLines()
+    def versionHeader = "## ${version}"
+    def inVersionSection = false
+    def changelog = new StringBuilder()
+
+    for (line in lines) {
+        if (line.trim() == versionHeader) {
+            inVersionSection = true
+            continue
+        }
+        if (inVersionSection) {
+            if (line.trim() == "---") {
+                break
+            }
+            changelog.append(line).append('\n')
+        }
+    }
+
+    return changelog.toString().trim()
+}
+
+modrinth {
+    token = System.getenv("MODRINTH_TOKEN")
+    projectId = 'touhou-little-maid-spell'
+    // versionNumber = "1.0.0"
+    versionType = version_type
+    uploadFile = jar
+    changelog = getChangelogForVersion(mod_version)
+    gameVersions = [minecraft_version]
+    loaders = ["neoforge"]
+    dependencies {
+        required.project "touhou-little-maid"
+    }
+}
+
+task publishCurseForge(type: net.darkhax.curseforgegradle.TaskPublishCurseForge) {
+    apiToken = System.getenv("CURSEFORGE_TOKEN")
+    def mainFile = upload(curseforge_project, jar)
+    mainFile.changelog = getChangelogForVersion(mod_version)
+    mainFile.releaseType = version_type
+    mainFile.addGameVersion(minecraft_version)
+    mainFile.addModLoader('neoforge')
+    mainFile.addRequirement('touhou-little-maid')
+    mainFile.withAdditionalFile(sourcesJar)
+}
+
+tasks.register('publishMod') {
+    group = 'publishing'
+    description = 'Publishes the mod to both Modrinth and CurseForge'
+    dependsOn 'modrinth', 'publishCurseForge'
 }
