@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.mixin;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHandler;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -26,6 +27,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.Set;
+
 /**
  * EntityMaid的Mixin，用于:
  * 1. 替换女仆背包处理器为支持法术书变化监听的版本
@@ -48,6 +51,12 @@ public abstract class EntityMaidMixin extends TamableAnimal implements AnchoredE
     @Shadow
     public boolean guiOpening;
 
+    @Unique
+    private static final Set<ResourceLocation> maidspell$deniedStructures = Set.of(
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat"),
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "fairy_maid_cafe")
+    );
+
 
     protected EntityMaidMixin(EntityType<? extends TamableAnimal> entityType, Level level) {
         super(entityType, level);
@@ -57,8 +66,8 @@ public abstract class EntityMaidMixin extends TamableAnimal implements AnchoredE
     @Shadow public abstract BaubleItemHandler getMaidBauble();
 
     /**
-     * 修改finalizeSpawn方法，阻止hidden_retreat结构中的女仆进行随机模型选择
-     * 在方法开头注入，如果检测到是在hidden_retreat结构中生成，则提前返回
+     * 修改finalizeSpawn方法，阻止名单结构中的女仆进行随机模型选择
+     * 在方法开头注入，如果检测到是在名单结构中生成，则提前返回
      */
     @Inject(method = "finalizeSpawn",
             at = @At("HEAD"),
@@ -172,24 +181,27 @@ public abstract class EntityMaidMixin extends TamableAnimal implements AnchoredE
     }
 
     /**
-     * 检查指定位置是否在hidden_retreat结构中
+     * 检查指定位置是否在maidspell$deniedStructures结构中
      * @param worldIn 世界访问器
      * @param pos 检查的位置
-     * @return 如果在hidden_retreat结构中返回true
+     * @return 如果在maidspell$deniedStructures结构中返回true
      */
     @Unique
     private boolean maidSpell$isInHiddenRetreatStructure(ServerLevelAccessor worldIn, BlockPos pos) {
-        // 检查当前位置是否在hidden_retreat结构中
+        // 检查当前位置是否在maidspell$deniedStructures结构中
         // 使用结构管理器检查
         var structureManager = worldIn.getLevel().structureManager();
-        var hiddenRetreatStructureSet = worldIn.registryAccess()
-            .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
-                .getOptional(ResourceLocation.fromNamespaceAndPath("touhou_little_maid_spell", "hidden_retreat"));
-
-        if (hiddenRetreatStructureSet.isPresent()) {
-            // 检查此位置是否在hidden_retreat结构的范围内
-            var structureStart = structureManager.getStructureWithPieceAt(pos, hiddenRetreatStructureSet.get());
-            return structureStart.isValid();
+        for (ResourceLocation structureKey : maidspell$deniedStructures) {
+            var hiddenRetreatStructureSet = worldIn.registryAccess()
+                    .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
+                    .getOptional(structureKey);
+            if (hiddenRetreatStructureSet.isPresent()) {
+                // 检查此位置是否在structureKey结构的范围内
+                var structureStart = structureManager.getStructureWithPieceAt(pos, hiddenRetreatStructureSet.get());
+                if (structureStart.isValid()) {
+                    return true;
+                }
+            }
         }
         return false;
     }
