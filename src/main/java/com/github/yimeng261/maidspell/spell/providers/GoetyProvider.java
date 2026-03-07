@@ -175,8 +175,6 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
 
         if (BaubleStateManager.hasBauble(maid, MaidSpellItems.getAscensionHalo())) {
             castDuration = Math.max(1, castDuration / 4); // 至少保留1 tick
-        }else if(BaubleStateManager.hasBauble(maid, MaidSpellItems.getHaloOfTheEnd())){
-            castDuration = Math.max(1, castDuration / 8);
         }
 
         // 即时法术特殊处理（只有非蓄力法术才可能是即时的）

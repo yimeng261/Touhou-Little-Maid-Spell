@@ -21,7 +21,6 @@ import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBaubl
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
 import com.github.yimeng261.maidspell.item.bauble.ascensionHalo.AscensionHaloBauble;
-import com.github.yimeng261.maidspell.item.bauble.haloOfTheEnd.HaloOfTheEndBauble;
 import net.minecraftforge.fml.ModList;
 
 /**
@@ -111,17 +110,6 @@ public class MaidBaubleRegistry implements ILittleMaid {
             var ascensionHalo = MaidSpellItems.getAscensionHalo();
             if(ascensionHalo != null){
                 manager.bind(ascensionHalo, new AscensionHaloBauble());
-            }
-        }
-
-        // 终末之环（使用 revelationfix 的物品，revelationfix 是 goety_revelation 的一部分）
-        if(ModList.get().isLoaded("goety_revelation")){
-            // 初始化终末之环的女仆效果
-            HaloOfTheEndBauble.init();
-
-            var haloOfTheEnd = MaidSpellItems.getHaloOfTheEnd();
-            if(haloOfTheEnd != null){
-                manager.bind(haloOfTheEnd, new HaloOfTheEndBauble());
             }
         }
 

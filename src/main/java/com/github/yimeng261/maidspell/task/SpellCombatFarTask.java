@@ -183,7 +183,6 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
                     stop(worldIn, maid, gameTime);
                     return;
                 }
-                LOGGER.debug("target:{}", target);
                 double distance = maid.distanceTo(target);
                 double optimalMaxDistance = optimalMinDistance + rangeRange; // 最佳最大距离
 

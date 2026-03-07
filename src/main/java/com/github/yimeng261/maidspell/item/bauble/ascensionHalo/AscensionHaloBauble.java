@@ -263,22 +263,6 @@ public class AscensionHaloBauble implements IMaidBauble {
 
         return true; // 取消死亡
     }
-    
-    /**
-     * 查找女仆装备的晋升之环
-     */
-    private ItemStack findAscensionHaloBauble(EntityMaid maid) {
-        var ascensionHalo = MaidSpellItems.getAscensionHalo();
-        if (ascensionHalo == null) return null;
-        
-        for (int i = 0; i < maid.getMaidBauble().getSlots(); i++) {
-            ItemStack stack = maid.getMaidBauble().getStackInSlot(i);
-            if (stack.getItem() == ascensionHalo) {
-                return stack;
-            }
-        }
-        return null;
-    }
 
     
     /**

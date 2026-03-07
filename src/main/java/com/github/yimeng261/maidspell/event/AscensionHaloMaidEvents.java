@@ -163,14 +163,10 @@ public class AscensionHaloMaidEvents {
         
         // 检查无敌状态
         ItemStack baubleStack = findAscensionHaloBauble(maid, ascensionHalo);
-        if (baubleStack != null && isInvulnerable(baubleStack)) {
-            event.setCanceled(true);
-            return;
-        }
-        
-        // 检查是否免疫该伤害类型
-        if (isInvulnerableTo(source)) {
-            event.setCanceled(true);
+        if (baubleStack != null) {
+            if(isInvulnerableTo(source)||isInvulnerable(baubleStack)) {
+                event.setCanceled(true);
+            }
         }
     }
     
@@ -290,7 +286,7 @@ public class AscensionHaloMaidEvents {
                damageSource.is(DamageTypes.FREEZE) ||            // 冰冻细雪
                damageSource.is(DamageTypes.IN_WALL);             // 窒息伤害
     }
-    
+
     /**
      * 查找女仆装备的晋升之环
      */

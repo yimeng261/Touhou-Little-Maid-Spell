@@ -32,22 +32,6 @@ public class BaubleStateManager {
         return maid.getMaidBauble().containsItem(item);
     }
 
-    /**
-     * 获取女仆装备的指定饰品ItemStack
-     * @param maid 女仆实体
-     * @param item 饰品物品
-     * @return 饰品ItemStack，如果未装备则返回null
-     */
-    public static ItemStack getBaubleItem(EntityMaid maid, Item item) {
-        // 遍历所有饰品槽位
-        for (int i = 0; i < maid.getMaidBauble().getSlots(); i++) {
-            ItemStack stack = maid.getMaidBauble().getStackInSlot(i);
-            if (!stack.isEmpty() && stack.getItem() == item) {
-                return stack;
-            }
-        }
-        return null;
-    }
 
     /**
      * 检查实体是否为装备了光环的女仆
@@ -58,11 +42,9 @@ public class BaubleStateManager {
         if (!(caster instanceof EntityMaid maid)) {
             return false;
         }
-        var haloOfTheEnd = MaidSpellItems.getHaloOfTheEnd();
         var ascensionHalo = MaidSpellItems.getAscensionHalo();
 
-        return (haloOfTheEnd != null && hasBauble(maid, haloOfTheEnd)) ||
-               (ascensionHalo != null && hasBauble(maid, ascensionHalo));
+        return (ascensionHalo != null && hasBauble(maid, ascensionHalo));
     }
 
     /**
@@ -78,17 +60,5 @@ public class BaubleStateManager {
         return ascensionHalo != null && hasBauble(maid, ascensionHalo);
     }
 
-    /**
-     * 检查实体是否为装备了终末之环的女仆
-     * @param caster 施法者实体
-     * @return 如果是装备了终末之环的女仆返回true，否则返回false
-     */
-    public static boolean hasMaidWithHaloOfTheEnd(LivingEntity caster) {
-        if (!(caster instanceof EntityMaid maid)) {
-            return false;
-        }
-        var haloOfTheEnd = MaidSpellItems.getHaloOfTheEnd();
-        return haloOfTheEnd != null && hasBauble(maid, haloOfTheEnd);
-    }
 
 } 

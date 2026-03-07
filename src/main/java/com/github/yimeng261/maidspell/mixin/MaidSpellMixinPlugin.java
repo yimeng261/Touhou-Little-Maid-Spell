@@ -18,7 +18,6 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String ISS_MOD_ID = "irons_spellbooks";
     private static final String ISS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.iss.";
     private static final String AE2_MOD_ID = "ae2";
-    private static final String AE2_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.ae2.";
     private static final String GOETY_MOD_ID = "goety";
     private static final String GOETY_REVELATION_MOD_ID = "goety_revelation";
     private static final String GOETY_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.goety.";
@@ -26,7 +25,6 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
 
     private boolean isIronsSpellbooksLoaded = false;
     private boolean isTlmMagicAnimationSupported = false;
-    private boolean isAE2Loaded = false;
     private boolean isGoetyLoaded = false;
     private boolean isGoetyRevelationLoaded = false;
 
@@ -39,9 +37,6 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
             isTlmMagicAnimationSupported = true;
         } catch (ClassNotFoundException ignored) {
         }
-        
-        // 检查 AE2 模组是否已加载
-        isAE2Loaded = LoadingModList.get().getModFileById(AE2_MOD_ID) != null;
 
         // 检查 Goety 和 Goety Revelation 模组是否已加载
         isGoetyLoaded = LoadingModList.get().getModFileById(GOETY_MOD_ID) != null;

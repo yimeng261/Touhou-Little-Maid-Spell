@@ -17,7 +17,11 @@
       "Bash(grep -l \"import.*MaidSpellItems\" *.java)",
       "Bash(grep -h \"BaubleStateManager.hasMaidWith\" *.java)",
       "Read(//e/mc/.minecraft/versions/女仆测试/logs/**)",
-      "Bash(grep -l \"import.*revelationfix\\\\|import.*goetyrevelation\" f:/Touhou-Little-Maid-Spell/src/main/java/com/github/yimeng261/maidspell/mixin/goety/revelation/*.java)"
+      "Bash(grep -l \"import.*revelationfix\\\\|import.*goetyrevelation\" f:/Touhou-Little-Maid-Spell/src/main/java/com/github/yimeng261/maidspell/mixin/goety/revelation/*.java)",
+      "Read(//f/Download/**)",
+      "Bash(gh issue view 29 --repo yimeng261/Touhou-Little-Maid-Spell)",
+      "WebFetch(domain:objects.githubusercontent.com)",
+      "Read(//tmp/**)"
     ]
   },
   "outputStyle": "default"

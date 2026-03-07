@@ -72,40 +72,5 @@ public abstract class WitherSkullSpellMixin extends Spell {
 
             worldIn.addFreshEntity(netherMeteor);
         }
-        // 终末之环：发射星辰箭矢
-        else if (BaubleStateManager.hasMaidWithHaloOfTheEnd(caster)) {
-            ci.cancel();
-
-            StarArrow starArrow = new StarArrow(worldIn, caster,
-                caster.getLookAngle().x * 4,
-                caster.getLookAngle().y * 4,
-                caster.getLookAngle().z * 4);
-            // 设置所有者为女仆的主人，这样碰撞检测和伤害计算才能正确工作
-            starArrow.setOwner(maidOwner);
-
-            // 设置发射位置
-            Vec3 shootPos = caster.getEyePosition().add(caster.getHandHoldingItemAngle(staff.getItem()));
-            starArrow.setPosRaw(shootPos.x, shootPos.y, shootPos.z);
-            starArrow.setAlpha(1F);
-
-            // 如果潜行，设置为危险模式
-            if (this.isShifting(caster)) {
-                starArrow.setDangerous(true);
-            }
-
-            // 设置目标追踪
-            if (rayTrace(worldIn, caster, 64, 3) instanceof EntityHitResult entityHitResult) {
-                starArrow.setTarget(entityHitResult.getEntity());
-            }
-
-            // 设置伤害倍率
-            starArrow.setDamageMultiplier((float) WandUtil.getLevels(ModEnchantments.POTENCY.get(), caster) / 10F + 1F);
-
-            // 播放音效
-            worldIn.playSound(null, caster.getX(), caster.getY(), caster.getZ(),
-                ModSounds.STAR_CAST.get(), this.getSoundSource(), 1.0F, 1.0F);
-
-            worldIn.addFreshEntity(starArrow);
-        }
     }
 }

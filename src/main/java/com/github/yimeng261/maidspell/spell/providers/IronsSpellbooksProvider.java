@@ -174,8 +174,6 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
                         // 从curios中的法术书收集法术
                         List<SpellData> curiosSpells = collectSpellFromSingleSpellBook(curiosStack, maid);
                         spells.addAll(curiosSpells);
-                        LOGGER.debug("从女仆 {} 的curios槽位 {} 收集到 {} 个法术", 
-                            maid.getUUID(), slotResult.slotContext().identifier(), curiosSpells.size());
                     }
                 });
             });

@@ -1,6 +1,5 @@
 package com.github.yimeng261.maidspell.dimension;
 
-import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -10,11 +9,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.portal.PortalInfo;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.util.ITeleporter;
@@ -22,9 +18,7 @@ import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-import javax.annotation.Nullable;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
@@ -56,86 +50,70 @@ public class TheRetreatDimension {
     
     
     /**
-     * 将玩家传送到归隐之地（异步版本，避免区块加载导致主线程卡死）
+     * 将玩家传送到归隐之地（同步版本，修复死锁问题）
+     * changeDimension 方法会自动处理区块加载，无需手动异步加载
      * @param player 要传送的玩家
      */
     public static void teleportToRetreat(ServerPlayer player) {
         MinecraftServer server = player.getServer();
         if (server == null) return;
-        
+
         // 使用PlayerRetreatManager统一获取或创建维度
         ServerLevel retreatLevel = PlayerRetreatManager.getOrCreatePlayerRetreat(server, player.getUUID());
-        
+
         if (retreatLevel == null) {
             MaidSpellMod.LOGGER.error("Failed to get or create retreat dimension for player: {}", player.getName().getString());
             return;
         }
-        
-        // 使用玩家当前坐标作为传送目标（私人和共享模式都一样）
-        BlockPos targetPos = player.blockPosition();
-        
-        // 异步加载目标区块并查找安全位置
-        loadChunkAsync(retreatLevel, targetPos).thenAccept(chunkLoaded -> {
-            // 在主线程中执行传送
-            server.execute(() -> {
-                try {
-                    // 查找安全位置
-                    BlockPos safePos = findSafePositionLoaded(retreatLevel, targetPos);
-                    
-                    // 使用自定义传送器传送玩家
-                    player.changeDimension(retreatLevel, new RetreatTeleporter(safePos));
-                    
-                    // 设置玩家在隐世之境的重生点
-                    player.setRespawnPosition(retreatLevel.dimension(), safePos, 0.0f, true, false);
-                    
-                    MaidSpellMod.LOGGER.info("Teleported player {} to retreat dimension at {} and set respawn point",
-                        player.getName().getString(), safePos);
-                } catch (Exception e) {
-                    MaidSpellMod.LOGGER.error("Error during teleportation for player {}: {}", 
-                        player.getName().getString(), e.getMessage(), e);
-                }
-            });
-        }).exceptionally(throwable -> {
-            MaidSpellMod.LOGGER.error("Failed to load chunk for teleportation: {}", throwable.getMessage(), throwable);
-            return null;
-        });
+
+        try {
+            // 使用玩家当前坐标作为传送目标（私人和共享模式都一样）
+            BlockPos targetPos = player.blockPosition();
+
+            // 查找安全位置（changeDimension会自动加载区块）
+            BlockPos safePos = findSafePosition(retreatLevel, targetPos);
+
+            // 使用自定义传送器传送玩家
+            player.changeDimension(retreatLevel, new RetreatTeleporter(safePos));
+
+            // 设置玩家在隐世之境的重生点
+            player.setRespawnPosition(retreatLevel.dimension(), safePos, 0.0f, true, false);
+
+            MaidSpellMod.LOGGER.info("Teleported player {} to retreat dimension at {} and set respawn point",
+                player.getName().getString(), safePos);
+        } catch (Exception e) {
+            MaidSpellMod.LOGGER.error("Error during teleportation for player {}: {}",
+                player.getName().getString(), e.getMessage(), e);
+        }
     }
     
     /**
-     * 将玩家从归隐之地传送回主世界（异步版本，避免区块加载导致主线程卡死）
+     * 将玩家从归隐之地传送回主世界（同步版本，修复死锁问题）
+     * changeDimension 方法会自动处理区块加载，无需手动异步加载
      * @param player 要传送的玩家
      */
     public static void teleportFromRetreat(ServerPlayer player) {
         MinecraftServer server = player.getServer();
         if (server == null) return;
-        
+
         ServerLevel overworld = server.getLevel(Level.OVERWORLD);
         if (overworld == null) return;
-        
-        BlockPos targetPos = player.blockPosition();
-        
-        // 异步加载目标区块并查找安全位置
-        loadChunkAsync(overworld, targetPos).thenAccept(chunkLoaded -> {
-            // 在主线程中执行传送
-            server.execute(() -> {
-                try {
-                    // 查找安全位置
-                    BlockPos safePos = findSafePositionLoaded(overworld, targetPos);
-                    
-                    // 使用自定义传送器传送玩家
-                    player.changeDimension(overworld, new RetreatTeleporter(safePos));
-                    
-                    MaidSpellMod.LOGGER.info("Teleported player {} from retreat dimension to overworld at {}", 
-                        player.getName().getString(), safePos);
-                } catch (Exception e) {
-                    MaidSpellMod.LOGGER.error("Error during teleportation from retreat for player {}: {}", 
-                        player.getName().getString(), e.getMessage(), e);
-                }
-            });
-        }).exceptionally(throwable -> {
-            MaidSpellMod.LOGGER.error("Failed to load chunk for return teleportation: {}", throwable.getMessage(), throwable);
-            return null;
-        });
+
+        try {
+            BlockPos targetPos = player.blockPosition();
+
+            // 查找安全位置（changeDimension会自动加载区块）
+            BlockPos safePos = findSafePosition(overworld, targetPos);
+
+            // 使用自定义传送器传送玩家
+            player.changeDimension(overworld, new RetreatTeleporter(safePos));
+
+            MaidSpellMod.LOGGER.info("Teleported player {} from retreat dimension to overworld at {}",
+                player.getName().getString(), safePos);
+        } catch (Exception e) {
+            MaidSpellMod.LOGGER.error("Error during teleportation from retreat for player {}: {}",
+                player.getName().getString(), e.getMessage(), e);
+        }
     }
     
     /**
@@ -155,37 +133,11 @@ public class TheRetreatDimension {
         return player.level().dimension().equals(playerRetreat);
     }
     /**
-     * 异步加载区块（避免主线程阻塞）
-     * @param level 服务器世界
-     * @param pos 目标位置
-     * @return CompletableFuture，完成时返回区块是否成功加载
-     */
-    private static CompletableFuture<Boolean> loadChunkAsync(ServerLevel level, BlockPos pos) {
-        ChunkPos chunkPos = new ChunkPos(pos);
-        
-        // 使用Minecraft的异步区块加载API
-        return level.getChunkSource().getChunkFuture(
-            chunkPos.x, 
-            chunkPos.z, 
-            ChunkStatus.FULL,
-            true
-        ).thenApply(either -> {
-            // either.left()包含加载成功的区块，right()包含失败原因
-            boolean success = either.left().isPresent();
-            if (success) {
-                MaidSpellMod.LOGGER.debug("Successfully loaded chunk at {} for teleportation", chunkPos);
-            } else {
-                MaidSpellMod.LOGGER.warn("Failed to load chunk at {}: {}", chunkPos, either.right().orElse(null));
-            }
-            return success;
-        });
-    }
-    
-    /**
-     * 查找安全的传送位置（假设区块已加载）
+     * 查找安全的传送位置
+     * changeDimension 会自动加载区块，因此这里可以直接访问方块状态
      * 确保玩家不会卡在方块里或掉入虚空
      */
-    private static BlockPos findSafePositionLoaded(ServerLevel level, BlockPos targetPos) {
+    private static BlockPos findSafePosition(ServerLevel level, BlockPos targetPos) {
         // 二次验证区块是否已加载
         if (!level.hasChunk(targetPos.getX() >> 4, targetPos.getZ() >> 4)) {
             MaidSpellMod.LOGGER.warn("Chunk still not loaded at {}, using default safe height", targetPos);

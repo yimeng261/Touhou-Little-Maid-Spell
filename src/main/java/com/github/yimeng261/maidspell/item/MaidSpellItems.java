@@ -97,22 +97,5 @@ public class MaidSpellItems {
         return null;
     }
 
-    /**
-     * 获取 revelationfix 模组的终末之环（Halo of The-End）
-     * revelationfix 是 goety_revelation 模组的一部分
-     * 如果模组未加载，返回 null
-     */
-    public static Item getHaloOfTheEnd() {
-        if (ModList.get().isLoaded("goety_revelation")) {
-            try {
-                // revelationfix 中的终末之环物品（ODAMANE_HALO）
-                return GRItems.ODAMANE_HALO.get();
-            } catch (Exception e) {
-                // 模组加载但物品不存在
-                return null;
-            }
-        }
-        return null;
-    }
 
 } 

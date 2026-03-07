@@ -41,17 +41,6 @@ public abstract class HellfireMixin extends GroundProjectile {
         return BaubleStateManager.hasMaidWithAscensionHalo(livingOwner);
     }
 
-    /**
-     * 检查所有者是否为装备终末之环的女仆
-     */
-    @Unique
-    private boolean maidSpell$isMaidWithHaloOfTheEnd() {
-        Entity owner = this.getOwner();
-        if (!(owner instanceof LivingEntity livingOwner)) {
-            return false;
-        }
-        return BaubleStateManager.hasMaidWithHaloOfTheEnd(livingOwner);
-    }
 
     @Inject(at = @At("HEAD"), method = "dealDamageTo", remap = false)
     private void maidSpell$getTarget(LivingEntity target, CallbackInfo ci) {
@@ -62,16 +51,12 @@ public abstract class HellfireMixin extends GroundProjectile {
      * 修改伤害值变量，在 revelationfix 的 ModifyConstant 之后执行
      * 这样可以覆盖 revelationfix 的逻辑，专门处理女仆的情况
      */
-    @ModifyVariable(method = "dealDamageTo", at = @At(value = "STORE", ordinal = 0), ordinal = 0, remap = false)
+    @ModifyVariable(method = "dealDamageTo", at = @At(value = "STORE", ordinal = 0), remap = false, name = "damage")
     private float maidSpell$modifyDamage(float damage) {
         if (maidSpell$target != null) {
             // 晋升之环：伤害为目标最大生命值的 4.44%
             if (maidSpell$isMaidWithAscensionHalo()) {
                 return maidSpell$target.getMaxHealth() * 0.0444F;
-            }
-            // 终末之环：伤害为目标最大生命值的 4.4%
-            else if (maidSpell$isMaidWithHaloOfTheEnd()) {
-                return maidSpell$target.getMaxHealth() * 0.044F;
             }
         }
         return damage;

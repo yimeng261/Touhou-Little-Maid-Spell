@@ -43,9 +43,8 @@ public abstract class BarricadeSpellMixin extends Spell {
     private void maidSpell$createObsidianMonolith(ServerLevel worldIn, LivingEntity caster, ItemStack staff, SpellStat spellStat, CallbackInfo ci) {
 
         boolean hasAscensionHalo = BaubleStateManager.hasMaidWithAscensionHalo(caster);
-        boolean hasHaloOfTheEnd = BaubleStateManager.hasMaidWithHaloOfTheEnd(caster);
 
-        if (hasAscensionHalo || hasHaloOfTheEnd) {
+        if (hasAscensionHalo) {
             EntityMaid maid = (EntityMaid) caster;
 
             ci.cancel();

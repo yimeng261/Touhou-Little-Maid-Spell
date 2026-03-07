@@ -200,10 +200,6 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
         if (BaubleStateManager.hasBauble(maid, MaidSpellItems.getAscensionHalo())) {
             chargeupTime = Math.max(1, chargeupTime / 4);
         }
-        // 终末之环：减少8倍蓄力时间
-        else if (BaubleStateManager.hasBauble(maid, MaidSpellItems.getHaloOfTheEnd())) {
-            chargeupTime = Math.max(1, chargeupTime / 8);
-        }
 
         // 计算最大施法时间（对于持续性法术）
         int maxCastingTime = chargeupTime;

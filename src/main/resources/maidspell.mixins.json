@@ -22,7 +22,6 @@
     "goety.revelation.FireballSpellMixin",
     "goety.revelation.GhastSpellMixin",
     "goety.revelation.HauntedSkullSpellMixin",
-    "goety.revelation.HellBoltMixin",
     "goety.revelation.HellfireMixin",
     "goety.revelation.LavaballSpellMixin",
     "goety.MobUtilMixin",
