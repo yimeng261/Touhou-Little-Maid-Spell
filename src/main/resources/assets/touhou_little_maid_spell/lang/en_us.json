@@ -106,10 +106,12 @@
   "item.touhou_little_maid_spell.wind_seeking_bell.search_timeout": "Search timed out, please try again later",
   "item.touhou_little_maid_spell.wind_seeking_bell.search_error": "An error occurred during search",
   "subtitle.touhou_little_maid_spell.wind_seeking_bell": "Wind Seeking Bell rings",
+  "item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared": "First time entering The Retreat, your exclusive Hidden Retreat has been assigned",
   "item.touhou_little_maid_spell.wind_seeking_bell.first_use": "\nRing the bell to call cherry blossoms\nGentle wind comes through the silent deep forest\nOld friend waits with flowers\n",
   "item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure": "No Hidden Retreat nearby, added to waiting queue...",
   "item.touhou_little_maid_spell.wind_seeking_bell.waiting_in_queue": "No Hidden Retreat nearby, waiting in queue... (Position %s/%s)",
   "item.touhou_little_maid_spell.wind_seeking_bell.structure_generated": "Your Hidden Retreat has been generated! Location: [%s, %s, %s] (%s blocks away)",
+  "item.touhou_little_maid_spell.wind_seeking_bell.no_quota": "You can only seek it once!",
   "item.touhou_little_maid_spell.owner_clear_tool": "Maid Owner Clear Tool",
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line1": "Administrator Tool",
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line2": "Right-click on maid to clear owner",
@@ -161,5 +163,7 @@
   "touhou_little_maid_spell.configuration.damage": "Damage-related bauble configurations",
   "touhou_little_maid_spell.configuration.chaosBookTrueDamageMin": "Chaos Book minimum true damage",
   "touhou_little_maid_spell.configuration.meleeAttackInterval": "Melee spell task attack interval (in ticks, default: 8)",
-  "touhou_little_maid_spell.configuration.farAttackInterval": "Far spell task attack interval (in ticks, default: 5)"
+  "touhou_little_maid_spell.configuration.farAttackInterval": "Far spell task attack interval (in ticks, default: 5)",
+  "touhou_little_maid_spell.configuration.retreat_dimension": "Retreat dimension configurations",
+  "touhou_little_maid_spell.configuration.enablePrivateDimensions": "Whether to enable private dimension mode (default: true)\ntrue: Each player has their own retreat dimension\nfalse: All players share one retreat dimension, each with one structure"
 }
