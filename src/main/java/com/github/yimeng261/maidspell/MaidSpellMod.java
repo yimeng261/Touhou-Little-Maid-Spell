@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
+import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
@@ -52,6 +53,7 @@ public class MaidSpellMod {
         MaidSpellContainers.register(modEventBus);
         MaidSpellSounds.SOUNDS.register(modEventBus);
         MaidSpellEntities.register(modEventBus);
+        modEventBus.addListener(FragrantIngenuityBauble::onRegisterEffects);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modEventBus);
         MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modEventBus);
