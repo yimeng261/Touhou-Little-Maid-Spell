@@ -37,7 +37,12 @@ public class LocateCommandMixin {
         if (key.isPresent()) {
             ResourceLocation structureId = key.get().location();
             if (HIDDEN_RETREAT_ID.equals(structureId)) {
-                throw ERROR_STRUCTURE_INVALID.create(structureId.toString());
+                ResourceLocation dimId = source.getLevel().dimension().location();
+                boolean inRetreat = dimId.getNamespace().equals(MaidSpellMod.MOD_ID)
+                        && dimId.getPath().startsWith("the_retreat");
+                if (!inRetreat) {
+                    throw ERROR_STRUCTURE_INVALID.create(structureId.toString());
+                }
             }
         }
     }

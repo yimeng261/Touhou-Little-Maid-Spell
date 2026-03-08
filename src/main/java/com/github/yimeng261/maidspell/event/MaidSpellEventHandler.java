@@ -8,7 +8,6 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
-import com.github.yimeng261.maidspell.dimension.StructureSearchQueue;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
@@ -153,16 +152,6 @@ public class MaidSpellEventHandler {
                 LOGGER.error("[MaidSpell] Failed to check/send festival greeting for player {} on login: {}",
                         player.getName().getString(), e.getMessage(), e);
             }
-        }
-    }
-
-    /**
-     * 玩家断线时清理结构搜索队列，防止幽灵请求阻塞其他玩家
-     */
-    @SubscribeEvent
-    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
-            StructureSearchQueue.removePlayerFromAllQueues(player.getUUID());
         }
     }
 

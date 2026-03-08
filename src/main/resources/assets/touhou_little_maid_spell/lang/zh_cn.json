@@ -105,14 +105,10 @@
   "item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat": "已进入归隐之地",
   "item.touhou_little_maid_spell.wind_seeking_bell.return_to_overworld": "已返回主世界",
   "item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed": "传送失败，无法创建归隐之地",
-  "item.touhou_little_maid_spell.wind_seeking_bell.search_timeout": "搜索超时，请稍后再试",
-  "item.touhou_little_maid_spell.wind_seeking_bell.search_error": "搜索出现异常",
   "subtitle.touhou_little_maid_spell.wind_seeking_bell": "寻风之铃响起",
   "item.touhou_little_maid_spell.wind_seeking_bell.first_use": "\n摇铃唤樱开\n深林寂里风徐来\n故人持花待\n",
   "item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared": "首次进入归隐之地，已为您分配专属隐世之境",
   "item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure": "附近没有隐世之境，已加入等待队列...",
-  "item.touhou_little_maid_spell.wind_seeking_bell.waiting_in_queue": "附近没有隐世之境，等待队列中... (第 %s/%s 位)",
-  "item.touhou_little_maid_spell.wind_seeking_bell.structure_generated": "你的隐世之境已生成！位置: [%s, %s, %s]（距离 %s 方块）",
   "item.touhou_little_maid_spell.wind_seeking_bell.no_quota": "你只能搜索一次！",
   "item.touhou_little_maid_spell.owner_clear_tool": "女仆主人清除工具",
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line1": "管理员专用工具",
@@ -166,5 +162,6 @@
   "touhou_little_maid_spell.configuration.meleeAttackInterval": "近战法术任务攻击间隔（单位：tick，默认: 8）",
   "touhou_little_maid_spell.configuration.farAttackInterval": "远程法术任务攻击间隔（单位：tick，默认: 5）",
   "touhou_little_maid_spell.configuration.retreat_dimension": "归隐之地维度相关配置",
-  "touhou_little_maid_spell.configuration.enablePrivateDimensions": "是否启用私人维度模式 (默认: true)\ntrue: 每个玩家拥有独立的归隐之地维度\nfalse: 所有玩家共享一个归隐之地维度，每个玩家拥有一个隐世之境结构"
+  "touhou_little_maid_spell.configuration.enablePrivateDimensions": "是否启用私人维度模式 (默认: true)\ntrue: 每个玩家拥有独立的归隐之地维度\nfalse: 所有玩家共享一个归隐之地维度，每个玩家拥有一个隐世之境结构",
+  "touhou_little_maid_spell.configuration.enableSharedQuotaLimit": "共享模式下是否启用配额限制 (默认: true)\ntrue: 每个玩家在共享归隐之地中最多搜索一次隐世之境\nfalse: 共享模式下不限制搜索次数，玩家可以无限搜索新的结构"
 }

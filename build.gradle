@@ -181,6 +181,7 @@ dependencies {
     runtimeOnly("maven.modrinth:appleskin:${appleskin_version}")
     runtimeOnly("maven.modrinth:farmers-delight:${farmers_delight_version}")
     runtimeOnly("maven.modrinth:playeranimator:${playeranimator_version}")
+    runtimeOnly("maven.modrinth:c2me-neoforge:${c2me_version}")
     // 妖怪的归家
     runtimeOnly("maven.modrinth:youkaishomecoming:${youkaishomecoming_version}")
 }

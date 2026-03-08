@@ -13,6 +13,7 @@ import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
+import com.github.yimeng261.maidspell.worldgen.structure.MaidSpellPoolElementTypes;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
@@ -57,6 +58,7 @@ public class MaidSpellMod {
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modEventBus);
         MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modEventBus);
+        MaidSpellPoolElementTypes.POOL_ELEMENT_TYPES.register(modEventBus);
 
         // 铁魔法属性修改器获取
         if (ModList.get().isLoaded("irons_spellbooks")) {

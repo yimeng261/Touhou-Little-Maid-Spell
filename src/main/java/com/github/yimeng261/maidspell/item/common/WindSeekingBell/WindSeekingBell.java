@@ -66,7 +66,7 @@ public class WindSeekingBell extends Item {
 
             if (TheRetreatDimension.isInRetreat(player)) {
                 // 在归隐之地：搜索隐世之境
-                findHiddenRetreatWithQueue(serverLevel, playerPos, player, itemStack);
+                findHiddenRetreat(serverLevel, playerPos, player, itemStack);
             } else {
                 // 在主世界：传送到归隐之地
                 teleportToRetreat(serverPlayer, itemStack);
@@ -115,11 +115,14 @@ public class WindSeekingBell extends Item {
         RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
         RetreatDimensionData.DimensionInfo info = data.getDimensionInfo(player.getUUID());
 
-        // 修复：只有 info == null 才是首次使用，quota == 0 是配额已用完
+        // 首次使用时注册并分配配额
         if (info == null) {
             data.registerDimension(player.getUUID());
             info = data.getDimensionInfo(player.getUUID());
-            info.structureQuota = 1;
+            // 配额限制开启时给予1个配额；关闭时不限制（配额不会被检查）
+            if (Config.enableSharedQuotaLimit) {
+                info.structureQuota = 1;
+            }
             data.updateAccessTime(player.getUUID());
 
             player.displayClientMessage(
@@ -134,14 +137,24 @@ public class WindSeekingBell extends Item {
     }
 
     /**
-     * 使用队列机制搜索隐世之境
-     * 物品在搜索成功后才消耗（修复原先提前消耗的问题）
+     * 搜索隐世之境结构。
+     * 搜索成功后消耗物品；共享模式下，已找到过的结构免费重复查看。
      */
-    private void findHiddenRetreatWithQueue(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack) {
-        long worldSeed = serverLevel.getSeed();
+    private void findHiddenRetreat(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack) {
         long searchStartTime = System.currentTimeMillis();
 
-        // 1. 检查玩家缓存（私人/共享模式均适用，每个玩家独立缓存自己的隐世之境位置）
+        // 1. 共享模式 + 配额限制：已找到的结构免费查看
+        if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+            RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
+            BlockPos persistedPos = data.getFoundStructurePos(player.getUUID());
+            if (persistedPos != null) {
+                handleSearchResult(serverLevel, playerPos, player, persistedPos,
+                        System.currentTimeMillis() - searchStartTime);
+                return;
+            }
+        }
+
+        // 2. 检查内存缓存
         RetreatManager.CacheResult cacheResult = RetreatManager.checkCache(player.getUUID());
         if (cacheResult.hasCache && !cacheResult.isNegative) {
             consumeItem(player, itemStack);
@@ -150,55 +163,54 @@ public class WindSeekingBell extends Item {
             return;
         }
 
-        // 2. 优先检查未分配结构池（共享模式专属优化）
-        if (!Config.enablePrivateDimensions && RetreatManager.hasUnassignedStructures(worldSeed)) {
-            BlockPos unassignedPos = RetreatManager.pollUnassignedStructure(worldSeed);
-            if (unassignedPos != null) {
-                // 立即分配给当前玩家
-                RetreatManager.updateCache(player.getUUID(), unassignedPos);
-                consumeItem(player, itemStack);
-                handleSearchResult(serverLevel, playerPos, player, unassignedPos,
-                        System.currentTimeMillis() - searchStartTime);
+        // 3. 共享模式 + 配额限制：检查配额
+        if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+            if (!SharedRetreatManager.hasQuota(player.getServer(), player.getUUID())) {
+                player.displayClientMessage(
+                        Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.no_quota")
+                                .withStyle(ChatFormatting.RED), true);
                 return;
             }
         }
 
-        // 3. 加入队列获取 Future
-        CompletableFuture<BlockPos> resultFuture = StructureSearchQueue.addSearchRequest(
-                worldSeed, player.getUUID(), playerPos);
+        // 4. 提示搜索中
+        player.displayClientMessage(
+                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure")
+                        .withStyle(ChatFormatting.YELLOW), true);
 
-        int queuePosition = StructureSearchQueue.getPlayerPosition(worldSeed, player.getUUID());
-        int totalWaiting = StructureSearchQueue.getWaitingCount(worldSeed);
+        // 5. 发起搜索
+        CompletableFuture<BlockPos> future = RetreatManager.searchStructure(
+                serverLevel, player.getUUID(), playerPos);
 
-        if (queuePosition > 0) {
-            player.displayClientMessage(
-                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.waiting_in_queue",
-                            queuePosition, totalWaiting).withStyle(ChatFormatting.YELLOW), true);
-        } else {
-            player.displayClientMessage(
-                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure")
-                            .withStyle(ChatFormatting.YELLOW), true);
-        }
-
-        // 4. 触发搜索（单线程异步 findNearestMapStructure）
-        RetreatManager.triggerStructureSearch(serverLevel, playerPos);
-
-        // 5. 等待回调结果 — 成功后才消耗物品
-        resultFuture.thenAccept(result -> {
+        // 6. 处理结果
+        future.thenAccept(result -> {
             long searchTime = System.currentTimeMillis() - searchStartTime;
             serverLevel.getServer().execute(() -> {
                 if (result != null) {
-                    // 搜索成功：消耗物品并展示结果
+                    // 共享模式 + 配额限制：消耗配额，失败则中止
+                    if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                        if (!SharedRetreatManager.tryConsumeQuota(player.getServer(), player.getUUID())) {
+                            player.displayClientMessage(
+                                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.no_quota")
+                                            .withStyle(ChatFormatting.RED), true);
+                            return;
+                        }
+                        RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
+                        data.setFoundStructurePos(player.getUUID(), result);
+                    }
+                    RetreatManager.updateCache(player.getUUID(), result);
                     consumeItem(player, itemStack);
                     handleSearchResult(serverLevel, playerPos, player, result, searchTime);
+                    player.sendSystemMessage(Component.translatable(
+                            "item.touhou_little_maid_spell.wind_seeking_bell.first_use"
+                    ).withStyle(ChatFormatting.LIGHT_PURPLE));
                 } else {
-                    // 搜索失败：不消耗物品，设置负缓存，显示失败消息
+                    // 搜索失败：不消耗物品，设置负缓存
                     RetreatManager.updateCache(player.getUUID(), null);
                     handleSearchResult(serverLevel, playerPos, player, null, searchTime);
                 }
             });
         }).exceptionally(throwable -> {
-            // CancellationException 是预期行为（玩家再次使用铃铛时取消旧请求），不记录为错误
             Throwable cause = throwable instanceof java.util.concurrent.CompletionException
                     ? throwable.getCause() : throwable;
             if (!(cause instanceof java.util.concurrent.CancellationException)) {
@@ -258,15 +270,6 @@ public class WindSeekingBell extends Item {
 
                 player.sendSystemMessage(coordinateMessage);
                 player.sendSystemMessage(timingMessage);
-
-                if (player instanceof ServerPlayer sp) {
-                    int count = sp.getStats().getValue(Stats.ITEM_USED.get(this));
-                    if (count == 0) {
-                        sp.sendSystemMessage(Component.translatable(
-                                "item.touhou_little_maid_spell.wind_seeking_bell.first_use"
-                        ).withStyle(ChatFormatting.LIGHT_PURPLE));
-                    }
-                }
             } else {
                 Component timingMessage = Component.translatable(
                         "item.touhou_little_maid_spell.wind_seeking_bell.search_time", searchTime

@@ -27,7 +27,6 @@ public class PlayerRetreatManager {
     /**
      * 获取或创建玩家的归隐之地维度
      */
-    @SuppressWarnings("removal")
     public static ServerLevel getOrCreatePlayerRetreat(MinecraftServer server, UUID playerUUID) {
         if (!Config.enablePrivateDimensions) {
             return getOrCreateSharedRetreat(server);
@@ -55,7 +54,6 @@ public class PlayerRetreatManager {
         return createPlayerRetreat(server, playerUUID);
     }
 
-    @SuppressWarnings("removal")
     private static ServerLevel createPlayerRetreat(MinecraftServer server, UUID playerUUID) {
         try {
             ResourceKey<Level> dimensionKey = TheRetreatDimension.getPlayerRetreatDimension(playerUUID);
@@ -87,7 +85,6 @@ public class PlayerRetreatManager {
     /**
      * 获取或创建共享的归隐之地维度
      */
-    @SuppressWarnings("removal")
     public static ServerLevel getOrCreateSharedRetreat(MinecraftServer server) {
         ResourceKey<Level> dimensionKey = ResourceKey.create(
                 net.minecraft.core.registries.Registries.DIMENSION,
@@ -121,27 +118,11 @@ public class PlayerRetreatManager {
         }
     }
 
-    /**
-     * 移除玩家的归隐之地维度（统一清理所有状态）
-     */
-    public static void removePlayerRetreat(MinecraftServer server, UUID playerUUID) {
-        ResourceKey<Level> dimensionKey = TheRetreatDimension.getPlayerRetreatDimension(playerUUID);
-
-        RetreatManager.removeCachedPlayerRetreat(playerUUID);
-        RetreatManager.unregisterDimension(dimensionKey);
-
-        RetreatDimensionData data = RetreatDimensionData.get(server);
-        data.removeDimension(playerUUID);
-
-        ((MinecraftServerAccessor) server).maidspell$removeWorld(dimensionKey);
-        MaidSpellMod.LOGGER.info("Removed retreat dimension for player: {}", playerUUID);
-    }
-
     // ========== 服务器事件 ==========
 
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
-        RetreatManager.clearPlayerRetreatCache();
+        RetreatManager.shutdown();
     }
 
     @SubscribeEvent
@@ -168,7 +149,16 @@ public class PlayerRetreatManager {
         } else {
             int totalQuota = data.getAllDimensions().values().stream()
                     .mapToInt(info -> info.structureQuota).sum();
-            MaidSpellMod.LOGGER.info("Shared retreat mode, total quota: {}", totalQuota);
+            // 恢复持久化的结构位置到内存缓存
+            int restoredCount = 0;
+            for (var entry : data.getAllDimensions().entrySet()) {
+                if (entry.getValue().foundStructurePos != null) {
+                    RetreatManager.updateCache(entry.getKey(), entry.getValue().foundStructurePos);
+                    restoredCount++;
+                }
+            }
+            MaidSpellMod.LOGGER.info("Shared retreat mode, total quota: {}, restored {} cached structure positions",
+                    totalQuota, restoredCount);
         }
     }
 

@@ -383,6 +383,19 @@ public class Config {
             .define("enablePrivateDimensions", true);
 
     static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue ENABLE_SHARED_QUOTA_LIMIT = BUILDER
+            .comment("共享模式下是否启用配额限制 (默认: true)")
+            .comment("true: 每个玩家在共享归隐之地中最多搜索一次隐世之境")
+            .comment("false: 共享模式下不限制搜索次数，玩家可以无限搜索新的结构")
+            .comment("Whether to enable quota limit in shared mode (default: true)")
+            .comment("true: Each player can only search for one hidden retreat in the shared dimension")
+            .comment("false: No search limit in shared mode, players can find unlimited structures")
+            .define("enableSharedQuotaLimit", true);
+
+    static {
         BUILDER.pop(); // retreat_dimension
     }
 
@@ -442,10 +455,24 @@ public class Config {
 
     // 归隐之地维度相关
     public static boolean enablePrivateDimensions;
+    public static boolean enableSharedQuotaLimit;
 
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent.Loading event) {
+        refreshConfig();
+    }
+
+    @SubscribeEvent
+    static void onReload(final ModConfigEvent.Reloading event) {
+        refreshConfig();
+    }
+
+    /**
+     * 刷新配置缓存值，在配置加载和重载时调用
+     * Refresh cached config values, called on both config load and reload
+     */
+    public static void refreshConfig() {
         // 加载配置值到缓存变量
         maxSpellRange = MAX_SPELL_RANGE.get();
         meleeRange = MELEE_RANGE.get();
@@ -500,6 +527,7 @@ public class Config {
 
         // 归隐之地维度相关
         enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
+        enableSharedQuotaLimit = ENABLE_SHARED_QUOTA_LIMIT.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

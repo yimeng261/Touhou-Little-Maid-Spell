@@ -1,8 +1,6 @@
 package com.github.yimeng261.maidspell.mixin;
 
-import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
@@ -26,7 +24,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.Set;
 
 /**
- * Mixin到ChunkGenerator，阻止其他结构在归隐之地维度生成
+ * Mixin 到 ChunkGenerator，阻止非白名单结构在归隐之地维度生成。
+ * hidden_retreat 的"每维度一个"限制在 HiddenRetreatStructure.generate() 中处理。
  */
 @Mixin(ChunkGenerator.class)
 public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
@@ -79,29 +78,12 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
 
         ResourceLocation structureId = structureKey.get().location();
 
-        if (HIDDEN_RETREAT_ID.equals(structureId)) {
-            if (Config.enablePrivateDimensions && maidspell$dimensionKey != null) {
-                // 原子性检查并标记：tryMarkStructureGenerated 基于 ConcurrentHashMap.add()
-                // 只有第一个调用者得到 true（允许生成），后续调用者得到 false（拦截）
-                // 这解决了多个区块同时通过检查的竞态条件
-                if (!RetreatManager.tryMarkStructureGenerated(maidspell$dimensionKey)) {
-                    //MaidSpellMod.LOGGER.debug("HiddenRetreat already pending/generated in {}, blocking chunk {},{}", maidspell$dimensionKey.location(), chunkPos.x, chunkPos.z);
-                    cir.setReturnValue(false);
-                    return;
-                }
-                MaidSpellMod.LOGGER.debug("Allowing first HiddenRetreat generation in {}, chunk {},{}",
-                        maidspell$dimensionKey.location(), chunkPos.x, chunkPos.z);
-            }
-            // 共享模式放行，配额在 findGenerationPoint 中检查
-            return;
-        }
-
+        // 白名单结构放行
         if (maidspell$allowedStructures.contains(structureId)) {
-            // 放过白名单结构
             return;
         }
 
-        // 其他结构在归隐之地中不允许生成
+        // 其他结构不允许生成
         cir.setReturnValue(false);
     }
 
