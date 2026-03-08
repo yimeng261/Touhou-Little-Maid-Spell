@@ -1,5 +1,28 @@
 # Changelog / 变更日志
 
+## 1.7.0-neoforge
+
+### 新增功能 / New Features
+
+- 修改隐世之境女仆模型 / Modified Hidden Retreat structure maid model
+- 诡厄巫法兼容（仅结构，聚晶功能暂未实现）/ Goety compatibility (structure only, focus crystal feature not yet implemented)
+- 更新隐世之境 / Updated Hidden Retreat structure
+- 添加构建流水线 / Added build pipeline
+
+### 修复 / Bug Fixes
+
+- 修复药水效果缺少引用问题 (#37) / Fixed missing potion effect reference issue (#37)
+- 修复女仆妖精咖啡厅依赖 / Fixed Fairy Maid Cafe dependencies
+
+### 优化 / Improvements
+
+- 优化隐世之境查找性能 / Optimized Hidden Retreat structure search performance
+- 补充缺少的翻译键 / Added missing translation keys
+- 目标管理统一使用 Brain 的 ATTACK_TARGET 记忆 / Unified target management using Brain's ATTACK_TARGET memory
+- 移植 main 分支的关键 bug 修复 / Ported critical bug fixes from main branch
+
+---
+
 ## 1.6.5.2-neoforge
 
 ### 新增功能 / New Features
