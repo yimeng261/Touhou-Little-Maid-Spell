@@ -20,13 +20,13 @@ import mods.flammpfeil.slashblade.registry.SlashArtsRegistry;
 
 /**
  * 简化版的女仆法术施放AI - 不再独立处理索敌，依赖外部传入目标
+ * 目标管理统一使用 Brain 的 ATTACK_TARGET 记忆
  */
 public class SimplifiedSpellCaster {
     @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
     private final EntityMaid maid;
-    private LivingEntity target;
-    
+
     public static double MELEE_RANGE;
     public static double FAR_RANGE;
 
@@ -36,29 +36,29 @@ public class SimplifiedSpellCaster {
         this.maid = maid;
         this.spellBookManager = SpellBookManager.getOrCreateManager(maid);
     }
-    
+
     /**
-     * 设置当前攻击目标
+     * 设置当前攻击目标到 SpellBookManager
      * @param target 攻击目标
      */
     public void setTarget(LivingEntity target) {
-        this.target = target;
-        // 同时设置给SpellBookManager
-        if (spellBookManager != null) {
+        maid.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, target);
+        if (spellBookManager != null && target != null && !(target instanceof Player)) {
             for (ISpellBookProvider<?, ?> provider : spellBookManager.getProviders()) {
-                provider.setTarget(maid,target);
+                provider.setTarget(maid, target);
             }
         }
     }
-    
+
     /**
      * 检查是否有有效目标
+     * 从 Brain 的 ATTACK_TARGET 记忆中读取
      */
     public boolean hasValidTarget() {
+        LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
         return target != null && target.isAlive();
     }
-    
-    
+
     /**
      * 执行施法逻辑
      */
@@ -67,12 +67,15 @@ public class SimplifiedSpellCaster {
         if (!hasValidTarget()) {
             return; // 没有有效目标，退出
         }
-        
+
         if (maid.tickCount % Config.meleeAttackInterval == 0) {
             // 执行战斗逻辑
             clearLookTarget(maid);
-            double distance = maid.distanceTo(target);
-            executeCombat(distance);
+            LivingEntity target = maid.getTarget();
+            if (target != null) {
+                double distance = maid.distanceTo(target);
+                executeCombat(distance);
+            }
         }
     }
 
@@ -105,10 +108,13 @@ public class SimplifiedSpellCaster {
      * 执行战斗逻辑
      */
     private void executeCombat(double distance) {
-        // 确保目标无敌时间为0，允许法术伤害
+        // 从 Brain 获取当前目标
+        LivingEntity target = maid.getTarget();
         if (target == null) {
             return;
         }
+
+        // 确保目标无敌时间为0，允许法术伤害
         target.invulnerableTime = 0;
 
         // 执行法术施放
@@ -130,10 +136,13 @@ public class SimplifiedSpellCaster {
      * 执行战斗逻辑
      */
     private void executeCombatFar() {
-        // 确保目标无敌时间为0，允许法术伤害
+        // 从 Brain 获取当前目标
+        LivingEntity target = maid.getTarget();
         if (target == null) {
             return;
         }
+
+        // 确保目标无敌时间为0，允许法术伤害
         target.invulnerableTime = 0;
 
         // 执行法术施放

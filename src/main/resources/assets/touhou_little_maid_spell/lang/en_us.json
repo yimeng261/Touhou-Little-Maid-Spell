@@ -103,8 +103,13 @@
   "item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat": "Entered The Retreat",
   "item.touhou_little_maid_spell.wind_seeking_bell.return_to_overworld": "Returned to Overworld",
   "item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed": "Teleportation failed, unable to create The Retreat",
+  "item.touhou_little_maid_spell.wind_seeking_bell.search_timeout": "Search timed out, please try again later",
+  "item.touhou_little_maid_spell.wind_seeking_bell.search_error": "An error occurred during search",
   "subtitle.touhou_little_maid_spell.wind_seeking_bell": "Wind Seeking Bell rings",
   "item.touhou_little_maid_spell.wind_seeking_bell.first_use": "\nRing the bell to call cherry blossoms\nGentle wind comes through the silent deep forest\nOld friend waits with flowers\n",
+  "item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure": "No Hidden Retreat nearby, added to waiting queue...",
+  "item.touhou_little_maid_spell.wind_seeking_bell.waiting_in_queue": "No Hidden Retreat nearby, waiting in queue... (Position %s/%s)",
+  "item.touhou_little_maid_spell.wind_seeking_bell.structure_generated": "Your Hidden Retreat has been generated! Location: [%s, %s, %s] (%s blocks away)",
   "item.touhou_little_maid_spell.owner_clear_tool": "Maid Owner Clear Tool",
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line1": "Administrator Tool",
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line2": "Right-click on maid to clear owner",
@@ -140,5 +145,6 @@
   "item.maidspell.crystal_circuit.virtual_cpu_name": "Maid Virtual CPU",
   "item.maidspell.crystal_circuit.virtual_cpu_name_with_maid": "%s's Virtual CPU",
   "item.maidspell.crystal_circuit.virtual_cpu_activated": "§a%s's Virtual CPU Activated! (64k Storage, 32 Co-processors)",
-  "item.maidspell.crystal_circuit.virtual_cpu_deactivated": "§e%s's Virtual CPU Deactivated"
+  "item.maidspell.crystal_circuit.virtual_cpu_deactivated": "§e%s's Virtual CPU Deactivated",
+  "maidspell.ascension_halo.maid_effects": "§6Ascension Halo now supports Maids! Equipped maids gain powerful defensive and combat abilities."
 }

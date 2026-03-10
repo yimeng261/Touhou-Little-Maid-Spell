@@ -152,7 +152,7 @@ public abstract class LivingEntityMixin {
         return true;
     }
 
-    @Inject(method = "hurt", at = @At("HEAD"))
+    @Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
     private void onHurt(DamageSource damageSource, float amount, CallbackInfoReturnable<Boolean> cir) {
         LivingEntity entity = (LivingEntity) (Object) this;
 
@@ -163,6 +163,9 @@ public abstract class LivingEntityMixin {
         }
         
         if(damageSource instanceof InfoDamageSource){
+            if(entity instanceof EntityMaid || entity instanceof Player){
+                cir.setReturnValue(false);
+            }
             return;
         }
         

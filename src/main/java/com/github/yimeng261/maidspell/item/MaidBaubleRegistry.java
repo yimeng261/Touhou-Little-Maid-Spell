@@ -20,6 +20,7 @@ import com.github.yimeng261.maidspell.item.bauble.rockCrystal.RockCrystalBauble;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
+import com.github.yimeng261.maidspell.item.bauble.ascensionHalo.AscensionHaloBauble;
 import net.minecraftforge.fml.ModList;
 
 /**
@@ -99,6 +100,17 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         if(MaidSpellItems.FRAGRANT_INGENUITY != null){
             manager.bind(MaidSpellItems.FRAGRANT_INGENUITY, new FragrantIngenuityBauble());
+        }
+
+        // 晋升之环（使用原版 Goety Revelation 的物品）
+        if(ModList.get().isLoaded("goety_revelation")){
+            // 初始化晋升之环的女仆效果
+            AscensionHaloBauble.init();
+
+            var ascensionHalo = MaidSpellItems.getAscensionHalo();
+            if(ascensionHalo != null){
+                manager.bind(ascensionHalo, new AscensionHaloBauble());
+            }
         }
 
     }

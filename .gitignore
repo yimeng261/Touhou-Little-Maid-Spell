@@ -27,6 +27,7 @@ Goety-2-1.20-2.5.34-
 Goety-2
 irons-spells-n-spellbooks-1.20.1
 irons-spells-n-spellbooks-new
+irons-spells-n-spellbooks
 minecraft-1.20.1-src
 revelationfix
 Cataclysm
@@ -41,6 +42,11 @@ new1.20.1
 Applied-Energistics-2
 structurify
 FTB-Library
+AllTitlesApostle-1.20.1
+GoetyRevelation*.jar
+libs
+ElectroblobsWizardryRedux
+traveloptics*
 
 # other
 eclipse

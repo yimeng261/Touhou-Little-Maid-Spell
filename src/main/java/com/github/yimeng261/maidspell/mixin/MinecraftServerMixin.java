@@ -4,7 +4,7 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
 import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
-import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
+import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.google.common.collect.ImmutableList;
 import net.minecraft.core.LayeredRegistryAccess;
 import net.minecraft.core.Registry;
@@ -135,8 +135,8 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 overworld.getRandomSequences()
             );
 
-            HiddenRetreatStructure.DIMENSIONS_MAP.put(newLevel.getSeed(),newLevel);
-            Global.LOGGER.debug("seed: {} add to dimensions map, level: {}", newLevel.getSeed(), newLevel.dimension().location());
+            RetreatManager.registerDimension(key, newLevel);
+            Global.LOGGER.debug("Registered dimension: {}", newLevel.dimension().location());
             
             // 设置ChunkGenerator的维度信息，用于结构生成判断
             if (newLevel.getChunkSource().getGenerator() instanceof ChunkGeneratorAccessor accessor) {

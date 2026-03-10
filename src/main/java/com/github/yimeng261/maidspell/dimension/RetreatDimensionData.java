@@ -27,23 +27,28 @@ public class RetreatDimensionData extends SavedData {
     }
     
     /**
-     * 维度信息
+     * 维度信息（扩展以支持共享模式）
      */
     public static class DimensionInfo {
         public final UUID playerUUID;
         public long createdTime;
         public long lastAccessTime;
         
+        // 共享模式专属字段
+        public int structureQuota;      // 结构配额（0=无配额，1=有一个配额）
+        
         public DimensionInfo(UUID playerUUID) {
             this.playerUUID = playerUUID;
             this.createdTime = System.currentTimeMillis();
             this.lastAccessTime = this.createdTime;
+            this.structureQuota = 0;
         }
         
-        public DimensionInfo(UUID playerUUID, long createdTime, long lastAccessTime) {
+        public DimensionInfo(UUID playerUUID, long createdTime, long lastAccessTime, int structureQuota) {
             this.playerUUID = playerUUID;
             this.createdTime = createdTime;
             this.lastAccessTime = lastAccessTime;
+            this.structureQuota = structureQuota;
         }
         
         public void updateAccessTime() {
@@ -55,6 +60,7 @@ public class RetreatDimensionData extends SavedData {
             tag.putUUID("PlayerUUID", playerUUID);
             tag.putLong("CreatedTime", createdTime);
             tag.putLong("LastAccessTime", lastAccessTime);
+            tag.putInt("StructureQuota", structureQuota);
             return tag;
         }
         
@@ -62,7 +68,9 @@ public class RetreatDimensionData extends SavedData {
             UUID playerUUID = tag.getUUID("PlayerUUID");
             long createdTime = tag.getLong("CreatedTime");
             long lastAccessTime = tag.getLong("LastAccessTime");
-            return new DimensionInfo(playerUUID, createdTime, lastAccessTime);
+            int structureQuota = tag.getInt("StructureQuota");
+            
+            return new DimensionInfo(playerUUID, createdTime, lastAccessTime, structureQuota);
         }
     }
     

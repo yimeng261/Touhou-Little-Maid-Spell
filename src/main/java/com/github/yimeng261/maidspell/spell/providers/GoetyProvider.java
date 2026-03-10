@@ -4,6 +4,8 @@ package com.github.yimeng261.maidspell.spell.providers;
 import org.slf4j.Logger;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.spell.data.MaidGoetySpellData;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.utils.VersionUtil;
 import com.mojang.logging.LogUtils;
 
@@ -36,15 +38,6 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAX_INFINITE_CASTING_TIME = 45;
-    private static final String NEW_API_MIN_VERSION = "2.5.37.0";
-    
-    // 缓存老版本API的Method，减少反射开销
-    private static Method cachedStopSpellMethod = null;
-    private static volatile boolean stopSpellMethodInitialized = false;
-    
-    // 缓存版本检测结果
-    private static volatile Boolean useNewAPI = null;
-    
 
     /**
      * 构造函数，绑定 MaidGoetySpellData 数据类型
@@ -53,20 +46,6 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
         super(MaidGoetySpellData::getOrCreate,ItemStack.class);
     }
 
-    /**
-     * 检测是否应该使用新版本API
-     */
-    private static boolean shouldUseNewAPI() {
-        if (useNewAPI == null) {
-            synchronized (GoetyProvider.class) {
-                if (useNewAPI == null) {
-                    useNewAPI = VersionUtil.isGoetyVersionSatisfied(NEW_API_MIN_VERSION);
-                    LOGGER.info("Goety API version detection: using {} API", useNewAPI ? "new" : "old");
-                }
-            }
-        }
-        return useNewAPI;
-    }
 
     @Override
     protected List<ItemStack> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
@@ -193,6 +172,10 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
         }
 
         int castDuration = spell.defaultCastDuration();
+
+        if (BaubleStateManager.hasBauble(maid, MaidSpellItems.getAscensionHalo())) {
+            castDuration = Math.max(1, castDuration / 4); // 至少保留1 tick
+        }
 
         // 即时法术特殊处理（只有非蓄力法术才可能是即时的）
         if (castDuration <= 0 && !(spell instanceof IChargingSpell)) {
@@ -324,12 +307,13 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
     private void executeChargingShot(EntityMaid maid, IChargingSpell chargingSpell) {
         MaidGoetySpellData data = getData(maid);
         if (data == null) return;
-        
+
+        LOGGER.info("执行蓄力法术射击: {}, 女仆: {}", chargingSpell.getClass().getSimpleName(), maid.getName().getString());
         // 先执行射击效果
         if (maid.level() instanceof ServerLevel serverLevel) {
             chargingSpell.SpellResult(serverLevel, maid, data.getSpellBook(), chargingSpell.defaultStats());
         }
-        
+
     }
     
 
@@ -346,10 +330,10 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
         if (data == null || data.getCurrentSpell() == null) {
             return;
         }
-        
+
         if (maid.level() instanceof ServerLevel serverLevel) {
             stopSpellUnified(data.getCurrentSpell(), serverLevel, maid, data.getSpellBook(), 0);
-            data.getCurrentSpell().SpellResult(serverLevel, maid, data.getSpellBook(), 
+            data.getCurrentSpell().SpellResult(serverLevel, maid, data.getSpellBook(),
                 data.getCurrentSpell().defaultStats());
         }
 
@@ -379,40 +363,14 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
     /**
      * 统一的stopSpell方法调用，根据版本自动选择合适的API
      * 支持新旧两种Goety版本的API调用方式
-     * 注意: FocusBag作为spellBook传入,focus参数使用空ItemStack
+     * 注意: FocusBag作为spellBook传入,focus参数从MaidGoetySpellData获取
      */
     private void stopSpellUnified(ISpell spell, ServerLevel serverLevel, EntityMaid maid, ItemStack focusBag, int remainingTime) {
-        if (shouldUseNewAPI()) {
-            // 使用新版本API
-            ItemStack focus = FocusBagItemHandler.get(focusBag).getSlot();
-            spell.stopSpell(serverLevel, maid, focusBag, focus, remainingTime, spell.defaultStats());
-            //LOGGER.debug("Successfully called new version stopSpell method for spell: {}", spell.getClass().getSimpleName());
-        } else {
-            // 使用老版本API
-            stopSpellOldAPI(spell, serverLevel, maid, focusBag, remainingTime);
-        }
+        MaidGoetySpellData data = getData(maid);
+        ItemStack focus = data != null && data.getCurrentFocus() != null ? data.getCurrentFocus() : ItemStack.EMPTY;
+        spell.stopSpell(serverLevel, maid, focusBag, focus, remainingTime, spell.defaultStats());
+        //LOGGER.debug("Successfully called new version stopSpell method for spell: {}", spell.getClass().getSimpleName());
     }
-    
-    /**
-     * 调用老版本的stopSpell方法，使用缓存的Method减少反射开销
-     */
-    private void stopSpellOldAPI(ISpell spell, ServerLevel serverLevel, EntityMaid maid, ItemStack spellBook, int remainingTime) {
-        try {
-            // 初始化缓存的Method（只在第一次调用时执行）
-            if (!stopSpellMethodInitialized) {
-                synchronized (GoetyProvider.class) {
-                    // 获取老版本的stopSpell方法签名
-                    cachedStopSpellMethod = ISpell.class.getMethod("stopSpell",
-                        ServerLevel.class, LivingEntity.class, ItemStack.class, int.class);
-                    LOGGER.debug("Successfully cached old version stopSpell method");
-                    stopSpellMethodInitialized = true;
-                }
-            }
 
-            cachedStopSpellMethod.invoke(spell, serverLevel, maid, spellBook, remainingTime);
-        } catch (Exception e) {
-            LOGGER.error("Error calling old version stopSpell method for spell {}: {}", spell.getClass().getSimpleName(), e.getMessage());
-        }
-    }
 
 } 

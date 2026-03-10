@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.mixin;
+package com.github.yimeng261.maidspell.mixin.tlm;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskFeedOwner;

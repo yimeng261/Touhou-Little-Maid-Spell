@@ -122,7 +122,10 @@ dependencies {
 
     runtimeOnly fg.deobf("maven.modrinth:curios:5.14.1+1.20.1-forge")
     //implementation fg.deobf("maven.modrinth:goety:2.5.34.3-forge,1.20.1")3
-    implementation fg.deobf("maven.modrinth:goety:2.5.37.0-forge,1.20.1")
+    implementation fg.deobf("maven.modrinth:goety:2.5.48.0-forge,1.20.1")
+    implementation fg.deobf("curse.maven:goety-revelation-1236817:7638178")
+    // 使用本地 RevelationFix jar 文件（包含终末之环等新内容）
+    implementation fg.deobf(files("libs/RevelationFix-1.20.1-4.0.jar"))
 
     runtimeOnly fg.deobf("maven.modrinth:patchouli:1.20.1-84.1-forge")
     implementation fg.deobf("maven.modrinth:psi:1.20.1-1.20.1-102-forge")
@@ -136,7 +139,11 @@ dependencies {
     }
 
     implementation fg.deobf("maven.modrinth:slashblade-resharped:1.6.54-forge,1.20.1")
+    implementation fg.deobf("maven.modrinth:curios:5.14.1+1.20.1-forge")
 
+    // ElectroblobsWizardryRedux
+    implementation fg.deobf("curse.maven:electroblobs-wizardry-redux-1405790:7683201")
+    
     runtimeOnly fg.deobf("curse.maven:jei-238222:7037120")
     runtimeOnly fg.deobf("curse.maven:mouse-tweaks-60089:5338457")
     runtimeOnly fg.deobf("curse.maven:imblocker-483760:6487340")

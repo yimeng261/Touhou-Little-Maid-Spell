@@ -25,9 +25,12 @@ import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
 import net.minecraft.Util;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
+import z1gned.goetyrevelation.item.ModItems;
+import com.mega.revelationfix.common.init.GRItems;
 
 /**
  * 女仆法术饰品物品注册
@@ -77,5 +80,22 @@ public class MaidSpellItems {
     public static String itemDesc(RegistryObject<Item> item) {
         return Util.makeDescriptionId("item", item.getId());
     }
+
+    /**
+     * 获取原版 Goety Revelation 模组的晋升之环
+     * 如果模组未加载，返回 null
+     */
+    public static Item getAscensionHalo() {
+        if (ModList.get().isLoaded("goety_revelation")) {
+            try {
+                return ModItems.ASCENSION_HALO.get();
+            } catch (Exception e) {
+                // 模组加载但物品不存在
+                return null;
+            }
+        }
+        return null;
+    }
+
 
 } 

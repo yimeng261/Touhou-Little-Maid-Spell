@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.mixin;
+package com.github.yimeng261.maidspell.mixin.goety;
 
 import com.Polarice3.Goety.utils.MobUtil;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;

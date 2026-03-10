@@ -18,7 +18,6 @@ import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-import javax.annotation.Nullable;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -51,57 +50,70 @@ public class TheRetreatDimension {
     
     
     /**
-     * 将玩家传送到归隐之地
+     * 将玩家传送到归隐之地（同步版本，修复死锁问题）
+     * changeDimension 方法会自动处理区块加载，无需手动异步加载
      * @param player 要传送的玩家
      */
     public static void teleportToRetreat(ServerPlayer player) {
         MinecraftServer server = player.getServer();
         if (server == null) return;
-        
+
         // 使用PlayerRetreatManager统一获取或创建维度
         ServerLevel retreatLevel = PlayerRetreatManager.getOrCreatePlayerRetreat(server, player.getUUID());
-        
+
         if (retreatLevel == null) {
             MaidSpellMod.LOGGER.error("Failed to get or create retreat dimension for player: {}", player.getName().getString());
             return;
         }
-        
-        // 确保目标位置是安全的
-        BlockPos safePos = findSafePosition(retreatLevel, player.blockPosition());
-        
-        // 使用自定义传送器传送玩家
-        player.changeDimension(retreatLevel, new RetreatTeleporter(safePos));
-        
-        // 设置玩家在隐世之境的重生点
-        player.setRespawnPosition(retreatLevel.dimension(), safePos, 0.0f, true, false);
-        
-        MaidSpellMod.LOGGER.debug("Teleported player {} to retreat dimension at {} and set respawn point",
-            player.getName().getString(), safePos);
+
+        try {
+            // 使用玩家当前坐标作为传送目标（私人和共享模式都一样）
+            BlockPos targetPos = player.blockPosition();
+
+            // 查找安全位置（changeDimension会自动加载区块）
+            BlockPos safePos = findSafePosition(retreatLevel, targetPos);
+
+            // 使用自定义传送器传送玩家
+            player.changeDimension(retreatLevel, new RetreatTeleporter(safePos));
+
+            // 设置玩家在隐世之境的重生点
+            player.setRespawnPosition(retreatLevel.dimension(), safePos, 0.0f, true, false);
+
+            MaidSpellMod.LOGGER.info("Teleported player {} to retreat dimension at {} and set respawn point",
+                player.getName().getString(), safePos);
+        } catch (Exception e) {
+            MaidSpellMod.LOGGER.error("Error during teleportation for player {}: {}",
+                player.getName().getString(), e.getMessage(), e);
+        }
     }
     
     /**
-     * 将玩家从归隐之地传送回主世界
+     * 将玩家从归隐之地传送回主世界（同步版本，修复死锁问题）
+     * changeDimension 方法会自动处理区块加载，无需手动异步加载
      * @param player 要传送的玩家
      */
     public static void teleportFromRetreat(ServerPlayer player) {
         MinecraftServer server = player.getServer();
         if (server == null) return;
-        
+
         ServerLevel overworld = server.getLevel(Level.OVERWORLD);
         if (overworld == null) return;
-        
-        // 确保目标位置是安全的
-        BlockPos safePos = findSafePosition(overworld, player.blockPosition());
-        
-        // 使用自定义传送器传送玩家
-        player.changeDimension(overworld, new RetreatTeleporter(safePos));
-        
-        // 恢复玩家在主世界的重生点（如果有的话）
-        // 这里可以选择清除重生点，让玩家回到世界重生点，或者保持原有重生点
-        // player.setRespawnPosition(Level.OVERWORLD, null, 0.0f, false, false);
-        
-        MaidSpellMod.LOGGER.info("Teleported player {} from retreat dimension to overworld at {}", 
-            player.getName().getString(), safePos);
+
+        try {
+            BlockPos targetPos = player.blockPosition();
+
+            // 查找安全位置（changeDimension会自动加载区块）
+            BlockPos safePos = findSafePosition(overworld, targetPos);
+
+            // 使用自定义传送器传送玩家
+            player.changeDimension(overworld, new RetreatTeleporter(safePos));
+
+            MaidSpellMod.LOGGER.info("Teleported player {} from retreat dimension to overworld at {}",
+                player.getName().getString(), safePos);
+        } catch (Exception e) {
+            MaidSpellMod.LOGGER.error("Error during teleportation from retreat for player {}: {}",
+                player.getName().getString(), e.getMessage(), e);
+        }
     }
     
     /**
@@ -122,19 +134,41 @@ public class TheRetreatDimension {
     }
     /**
      * 查找安全的传送位置
+     * changeDimension 会自动加载区块，因此这里可以直接访问方块状态
      * 确保玩家不会卡在方块里或掉入虚空
      */
     private static BlockPos findSafePosition(ServerLevel level, BlockPos targetPos) {
-        // 如果目标位置已经安全，直接返回
-        for(int y=level.getMaxBuildHeight();y>=level.getMinBuildHeight();--y) {
-            BlockPos pos = new BlockPos(targetPos.getX(), y, targetPos.getZ());
-            if(level.getBlockState(pos).isSolid()) {
-                return pos.above();
-            }
+        // 二次验证区块是否已加载
+        if (!level.hasChunk(targetPos.getX() >> 4, targetPos.getZ() >> 4)) {
+            MaidSpellMod.LOGGER.warn("Chunk still not loaded at {}, using default safe height", targetPos);
+            // 使用默认安全高度
+            int safeY = Math.max(level.getSeaLevel() + 5, 100);
+            return createSafePlatform(level, new BlockPos(targetPos.getX(), safeY, targetPos.getZ()));
         }
         
-        // 如果都不安全，在目标位置上方创建一个安全平台
-        return createSafePlatform(level, targetPos.above(2));
+        // 限制搜索范围，避免过度迭代
+        int maxY = Math.min(level.getMaxBuildHeight() - 1, 319);
+        int minY = Math.max(level.getMinBuildHeight(), -64);
+        
+        // 从高处向下搜索第一个固体方块
+        try {
+            for(int y = maxY; y >= minY; y--) {
+                BlockPos pos = new BlockPos(targetPos.getX(), y, targetPos.getZ());
+                if(level.getBlockState(pos).isSolid()) {
+                    BlockPos safePos = pos.above();
+                    MaidSpellMod.LOGGER.debug("Found safe position at {}", safePos);
+                    return safePos;
+                }
+            }
+        } catch (Exception e) {
+            MaidSpellMod.LOGGER.error("Error while finding safe position at {}: {}", targetPos, e.getMessage(), e);
+        }
+        
+        // 如果没有找到固体方块，在合理高度创建安全平台
+        int platformY = Math.max(level.getSeaLevel() + 5, 100);
+        BlockPos platformPos = new BlockPos(targetPos.getX(), platformY, targetPos.getZ());
+        MaidSpellMod.LOGGER.info("No safe ground found, creating platform at {}", platformPos);
+        return createSafePlatform(level, platformPos);
     }
 
     

@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.task;
 
+import com.Polarice3.Goety.api.entities.IOwned;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
@@ -25,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.util.List;
+import java.util.Optional;
 
 
 /**
@@ -71,7 +73,8 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
     @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
-        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
+        // 使用自定义索敌方法，排除自己召唤的 Goety 召唤物
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
         BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
@@ -87,6 +90,31 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
                 Pair.of(2, spellCastingTask),
                 Pair.of(2, strafingTask)
         );
+    }
+
+    /**
+     * 自定义索敌方法，排除女仆自己召唤的 Goety 召唤物
+     */
+    private Optional<? extends LivingEntity> findValidAttackTarget(EntityMaid maid) {
+        // 首先使用默认方法找到目标
+        Optional<? extends LivingEntity> defaultTarget = IAttackTask.findFirstValidAttackTarget(maid);
+
+        // 如果没有找到目标，直接返回
+        if (defaultTarget.isEmpty()) {
+            return defaultTarget;
+        }
+
+        LivingEntity target = defaultTarget.get();
+
+        // 检查目标是否是 Goety 召唤物
+        if (ModList.get().isLoaded("goety") && target instanceof IOwned ownedEntity) {
+            LivingEntity owner = ownedEntity.getTrueOwner();
+            if (owner instanceof EntityMaid || owner instanceof Player) {
+                return Optional.empty();
+            }
+        }
+
+        return defaultTarget;
     }
 
     private static class FarSpellCombatBehavior extends SpellCombatBehavior {
@@ -151,6 +179,10 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
             }
 
             maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
+                if(target instanceof Player) {
+                    stop(worldIn, maid, gameTime);
+                    return;
+                }
                 double distance = maid.distanceTo(target);
                 double optimalMaxDistance = optimalMinDistance + rangeRange; // 最佳最大距离
 

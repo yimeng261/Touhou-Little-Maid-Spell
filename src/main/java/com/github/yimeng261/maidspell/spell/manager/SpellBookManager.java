@@ -56,6 +56,7 @@ public class SpellBookManager {
         registerProviderFactoryByClass("slashblade","SlashBladeProvider", com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider.class);
         registerProviderFactoryByClass("goety", "GoetyProvider", com.github.yimeng261.maidspell.spell.providers.GoetyProvider.class);
         registerProviderFactoryByClass("youkaishomecoming", "YoukaiHomecomingProvider", com.github.yimeng261.maidspell.spell.providers.YoukaiHomecomingProvider.class);
+        registerProviderFactoryByClass("ebwizardry", "WizardryProvider", com.github.yimeng261.maidspell.spell.providers.WizardryProvider.class);
         
     }
     
