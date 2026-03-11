@@ -1,14 +1,21 @@
 package com.github.yimeng261.maidspell.mixin;
 
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.random.WeightedRandomList;
+import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.StructureManager;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.RandomState;
@@ -85,6 +92,24 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
 
         // 其他结构不允许生成
         cir.setReturnValue(false);
+    }
+
+    /**
+     * 在归隐之地维度中，对 MONSTER 类别返回空生成列表，从源头禁止敌对生物生成
+     */
+    @Inject(method = "getMobsAt", at = @At("HEAD"), cancellable = true)
+    private void onGetMobsAt(
+            Holder<Biome> biome,
+            StructureManager structureManager,
+            MobCategory category,
+            BlockPos pos,
+            CallbackInfoReturnable<WeightedRandomList<MobSpawnSettings.SpawnerData>> cir
+    ) {
+        if (Config.disableHostileMobSpawning
+                && category == MobCategory.MONSTER
+                && maidspell$isRetreatDimension()) {
+            cir.setReturnValue(WeightedRandomList.create());
+        }
     }
 
     @Unique

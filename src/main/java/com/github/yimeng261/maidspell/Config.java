@@ -396,6 +396,19 @@ public class Config {
             .define("enableSharedQuotaLimit", true);
 
     static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue DISABLE_HOSTILE_MOB_SPAWNING = BUILDER
+            .comment("是否禁止归隐之地生成敌对生物 (默认: false)")
+            .comment("true: 归隐之地不会自然生成敌对生物")
+            .comment("false: 归隐之地正常生成敌对生物")
+            .comment("Whether to disable hostile mob spawning in retreat dimensions (default: false)")
+            .comment("true: No hostile mobs will naturally spawn in retreat dimensions")
+            .comment("false: Hostile mobs spawn normally in retreat dimensions")
+            .define("disableHostileMobSpawning", false);
+
+    static {
         BUILDER.pop(); // retreat_dimension
     }
 
@@ -456,6 +469,7 @@ public class Config {
     // 归隐之地维度相关
     public static boolean enablePrivateDimensions;
     public static boolean enableSharedQuotaLimit;
+    public static boolean disableHostileMobSpawning;
 
 
     @SubscribeEvent
@@ -528,6 +542,7 @@ public class Config {
         // 归隐之地维度相关
         enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
         enableSharedQuotaLimit = ENABLE_SHARED_QUOTA_LIMIT.get();
+        disableHostileMobSpawning = DISABLE_HOSTILE_MOB_SPAWNING.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

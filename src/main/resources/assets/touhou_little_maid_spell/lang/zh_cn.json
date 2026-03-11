@@ -163,5 +163,6 @@
   "touhou_little_maid_spell.configuration.farAttackInterval": "远程法术任务攻击间隔（单位：tick，默认: 5）",
   "touhou_little_maid_spell.configuration.retreat_dimension": "归隐之地维度相关配置",
   "touhou_little_maid_spell.configuration.enablePrivateDimensions": "是否启用私人维度模式 (默认: true)\ntrue: 每个玩家拥有独立的归隐之地维度\nfalse: 所有玩家共享一个归隐之地维度，每个玩家拥有一个隐世之境结构",
-  "touhou_little_maid_spell.configuration.enableSharedQuotaLimit": "共享模式下是否启用配额限制 (默认: true)\ntrue: 每个玩家在共享归隐之地中最多搜索一次隐世之境\nfalse: 共享模式下不限制搜索次数，玩家可以无限搜索新的结构"
+  "touhou_little_maid_spell.configuration.enableSharedQuotaLimit": "共享模式下是否启用配额限制 (默认: true)\ntrue: 每个玩家在共享归隐之地中最多搜索一次隐世之境\nfalse: 共享模式下不限制搜索次数，玩家可以无限搜索新的结构",
+  "touhou_little_maid_spell.configuration.disableHostileMobSpawning": "是否禁止归隐之地生成敌对生物 (默认: false)\ntrue: 归隐之地不会自然生成敌对生物\nfalse: 归隐之地正常生成敌对生物"
 }
