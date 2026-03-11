@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.mixin;
 
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
@@ -41,6 +42,10 @@ public class LocateCommandMixin {
                 boolean inRetreat = dimId.getNamespace().equals(MaidSpellMod.MOD_ID)
                         && dimId.getPath().startsWith("the_retreat");
                 if (!inRetreat) {
+                    throw ERROR_STRUCTURE_INVALID.create(structureId.toString());
+                }
+                // 共享模式+配额限制下，/locate 无法获取搜索许可，阻止无意义的区块生成
+                if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
                     throw ERROR_STRUCTURE_INVALID.create(structureId.toString());
                 }
             }

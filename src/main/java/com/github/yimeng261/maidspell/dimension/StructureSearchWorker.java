@@ -18,6 +18,7 @@ import net.neoforged.neoforge.common.WorldWorkerManager;
 import javax.annotation.Nullable;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 基于 WorldWorkerManager 的分帧结构搜索器。
@@ -58,9 +59,16 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
      */
     private int edgeIndex = 0;
 
-    private boolean finished = false;
+    private volatile boolean finished = false;
     private int samples = 0;
     private final long startTimeMs;
+
+    /**
+     * 确保每个 SearchWorker 的搜索信号量只被扣减一次。
+     * generate() 成功时会通过 {@link RetreatManager#onStructureGenerated} 扣减，
+     * 此时本标志防止 SearchWorker 重复扣减。
+     */
+    private final AtomicBoolean counterDeducted = new AtomicBoolean(false);
 
     // ========== 当前环的最优结果 ==========
 
@@ -103,6 +111,9 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
     public void start() {
         MaidSpellMod.LOGGER.info("分帧搜索开始 - 中心: ({}, {}), 半径: {}, spacing: {}",
                 searchCenterChunkX, searchCenterChunkZ, maxRadius, placement.spacing());
+        // 清理可能残留的上一次搜索的位置缓存（例如上次搜索取消后 generate() 才存入的）
+        RetreatManager.pollGeneratedStructurePos(level.dimension());
+        RetreatManager.incrementSearching();
         WorldWorkerManager.addWorker(this);
     }
 
@@ -124,6 +135,14 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
     @Override
     public boolean doWork() {
         if (finished) {
+            return false;
+        }
+
+        // 轮询：generate() 可能已在其他线程成功生成结构（C2ME 场景）
+        BlockPos generatedPos = RetreatManager.pollGeneratedStructurePos(level.dimension());
+        if (generatedPos != null) {
+            counterDeducted.set(true); // generate() 已经扣减了信号量
+            completeSearch(generatedPos);
             return false;
         }
 
@@ -283,26 +302,54 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
                 return CandidateResult.cheap(Pair.of(placement.getLocatePos(chunkPos), holder));
             }
 
-            // CHUNK_LOAD_NEEDED — getChunk 可能触发 generate()，这是昂贵操作
-            RetreatManager.setSearchingStructure(true);
-            try {
-                ChunkAccess chunkAccess = level.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.STRUCTURE_STARTS);
+            // CHUNK_LOAD_NEEDED — 先尝试非生成式访问，跳过已探索但无结构的区块
+            ChunkAccess chunkAccess = level.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.STRUCTURE_STARTS, false);
+            if (chunkAccess != null) {
+                // 区块已生成，直接检查（廉价）
                 StructureStart start = structureManager.getStartForStructure(
                         SectionPos.bottomOf(chunkAccess), holder.value(), chunkAccess);
-
                 if (start != null && start.isValid()) {
+                    BlockPos locatePos = skipKnownStructures
+                            ? placement.getLocatePos(start.getChunkPos())
+                            : placement.getLocatePos(chunkPos);
                     if (skipKnownStructures) {
                         if (start.canBeReferenced()) {
                             structureManager.addReference(start);
-                            return CandidateResult.expensive(
-                                    Pair.of(placement.getLocatePos(start.getChunkPos()), holder));
+                            return CandidateResult.cheap(Pair.of(locatePos, holder));
                         }
                     } else {
-                        return CandidateResult.expensive(Pair.of(placement.getLocatePos(chunkPos), holder));
+                        return CandidateResult.cheap(Pair.of(locatePos, holder));
                     }
                 }
-            } finally {
-                RetreatManager.setSearchingStructure(false);
+                // 已生成但无结构 → 廉价跳过
+                return CandidateResult.cheap(null);
+            }
+
+            // 区块未生成 — getChunk 触发生成（昂贵）
+            chunkAccess = level.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.STRUCTURE_STARTS);
+
+            // getChunk 内可能已触发 generate() 成功，标记信号量已扣减
+            // 注意：不在此处消费位置（poll），留给 doWork() 统一处理和验证
+            if (RetreatManager.peekGeneratedStructurePos(level.dimension()) != null) {
+                counterDeducted.set(true);
+            }
+
+            StructureStart start = structureManager.getStartForStructure(
+                    SectionPos.bottomOf(chunkAccess), holder.value(), chunkAccess);
+
+            if (start != null && start.isValid()) {
+                BlockPos locatePos = skipKnownStructures
+                        ? placement.getLocatePos(start.getChunkPos())
+                        : placement.getLocatePos(chunkPos);
+
+                if (skipKnownStructures) {
+                    if (start.canBeReferenced()) {
+                        structureManager.addReference(start);
+                        return CandidateResult.expensive(Pair.of(locatePos, holder));
+                    }
+                } else {
+                    return CandidateResult.expensive(Pair.of(locatePos, holder));
+                }
             }
 
             // getChunk 已执行，即使未找到结构也标记为昂贵
@@ -313,10 +360,26 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
     }
 
     /**
+     * CAS 保护的单次许可回收。
+     * <p>
+     * 搜索结束时回收 start() 增加的许可（-1）。
+     * 如果 generate() 已通过 tryAcquireSearchPermit 消费了许可（counterDeducted=true），
+     * 则此处不会重复回收。
+     */
+    private void reclaimPermitOnce() {
+        // 无论 generate() 是否已消费许可，都清理可能残留的位置缓存
+        RetreatManager.pollGeneratedStructurePos(level.dimension());
+        if (counterDeducted.compareAndSet(false, true)) {
+            RetreatManager.tryAcquireSearchPermit();
+        }
+    }
+
+    /**
      * 搜索完成（找到结构），强制加载区块并返回结果
      */
     private void completeSearch(BlockPos structurePos) {
         finished = true;
+        reclaimPermitOnce();
         long elapsed = System.currentTimeMillis() - startTimeMs;
         MaidSpellMod.LOGGER.info("分帧搜索完成 - 位置: {}, 搜索了 {} 环, {} 个候选, 耗时 {}ms",
                 structurePos, currentRing, samples, elapsed);
@@ -332,6 +395,7 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
      */
     private void finishSearch() {
         finished = true;
+        reclaimPermitOnce();
         long elapsed = System.currentTimeMillis() - startTimeMs;
         MaidSpellMod.LOGGER.warn("分帧搜索完成，未找到结构 - 已搜索 {} 环, {} 个候选, 耗时 {}ms",
                 maxRadius, samples, elapsed);
@@ -343,6 +407,7 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
      */
     public void cancel() {
         finished = true;
+        reclaimPermitOnce();
         if (!resultFuture.isDone()) {
             resultFuture.cancel(true);
         }

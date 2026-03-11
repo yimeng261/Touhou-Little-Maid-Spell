@@ -22,8 +22,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 归隐之地统一状态管理器。
@@ -61,10 +63,18 @@ public class RetreatManager {
     private static final Map<ResourceKey<Level>, Set<ChunkPos>> forceLoadedChunks = new ConcurrentHashMap<>();
 
     /**
-     * 主线程标记：当前是否正处于 StructureSearchWorker 的搜索流程中。
-     * 用于让 HiddenRetreatStructure.generate() 区分"搜索触发"与"自然加载触发"。
+     * 结构搜索信号量（计数器）。
+     * SearchWorker 开始搜索时 +1，generate() 成功后 -1。
+     * generate() 通过检查 counter > 0 判断当前是否有搜索在进行。
+     * 使用 AtomicInteger 保证在 C2ME 等并发区块生成下的线程安全。
      */
-    private static boolean searchingStructure = false;
+    private static final AtomicInteger searchingCounter = new AtomicInteger(0);
+
+    /**
+     * generate() 成功后存储的结构位置（维度 → 位置）。
+     * 让 SearchWorker 在下一次 doWork() 时立即得知结构已生成并短路搜索。
+     */
+    private static final ConcurrentHashMap<ResourceKey<Level>, BlockPos> generatedStructurePositions = new ConcurrentHashMap<>();
 
     /**
      * 负缓存 TTL：5 分钟
@@ -136,7 +146,8 @@ public class RetreatManager {
         ongoingSearches.clear();
         forceLoadedChunks.clear();
         cachedStructureSet = null;
-        searchingStructure = false;
+        searchingCounter.set(0);
+        generatedStructurePositions.clear();
     }
 
     // ========== 维度注册 API ==========
@@ -166,6 +177,9 @@ public class RetreatManager {
             MaidSpellMod.LOGGER.info("清理维度强制加载区块 - 维度: {}, 数量: {}", key.location(), forcedChunks.size());
         }
 
+        // 清理已生成结构位置缓存
+        generatedStructurePositions.remove(key);
+
         // 清理结构去重记录（使用前缀匹配）
         String dimPrefix = key.location() + "@";
         HiddenRetreatStructure.cleanupProcessedStructures(dimPrefix);
@@ -194,14 +208,84 @@ public class RetreatManager {
         return null;
     }
 
-    // ========== 搜索触发标记 ==========
+    // ========== 搜索信号量 ==========
 
-    public static boolean isSearchingStructure() {
-        return searchingStructure;
+    /**
+     * 搜索开始，信号量 +1。
+     * 由 SearchWorker.start() 调用。
+     */
+    public static void incrementSearching() {
+        searchingCounter.incrementAndGet();
     }
 
-    public static void setSearchingStructure(boolean value) {
-        searchingStructure = value;
+    /**
+     * 检查当前是否有搜索正在进行（信号量 > 0）。
+     * 用于 canCreateStructure 路径判断是否应该缓存结果。
+     */
+    public static boolean isSearchActive() {
+        return searchingCounter.get() > 0;
+    }
+
+    /**
+     * CAS 获取一个搜索许可（信号量 -1）。
+     * <p>
+     * 由 generate() 在执行前调用：只有成功获取许可的 generate() 才允许执行，
+     * 保证并发 generate() 不会同时通过。
+     *
+     * @return true 获取成功（counter 从 N>0 减到 N-1），false 没有可用许可
+     */
+    public static boolean tryAcquireSearchPermit() {
+        int prev;
+        do {
+            prev = searchingCounter.get();
+            if (prev <= 0) {
+                return false;
+            }
+        } while (!searchingCounter.compareAndSet(prev, prev - 1));
+        return true;
+    }
+
+    /**
+     * 归还一个搜索许可（信号量 +1）。
+     * <p>
+     * generate() 获取许可后但生成失败（findGenerationPoint 返回空）时调用，
+     * 归还许可以允许后续候选区块重试。
+     */
+    public static void releaseSearchPermit() {
+        searchingCounter.incrementAndGet();
+    }
+
+    // ========== generate() 成功回调 ==========
+
+    /**
+     * generate() 成功生成结构后调用。
+     * 存储结构位置，让 SearchWorker 在下一次 doWork() 时立即感知。
+     * <p>
+     * 注意：此方法不操作信号量——许可已在 {@link #tryAcquireSearchPermit()} 中扣减。
+     */
+    public static void setGeneratedStructurePos(ResourceKey<Level> dimKey, BlockPos pos) {
+        generatedStructurePositions.put(dimKey, pos);
+    }
+
+    /**
+     * SearchWorker 轮询：获取并移除 generate() 存储的结构位置。
+     *
+     * @return 结构位置，如果没有则返回 null
+     */
+    @Nullable
+    public static BlockPos pollGeneratedStructurePos(ResourceKey<Level> dimKey) {
+        return generatedStructurePositions.remove(dimKey);
+    }
+
+    /**
+     * 非破坏性查看：检查是否有 generate() 存储的结构位置，但不移除。
+     * 用于在 checkCandidate 中判断信号量状态，而不消费位置。
+     *
+     * @return 结构位置，如果没有则返回 null
+     */
+    @Nullable
+    public static BlockPos peekGeneratedStructurePos(ResourceKey<Level> dimKey) {
+        return generatedStructurePositions.get(dimKey);
     }
 
     // ========== 结构生成标记 ==========
@@ -350,7 +434,7 @@ public class RetreatManager {
         // 搜索完成后清理
         search.getResultFuture().whenComplete((result, throwable) -> {
             ongoingSearches.remove(searchKey);
-            if (throwable != null) {
+            if (throwable != null && !(throwable instanceof CancellationException)) {
                 MaidSpellMod.LOGGER.error("结构搜索异常 - key: {}", searchKey, throwable);
             }
         });

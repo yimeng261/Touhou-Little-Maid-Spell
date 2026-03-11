@@ -17,9 +17,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.*;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
-import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -61,6 +59,16 @@ public class HiddenRetreatStructure extends Structure {
     private static final double MAX_TERRAIN_VARIANCE = 16.0;
     private static final int SAMPLES_PER_CHUNK = 5;
     private static final int TERRAIN_CHECK_RANGE = 2;
+
+    /**
+     * 线程局部标志：标记当前线程是否正在执行 generate() → super.generate() 调用链。
+     * <p>
+     * 当 generate() 调用 super.generate() 时设为 true，使得 findGenerationPoint() 知道
+     * 是从 generate() 内部调用的，跳过搜索状态检查。
+     * 当 canCreateStructure() 调用 findGenerationPoint() 时，此标志为 false，
+     * 会检查搜索状态，防止 StructureCheck.featureChecks 缓存不该缓存的结果。
+     */
+    private static final ThreadLocal<Boolean> insideGenerate = ThreadLocal.withInitial(() -> false);
 
     public HiddenRetreatStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool, int size) {
         super(settings);
@@ -117,12 +125,14 @@ public class HiddenRetreatStructure extends Structure {
 
         // 共享模式：addReference 标记结构为"已定位"，防止重复搜索到
         if (!Config.enablePrivateDimensions) {
-            ChunkPos startChunkPos = new ChunkPos(structureCenter);
-            ChunkAccess chunk = pLevel.getChunk(startChunkPos.x, startChunkPos.z, ChunkStatus.STRUCTURE_STARTS);
-            StructureStart start = pStructureManager.getStartForStructure(
-                    SectionPos.bottomOf(chunk), this, chunk);
-            if (start != null && start.isValid() && start.canBeReferenced()) {
-                pStructureManager.addReference(start);
+            // 通过当前装饰区块的 STRUCTURE_REFERENCES 回溯到 StructureStart 所在区块
+            // pChunkPos 是 placeInChunk 传入的当前装饰区块，其引用链一定在 WorldGenRegion 内
+            for (StructureStart start : pStructureManager.startsForStructure(
+                    SectionPos.bottomOf(pLevel.getChunk(pChunkPos.x, pChunkPos.z)), this)) {
+                if (start.isValid() && start.canBeReferenced()) {
+                    pStructureManager.addReference(start);
+                    break;
+                }
             }
         }
 
@@ -148,7 +158,7 @@ public class HiddenRetreatStructure extends Structure {
                     }
                     MaidSpellMod.LOGGER.debug("首次在维度 {} 尝试生成结构，区块 {}", dimKey.location(), pChunkPos);
 
-                    StructureStart result = super.generate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                    StructureStart result = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
                             pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
 
                     if (!result.isValid()) {
@@ -160,12 +170,28 @@ public class HiddenRetreatStructure extends Structure {
                     return result;
                 }
 
-                // 共享模式
-                if (Config.enableSharedQuotaLimit && !RetreatManager.isSearchingStructure()) {
-                    // 配额限制开启时，只允许 SearchWorker 搜索触发的生成
-                    return StructureStart.INVALID_START;
+                // 共享模式：CAS 获取搜索许可，保证并发安全
+                if (Config.enableSharedQuotaLimit) {
+                    if (!RetreatManager.tryAcquireSearchPermit()) {
+                        // 没有搜索在进行，或许可已被其他并发 generate() 消费
+                        return StructureStart.INVALID_START;
+                    }
+                    // 许可已获取，执行生成
+                    StructureStart sharedResult = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                            pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+                    if (sharedResult.isValid()) {
+                        // 生成成功：许可已消费，存储位置让 SearchWorker 立即感知
+                        BlockPos structurePos = new BlockPos(pChunkPos.getMinBlockX(), 0, pChunkPos.getMinBlockZ());
+                        RetreatManager.setGeneratedStructurePos(dimKey, structurePos);
+                        MaidSpellMod.LOGGER.debug("共享模式结构生成成功 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos);
+                    } else {
+                        // 生成失败（地形不合适等）：归还许可，允许后续候选区块重试
+                        RetreatManager.releaseSearchPermit();
+                    }
+                    return sharedResult;
                 }
-                return super.generate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                // 共享模式但未启用配额限制：直接生成
+                return callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
                         pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
             }
         } else {
@@ -174,8 +200,35 @@ public class HiddenRetreatStructure extends Structure {
         return StructureStart.INVALID_START;
     }
 
+    /**
+     * 包装 super.generate()，设置 insideGenerate 线程局部标志。
+     * 使得 findGenerationPoint() 知道是从 generate() 内部调用的。
+     */
+    private StructureStart callSuperGenerate(RegistryAccess pRegistryAccess, ChunkGenerator pChunkGenerator,
+                                             BiomeSource pBiomeSource, RandomState pRandomState,
+                                             StructureTemplateManager pStructureTemplateManager, long pSeed,
+                                             ChunkPos pChunkPos, int pReferences, LevelHeightAccessor pHeightAccessor,
+                                             Predicate<Holder<Biome>> pValidBiome) {
+        insideGenerate.set(true);
+        try {
+            return super.generate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                    pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+        } finally {
+            insideGenerate.set(false);
+        }
+    }
+
     @Override
     protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
+        // 如果不是从 generate() 内部调用（即从 canCreateStructure 调用），
+        // 检查搜索状态。在共享配额模式下，无搜索活动时返回 empty，
+        // 避免 StructureCheck.featureChecks 缓存 true 导致幽灵结构。
+        if (!insideGenerate.get() && !Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+            if (!RetreatManager.isSearchActive()) {
+                return Optional.empty();
+            }
+        }
+
         ChunkPos chunkPos = context.chunkPos();
 
         // 地形检查
