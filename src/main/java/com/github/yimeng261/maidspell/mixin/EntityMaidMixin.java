@@ -73,6 +73,9 @@ public abstract class EntityMaidMixin extends TamableAnimal implements AnchoredE
             at = @At("HEAD"),
             cancellable = true, remap = true)
     public void onFinalizeSpawn(ServerLevelAccessor worldIn, DifficultyInstance difficultyIn, MobSpawnType reason, SpawnGroupData spawnDataIn, CallbackInfoReturnable<SpawnGroupData> cir) {
+        if (worldIn.isClientSide()) {
+            return;
+        }
         try {
             // 只在结构生成时检查
             if (reason == MobSpawnType.STRUCTURE) {
