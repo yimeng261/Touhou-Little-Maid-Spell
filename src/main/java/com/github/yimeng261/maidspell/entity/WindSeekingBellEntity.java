@@ -234,6 +234,7 @@ public class WindSeekingBellEntity extends Entity {
             ItemStack item = this.getItem();
             if (!item.isEmpty()) {
                 ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
+                itemEntity.setGlowingTag(true);
                 this.level().addFreshEntity(itemEntity);
             }
         }

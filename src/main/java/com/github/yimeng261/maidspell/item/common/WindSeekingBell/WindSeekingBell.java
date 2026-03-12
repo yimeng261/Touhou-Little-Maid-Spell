@@ -143,13 +143,30 @@ public class WindSeekingBell extends Item {
     private void findHiddenRetreat(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack) {
         long searchStartTime = System.currentTimeMillis();
 
+        // 0. 共享模式 + 配额限制：首次使用铃时注册并分配配额（兼容 TP 直接进入维度的情况）
+        if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+            RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
+            RetreatDimensionData.DimensionInfo info = data.getDimensionInfo(player.getUUID());
+            if (info == null) {
+                data.registerDimension(player.getUUID());
+                info = data.getDimensionInfo(player.getUUID());
+                info.structureQuota = 1;
+                data.updateAccessTime(player.getUUID());
+
+                player.displayClientMessage(
+                        Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared")
+                                .withStyle(ChatFormatting.LIGHT_PURPLE), true);
+            }
+        }
+
         // 1. 共享模式 + 配额限制：已找到的结构免费查看
         if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
             RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
             BlockPos persistedPos = data.getFoundStructurePos(player.getUUID());
             if (persistedPos != null) {
+                consumeItem(player, itemStack);
                 handleSearchResult(serverLevel, playerPos, player, persistedPos,
-                        System.currentTimeMillis() - searchStartTime);
+                        System.currentTimeMillis() - searchStartTime, true);
                 return;
             }
         }
@@ -159,7 +176,7 @@ public class WindSeekingBell extends Item {
         if (cacheResult.hasCache && !cacheResult.isNegative) {
             consumeItem(player, itemStack);
             handleSearchResult(serverLevel, playerPos, player, cacheResult.position,
-                    System.currentTimeMillis() - searchStartTime);
+                    System.currentTimeMillis() - searchStartTime, true);
             return;
         }
 
@@ -199,15 +216,24 @@ public class WindSeekingBell extends Item {
                         data.setFoundStructurePos(player.getUUID(), result);
                     }
                     RetreatManager.updateCache(player.getUUID(), result);
-                    consumeItem(player, itemStack);
-                    handleSearchResult(serverLevel, playerPos, player, result, searchTime);
+
+                    // 检查玩家手上是否仍持有寻风之铃（异步搜索期间可能已切换物品）
+                    boolean holdingBell = player.getMainHandItem().getItem() instanceof WindSeekingBell
+                            || player.getOffhandItem().getItem() instanceof WindSeekingBell;
+                    if (holdingBell) {
+                        consumeItem(player, itemStack);
+                        handleSearchResult(serverLevel, playerPos, player, result, searchTime, true);
+                    } else {
+                        // 铃不在手上：仅展示坐标，不消耗物品，不飞铃
+                        handleSearchResult(serverLevel, playerPos, player, result, searchTime, false);
+                    }
                     player.sendSystemMessage(Component.translatable(
                             "item.touhou_little_maid_spell.wind_seeking_bell.first_use"
                     ).withStyle(ChatFormatting.LIGHT_PURPLE));
                 } else {
                     // 搜索失败：不消耗物品，设置负缓存
                     RetreatManager.updateCache(player.getUUID(), null);
-                    handleSearchResult(serverLevel, playerPos, player, null, searchTime);
+                    handleSearchResult(serverLevel, playerPos, player, null, searchTime, false);
                 }
             });
         }).exceptionally(throwable -> {
@@ -230,10 +256,12 @@ public class WindSeekingBell extends Item {
     }
 
     /**
-     * 处理搜索结果（展示飞行实体和坐标信息）
+     * 处理搜索结果（展示坐标信息，可选飞行实体）
+     *
+     * @param launchBell true = 首次搜索成功，铃飞出（类似末影之眼）；false = 缓存/未找到，仅显示坐标
      */
     private void handleSearchResult(ServerLevel serverLevel, BlockPos playerPos, Player player,
-                                    BlockPos structurePos, long searchTime) {
+                                    BlockPos structurePos, long searchTime, boolean launchBell) {
         serverLevel.getServer().execute(() -> {
             if (structurePos != null) {
                 int height = serverLevel.getChunkSource().getGenerator().getFirstOccupiedHeight(
@@ -245,12 +273,14 @@ public class WindSeekingBell extends Item {
                 BlockPos structurePosXZ = new BlockPos(structurePos.getX(), 0, structurePos.getZ());
                 BlockPos playerPosXZ = new BlockPos(playerPos.getX(), 0, playerPos.getZ());
 
-                WindSeekingBellEntity bell = new WindSeekingBellEntity(serverLevel, player);
-                ItemStack displayItem = player.getMainHandItem().copy();
-                displayItem.setCount(1);
-                bell.setItem(displayItem);
-                bell.signalTo(structurePosXZ.above(height + 3));
-                serverLevel.addFreshEntity(bell);
+                if (launchBell) {
+                    WindSeekingBellEntity bell = new WindSeekingBellEntity(serverLevel, player);
+                    ItemStack displayItem = player.getMainHandItem().copy();
+                    displayItem.setCount(1);
+                    bell.setItem(displayItem);
+                    bell.signalTo(structurePosXZ.above(height + 3));
+                    serverLevel.addFreshEntity(bell);
+                }
 
                 int distance = (int) Math.sqrt(structurePosXZ.distSqr(playerPosXZ));
                 String tpCommand = String.format("/tp %f %d %f",
