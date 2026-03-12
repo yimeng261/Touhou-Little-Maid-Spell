@@ -65,8 +65,6 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
 
     /**
      * 确保每个 SearchWorker 的搜索信号量只被扣减一次。
-     * generate() 成功时会通过 {@link RetreatManager#onStructureGenerated} 扣减，
-     * 此时本标志防止 SearchWorker 重复扣减。
      */
     private final AtomicBoolean counterDeducted = new AtomicBoolean(false);
 
@@ -141,9 +139,16 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
         // 轮询：generate() 可能已在其他线程成功生成结构（C2ME 场景）
         BlockPos generatedPos = RetreatManager.pollGeneratedStructurePos(level.dimension());
         if (generatedPos != null) {
-            counterDeducted.set(true); // generate() 已经扣减了信号量
-            completeSearch(generatedPos);
-            return false;
+            // 验证该位置确实有有效的 StructureStart（防止竞态导致的无效位置）
+            if (validateStructureAt(generatedPos)) {
+                counterDeducted.set(true); // generate() 已经扣减了信号量
+                completeSearch(generatedPos);
+                return false;
+            }
+            MaidSpellMod.LOGGER.warn("generatedStructurePositions 返回的位置无有效结构，忽略: {}", generatedPos);
+            // 位置无效，信号量已被 generate() 消费但结构无效，
+            // 需要重新增加信号量以允许后续候选区块重试
+            RetreatManager.releaseSearchPermit();
         }
 
         // 进度日志：每 10 环输出一次
@@ -357,6 +362,26 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
         }
 
         return CandidateResult.cheap(null);
+    }
+
+    /**
+     * 验证指定位置的区块是否包含目标结构的有效 StructureStart。
+     */
+    private boolean validateStructureAt(BlockPos pos) {
+        ChunkPos chunkPos = new ChunkPos(pos);
+        ChunkAccess chunk = level.getChunk(chunkPos.x, chunkPos.z, ChunkStatus.STRUCTURE_STARTS, false);
+        if (chunk == null) {
+            return false;
+        }
+        var structureManager = level.structureManager();
+        for (Holder<Structure> holder : structureHolders) {
+            StructureStart start = structureManager.getStartForStructure(
+                    SectionPos.bottomOf(chunk), holder.value(), chunk);
+            if (start != null && start.isValid()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
