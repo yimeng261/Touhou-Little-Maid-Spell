@@ -21,7 +21,7 @@ public class MaidSpellEntities {
             () -> EntityType.Builder.<WindSeekingBellEntity>of(WindSeekingBellEntity::new, MobCategory.MISC)
                 .sized(0.25F, 0.25F)
                 .clientTrackingRange(4)
-                .updateInterval(10)
+                    .updateInterval(4)
                 .build("wind_seeking_bell"));
 
     /**

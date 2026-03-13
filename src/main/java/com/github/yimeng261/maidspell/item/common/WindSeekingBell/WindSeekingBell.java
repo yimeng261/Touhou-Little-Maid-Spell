@@ -141,6 +141,11 @@ public class WindSeekingBell extends Item {
      * 搜索成功后消耗物品；共享模式下，已找到过的结构免费重复查看。
      */
     private void findHiddenRetreat(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack) {
+        // 冷却中：防止连续右键重复触发
+        if (player.getCooldowns().isOnCooldown(this)) {
+            return;
+        }
+
         long searchStartTime = System.currentTimeMillis();
 
         // 0. 共享模式 + 配额限制：首次使用铃时注册并分配配额（兼容 TP 直接进入维度的情况）
@@ -164,9 +169,12 @@ public class WindSeekingBell extends Item {
             RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
             BlockPos persistedPos = data.getFoundStructurePos(player.getUUID());
             if (persistedPos != null) {
+                ItemStack displayItem = itemStack.copy();
+                displayItem.setCount(1);
                 consumeItem(player, itemStack);
+                player.getCooldowns().addCooldown(this, 20);
                 handleSearchResult(serverLevel, playerPos, player, persistedPos,
-                        System.currentTimeMillis() - searchStartTime, true);
+                        System.currentTimeMillis() - searchStartTime, true, displayItem);
                 return;
             }
         }
@@ -174,9 +182,12 @@ public class WindSeekingBell extends Item {
         // 2. 检查内存缓存
         RetreatManager.CacheResult cacheResult = RetreatManager.checkCache(player.getUUID());
         if (cacheResult.hasCache && !cacheResult.isNegative) {
+            ItemStack displayItem = itemStack.copy();
+            displayItem.setCount(1);
             consumeItem(player, itemStack);
+            player.getCooldowns().addCooldown(this, 20);
             handleSearchResult(serverLevel, playerPos, player, cacheResult.position,
-                    System.currentTimeMillis() - searchStartTime, true);
+                    System.currentTimeMillis() - searchStartTime, true, displayItem);
             return;
         }
 
@@ -221,11 +232,14 @@ public class WindSeekingBell extends Item {
                     boolean holdingBell = player.getMainHandItem().getItem() instanceof WindSeekingBell
                             || player.getOffhandItem().getItem() instanceof WindSeekingBell;
                     if (holdingBell) {
+                        ItemStack displayItem = itemStack.copy();
+                        displayItem.setCount(1);
                         consumeItem(player, itemStack);
-                        handleSearchResult(serverLevel, playerPos, player, result, searchTime, true);
+                        player.getCooldowns().addCooldown(WindSeekingBell.this, 20);
+                        handleSearchResult(serverLevel, playerPos, player, result, searchTime, true, displayItem);
                     } else {
                         // 铃不在手上：仅展示坐标，不消耗物品，不飞铃
-                        handleSearchResult(serverLevel, playerPos, player, result, searchTime, false);
+                        handleSearchResult(serverLevel, playerPos, player, result, searchTime, false, ItemStack.EMPTY);
                     }
                     player.sendSystemMessage(Component.translatable(
                             "item.touhou_little_maid_spell.wind_seeking_bell.first_use"
@@ -233,7 +247,7 @@ public class WindSeekingBell extends Item {
                 } else {
                     // 搜索失败：不消耗物品，设置负缓存
                     RetreatManager.updateCache(player.getUUID(), null);
-                    handleSearchResult(serverLevel, playerPos, player, null, searchTime, false);
+                    handleSearchResult(serverLevel, playerPos, player, null, searchTime, false, ItemStack.EMPTY);
                 }
             });
         }).exceptionally(throwable -> {
@@ -258,10 +272,12 @@ public class WindSeekingBell extends Item {
     /**
      * 处理搜索结果（展示坐标信息，可选飞行实体）
      *
-     * @param launchBell true = 首次搜索成功，铃飞出（类似末影之眼）；false = 缓存/未找到，仅显示坐标
+     * @param launchBell  true = 铃飞出（类似末影之眼）；false = 仅显示坐标
+     * @param displayItem 飞行实体使用的显示物品（在消耗前拷贝），launchBell=false 时忽略
      */
     private void handleSearchResult(ServerLevel serverLevel, BlockPos playerPos, Player player,
-                                    BlockPos structurePos, long searchTime, boolean launchBell) {
+                                    BlockPos structurePos, long searchTime, boolean launchBell,
+                                    ItemStack displayItem) {
         serverLevel.getServer().execute(() -> {
             if (structurePos != null) {
                 int height = serverLevel.getChunkSource().getGenerator().getFirstOccupiedHeight(
@@ -275,8 +291,6 @@ public class WindSeekingBell extends Item {
 
                 if (launchBell) {
                     WindSeekingBellEntity bell = new WindSeekingBellEntity(serverLevel, player);
-                    ItemStack displayItem = player.getMainHandItem().copy();
-                    displayItem.setCount(1);
                     bell.setItem(displayItem);
                     bell.signalTo(structurePosXZ.above(height + 3));
                     serverLevel.addFreshEntity(bell);
