@@ -28,23 +28,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.Set;
-
 /**
  * Mixin 到 ChunkGenerator，阻止非白名单结构在归隐之地维度生成。
  * hidden_retreat 的"每维度一个"限制在 HiddenRetreatStructure.generate() 中处理。
  */
 @Mixin(ChunkGenerator.class)
 public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
-    @Unique
-    private static final ResourceLocation HIDDEN_RETREAT_ID =
-            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat");
-
-    @Unique
-    private static final Set<ResourceLocation> maidspell$allowedStructures = Set.of(
-            HIDDEN_RETREAT_ID,
-            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_cherry_tree")
-    );
 
     @Unique
     @Nullable
@@ -85,8 +74,13 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorAccessor {
 
         ResourceLocation structureId = structureKey.get().location();
 
+        // 开关：放行全部结构
+        if (Config.allowAllStructures) {
+            return;
+        }
+
         // 白名单结构放行
-        if (maidspell$allowedStructures.contains(structureId)) {
+        if (Config.allowedStructures.contains(structureId)) {
             return;
         }
 

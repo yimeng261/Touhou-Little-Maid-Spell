@@ -1,5 +1,5 @@
 {
-  "type": "touhou_little_maid_spell:hidden_cherry_tree",
+  "type": "touhou_little_maid_spell:land_jigsaw",
   "biomes": "#touhou_little_maid_spell:has_structure/hidden_cherry_tree",
   "max_distance_from_center": 80,
   "size": 1,
@@ -9,5 +9,6 @@
   },
   "start_pool": "touhou_little_maid_spell:hidden_cherry_tree",
   "step": "surface_structures",
-  "terrain_adaptation": "beard_box"
+  "terrain_adaptation": "beard_box",
+  "avoid_water": true
 }

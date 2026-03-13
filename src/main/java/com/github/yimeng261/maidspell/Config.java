@@ -3,13 +3,16 @@ package com.github.yimeng261.maidspell;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.task.SpellCombatFarTask;
 import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 女仆法术战斗系统配置类
@@ -409,6 +412,39 @@ public class Config {
             .define("disableHostileMobSpawning", false);
 
     static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue ALLOW_ALL_STRUCTURES = BUILDER
+            .comment("是否允许所有结构在归隐之地生成 (默认: false)")
+            .comment("true: 放行所有结构，忽略白名单")
+            .comment("false: 仅允许白名单中的结构生成")
+            .comment("Whether to allow all structures to generate in retreat dimensions (default: false)")
+            .comment("true: Allow all structures, ignore whitelist")
+            .comment("false: Only allow structures in the whitelist")
+            .define("allowAllStructures", false);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.ConfigValue<List<? extends String>> ALLOWED_STRUCTURES = BUILDER
+            .comment("允许在归隐之地生成的结构白名单")
+            .comment("仅在 allowAllStructures 为 false 时生效")
+            .comment("格式: [\"modid:structure_name\", ...]")
+            .comment("Whitelist of structures allowed to generate in retreat dimensions")
+            .comment("Only effective when allowAllStructures is false")
+            .comment("Format: [\"modid:structure_name\", ...]")
+            .defineListAllowEmpty(
+                    List.of("allowedStructures"),
+                    () -> List.of(
+                            MaidSpellMod.MOD_ID + ":hidden_retreat",
+                            MaidSpellMod.MOD_ID + ":hidden_cherry_tree"
+                    ),
+                    obj -> obj instanceof String
+            );
+
+    static {
         BUILDER.pop(); // retreat_dimension
     }
 
@@ -470,6 +506,8 @@ public class Config {
     public static boolean enablePrivateDimensions;
     public static boolean enableSharedQuotaLimit;
     public static boolean disableHostileMobSpawning;
+    public static boolean allowAllStructures;
+    public static Set<ResourceLocation> allowedStructures;
 
 
     @SubscribeEvent
@@ -543,6 +581,15 @@ public class Config {
         enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
         enableSharedQuotaLimit = ENABLE_SHARED_QUOTA_LIMIT.get();
         disableHostileMobSpawning = DISABLE_HOSTILE_MOB_SPAWNING.get();
+        allowAllStructures = ALLOW_ALL_STRUCTURES.get();
+        Set<ResourceLocation> structureSet = new HashSet<>();
+        for (String s : ALLOWED_STRUCTURES.get()) {
+            ResourceLocation loc = ResourceLocation.tryParse(s);
+            if (loc != null) {
+                structureSet.add(loc);
+            }
+        }
+        allowedStructures = structureSet;
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);
