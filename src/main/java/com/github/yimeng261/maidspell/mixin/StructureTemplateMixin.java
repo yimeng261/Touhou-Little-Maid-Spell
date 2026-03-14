@@ -26,6 +26,9 @@ public abstract class StructureTemplateMixin {
             cancellable = true
     )
     private static void createEntityIgnoreException(ServerLevelAccessor accessor, CompoundTag tag, CallbackInfoReturnable<Optional<Entity>> ci) {
+        if (accessor.isClientSide()) {
+            return;
+        }
         ListTag posTag = tag.getList("Pos", 6);
         BlockPos blockPos = BlockPos.containing(posTag.getDouble(0), posTag.getDouble(1), posTag.getDouble(2));
         if (maidSpell$isInEnchantressFootstepsOutpostStructure(accessor, blockPos)) {

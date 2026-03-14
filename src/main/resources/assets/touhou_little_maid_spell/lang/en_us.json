@@ -104,7 +104,10 @@
   "item.touhou_little_maid_spell.wind_seeking_bell.return_to_overworld": "Returned to Overworld",
   "item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed": "Teleportation failed, unable to create The Retreat",
   "subtitle.touhou_little_maid_spell.wind_seeking_bell": "Wind Seeking Bell rings",
+  "item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared": "First time entering The Retreat, your exclusive Hidden Retreat has been assigned",
   "item.touhou_little_maid_spell.wind_seeking_bell.first_use": "\nRing the bell to call cherry blossoms\nGentle wind comes through the silent deep forest\nOld friend waits with flowers\n",
+  "item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure": "No Hidden Retreat nearby, added to waiting queue...",
+  "item.touhou_little_maid_spell.wind_seeking_bell.no_quota": "You can only seek it once!",
   "item.touhou_little_maid_spell.owner_clear_tool": "Maid Owner Clear Tool",
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line1": "Administrator Tool",
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line2": "Right-click on maid to clear owner",
@@ -120,7 +123,10 @@
   "item.maidspell.melee_task_icon.desc": "Icon for melee spell combat task",
   "item.touhou_little_maid_spell.far_task_icon": "Ranged Spell Icon",
   "item.maidspell.far_task_icon.desc": "Icon for ranged spell combat task",
-
+  "touhou_little_maid_spell.configuration.spellBlacklist": "Spell blacklist, maids will not cast these spells",
+  "touhou_little_maid_spell.configuration.autoAllianceEnabled": "Whether to automatically ally maids with players (default: true)\ntrue: Maids and players join the same team with friendly fire disabled\nfalse: No automatic alliance",
+  "touhou_little_maid_spell.configuration.fragrantIngenuityFavorabilityGain": "Fragrant Ingenuity favorability gain when eating (default: 2)",
+  "touhou_little_maid_spell.configuration.fragrantIngenuityBuffDuration": "Fragrant Ingenuity buff duration when maid feeds owner (in ticks)",
   "touhou_little_maid_spell.configuration.maxSpellRange": "Maximum spell attack range",
   "touhou_little_maid_spell.configuration.maidCooldownMultiplier": "Maid cooldown multiplier(default:1.0,only effective on spellCombatTask)",
   "touhou_little_maid_spell.configuration.farRange": "Far attack range",
@@ -156,5 +162,11 @@
   "touhou_little_maid_spell.configuration.damage": "Damage-related bauble configurations",
   "touhou_little_maid_spell.configuration.chaosBookTrueDamageMin": "Chaos Book minimum true damage",
   "touhou_little_maid_spell.configuration.meleeAttackInterval": "Melee spell task attack interval (in ticks, default: 8)",
-  "touhou_little_maid_spell.configuration.farAttackInterval": "Far spell task attack interval (in ticks, default: 5)"
+  "touhou_little_maid_spell.configuration.farAttackInterval": "Far spell task attack interval (in ticks, default: 5)",
+  "touhou_little_maid_spell.configuration.retreat_dimension": "Retreat dimension configurations",
+  "touhou_little_maid_spell.configuration.enablePrivateDimensions": "Whether to enable private dimension mode (default: true)\ntrue: Each player has their own retreat dimension\nfalse: All players share one retreat dimension, each with one structure",
+  "touhou_little_maid_spell.configuration.enableSharedQuotaLimit": "Whether to enable quota limit in shared mode (default: true)\ntrue: Each player can only search for one hidden retreat in the shared dimension\nfalse: No search limit in shared mode, players can find unlimited structures",
+  "touhou_little_maid_spell.configuration.disableHostileMobSpawning": "Whether to disable hostile mob spawning in retreat dimensions (default: false)\ntrue: No hostile mobs will naturally spawn in retreat dimensions\nfalse: Hostile mobs spawn normally in retreat dimensions",
+  "touhou_little_maid_spell.configuration.allowAllStructures": "Whether to allow all structures in retreat dimensions (default: false)\ntrue: Allow all structures, ignore whitelist\nfalse: Only allow whitelisted structures",
+  "touhou_little_maid_spell.configuration.allowedStructures": "Whitelist of structures allowed in retreat dimensions (effective when allowAllStructures is false)"
 }

@@ -1,0 +1,22 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "goety"
+    }
+  ],
+  "type": "minecraft:jigsaw",
+  "biomes": "#touhou_little_maid_spell:has_structure/yin_yang_altar",
+  "max_distance_from_center": 80,
+  "project_start_to_heightmap": "WORLD_SURFACE_WG",
+  "size": 1,
+  "spawn_overrides": {},
+  "start_height": {
+    "absolute": 1
+  },
+  "start_pool": "touhou_little_maid_spell:yin_yang_altar",
+  "step": "surface_structures",
+  "terrain_adaptation": "beard_box",
+  "use_expansion_hack": false
+}
+

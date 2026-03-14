@@ -3,13 +3,16 @@ package com.github.yimeng261.maidspell;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.task.SpellCombatFarTask;
 import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 女仆法术战斗系统配置类
@@ -366,6 +369,85 @@ public class Config {
         BUILDER.pop(); // baubles
     }
 
+    // ========== 归隐之地维度配置 ==========
+    static {
+        BUILDER.comment("归隐之地维度相关配置")
+                .comment("Retreat dimension configurations")
+                .push("retreat_dimension");
+    }
+
+    private static final ModConfigSpec.BooleanValue ENABLE_PRIVATE_DIMENSIONS = BUILDER
+            .comment("是否启用私人维度模式 (默认: true)")
+            .comment("true: 每个玩家拥有独立的归隐之地维度")
+            .comment("false: 所有玩家共享一个归隐之地维度，每个玩家拥有一个隐世之境结构")
+            .comment("Whether to enable private dimension mode (default: true)")
+            .comment("true: Each player has their own retreat dimension")
+            .comment("false: All players share one retreat dimension, each with one structure")
+            .define("enablePrivateDimensions", true);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue ENABLE_SHARED_QUOTA_LIMIT = BUILDER
+            .comment("共享模式下是否启用配额限制 (默认: true)")
+            .comment("true: 每个玩家在共享归隐之地中最多搜索一次隐世之境")
+            .comment("false: 共享模式下不限制搜索次数，玩家可以无限搜索新的结构")
+            .comment("Whether to enable quota limit in shared mode (default: true)")
+            .comment("true: Each player can only search for one hidden retreat in the shared dimension")
+            .comment("false: No search limit in shared mode, players can find unlimited structures")
+            .define("enableSharedQuotaLimit", true);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue DISABLE_HOSTILE_MOB_SPAWNING = BUILDER
+            .comment("是否禁止归隐之地生成敌对生物 (默认: false)")
+            .comment("true: 归隐之地不会自然生成敌对生物")
+            .comment("false: 归隐之地正常生成敌对生物")
+            .comment("Whether to disable hostile mob spawning in retreat dimensions (default: false)")
+            .comment("true: No hostile mobs will naturally spawn in retreat dimensions")
+            .comment("false: Hostile mobs spawn normally in retreat dimensions")
+            .define("disableHostileMobSpawning", false);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue ALLOW_ALL_STRUCTURES = BUILDER
+            .comment("是否允许所有结构在归隐之地生成 (默认: false)")
+            .comment("true: 放行所有结构，忽略白名单")
+            .comment("false: 仅允许白名单中的结构生成")
+            .comment("Whether to allow all structures to generate in retreat dimensions (default: false)")
+            .comment("true: Allow all structures, ignore whitelist")
+            .comment("false: Only allow structures in the whitelist")
+            .define("allowAllStructures", false);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.ConfigValue<List<? extends String>> ALLOWED_STRUCTURES = BUILDER
+            .comment("允许在归隐之地生成的结构白名单")
+            .comment("仅在 allowAllStructures 为 false 时生效")
+            .comment("格式: [\"modid:structure_name\", ...]")
+            .comment("Whitelist of structures allowed to generate in retreat dimensions")
+            .comment("Only effective when allowAllStructures is false")
+            .comment("Format: [\"modid:structure_name\", ...]")
+            .defineListAllowEmpty(
+                    List.of("allowedStructures"),
+                    () -> List.of(
+                            MaidSpellMod.MOD_ID + ":hidden_retreat",
+                            MaidSpellMod.MOD_ID + ":hidden_cherry_tree"
+                    ),
+                    obj -> obj instanceof String
+            );
+
+    static {
+        BUILDER.pop(); // retreat_dimension
+    }
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     // 缓存的配置值
@@ -420,9 +502,29 @@ public class Config {
     public static double soulBookDamageThresholdPercent;
     public static int soulBookDamageIntervalThreshold;
 
+    // 归隐之地维度相关
+    public static boolean enablePrivateDimensions;
+    public static boolean enableSharedQuotaLimit;
+    public static boolean disableHostileMobSpawning;
+    public static boolean allowAllStructures;
+    public static Set<ResourceLocation> allowedStructures;
+
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent.Loading event) {
+        refreshConfig();
+    }
+
+    @SubscribeEvent
+    static void onReload(final ModConfigEvent.Reloading event) {
+        refreshConfig();
+    }
+
+    /**
+     * 刷新配置缓存值，在配置加载和重载时调用
+     * Refresh cached config values, called on both config load and reload
+     */
+    public static void refreshConfig() {
         // 加载配置值到缓存变量
         maxSpellRange = MAX_SPELL_RANGE.get();
         meleeRange = MELEE_RANGE.get();
@@ -474,6 +576,20 @@ public class Config {
         chaosBookMinSplitDamage = CHAOS_BOOK_MIN_SPLIT_DAMAGE.get();
         soulBookDamageThresholdPercent = SOUL_BOOK_DAMAGE_THRESHOLD_PERCENT.get();
         soulBookDamageIntervalThreshold = SOUL_BOOK_DAMAGE_INTERVAL_THRESHOLD.get();
+
+        // 归隐之地维度相关
+        enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
+        enableSharedQuotaLimit = ENABLE_SHARED_QUOTA_LIMIT.get();
+        disableHostileMobSpawning = DISABLE_HOSTILE_MOB_SPAWNING.get();
+        allowAllStructures = ALLOW_ALL_STRUCTURES.get();
+        Set<ResourceLocation> structureSet = new HashSet<>();
+        for (String s : ALLOWED_STRUCTURES.get()) {
+            ResourceLocation loc = ResourceLocation.tryParse(s);
+            if (loc != null) {
+                structureSet.add(loc);
+            }
+        }
+        allowedStructures = structureSet;
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);
