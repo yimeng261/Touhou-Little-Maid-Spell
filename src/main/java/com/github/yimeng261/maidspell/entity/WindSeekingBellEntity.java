@@ -117,7 +117,7 @@ public class WindSeekingBellEntity extends Entity {
         if (d4 > 12.0D) {
             this.targetX = this.getX() + d2 / d4 * 12.0D;
             this.targetZ = this.getZ() + d3 / d4 * 12.0D;
-            this.targetY = this.getY() + 20.0D;
+            this.targetY = this.getY() + 8.0D;
         } else {
             this.targetX = d0;
             this.targetY = i;
