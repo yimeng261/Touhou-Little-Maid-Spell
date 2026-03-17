@@ -6,12 +6,14 @@ import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
+import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
+import com.github.yimeng261.maidspell.worldgen.structure.MaidSpellPoolElementTypes;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
@@ -52,9 +54,11 @@ public class MaidSpellMod {
         MaidSpellContainers.register(modEventBus);
         MaidSpellSounds.SOUNDS.register(modEventBus);
         MaidSpellEntities.register(modEventBus);
+        modEventBus.addListener(FragrantIngenuityBauble::onRegisterEffects);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modEventBus);
         MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modEventBus);
+        MaidSpellPoolElementTypes.POOL_ELEMENT_TYPES.register(modEventBus);
 
         // 铁魔法属性修改器获取
         if (ModList.get().isLoaded("irons_spellbooks")) {

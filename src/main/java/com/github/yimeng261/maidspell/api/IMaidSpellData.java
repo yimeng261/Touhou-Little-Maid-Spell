@@ -14,6 +14,7 @@ import java.util.*;
 public abstract class IMaidSpellData {
 
     protected static final Logger LOGGER = LogUtils.getLogger();
+    // TODO 迁移到 Attribute 系统
     protected final Map<String, Integer> spellCooldowns = new HashMap<>();
 
     // === 基本状态 ===

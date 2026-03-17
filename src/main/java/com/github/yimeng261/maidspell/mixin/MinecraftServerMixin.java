@@ -2,16 +2,19 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.dimension.RetreatLevelData;
+import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
 import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
-import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import com.google.common.collect.ImmutableList;
+import net.minecraft.core.LayeredRegistryAccess;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.RegistryLayer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.progress.ChunkProgressListener;
 import net.minecraft.util.thread.ReentrantBlockableEventLoop;
@@ -20,7 +23,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.dimension.LevelStem;
-import net.minecraft.world.level.storage.DerivedLevelData;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.ServerLevelData;
 import net.minecraft.world.level.storage.WorldData;
@@ -53,6 +55,13 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
     @Final
     protected LevelStorageSource.LevelStorageAccess storageSource;
 
+    @Final
+    @Shadow
+    private LayeredRegistryAccess<RegistryLayer> registries;
+
+    @Shadow
+    public abstract RegistryAccess.Frozen registryAccess();
+
     public MinecraftServerMixin(String name) {
         super(name);
     }
@@ -80,54 +89,58 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
             }
 
             // 使用预定义的LevelStem模板（the_retreat）
-            ResourceLocation templateKey = new ResourceLocation(MaidSpellMod.MOD_ID, "the_retreat");
+            ResourceLocation templateKey = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "the_retreat");
             LevelStem templateStem = dimensionRegistry.get(templateKey);
             if (templateStem == null) {
                 MaidSpellMod.LOGGER.error("Template LevelStem not found for: {}", templateKey);
                 return false;
             }
 
-            // 创建ServerLevel
-            // 使用 DerivedLevelData 为归隐之地创建独立的时间管理
-            // 这样每个维度都有自己的时间数据，不会与主世界冲突
+            // 使用 RetreatLevelData 为归隐之地创建独立的时间管理
+            // RetreatLevelData 拥有独立的 gameTime/dayTime/天气/TimerQueue，
+            // 避免共享主世界的 TimerQueue 导致 /schedule function 被重复执行
             ServerLevelData overworldLevelData = (ServerLevelData) overworld.getLevelData();
             WorldData worldData = server.getWorldData();
-            DerivedLevelData derivedLevelData = new DerivedLevelData(worldData, overworldLevelData);
+            RetreatLevelData retreatLevelData = new RetreatLevelData(worldData, overworldLevelData);
 
-            long seed = BiomeManager.obfuscateSeed((long)(0x66ccff*Math.random()));
+            long seed = BiomeManager.obfuscateSeed((long) (0x66ccff * Math.random()));
 
             // 创建一个简单的ChunkProgressListener
             ChunkProgressListener progressListener = new ChunkProgressListener() {
                 @Override
-                public void updateSpawnPos(net.minecraft.world.level.@NotNull ChunkPos pos) {}
+                public void updateSpawnPos(net.minecraft.world.level.@NotNull ChunkPos pos) {
+                }
 
                 @Override
-                public void onStatusChange(ChunkPos chunkPos, @Nullable ChunkStatus chunkStatus) {}
+                public void onStatusChange(@NotNull ChunkPos pChunkPosition, @Nullable ChunkStatus pNewStatus) {
+                }
 
                 @Override
-                public void start() {}
+                public void start() {
+                }
 
                 @Override
-                public void stop() {}
+                public void stop() {
+                }
             };
 
             ServerLevel newLevel = new ServerLevel(
-                server,
-                executor,
-                storageSource,
-                    derivedLevelData,  // 使用独立的 DerivedLevelData
-                key,
-                templateStem,
-                progressListener,
-                overworld.isDebug(),
-                seed,
-                ImmutableList.of(),
-                false,
-                overworld.getRandomSequences()
+                    server,
+                    executor,
+                    storageSource,
+                    retreatLevelData,  // 使用独立的 RetreatLevelData
+                    key,
+                    templateStem,
+                    progressListener,
+                    overworld.isDebug(),
+                    seed,
+                    ImmutableList.of(),
+                    true,  // tickTime = true: RetreatLevelData 拥有独立的时间和 TimerQueue，可安全启用
+                    overworld.getRandomSequences()
             );
 
-            HiddenRetreatStructure.DIMENSIONS_MAP.put(newLevel.getSeed(), newLevel);
-            Global.LOGGER.debug("seed: {} add to dimensions map, level: {}", newLevel.getSeed(), newLevel.dimension().location());
+            RetreatManager.registerDimension(key, newLevel);
+            Global.LOGGER.debug("Registered dimension: {}", newLevel.dimension().location());
 
             // 设置ChunkGenerator的维度信息，用于结构生成判断
             if (newLevel.getChunkSource().getGenerator() instanceof ChunkGeneratorAccessor accessor) {
@@ -182,4 +195,3 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
         }
     }
 }
-

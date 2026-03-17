@@ -66,7 +66,7 @@ public class TaskFeedOwnerMixin {
         }
 
         // 随机选择一个正面buff
-        MobEffect randomEffect = FragrantIngenuityBauble.POSITIVE_EFFECTS.get(
+        Holder<MobEffect> randomEffect = FragrantIngenuityBauble.POSITIVE_EFFECTS.get(
             owner.getRandom().nextInt(FragrantIngenuityBauble.POSITIVE_EFFECTS.size())
         );
 
@@ -74,7 +74,7 @@ public class TaskFeedOwnerMixin {
         int duration = Config.fragrantIngenuityBuffDuration;
 
         // 添加buff（1级，即amplifier = 0）
-        owner.addEffect(new MobEffectInstance(Holder.direct(randomEffect), duration, 0));
+        owner.addEffect(new MobEffectInstance(randomEffect, duration, 0));
 
     }
 }

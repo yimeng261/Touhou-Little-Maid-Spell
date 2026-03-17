@@ -24,30 +24,37 @@ public class WindSeekingBellRenderer extends EntityRenderer<WindSeekingBellEntit
     }
 
     @Override
-    public void render(WindSeekingBellEntity entity, float entityYaw, float partialTicks, 
+    public void render(WindSeekingBellEntity entity, float entityYaw, float partialTicks,
                       PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
-        poseStack.pushPose();
-        
-        // 旋转效果，让铃铛在飞行时旋转
-        float rotation = (entity.tickCount + partialTicks) * 4.0F;
-        poseStack.mulPose(Axis.YP.rotationDegrees(rotation));
-        poseStack.mulPose(Axis.XP.rotationDegrees(rotation * 0.5F));
-        
-        // 渲染物品（寻风之铃）
-        ItemStack itemStack = entity.getItem();
-        if (!itemStack.isEmpty()) {
-            this.itemRenderer.renderStatic(
-                itemStack, 
-                ItemDisplayContext.GROUND, 
-                packedLight, 
-                OverlayTexture.NO_OVERLAY, 
-                poseStack, 
-                buffer, 
-                entity.level(), 
-                entity.getId()
-            );
+        // 与 ThrownItemRenderer 一致：前 2 tick 且距离很近时跳过，避免穿模
+        if (entity.tickCount < 2 && this.entityRenderDispatcher.camera.getEntity().distanceToSqr(entity) < 12.25) {
+            return;
         }
-        
+
+        ItemStack itemStack = entity.getItem();
+        if (itemStack.isEmpty()) {
+            super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
+            return;
+        }
+
+        poseStack.pushPose();
+
+        // 先面向摄像机（公告板），再绕 Z 轴自旋，使铃铛始终正面朝向玩家
+        poseStack.mulPose(this.entityRenderDispatcher.cameraOrientation());
+        float spin = (entity.tickCount + partialTicks) * 4.0F;
+        poseStack.mulPose(Axis.ZP.rotationDegrees(spin));
+
+        this.itemRenderer.renderStatic(
+                itemStack,
+                ItemDisplayContext.GROUND,
+                packedLight,
+                OverlayTexture.NO_OVERLAY,
+                poseStack,
+                buffer,
+                entity.level(),
+                entity.getId()
+        );
+
         poseStack.popPose();
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
     }
