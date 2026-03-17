@@ -42,20 +42,26 @@ public class RetreatDimensionData extends SavedData {
         @Nullable
         public BlockPos foundStructurePos; // 已找到的结构位置（持久化，共享模式下用于重复查看）
 
+        // 私人模式专属字段
+        public boolean structureGenerated; // 结构是否已生成（持久化，防止重启后重复生成）
+
         public DimensionInfo(UUID playerUUID) {
             this.playerUUID = playerUUID;
             this.createdTime = System.currentTimeMillis();
             this.lastAccessTime = this.createdTime;
             this.structureQuota = 0;
             this.foundStructurePos = null;
+            this.structureGenerated = false;
         }
 
-        public DimensionInfo(UUID playerUUID, long createdTime, long lastAccessTime, int structureQuota, @Nullable BlockPos foundStructurePos) {
+        public DimensionInfo(UUID playerUUID, long createdTime, long lastAccessTime, int structureQuota,
+                             @Nullable BlockPos foundStructurePos, boolean structureGenerated) {
             this.playerUUID = playerUUID;
             this.createdTime = createdTime;
             this.lastAccessTime = lastAccessTime;
             this.structureQuota = structureQuota;
             this.foundStructurePos = foundStructurePos;
+            this.structureGenerated = structureGenerated;
         }
 
         public void updateAccessTime() {
@@ -74,6 +80,7 @@ public class RetreatDimensionData extends SavedData {
                 tag.putInt("FoundStructureZ", foundStructurePos.getZ());
                 tag.putBoolean("HasFoundStructure", true);
             }
+            tag.putBoolean("StructureGenerated", structureGenerated);
             return tag;
         }
 
@@ -90,8 +97,9 @@ public class RetreatDimensionData extends SavedData {
                         tag.getInt("FoundStructureZ")
                 );
             }
+            boolean structureGenerated = tag.getBoolean("StructureGenerated");
 
-            return new DimensionInfo(playerUUID, createdTime, lastAccessTime, structureQuota, foundPos);
+            return new DimensionInfo(playerUUID, createdTime, lastAccessTime, structureQuota, foundPos, structureGenerated);
         }
     }
 
@@ -196,6 +204,18 @@ public class RetreatDimensionData extends SavedData {
      */
     public Map<UUID, DimensionInfo> getAllDimensions() {
         return new HashMap<>(playerDimensions);
+    }
+
+    /**
+     * 标记玩家维度的结构已生成（私人模式持久化）
+     */
+    public void markStructureGenerated(UUID playerUUID) {
+        DimensionInfo info = playerDimensions.get(playerUUID);
+        if (info != null && !info.structureGenerated) {
+            info.structureGenerated = true;
+            setDirty();
+            MaidSpellMod.LOGGER.info("Persisted structure generated flag for player: {}", playerUUID);
+        }
     }
 
     /**

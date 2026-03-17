@@ -251,8 +251,9 @@ public class TheRetreatDimension {
         if (event.getLevel() instanceof ServerLevel serverLevel) {
             ResourceLocation dimensionLocation = serverLevel.dimension().location();
             if (dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID)
-                && dimensionLocation.getPath().startsWith("the_retreat_")) {
-                MaidSpellMod.LOGGER.info("Unloading retreat dimension: " + dimensionLocation);
+                    && dimensionLocation.getPath().startsWith("the_retreat")) {
+                RetreatManager.unregisterDimension(serverLevel.dimension());
+                MaidSpellMod.LOGGER.info("Unloading retreat dimension: {}", dimensionLocation);
             }
         }
     }

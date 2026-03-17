@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.worldgen.structure;
 
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.mojang.serialization.Codec;
@@ -12,6 +13,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.*;
@@ -36,6 +38,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
@@ -134,6 +137,21 @@ public class HiddenRetreatStructure extends Structure {
         String structureKey = dimKey.location() + "@" + structureCenter.getX() + "," + structureCenter.getZ();
         if (!processedStructures.add(structureKey)) {
             return;
+        }
+
+        // 私人模式：持久化结构已生成标记，防止重启后重复生成
+        if (Config.enablePrivateDimensions) {
+            String dimPath = dimKey.location().getPath();
+            if (dimPath.startsWith("the_retreat_")) {
+                try {
+                    String uuidStr = dimPath.substring("the_retreat_".length()).replace('_', '-');
+                    UUID playerUUID = UUID.fromString(uuidStr);
+                    MinecraftServer server = serverLevel.getServer();
+                    RetreatDimensionData.get(server).markStructureGenerated(playerUUID);
+                } catch (IllegalArgumentException e) {
+                    MaidSpellMod.LOGGER.warn("afterPlace: 无法从维度路径解析玩家 UUID: {}", dimPath);
+                }
+            }
         }
 
         // 共享模式：addReference 标记结构为"已定位"，防止重复搜索到

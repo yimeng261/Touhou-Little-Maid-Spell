@@ -186,28 +186,6 @@ public class RetreatManager {
         MaidSpellMod.LOGGER.debug("Unregistered dimension: {}", key.location());
     }
 
-    public static boolean isDimensionRegistered(ResourceKey<Level> key) {
-        return dimensionRegistry.containsKey(key);
-    }
-
-    @Nullable
-    public static ServerLevel getDimensionLevel(ResourceKey<Level> key) {
-        return dimensionRegistry.get(key);
-    }
-
-    /**
-     * 通过 seed 查找维度（兼容 generate() 中只有 seed 的场景）
-     */
-    @Nullable
-    public static ResourceKey<Level> findDimensionKeyBySeed(long seed) {
-        for (Map.Entry<ResourceKey<Level>, ServerLevel> entry : dimensionRegistry.entrySet()) {
-            if (entry.getValue().getSeed() == seed) {
-                return entry.getKey();
-            }
-        }
-        return null;
-    }
-
     // ========== 搜索信号量 ==========
 
     /**
@@ -290,10 +268,6 @@ public class RetreatManager {
 
     // ========== 结构生成标记 ==========
 
-    public static boolean isStructureGenerated(ResourceKey<Level> key) {
-        return generatedDimensions.contains(key);
-    }
-
     /**
      * 原子性标记维度已生成结构，防止重复生成。
      * @return true = 首次标记，允许生成；false = 已被标记，应拦截
@@ -322,10 +296,6 @@ public class RetreatManager {
 
     public static void removeCachedPlayerRetreat(UUID playerUUID) {
         playerRetreats.remove(playerUUID);
-    }
-
-    public static void clearPlayerRetreatCache() {
-        playerRetreats.clear();
     }
 
     public static int getCachedPlayerRetreatCount() {

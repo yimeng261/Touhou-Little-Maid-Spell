@@ -133,19 +133,28 @@ public class PlayerRetreatManager {
         RetreatDimensionData data = RetreatDimensionData.get(server);
 
         if (Config.enablePrivateDimensions) {
-            for (UUID playerUUID : data.getAllDimensions().keySet()) {
+            int restoredStructureFlags = 0;
+            for (var entry : data.getAllDimensions().entrySet()) {
+                UUID playerUUID = entry.getKey();
+                RetreatDimensionData.DimensionInfo info = entry.getValue();
                 ResourceKey<Level> dimensionKey = TheRetreatDimension.getPlayerRetreatDimension(playerUUID);
                 ServerLevel existingLevel = server.getLevel(dimensionKey);
                 if (existingLevel != null) {
                     RetreatManager.cachePlayerRetreat(playerUUID, existingLevel);
                     RetreatManager.registerDimension(dimensionKey, existingLevel);
+                    // 恢复结构已生成标记，防止重启后重复生成
+                    if (info.structureGenerated) {
+                        RetreatManager.tryMarkStructureGenerated(dimensionKey);
+                        restoredStructureFlags++;
+                    }
                     MaidSpellMod.LOGGER.info("Loaded existing retreat dimension for player: {}", playerUUID);
                 } else {
                     MaidSpellMod.LOGGER.info("Recreating retreat dimension for player: {}", playerUUID);
                     createPlayerRetreat(server, playerUUID);
                 }
             }
-            MaidSpellMod.LOGGER.info("Loaded {} retreat dimensions", RetreatManager.getCachedPlayerRetreatCount());
+            MaidSpellMod.LOGGER.info("Loaded {} retreat dimensions, restored {} structure generated flags",
+                    RetreatManager.getCachedPlayerRetreatCount(), restoredStructureFlags);
         } else {
             int totalQuota = data.getAllDimensions().values().stream()
                     .mapToInt(info -> info.structureQuota).sum();
