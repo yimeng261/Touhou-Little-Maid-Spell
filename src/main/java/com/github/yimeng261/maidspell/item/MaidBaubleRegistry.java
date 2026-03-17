@@ -21,6 +21,7 @@ import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBaubl
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
 import com.github.yimeng261.maidspell.item.bauble.ascensionHalo.AscensionHaloBauble;
+import com.github.yimeng261.maidspell.item.bauble.dreamCrystal.DreamCatCrystalBauble;
 import net.minecraftforge.fml.ModList;
 
 /**
@@ -100,6 +101,11 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         if(MaidSpellItems.FRAGRANT_INGENUITY != null){
             manager.bind(MaidSpellItems.FRAGRANT_INGENUITY, new FragrantIngenuityBauble());
+        }
+
+        // 梦云水晶
+        if(MaidSpellItems.DREAM_CAT_CRYSTAL != null){
+            manager.bind(MaidSpellItems.DREAM_CAT_CRYSTAL, new DreamCatCrystalBauble());
         }
 
         // 晋升之环（使用原版 Goety Revelation 的物品）

@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.task.SpellCombatFarTask;
 import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
+import com.github.yimeng261.maidspell.item.bauble.dreamCrystal.DreamCatCrystalBauble;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -357,7 +358,21 @@ public class Config {
             .comment("魂之书伤害间隔阈值 (tick) (默认: 10)")
             .comment("Soul Book damage interval threshold in ticks")
             .defineInRange("soulBookDamageIntervalThreshold", 10, 1, 100);
-    
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> DREAM_CRYSTAL_EFFECT_BLACKLIST = BUILDER
+            .comment("梦云水晶随机正面效果黑名单，黑名单内的效果不会被随机赋予")
+            .comment("Dream Crystal random beneficial effect blacklist")
+            .comment("示例: [\"minecraft:bad_omen\"]")
+            .defineListAllowEmpty(
+                java.util.List.of("dreamCrystalEffectBlacklist"),
+                () -> java.util.List.of(),
+                obj -> obj instanceof String
+            );
+
     static {
         BUILDER.pop(); // special
         BUILDER.pop(); // baubles
@@ -436,7 +451,10 @@ public class Config {
     public static double chaosBookMinSplitDamage;
     public static double soulBookDamageThresholdPercent;
     public static int soulBookDamageIntervalThreshold;
-    
+
+    // 梦云水晶
+    public static java.util.List<String> dreamCrystalEffectBlacklist;
+
     // 归隐之地维度相关
     public static boolean enablePrivateDimensions;
 
@@ -494,7 +512,10 @@ public class Config {
         chaosBookMinSplitDamage = CHAOS_BOOK_MIN_SPLIT_DAMAGE.get();
         soulBookDamageThresholdPercent = SOUL_BOOK_DAMAGE_THRESHOLD_PERCENT.get();
         soulBookDamageIntervalThreshold = SOUL_BOOK_DAMAGE_INTERVAL_THRESHOLD.get();
-        
+
+        // 梦云水晶
+        dreamCrystalEffectBlacklist = new java.util.ArrayList<>(DREAM_CRYSTAL_EFFECT_BLACKLIST.get());
+
         // 归隐之地维度相关
         enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
 
@@ -506,6 +527,7 @@ public class Config {
         Global.resetCommonDamageCalc();
 
         Global.resetCommonCoolDownCalc();
+        DreamCatCrystalBauble.registerCommonCallbacks();
     }
 
 

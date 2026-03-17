@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -10,6 +11,7 @@ import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.DataItem;
+import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
@@ -216,6 +218,7 @@ public abstract class LivingEntityMixin {
         if(!target.isAlive()){
             target = maid.getTarget();
         }
-        SilverCercisBauble.handleSilverCercis(maid,target,dataItem);
+
+        SilverCercisBauble.handleSilverCercis(maid, target, dataItem);
     }
 }

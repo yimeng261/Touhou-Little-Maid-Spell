@@ -18,6 +18,7 @@ import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocket;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBlade;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCore;
+import com.github.yimeng261.maidspell.item.bauble.dreamCrystal.DreamCatCrystal;
 import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
@@ -30,7 +31,6 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import z1gned.goetyrevelation.item.ModItems;
-import com.mega.revelationfix.common.init.GRItems;
 
 /**
  * 女仆法术饰品物品注册
@@ -59,7 +59,10 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> SPELL_OVERLIMIT_CORE = ITEMS.register("spell_overlimit_core", SpellOverlimitCore::new);
     public static final RegistryObject<Item> FRAGRANT_INGENUITY = ITEMS.register("fragrant_ingenuity", FragrantIngenuity::new);
     //public static final RegistryObject<Item> CRYSTAL_CIRCUIT = ITEMS.register("crystal_circuit", CrystalCircuit::new);
-    
+
+    // 梦云水晶
+    public static final RegistryObject<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dreamCat_crystal", DreamCatCrystal::new);
+
     // 寻风之铃
     public static final RegistryObject<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
     
