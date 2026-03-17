@@ -1,11 +1,14 @@
 package com.github.yimeng261.maidspell.debug;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
+import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.event.FestivalGreetingManager;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
@@ -33,12 +36,12 @@ import java.util.Collection;
 import java.util.stream.Collectors;
 
 /**
- * Maid Spell 指令
- * 使实体选择器选中的 EntityMaid 施放指定的 Iron's Spellbooks 法术
+ * Maid Spell 统一命令
  * <p>
- * 用法: /maidspell <targets> <spell_id> [level]
- * 示例: /maidspell @e[type=touhoulittlemaid:maid,limit=1] irons_spellbooks:blood_slash
- * /maidspell @e[type=touhoulittlemaid:maid,limit=1] irons_spellbooks:fireball 5
+ * 用法:
+ * /maidspell iron_cast <targets> <spell_id> [level]  - 女仆施法
+ * /maidspell retreat reset <player>                   - 重置隐世之境额度
+ * /maidspell festival <festival_id>                   - 节日祝福测试
  */
 @EventBusSubscriber
 public class MaidSpellCommand {
@@ -47,18 +50,20 @@ public class MaidSpellCommand {
     /**
      * 节日 ID 自动补全提供器
      */
-    private static final SuggestionProvider<CommandSourceStack> FESTIVAL_SUGGESTIONS = (context, builder) -> {
-        return SharedSuggestionProvider.suggest(FestivalGreetingManager.getAllFestivalIds(), builder);
-    };
+    private static final SuggestionProvider<CommandSourceStack> FESTIVAL_SUGGESTIONS = (context, builder)
+            -> SharedSuggestionProvider.suggest(FestivalGreetingManager.getAllFestivalIds(), builder);
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
 
+        LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("maidspell")
+                .requires(source -> source.hasPermission(2));
+
         // 女仆施法命令
+        // /maidspell iron_cast <targets> <spell_id> [level]
         if (ModList.get().isLoaded("irons_spellbooks")) {
-            dispatcher.register(Commands.literal("maidspell")
-                    .requires(source -> source.hasPermission(2)) // 需要 OP 权限
+            root.then(Commands.literal("iron_cast")
                     .then(Commands.argument("targets", EntityArgument.entities())
                             .then(Commands.argument("spell", ResourceLocationArgument.id())
                                     .suggests(IronSpellHelper.SPELL_SUGGESTIONS)
@@ -73,17 +78,47 @@ public class MaidSpellCommand {
             );
         }
 
-        // 节日祝福测试命令
-        dispatcher.register(Commands.literal("maidspell_festival")
-                .requires(source -> source.hasPermission(2)) // 需要 OP 权限
-                .then(Commands.argument("festival_id", StringArgumentType.string())
-                        .suggests(FESTIVAL_SUGGESTIONS)
-                        .executes(context -> executeFestivalGreeting(context))
+        // /maidspell retreat reset <player>
+        root.then(Commands.literal("retreat")
+                .then(Commands.literal("reset")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(MaidSpellCommand::executeRetreatReset)
+                        )
                 )
         );
+
+        // 节日祝福测试命令
+        // /maidspell festival <festival_id>
+        root.then(Commands.literal("festival")
+                .then(Commands.argument("festival_id", StringArgumentType.string())
+                        .suggests(FESTIVAL_SUGGESTIONS)
+                        .executes(MaidSpellCommand::executeFestivalGreeting)
+                )
+        );
+
+        dispatcher.register(root);
     }
 
+    /**
+     * 执行归隐之地额度重置命令
+     */
+    private static int executeRetreatReset(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(context, "player");
+        RetreatDimensionData data = RetreatDimensionData.get(context.getSource().getServer());
 
+        if (!data.hasDimension(player.getUUID())) {
+            context.getSource().sendFailure(Component.translatable("command.maidspell.retreat.reset.no_record"));
+            return 0;
+        }
+
+        data.removeDimension(player.getUUID());
+        RetreatManager.updateCache(player.getUUID(), null);
+        RetreatManager.removeCachedPlayerRetreat(player.getUUID());
+
+        context.getSource().sendSuccess(() -> Component.translatable(
+                "command.maidspell.retreat.reset.success", player.getName().getString()), true);
+        return 1;
+    }
 
     /**
      * 执行节日祝福测试命令

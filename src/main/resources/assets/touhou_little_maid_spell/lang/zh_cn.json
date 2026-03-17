@@ -169,5 +169,7 @@
   "touhou_little_maid_spell.configuration.enableSharedQuotaLimit": "共享模式下是否启用配额限制 (默认: true)\ntrue: 每个玩家在共享归隐之地中最多搜索一次隐世之境\nfalse: 共享模式下不限制搜索次数，玩家可以无限搜索新的结构",
   "touhou_little_maid_spell.configuration.disableHostileMobSpawning": "是否禁止归隐之地生成敌对生物 (默认: false)\ntrue: 归隐之地不会自然生成敌对生物\nfalse: 归隐之地正常生成敌对生物",
   "touhou_little_maid_spell.configuration.allowAllStructures": "是否允许所有结构在归隐之地生成 (默认: false)\ntrue: 放行所有结构，忽略白名单\nfalse: 仅允许白名单中的结构生成",
-  "touhou_little_maid_spell.configuration.allowedStructures": "允许在归隐之地生成的结构白名单（allowAllStructures 为 false 时生效）"
+  "touhou_little_maid_spell.configuration.allowedStructures": "允许在归隐之地生成的结构白名单（allowAllStructures 为 false 时生效）",
+  "command.maidspell.retreat.reset.no_record": "该玩家没有归隐之地记录",
+  "command.maidspell.retreat.reset.success": "已重置玩家 %s 的隐世之境额度"
 }

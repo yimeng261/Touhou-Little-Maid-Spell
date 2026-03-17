@@ -168,5 +168,7 @@
   "touhou_little_maid_spell.configuration.enableSharedQuotaLimit": "Whether to enable quota limit in shared mode (default: true)\ntrue: Each player can only search for one hidden retreat in the shared dimension\nfalse: No search limit in shared mode, players can find unlimited structures",
   "touhou_little_maid_spell.configuration.disableHostileMobSpawning": "Whether to disable hostile mob spawning in retreat dimensions (default: false)\ntrue: No hostile mobs will naturally spawn in retreat dimensions\nfalse: Hostile mobs spawn normally in retreat dimensions",
   "touhou_little_maid_spell.configuration.allowAllStructures": "Whether to allow all structures in retreat dimensions (default: false)\ntrue: Allow all structures, ignore whitelist\nfalse: Only allow whitelisted structures",
-  "touhou_little_maid_spell.configuration.allowedStructures": "Whitelist of structures allowed in retreat dimensions (effective when allowAllStructures is false)"
+  "touhou_little_maid_spell.configuration.allowedStructures": "Whitelist of structures allowed in retreat dimensions (effective when allowAllStructures is false)",
+  "command.maidspell.retreat.reset.no_record": "This player has no retreat dimension record",
+  "command.maidspell.retreat.reset.success": "Reset Hidden Retreat quota for player %s"
 }
