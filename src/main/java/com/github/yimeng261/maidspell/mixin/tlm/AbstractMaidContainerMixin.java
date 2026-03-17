@@ -69,7 +69,7 @@ public class AbstractMaidContainerMixin {
         // 如果常规方式失败，尝试从Global缓存中查找
         // 这种情况通常发生在女仆距离玩家很远，但区块已被加载的情况
         try {
-            for(EntityMaid maid : Global.maidList){
+            for(EntityMaid maid : Global.activeMaids){
                 if (maid.getId() == entityId) {
                     if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
                         Global.LOGGER.debug("从Global缓存中找到远距离女仆: {} (ID: {})",

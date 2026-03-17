@@ -25,7 +25,7 @@ import java.util.function.BiFunction;
  *       其属性修改器也不会被应用到实体属性上</li>
  * </ul>
  *
- * <p>过滤逻辑由 {@link Global#baubleEffectBlockFilter} 统一管理，
+ * <p>过滤逻辑由 {@link Global#baubleEffectBlockFilters} 统一管理，
  * 各饰品在其 static 块中注册自身的过滤规则即可复用本 Mixin。
  */
 @Mixin(MobEffect.class)
@@ -48,7 +48,7 @@ public abstract class MobEffectMixin {
         if (!(livingEntity instanceof EntityMaid maid)) return;
 
         MobEffect self = (MobEffect)(Object)this;
-        for (Map.Entry<Item, BiFunction<EntityMaid, MobEffect, Boolean>> entry : Global.baubleEffectBlockFilter.entrySet()) {
+        for (Map.Entry<Item, BiFunction<EntityMaid, MobEffect, Boolean>> entry : Global.baubleEffectBlockFilters.entrySet()) {
             if (BaubleStateManager.hasBauble(maid, entry.getKey())
                     && Boolean.TRUE.equals(entry.getValue().apply(maid, self))) {
                 ci.cancel();

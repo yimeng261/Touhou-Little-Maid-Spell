@@ -1,7 +1,6 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -11,7 +10,6 @@ import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.DataItem;
-import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
@@ -120,13 +118,13 @@ public abstract class LivingEntityMixin {
 
         SoulBookBauble_process(dataItem); //处理魂之书(最先计算是否取消)
 
-        Global.baubleHurtCalcPre.forEach((item, func)->{
+        Global.baubleSetHealthHandlers.forEach((item, func)->{
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(dataItem);
             }
         });
 
-        Global.baubleHurtCalcFinal.forEach((item, func)->{
+        Global.baubleSetHealthFinalHandlers.forEach((item, func)->{
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(dataItem);
             }
@@ -184,7 +182,7 @@ public abstract class LivingEntityMixin {
         if (self instanceof EntityMaid maid) {
             MobEffect effect = (MobEffect) key;
             for (Map.Entry<Item, java.util.function.BiFunction<EntityMaid, MobEffect, Boolean>> entry
-                    : Global.baubleEffectBlockFilter.entrySet()) {
+                    : Global.baubleEffectBlockFilters.entrySet()) {
                 if (BaubleStateManager.hasBauble(maid, entry.getKey())
                         && Boolean.TRUE.equals(entry.getValue().apply(maid, effect))) {
                     return null;

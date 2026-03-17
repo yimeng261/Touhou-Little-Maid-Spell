@@ -148,7 +148,7 @@ public abstract class IMaidSpellData {
                 func.apply(coolDown);
             });
 
-            Global.baubleCoolDownCalc.forEach((item, func)->{
+            Global.baubleCooldownHandlers.forEach((item, func)->{
                 if(BaubleStateManager.hasBauble(maid, item)) {
                     func.apply(coolDown);
                 }

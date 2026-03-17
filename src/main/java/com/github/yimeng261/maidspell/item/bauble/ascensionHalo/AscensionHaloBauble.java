@@ -57,7 +57,7 @@ public class AscensionHaloBauble implements IMaidBauble {
         // ========== 战斗增强 ==========
 
         // 法术冷却减半
-        Global.baubleCoolDownCalc.put(ascensionHalo, (coolDown) -> {
+        Global.baubleCooldownHandlers.put(ascensionHalo, (coolDown) -> {
             if (coolDown.maid != null && 
                 BaubleStateManager.hasBauble(coolDown.maid, ascensionHalo)) {
                 coolDown.cooldownticks = coolDown.cooldownticks / 2; // 冷却减半

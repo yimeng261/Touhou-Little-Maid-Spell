@@ -33,39 +33,31 @@ public class Global {
 
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    // 使用 CopyOnWriteArrayList 保证线程安全，适合读多写少的场景
-    public static final List<BiFunction<LivingHurtEvent, EntityMaid, Void>> commonDamageCalc = new CopyOnWriteArrayList<>();
-
-    public static final List<BiFunction<LivingDamageEvent, Player, Void>> playerHurtCalcAft = new CopyOnWriteArrayList<>();
-
-    // 使用 ConcurrentHashMap 保证线程安全
-    // 外层 Map: 玩家UUID -> 女仆Map
-    // 内层 Map: 女仆UUID -> 女仆实体
-    public static final Map<UUID, Map<UUID, EntityMaid>> maidInfos = new ConcurrentHashMap<>();
-
-    // 使用线程安全的 Set
-    public static final Set<EntityMaid> maidList = ConcurrentHashMap.newKeySet();
-
+    // 通用层handler
+    public static final List<BiFunction<LivingHurtEvent, EntityMaid, Void>> commonHurtHandlers = new CopyOnWriteArrayList<>();
     public static final List<BiFunction<LivingHurtEvent, EntityMaid, Void>> commonHurtCalc = new CopyOnWriteArrayList<>();
-
     public static final List<Function<IMaidSpellData.CoolDown, Void>> commonCoolDownCalc = new CopyOnWriteArrayList<>();
 
-    // 饰品相关的回调使用 ConcurrentHashMap
-    public static final Map<Item, BiFunction<LivingDamageEvent, EntityMaid, Void>> baubleDamageCalcAft = new ConcurrentHashMap<>();
+    // 玩家层handler
+    public static final List<BiFunction<LivingDamageEvent, Player, Void>> playerDamageHandlers = new CopyOnWriteArrayList<>();
 
-    public static final Map<Item, BiFunction<LivingHurtEvent, EntityMaid, Void>> baubleDamageCalcPre = new ConcurrentHashMap<>();
+    // 外层 Map: 玩家UUID -> 女仆Map
+    // 内层 Map: 女仆UUID -> 女仆实体
+    public static final Map<UUID, Map<UUID, EntityMaid>> ownerMaidRegistry = new ConcurrentHashMap<>();
+    public static final Set<EntityMaid> activeMaids = ConcurrentHashMap.newKeySet();
 
-    public static final Map<Item, BiFunction<LivingHurtEvent, EntityMaid, Void>> baubleCommonHurtCalcPre = new ConcurrentHashMap<>();
 
-    public static final Map<Item, Function<DataItem, Void>> baubleHurtCalcPre = new ConcurrentHashMap<>();
 
-    public static final Map<Item, Function<DataItem, Void>> baubleHurtCalcFinal = new ConcurrentHashMap<>();
 
-    public static final Map<Item, Function<IMaidSpellData.CoolDown, Void>> baubleCoolDownCalc = new ConcurrentHashMap<>();
-
-    public static final Map<Item, BiFunction<MobEffectEvent.Added, EntityMaid, Void>> baubleEffectAddedCalc = new ConcurrentHashMap<>();
-
-    public static final Map<Item, BiFunction<LivingDeathEvent, EntityMaid, Void>> baubleDeathCalc = new ConcurrentHashMap<>();
+    // 饰品层handler,按触发阶段顺序排列
+    public static final Map<Item, BiFunction<LivingHurtEvent, EntityMaid, Void>> baubleHurtHandlers = new ConcurrentHashMap<>();
+    public static final Map<Item, BiFunction<LivingHurtEvent, EntityMaid, Void>> baubleHurtEventHandlers = new ConcurrentHashMap<>();
+    public static final Map<Item, BiFunction<LivingDamageEvent, EntityMaid, Void>> baubleDamageHandlers = new ConcurrentHashMap<>();
+    public static final Map<Item, Function<DataItem, Void>> baubleSetHealthHandlers = new ConcurrentHashMap<>();
+    public static final Map<Item, Function<DataItem, Void>> baubleSetHealthFinalHandlers = new ConcurrentHashMap<>();
+    public static final Map<Item, Function<IMaidSpellData.CoolDown, Void>> baubleCooldownHandlers = new ConcurrentHashMap<>();
+    public static final Map<Item, BiFunction<MobEffectEvent.Added, EntityMaid, Void>> baubleEffectAddedHandlers = new ConcurrentHashMap<>();
+    public static final Map<Item, BiFunction<LivingDeathEvent, EntityMaid, Void>> baubleDeathHandlers = new ConcurrentHashMap<>();
 
     /**
      * 女仆效果双重阻断过滤器。
@@ -88,11 +80,11 @@ public class Global {
      *
      * <p>返回 {@code true} 表示阻止该效果；返回 {@code false} 表示放行。
      */
-    public static final Map<Item, BiFunction<EntityMaid, MobEffect, Boolean>> baubleEffectBlockFilter = new ConcurrentHashMap<>();
+    public static final Map<Item, BiFunction<EntityMaid, MobEffect, Boolean>> baubleEffectBlockFilters = new ConcurrentHashMap<>();
 
     public static void resetCommonDamageCalc() {
-        commonDamageCalc.clear();
-        commonDamageCalc.add((event, maid) -> {
+        commonHurtHandlers.clear();
+        commonHurtHandlers.add((event, maid) -> {
             LivingEntity entity = event.getEntity();
             if (entity instanceof EntityMaid) {
                 event.setCanceled(true);
@@ -101,7 +93,7 @@ public class Global {
             }
             return null;
         });
-        commonDamageCalc.add((hurtEvent, maid) -> {
+        commonHurtHandlers.add((hurtEvent, maid) -> {
             if (maid.getTask().getUid().toString().startsWith("maidspell")) {
                 hurtEvent.setAmount((float) (hurtEvent.getAmount() * Config.spellDamageMultiplier));
             }
@@ -122,18 +114,18 @@ public class Global {
      * 使用 computeIfAbsent 保证线程安全
      */
     public static Map<UUID, EntityMaid> getOrCreatePlayerMaidMap(UUID playerUUID) {
-        return maidInfos.computeIfAbsent(playerUUID, k -> new ConcurrentHashMap<>());
+        return ownerMaidRegistry.computeIfAbsent(playerUUID, k -> new ConcurrentHashMap<>());
     }
 
     public static void updateMaidInfo(EntityMaid maid, Boolean add) {
         UUID ownerUUID = maid.getOwnerUUID();
         if(add){
-            maidList.add(maid);
+            activeMaids.add(maid);
             if(ownerUUID != null){
                 getOrCreatePlayerMaidMap(ownerUUID).put(maid.getUUID(),maid);
             }
         }else{
-            maidList.remove(maid);
+            activeMaids.remove(maid);
             if(ownerUUID != null){
                 getOrCreatePlayerMaidMap(ownerUUID).remove(maid.getUUID());
             }

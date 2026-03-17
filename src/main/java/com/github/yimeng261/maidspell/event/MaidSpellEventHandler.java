@@ -35,7 +35,6 @@ import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
 import net.minecraftforge.event.entity.living.*;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent.PlayerChangedDimensionEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
@@ -336,7 +335,7 @@ public class MaidSpellEventHandler {
         if(entity instanceof EntityMaid maid){
             Global.commonHurtCalc.forEach(function -> function.apply(event, maid));
 
-            Global.baubleCommonHurtCalcPre.forEach((item, func)->{
+            Global.baubleHurtEventHandlers.forEach((item, func)->{
                 if(BaubleStateManager.hasBauble(maid, item)){
                     func.apply(event, maid);
                 }
@@ -358,14 +357,14 @@ public class MaidSpellEventHandler {
         }
 
         if(entity instanceof Player player){
-            Global.playerHurtCalcAft.forEach(func-> func.apply(event,player));
+            Global.playerDamageHandlers.forEach(func-> func.apply(event,player));
         }
     }
 
     @SubscribeEvent
     public static void onMaidEffectAdded(MobEffectEvent.Added event) {
         if (event.getEntity() instanceof EntityMaid maid) {
-            Global.baubleEffectAddedCalc.forEach((item, func)->{
+            Global.baubleEffectAddedHandlers.forEach((item, func)->{
                 if(BaubleStateManager.hasBauble(maid,item)){
                     func.apply(event, maid);
                 }
@@ -376,7 +375,7 @@ public class MaidSpellEventHandler {
 
 
     private static void processorAft(LivingDamageEvent event, EntityMaid maid) {
-        Global.baubleDamageCalcAft.forEach((item, func) -> {
+        Global.baubleDamageHandlers.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(event, maid);
             }
@@ -384,9 +383,9 @@ public class MaidSpellEventHandler {
     }
 
     private static void processor_pre(LivingHurtEvent event, EntityMaid maid) {
-        Global.commonDamageCalc.forEach(function -> function.apply(event, maid));
+        Global.commonHurtHandlers.forEach(function -> function.apply(event, maid));
 
-        Global.baubleDamageCalcPre.forEach((item, func) -> {
+        Global.baubleHurtHandlers.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(event, maid);
             }
@@ -401,7 +400,7 @@ public class MaidSpellEventHandler {
         if (event.getEntity() instanceof EntityMaid maid) {
             // 先处理饰品的死亡事件
 
-            Global.baubleDeathCalc.forEach((item, func)->{
+            Global.baubleDeathHandlers.forEach((item, func)->{
                 if(BaubleStateManager.hasBauble(maid,item)){
                     func.apply(event, maid);
                 }
@@ -487,8 +486,8 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent
     public static void onServerStart(ServerAboutToStartEvent event) {
-        Global.maidList.clear();
-        Global.maidInfos.clear();
+        Global.activeMaids.clear();
+        Global.ownerMaidRegistry.clear();
     }
 
     /**
