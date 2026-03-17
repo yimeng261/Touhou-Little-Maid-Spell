@@ -12,6 +12,7 @@
     "EntityMixin",
     "LivingEntityMixin",
     "MinecraftServerMixin",
+    "MobEffectMixin",
     "MobMixin",
     "ServerLevelMixin",
     "StructureTemplateMixin",

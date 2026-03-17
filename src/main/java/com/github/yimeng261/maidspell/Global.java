@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.mojang.logging.LogUtils;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -65,6 +66,29 @@ public class Global {
     public static final Map<Item, BiFunction<MobEffectEvent.Added, EntityMaid, Void>> baubleEffectAddedCalc = new ConcurrentHashMap<>();
 
     public static final Map<Item, BiFunction<LivingDeathEvent, EntityMaid, Void>> baubleDeathCalc = new ConcurrentHashMap<>();
+
+    /**
+     * 女仆效果双重阻断过滤器。
+     *
+     * <p>同时作用于两个拦截点，形成双重防护：
+     * <ol>
+     *   <li>{@code LivingEntity.addEffect} 中的 {@code activeEffects.put} 调用被 @Redirect 重定向——
+     *       若过滤器返回 {@code true}，效果不会写入 activeEffects Map，
+     *       因此既不会触发 tick 效果，也不会显示粒子/图标。</li>
+     *   <li>{@code MobEffect.addAttributeModifiers} 被 @Inject 拦截——
+     *       即使效果通过其他途径绕过了第一关（如直接操作 activeEffects），
+     *       其属性修改器也不会被应用到实体属性上。</li>
+     * </ol>
+     *
+     * <p>注册示例（在饰品 static 块中）：
+     * <pre>{@code
+     * Global.baubleEffectBlockFilter.put(MaidSpellItems.MY_BAUBLE.get(),
+     *     (maid, effect) -> effect.getCategory() == MobEffectCategory.HARMFUL);
+     * }</pre>
+     *
+     * <p>返回 {@code true} 表示阻止该效果；返回 {@code false} 表示放行。
+     */
+    public static final Map<Item, BiFunction<EntityMaid, MobEffect, Boolean>> baubleEffectBlockFilter = new ConcurrentHashMap<>();
 
     public static void resetCommonDamageCalc() {
         commonDamageCalc.clear();

@@ -10,6 +10,7 @@ import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -18,6 +19,8 @@ import net.minecraftforge.event.entity.living.MobEffectEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.slf4j.Logger;
+
+import java.util.List;
 
 /**
  * 发簪 Hairpin 饰品扩展行为
@@ -31,12 +34,13 @@ public class HairpinBauble implements IMaidBauble {
 
     @Override
     public void onTick(EntityMaid maid, ItemStack baubleItem) {
-        if(maid.tickCount%10 == 0){
-            maid.getActiveEffects().forEach(effect -> {
-                if(!effect.getEffect().isBeneficial()){
-                    effect.update(new MobEffectInstance(effect.getEffect(), 0, 0));
-                }
-            });
+        if (maid.tickCount % 10 == 0) {
+            // 收集后再移除，避免迭代时 ConcurrentModification
+            List<MobEffect> toRemove = maid.getActiveEffects().stream()
+                .map(MobEffectInstance::getEffect)
+                .filter(effect -> !effect.isBeneficial())
+                .toList();
+            toRemove.forEach(maid::removeEffect);
         }
     }
 

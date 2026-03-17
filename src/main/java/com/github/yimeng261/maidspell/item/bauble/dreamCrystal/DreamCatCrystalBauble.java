@@ -92,6 +92,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     private static final String DC_CURIOS_SLOT_TYPE = "necklace";
 
     // ========== 进度 ResourceLocation ==========
+    @SuppressWarnings("removal")
     private static final ResourceLocation ADVANCEMENT_ALL_SPELLS =
         new ResourceLocation(MaidSpellMod.MOD_ID + ":dream_crystal/all_spells_mastered");
 
@@ -171,13 +172,14 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             return null;
         });
 
+        // ========== 有害效果双重免疫过滤器（与 MobEffectMixin + LivingEntityMixin 配合） ==========
+        // 返回 true → 阻止效果写入 activeEffects（不 tick/不显示）且阻止其属性修改器被应用
+        Global.baubleEffectBlockFilter.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(),
+            (maid, effect) -> effect.getCategory() != MobEffectCategory.BENEFICIAL);
+
         // ========== 死亡概率复活 ==========
         Global.baubleDeathCalc.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (event, maid) -> {
             if (event.isCanceled()) return null;
-
-            DamageSource source = event.getSource();
-            // 无法绕过无敌的伤害（如 /kill）无法触发复活
-            if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return null;
 
             ItemStack baubleStack = findDreamCrystalStack(maid);
             if (baubleStack == null) return null;
