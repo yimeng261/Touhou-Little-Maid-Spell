@@ -2,26 +2,24 @@ package com.github.yimeng261.maidspell.worldgen.structure;
 
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.RetreatManager;
-import com.github.yimeng261.maidspell.dimension.SharedRetreatManager;
-import com.github.yimeng261.maidspell.dimension.StructureSearchQueue;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.LevelHeightAccessor;
-import net.minecraft.world.level.StructureManager;
-import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.*;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -30,12 +28,13 @@ import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
 import net.minecraft.world.level.levelgen.structure.pools.JigsawPlacement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nullable;
-import java.util.*;
+import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
@@ -44,20 +43,31 @@ import java.util.function.Predicate;
  * 只在归隐之地维度生成，每个维度最多一个。
  */
 public class HiddenRetreatStructure extends Structure {
-    public static final Codec<HiddenRetreatStructure> CODEC = RecordCodecBuilder.<HiddenRetreatStructure>mapCodec(instance ->
+    public static final Codec<HiddenRetreatStructure> CODEC = RecordCodecBuilder.create(instance ->
             instance.group(
                     Structure.settingsCodec(instance),
                     StructureTemplatePool.CODEC.fieldOf("start_pool").forGetter(structure -> structure.startPool),
                     Codec.intRange(0, 30).fieldOf("size").forGetter(structure -> structure.size)
             ).apply(instance, HiddenRetreatStructure::new)
-    ).codec();
+    );
 
     private final Holder<StructureTemplatePool> startPool;
     private final int size;
 
-    // 地形平坦度检测的最大方差阈值（标准差约8格，适应轻微起伏地形）
-    private static final double MAX_TERRAIN_VARIANCE = 64.0;
+    // 地形平坦度检测参数
+    private static final double MAX_TERRAIN_VARIANCE = 16.0;
     private static final int SAMPLES_PER_CHUNK = 5;
+    private static final int TERRAIN_CHECK_RANGE = 2;
+
+    /**
+     * 线程局部标志：标记当前线程是否正在执行 generate() → super.generate() 调用链。
+     * <p>
+     * 当 generate() 调用 super.generate() 时设为 true，使得 findGenerationPoint() 知道
+     * 是从 generate() 内部调用的，跳过搜索状态检查。
+     * 当 canCreateStructure() 调用 findGenerationPoint() 时，此标志为 false，
+     * 会检查搜索状态，防止 StructureCheck.featureChecks 缓存不该缓存的结果。
+     */
+    private static final ThreadLocal<Boolean> insideGenerate = ThreadLocal.withInitial(() -> false);
 
     public HiddenRetreatStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool, int size) {
         super(settings);
@@ -65,12 +75,24 @@ public class HiddenRetreatStructure extends Structure {
         this.size = size;
     }
 
+    /**
+     * 验证 StructureStart 的 BoundingBox 是否在合理范围内。
+     * C2ME 并发生成时，JigsawPlacement 可能产生 Y 值溢出（接近 Integer.MAX_VALUE），
+     * 导致搜索到无实际结构的空位置。
+     */
+    private static boolean hasValidBoundingBox(StructureStart start, LevelHeightAccessor heightAccessor) {
+        if (!start.isValid()) return false;
+        BoundingBox box = start.getBoundingBox();
+        int minBuild = heightAccessor.getMinBuildHeight() - 64; // 允许一定余量
+        int maxBuild = heightAccessor.getMaxBuildHeight() + 64;
+        return box.minY() >= minBuild && box.maxY() <= maxBuild;
+    }
+
     // 去重机制：记录已处理的结构（按维度+中心位置去重）
     private static final Set<String> processedStructures = ConcurrentHashMap.newKeySet();
 
     /**
-     * 清理结构去重记录
-     * @param dimensionPrefix 维度前缀，格式："namespace:dimension@"。空字符串表示清理全部。
+     * 清理结构去重记录。空字符串表示清理全部。
      */
     public static void cleanupProcessedStructures(String dimensionPrefix) {
         if (dimensionPrefix.isEmpty()) {
@@ -83,45 +105,13 @@ public class HiddenRetreatStructure extends Structure {
         }
     }
 
-    /**
-     * 从私人维度ResourceKey中提取玩家UUID
-     * 维度名称格式: touhou_little_maid_spell:the_retreat_<uuid_with_underscores>
-     * 例如: touhou_little_maid_spell:the_retreat_00000000_0000_3007_998f_fd45f81aa49b
-     */
-    @Nullable
-    private static UUID extractPlayerUUIDFromDimension(ResourceKey<Level> dimKey) {
-        String path = dimKey.location().getPath();
-        MaidSpellMod.LOGGER.debug("尝试从维度路径提取UUID - 路径: {}", path);
-        
-        if (!path.startsWith("the_retreat_")) {
-            MaidSpellMod.LOGGER.debug("路径不以 'the_retreat_' 开头，跳过");
-            return null;
-        }
-        
-        // 提取 UUID 部分（下划线分隔）
-        String uuidStr = path.substring("the_retreat_".length());
-        // 转换为标准 UUID 格式（连字符分隔）
-        uuidStr = uuidStr.replace("_", "-");
-        
-        try {
-            UUID result = UUID.fromString(uuidStr);
-            MaidSpellMod.LOGGER.debug("成功解析UUID: {}", result);
-            return result;
-        } catch (IllegalArgumentException e) {
-            MaidSpellMod.LOGGER.error("无法解析私人维度UUID - 路径: {}, UUID字符串: {}", path, uuidStr, e);
-            return null;
-        }
-    }
-
     @Override
     public void afterPlace(WorldGenLevel pLevel, StructureManager pStructureManager, ChunkGenerator pChunkGenerator,
                            RandomSource pRandom, BoundingBox pBoundingBox, ChunkPos pChunkPos, PiecesContainer pPieces) {
-        // 关键修复：WorldGenRegion 也有 getLevel() 方法可获取底层 ServerLevel
         ServerLevel serverLevel;
         if (pLevel instanceof ServerLevel sl) {
             serverLevel = sl;
         } else {
-            // WorldGenRegion 等情况
             try {
                 serverLevel = pLevel.getLevel();
             } catch (Exception e) {
@@ -132,132 +122,194 @@ public class HiddenRetreatStructure extends Structure {
 
         ResourceKey<Level> dimKey = serverLevel.dimension();
 
-        // 去重：afterPlace 会对每个拼图块调用一次，我们只需要处理一次整个结构
-        // 使用 PiecesContainer 的整体 BoundingBox 来计算唯一的结构中心
+        // 去重：afterPlace 对每个拼图块调用一次，只需处理一次
         BoundingBox structureBounds = pPieces.calculateBoundingBox();
         BlockPos structureCenter = new BlockPos(
-            (structureBounds.minX() + structureBounds.maxX()) / 2,
-            structureBounds.minY(),
-            (structureBounds.minZ() + structureBounds.maxZ()) / 2
+                (structureBounds.minX() + structureBounds.maxX()) / 2,
+                structureBounds.minY(),
+                (structureBounds.minZ() + structureBounds.maxZ()) / 2
         );
-        
+
         String structureKey = dimKey.location() + "@" + structureCenter.getX() + "," + structureCenter.getZ();
         if (!processedStructures.add(structureKey)) {
             return;
         }
 
-        // 标记该维度已生成结构
+        // 私人模式：持久化结构已生成标记，防止重启后重复生成
         if (Config.enablePrivateDimensions) {
-            RetreatManager.markStructureGenerated(dimKey);
-        }
-
-        // 配额已在 findGenerationPoint 中预留，此处只记录生成成功
-        MaidSpellMod.LOGGER.info("结构生成成功 - 位置: {}", structureCenter);
-
-        // FIFO 通知队列中第一个等待的玩家
-        long worldSeed = serverLevel.getSeed();
-        UUID notifiedPlayer = StructureSearchQueue.notifyNextPlayer(worldSeed, structureCenter);
-
-        if (notifiedPlayer != null) {
-            MaidSpellMod.LOGGER.info("隐世之境结构生成完成，通知玩家: {}", notifiedPlayer);
-            // 将结构位置写入该玩家的缓存（私人/共享模式均适用）
-            RetreatManager.updateCache(notifiedPlayer, structureCenter);
-        } else if (Config.enablePrivateDimensions) {
-            // 私人维度模式：如果队列为空，将结构分配给维度所有者
-            UUID ownerUUID = extractPlayerUUIDFromDimension(dimKey);
-            if (ownerUUID != null) {
-                RetreatManager.updateCache(ownerUUID, structureCenter);
-                MaidSpellMod.LOGGER.info("私人维度自然生成，分配给所有者: {}, 位置: {}", ownerUUID, structureCenter);
-            } else {
-                MaidSpellMod.LOGGER.warn("无法解析私人维度所有者 - 维度: {}", dimKey.location());
-            }
-        }
-
-        // 共享模式下的孤儿结构处理
-        if (notifiedPlayer == null && !Config.enablePrivateDimensions) {
-            // 修复孤儿结构问题：队列为空时，将结构加入未分配池（仅共享模式）
-            RetreatManager.addUnassignedStructure(worldSeed, structureCenter);
-            MaidSpellMod.LOGGER.info("共享维度自然生成，加入未分配池 - 位置: {}", structureCenter);
-
-            // 共享模式：队列中还有等待的玩家，触发下一次搜索
-            if (!Config.enablePrivateDimensions && StructureSearchQueue.hasWaitingRequests(worldSeed)) {
-                RetreatManager.triggerStructureSearch(serverLevel, serverLevel.getSharedSpawnPos());
-            }
-
-            serverLevel.getServer().execute(() -> {
-                var player = serverLevel.getServer().getPlayerList().getPlayer(notifiedPlayer);
-                if (player != null) {
-                    int distance = (int) Math.sqrt(player.blockPosition().distSqr(structureCenter));
-                    player.sendSystemMessage(
-                        net.minecraft.network.chat.Component.translatable(
-                            "item.touhou_little_maid_spell.wind_seeking_bell.structure_generated",
-                            structureCenter.getX(), structureCenter.getY(), structureCenter.getZ(), distance
-                        ).withStyle(net.minecraft.ChatFormatting.GREEN)
-                    );
+            String dimPath = dimKey.location().getPath();
+            if (dimPath.startsWith("the_retreat_")) {
+                try {
+                    String uuidStr = dimPath.substring("the_retreat_".length()).replace('_', '-');
+                    UUID playerUUID = UUID.fromString(uuidStr);
+                    MinecraftServer server = serverLevel.getServer();
+                    RetreatDimensionData.get(server).markStructureGenerated(playerUUID);
+                } catch (IllegalArgumentException e) {
+                    MaidSpellMod.LOGGER.warn("afterPlace: 无法从维度路径解析玩家 UUID: {}", dimPath);
                 }
-            });
+            }
         }
-        
-        // 关键：取消强制加载，允许区块自然卸载
+
+        // 共享模式：addReference 标记结构为"已定位"，防止重复搜索到
+        if (!Config.enablePrivateDimensions) {
+            // 通过当前装饰区块的 STRUCTURE_REFERENCES 回溯到 StructureStart 所在区块
+            // pChunkPos 是 placeInChunk 传入的当前装饰区块，其引用链一定在 WorldGenRegion 内
+            for (StructureStart start : pStructureManager.startsForStructure(
+                    SectionPos.bottomOf(pLevel.getChunk(pChunkPos.x, pChunkPos.z)), this)) {
+                if (start.isValid() && start.canBeReferenced()) {
+                    pStructureManager.addReference(start);
+                    break;
+                }
+            }
+        }
+
+        // 取消强制加载，允许区块自然卸载
         RetreatManager.unforceLoadStructureChunks(dimKey, structureCenter);
     }
 
     @Override
     public @NotNull StructureStart generate(RegistryAccess pRegistryAccess, ChunkGenerator pChunkGenerator,
-                                             BiomeSource pBiomeSource, RandomState pRandomState,
-                                             StructureTemplateManager pStructureTemplateManager, long pSeed,
-                                             ChunkPos pChunkPos, int pReferences, LevelHeightAccessor pHeightAccessor,
-                                             Predicate<Holder<Biome>> pValidBiome) {
-        // 通过 seed 查找对应的维度 key，确认是归隐之地维度
-        ResourceKey<Level> dimKey = RetreatManager.findDimensionKeyBySeed(pSeed);
-        if (dimKey != null) {
-            return super.generate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
-                pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+                                            BiomeSource pBiomeSource, RandomState pRandomState,
+                                            StructureTemplateManager pStructureTemplateManager, long pSeed,
+                                            ChunkPos pChunkPos, int pReferences, LevelHeightAccessor pHeightAccessor,
+                                            Predicate<Holder<Biome>> pValidBiome) {
+        // 通过 ChunkGenerator 获取当前维度，确认是归隐之地维度
+        if (pChunkGenerator instanceof com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor accessor) {
+            ResourceKey<Level> dimKey = accessor.maidspell$getDimensionKey();
+            if (dimKey != null && dimKey.location().getNamespace().equals(MaidSpellMod.MOD_ID)
+                    && dimKey.location().getPath().startsWith("the_retreat")) {
+                // 私人模式：每个维度只允许生成一个结构（两阶段标记）
+                // 阶段1 — Mixin HEAD：tryBeginGeneration() 写入 pendingGenerations，已在此之前完成。
+                //   如果 Mixin 拦截了重复候选，本方法根本不会被调用。
+                // 阶段2 — 本方法：生成成功后 completeGeneration()（移入 generatedDimensions），
+                //   失败后 cancelGeneration()（清除 pendingGenerations，允许下一候选重试）。
+                if (Config.enablePrivateDimensions) {
+                    // 防御性检查：若已确认生成（e.g. 重启恢复后 Mixin 未运行），直接拦截
+                    if (RetreatManager.isStructureGenerated(dimKey)) {
+                        return StructureStart.INVALID_START;
+                    }
+                    MaidSpellMod.LOGGER.debug("阶段2 在维度 {} 尝试生成结构，区块 {}", dimKey.location(), pChunkPos);
+
+                    StructureStart result = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                            pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+
+                    if (!hasValidBoundingBox(result, pHeightAccessor)) {
+                        // 生成失败或 BoundingBox 溢出：cancelGeneration 释放 pending 槽位，允许下一候选重试
+                        if (result.isValid()) {
+                            MaidSpellMod.LOGGER.warn("BoundingBox 溢出，丢弃结构 - 维度: {}, 区块: {}, box: {}",
+                                    dimKey.location(), pChunkPos, result.getBoundingBox());
+                        }
+                        RetreatManager.cancelGeneration(dimKey);
+                        MaidSpellMod.LOGGER.debug("结构生成失败，释放 pending 槽位 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos);
+                        return StructureStart.INVALID_START;
+                    }
+
+                    // 生成成功：写入 generatedDimensions，清除 pendingGenerations
+                    RetreatManager.completeGeneration(dimKey);
+                    MaidSpellMod.LOGGER.debug("结构生成成功，完成标记 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos);
+                    return result;
+                }
+
+                // 共享模式：CAS 获取搜索许可，保证并发安全
+                if (Config.enableSharedQuotaLimit) {
+                    if (!RetreatManager.tryAcquireSearchPermit()) {
+                        // 没有搜索在进行，或许可已被其他并发 generate() 消费
+                        return StructureStart.INVALID_START;
+                    }
+                    // 许可已获取，执行生成（try-finally 保护许可释放，防止异常导致泄漏）
+                    StructureStart sharedResult;
+                    try {
+                        sharedResult = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                                pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+                    } catch (Exception e) {
+                        // JigsawPlacement 等内部异常（如 BoundingBox 溢出）：归还许可
+                        MaidSpellMod.LOGGER.warn("共享模式结构生成异常 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos, e);
+                        RetreatManager.releaseSearchPermit();
+                        return StructureStart.INVALID_START;
+                    }
+                    if (hasValidBoundingBox(sharedResult, pHeightAccessor)) {
+                        // 生成成功：许可已消费，存储位置让 SearchWorker 立即感知
+                        BlockPos structurePos = new BlockPos(pChunkPos.getMinBlockX(), 0, pChunkPos.getMinBlockZ());
+                        RetreatManager.setGeneratedStructurePos(dimKey, structurePos);
+                        MaidSpellMod.LOGGER.debug("共享模式结构生成成功 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos);
+                    } else {
+                        // 生成失败、BoundingBox 溢出等：归还许可，允许后续候选区块重试
+                        if (sharedResult.isValid()) {
+                            MaidSpellMod.LOGGER.warn("BoundingBox 溢出，丢弃结构并归还许可 - 维度: {}, 区块: {}, box: {}",
+                                    dimKey.location(), pChunkPos, sharedResult.getBoundingBox());
+                        }
+                        RetreatManager.releaseSearchPermit();
+                        return StructureStart.INVALID_START;
+                    }
+                    return sharedResult;
+                }
+                // 共享模式但未启用配额限制：直接生成
+                StructureStart unlimitedResult = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                        pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+                if (!hasValidBoundingBox(unlimitedResult, pHeightAccessor)) {
+                    if (unlimitedResult.isValid()) {
+                        MaidSpellMod.LOGGER.warn("BoundingBox 溢出，丢弃结构 - 维度: {}, 区块: {}, box: {}",
+                                dimKey.location(), pChunkPos, unlimitedResult.getBoundingBox());
+                    }
+                    return StructureStart.INVALID_START;
+                }
+                return unlimitedResult;
+            }
+        } else {
+            MaidSpellMod.LOGGER.warn("ChunkGenerator 不是 ChunkGeneratorAccessor 实例 - 区块: {}, 类型: {}", pChunkPos, pChunkGenerator.getClass().getName());
         }
         return StructureStart.INVALID_START;
     }
 
+    /**
+     * 包装 super.generate()，设置 insideGenerate 线程局部标志。
+     * 使得 findGenerationPoint() 知道是从 generate() 内部调用的。
+     */
+    private StructureStart callSuperGenerate(RegistryAccess pRegistryAccess, ChunkGenerator pChunkGenerator,
+                                             BiomeSource pBiomeSource, RandomState pRandomState,
+                                             StructureTemplateManager pStructureTemplateManager, long pSeed,
+                                             ChunkPos pChunkPos, int pReferences, LevelHeightAccessor pHeightAccessor,
+                                             Predicate<Holder<Biome>> pValidBiome) {
+        insideGenerate.set(true);
+        try {
+            return super.generate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                    pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+        } finally {
+            insideGenerate.set(false);
+        }
+    }
+
     @Override
     protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
-        long worldSeed = context.seed();
+        // 如果不是从 generate() 内部调用（即从 canCreateStructure 调用），
+        // 检查搜索状态。在共享配额模式下，无搜索活动时返回 empty，
+        // 避免 StructureCheck.featureChecks 缓存 true 导致幽灵结构。
+        if (!insideGenerate.get() && !Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+            if (!RetreatManager.isSearchActive()) {
+                return Optional.empty();
+            }
+        }
+
         ChunkPos chunkPos = context.chunkPos();
 
-        ResourceKey<Level> dimKey = RetreatManager.findDimensionKeyBySeed(worldSeed);
-        ServerLevel serverLevel = dimKey != null ? RetreatManager.getDimensionLevel(dimKey) : null;
-
-        // 地形检查（返回平均高度，避免竞态条件）
+        // 地形检查（返回区域均值，仅用于平坦度判断）
         OptionalInt terrainHeight = checkTerrainAndGetHeight(context, chunkPos);
         if (terrainHeight.isEmpty()) {
             return Optional.empty();
         }
 
-        // 共享模式下原子性地检查并预留配额（防止竞态条件）
-        if (!Config.enablePrivateDimensions && serverLevel != null) {
-            // 关键修复：tryConsumeQuota 原子性地检查并消耗配额
-            if (!SharedRetreatManager.tryConsumeQuota(serverLevel.getServer())) {
-                MaidSpellMod.LOGGER.debug("没有可用配额，跳过结构生成 - 区块: {}", chunkPos);
-                return Optional.empty();
-            }
-            // 配额已预留，如果生成失败需要在 afterPlace 中归还
-        }
+        // 放置高度用中心点的实际估算值，而非区域均值
+        // 区域均值在山顶会被周围山坡拉低，导致结构嵌入地形
+        DensityFunction depthFn = context.randomState().router().depth();
+        int centerX = chunkPos.getMinBlockX() + 8;
+        int centerZ = chunkPos.getMinBlockZ() + 8;
+        int height = estimateSurfaceHeight(depthFn, centerX, centerZ, context);
+        BlockPos centerPos = new BlockPos(centerX, height, centerZ);
 
-        int height = terrainHeight.getAsInt();
-        BlockPos centerPos = new BlockPos(chunkPos.getMinBlockX() + 8, height, chunkPos.getMinBlockZ() + 8);
-
-        Optional<GenerationStub> result = JigsawPlacement.addPieces(
+        return JigsawPlacement.addPieces(
                 context, this.startPool, Optional.empty(), this.size,
                 centerPos, false, Optional.empty(), 150
         );
-
-        if (result.isPresent()) {
-            MaidSpellMod.LOGGER.info("隐世之境结构计划生成，位置: {} (配额已预留)", centerPos);
-        } else if (!Config.enablePrivateDimensions && serverLevel != null) {
-            // 生成失败，归还配额
-            SharedRetreatManager.refundQuota(serverLevel.getServer());
-            MaidSpellMod.LOGGER.warn("结构生成失败，归还配额 - 区块: {}", chunkPos);
-        }
-
-        return result;
     }
 
     @Override
@@ -266,87 +318,117 @@ public class HiddenRetreatStructure extends Structure {
     }
 
     /**
-     * 检查地形并返回平均高度（线程安全，不写入实例字段）
-     * @return 平均高度，如果地形不合适则返回 empty
+     * 检查地形并返回平均高度。
+     * <p>
+     * 使用 NoiseRouter 的 depth 密度函数通过二分法估算地表高度，
+     * 配合 Welford 在线算法增量计算方差，方差超阈值时立即退出。
+     * <p>
+     * 水域检测：depth 函数的零交叉点不等于实际地形表面。对于海洋地形，
+     * depth 的零交叉点可能在海平面附近（Y≈64），而实际海底远低于此。
+     * 当估算表面接近海平面时（seaLevel ~ seaLevel+5），在固定的 seaLevel-1
+     * 处用 finalDensity 交叉验证：陆地该处是固体（泥土/石头），海洋该处是水。
+     * 使用固定 Y 而非 surfaceY-1，避免 depth 二分法 ±1~3 格误差导致误判。
      */
     private OptionalInt checkTerrainAndGetHeight(GenerationContext context, ChunkPos centerChunk) {
-        List<Integer> heightSamples = new ArrayList<>();
-        int range = 2;
-        int totalSamples = 0;
+        DensityFunction depthFn = context.randomState().router().depth();
+        DensityFunction finalDensityFn = context.randomState().router().finalDensity();
+        int seaLevel = context.chunkGenerator().getSeaLevel();
+
+        int n = 0;
+        double mean = 0.0;
+        double m2 = 0.0; // Welford's M2 累积量
         int waterSamples = 0;
 
-        for (int dx = -range; dx <= range; dx++) {
-            for (int dz = -range; dz <= range; dz++) {
+        for (int dx = -TERRAIN_CHECK_RANGE; dx <= TERRAIN_CHECK_RANGE; dx++) {
+            for (int dz = -TERRAIN_CHECK_RANGE; dz <= TERRAIN_CHECK_RANGE; dz++) {
                 ChunkPos checkChunk = new ChunkPos(centerChunk.x + dx, centerChunk.z + dz);
-                SamplingResult sr = sampleChunkHeights(context, checkChunk);
-                heightSamples.addAll(sr.heights);
-                totalSamples += sr.totalSamples;
-                waterSamples += sr.waterSamples;
+                RandomSource random = RandomSource.create(checkChunk.toLong());
+                int minX = checkChunk.getMinBlockX();
+                int minZ = checkChunk.getMinBlockZ();
+
+                for (int i = 0; i < SAMPLES_PER_CHUNK; i++) {
+                    int x = minX + random.nextInt(16);
+                    int z = minZ + random.nextInt(16);
+
+                    int surfaceY = estimateSurfaceHeight(depthFn, x, z, context);
+                    n++;
+
+                    // Welford's online algorithm
+                    double delta = surfaceY - mean;
+                    mean += delta / n;
+                    double delta2 = surfaceY - mean;
+                    m2 += delta * delta2;
+
+                    // 早退出：方差已超阈值
+                    if (n >= SAMPLES_PER_CHUNK * 2 && m2 / n > MAX_TERRAIN_VARIANCE) {
+                        return OptionalInt.empty();
+                    }
+
+                    // 水域检测
+                    if (surfaceY < seaLevel) {
+                        waterSamples++;
+                    } else if (surfaceY < seaLevel + 5) {
+                        // 估算表面接近海平面：可能是海洋（depth 零交叉 ≈ 海平面），
+                        // 也可能是低地平原。在 seaLevel-1 处验证（不依赖 depth 精度）：
+                        // 陆地 → Y=62 是泥土/石头（finalDensity>0）
+                        // 海洋 → Y=62 是水（finalDensity≤0）
+                        if (finalDensityFn.compute(new DensityFunction.SinglePointContext(x, seaLevel - 1, z)) <= 0) {
+                            waterSamples++;
+                        }
+                    }
+
+                    if (waterSamples > n / 10) {
+                        return OptionalInt.empty();
+                    }
+                }
             }
         }
 
-        // 水域比例检测
-        if (totalSamples > 0 && waterSamples > totalSamples / 2) {
+        // 最终方差检查
+        if (n < 2) {
+            return OptionalInt.empty();
+        }
+        if (m2 / n > MAX_TERRAIN_VARIANCE) {
             return OptionalInt.empty();
         }
 
-        // 平坦度检测
-        return computeFlatHeight(heightSamples);
-    }
+        int meanHeight = (int) mean;
 
-    private record SamplingResult(List<Integer> heights, int totalSamples, int waterSamples) {}
-
-    private SamplingResult sampleChunkHeights(GenerationContext context, ChunkPos chunk) {
-        List<Integer> heights = new ArrayList<>();
-        int waterCount = 0;
-        RandomSource random = RandomSource.create(chunk.toLong());
-        int minX = chunk.getMinBlockX();
-        int minZ = chunk.getMinBlockZ();
-
-        for (int i = 0; i < SAMPLES_PER_CHUNK; i++) {
-            int x = minX + random.nextInt(16);
-            int z = minZ + random.nextInt(16);
-
-            int surfaceHeight = context.chunkGenerator().getFirstOccupiedHeight(
-                x, z, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                context.heightAccessor(), context.randomState()
-            );
-            int oceanFloorHeight = context.chunkGenerator().getFirstOccupiedHeight(
-                x, z, Heightmap.Types.OCEAN_FLOOR_WG,
-                context.heightAccessor(), context.randomState()
-            );
-
-            if (oceanFloorHeight < surfaceHeight) {
-                waterCount++;
-            }
-            heights.add(surfaceHeight);
+        // 最终水域检查：平均高度低于海平面，或水域样本占比 ≥ 10%
+        if (meanHeight < seaLevel || waterSamples * 10 >= n) {
+            return OptionalInt.empty();
         }
 
-        return new SamplingResult(heights, SAMPLES_PER_CHUNK, waterCount);
+        return OptionalInt.of(meanHeight);
     }
 
     /**
-     * 计算平坦度并返回平均高度（纯函数，无副作用）
+     * 使用 depth 密度函数二分法估算地表 Y 坐标。
+     * <p>
+     * depth 在地表处 ≈ 0，地上 &lt; 0，地下 &gt; 0。
+     * 通过二分法在 [minY, maxY] 范围内找到 depth ≈ 0 的 Y 值。
+     * 精度为 ±1 格（二分法收敛到范围宽度 ≤ 2）。
      */
-    private OptionalInt computeFlatHeight(List<Integer> heights) {
-        if (heights.size() < 2) {
-            return heights.isEmpty() ? OptionalInt.empty() : OptionalInt.of(heights.get(0));
+    private static int estimateSurfaceHeight(DensityFunction depthFn, int x, int z, GenerationContext context) {
+        int minY = context.heightAccessor().getMinBuildHeight();
+        int maxY = context.heightAccessor().getMaxBuildHeight();
+
+        // 二分法：找 depth 从正（地下）变为负（地上）的边界
+        int lo = minY;
+        int hi = maxY;
+
+        while (hi - lo > 2) {
+            int mid = (lo + hi) >>> 1;
+            double depthAtMid = depthFn.compute(new DensityFunction.SinglePointContext(x, mid, z));
+            if (depthAtMid > 0) {
+                // 还在地下，向上搜索
+                lo = mid;
+            } else {
+                // 已在地上或地表，向下搜索
+                hi = mid;
+            }
         }
 
-        double sum = 0;
-        for (int h : heights) sum += h;
-        double mean = sum / heights.size();
-
-        double varianceSum = 0;
-        for (int h : heights) {
-            double diff = h - mean;
-            varianceSum += diff * diff;
-        }
-        double variance = varianceSum / heights.size();
-
-        if (variance > MAX_TERRAIN_VARIANCE) {
-            return OptionalInt.empty();
-        }
-        return OptionalInt.of((int) mean);
+        return hi;
     }
 }

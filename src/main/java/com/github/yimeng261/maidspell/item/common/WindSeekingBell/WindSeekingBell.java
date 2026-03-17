@@ -2,11 +2,7 @@ package com.github.yimeng261.maidspell.item.common.WindSeekingBell;
 
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
-import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
-import com.github.yimeng261.maidspell.dimension.RetreatManager;
-import com.github.yimeng261.maidspell.dimension.StructureSearchQueue;
-import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
+import com.github.yimeng261.maidspell.dimension.*;
 import com.github.yimeng261.maidspell.entity.WindSeekingBellEntity;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -25,12 +21,9 @@ import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraftforge.fml.ModList;
-
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -56,11 +49,6 @@ public class WindSeekingBell extends Item {
 
     @Override
     public @NotNull InteractionResultHolder<ItemStack> use(@Nonnull Level level, @Nonnull Player player, @Nonnull InteractionHand hand) {
-
-        if(!ModList.get().isLoaded("irons_spellbooks")) {
-            return InteractionResultHolder.fail(player.getItemInHand(hand));
-        }
-
         ItemStack itemStack = player.getItemInHand(hand);
         player.startUsingItem(hand);
 
@@ -72,13 +60,13 @@ public class WindSeekingBell extends Item {
                 TheRetreatDimension.teleportFromRetreat(serverPlayer);
                 player.displayClientMessage(
                     Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.return_to_overworld")
-                        .withStyle(ChatFormatting.GREEN), true);
+                            .withStyle(ChatFormatting.GREEN), true);
                 return InteractionResultHolder.success(itemStack);
             }
 
             if (TheRetreatDimension.isInRetreat(player)) {
                 // 在归隐之地：搜索隐世之境
-                findHiddenRetreatWithQueue(serverLevel, playerPos, player, itemStack);
+                findHiddenRetreat(serverLevel, playerPos, player, itemStack);
             } else {
                 // 在主世界：传送到归隐之地
                 teleportToRetreat(serverPlayer, itemStack);
@@ -100,123 +88,171 @@ public class WindSeekingBell extends Item {
 
     private void teleportToPrivateRetreat(ServerPlayer player) {
         ServerLevel retreatLevel = PlayerRetreatManager.getOrCreatePlayerRetreat(
-            player.getServer(), player.getUUID());
+                player.getServer(), player.getUUID());
 
         if (retreatLevel == null) {
             player.displayClientMessage(
                 Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed")
-                    .withStyle(ChatFormatting.RED), true);
+                        .withStyle(ChatFormatting.RED), true);
             return;
         }
 
         TheRetreatDimension.teleportToRetreat(player);
         player.displayClientMessage(
             Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
-                .withStyle(ChatFormatting.LIGHT_PURPLE), true);
+                    .withStyle(ChatFormatting.LIGHT_PURPLE), true);
     }
 
     private void teleportToSharedRetreat(ServerPlayer player) {
         ServerLevel sharedRetreat = PlayerRetreatManager.getOrCreateSharedRetreat(player.getServer());
         if (sharedRetreat == null) {
             player.displayClientMessage(
-                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed")
-                    .withStyle(ChatFormatting.RED), true);
+                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed")
+                            .withStyle(ChatFormatting.RED), true);
             return;
         }
 
         RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
         RetreatDimensionData.DimensionInfo info = data.getDimensionInfo(player.getUUID());
 
-        // 修复：只有 info == null 才是首次使用，quota == 0 是配额已用完
+        // 首次使用时注册并分配配额
         if (info == null) {
-            // 简化逻辑：每个玩家首次进入时总是分配配额1
-            // 未分配池中的结构会在玩家主动搜索时优先分配
             data.registerDimension(player.getUUID());
             info = data.getDimensionInfo(player.getUUID());
-            info.structureQuota = 1;
+            // 配额限制开启时给予1个配额；关闭时不限制（配额不会被检查）
+            if (Config.enableSharedQuotaLimit) {
+                info.structureQuota = 1;
+            }
             data.updateAccessTime(player.getUUID());
-            data.setDirty();
 
-            Global.LOGGER.info("玩家 {} 首次进入共享归隐之地，分配结构配额: 1", player.getUUID());
             player.displayClientMessage(
-                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared")
-                    .withStyle(ChatFormatting.LIGHT_PURPLE), true);
+                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared")
+                            .withStyle(ChatFormatting.LIGHT_PURPLE), true);
         }
 
         TheRetreatDimension.teleportToRetreat(player);
         player.displayClientMessage(
-            Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
-                .withStyle(ChatFormatting.LIGHT_PURPLE), true);
+                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
+                        .withStyle(ChatFormatting.LIGHT_PURPLE), true);
     }
 
     /**
-     * 使用队列机制搜索隐世之境
-     * 物品在搜索成功后才消耗（修复原先提前消耗的问题）
+     * 搜索隐世之境结构。
+     * 搜索成功后消耗物品；共享模式下，已找到过的结构免费重复查看。
      */
-    private void findHiddenRetreatWithQueue(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack) {
-        long worldSeed = serverLevel.getSeed();
-        long searchStartTime = System.currentTimeMillis();
-
-        // 1. 检查玩家缓存（私人/共享模式均适用，每个玩家独立缓存自己的隐世之境位置）
-        RetreatManager.CacheResult cacheResult = RetreatManager.checkCache(player.getUUID());
-        if (cacheResult.hasCache && !cacheResult.isNegative) {
-            consumeItem(player, itemStack);
-            handleSearchResult(serverLevel, playerPos, player, cacheResult.position,
-                System.currentTimeMillis() - searchStartTime);
+    private void findHiddenRetreat(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack) {
+        // 冷却中：防止连续右键重复触发
+        if (player.getCooldowns().isOnCooldown(this)) {
             return;
         }
 
-        // 2. 优先检查未分配结构池（共享模式专属优化）
-        if (!Config.enablePrivateDimensions && RetreatManager.hasUnassignedStructures(worldSeed)) {
-            BlockPos unassignedPos = RetreatManager.pollUnassignedStructure(worldSeed);
-            if (unassignedPos != null) {
-                // 立即分配给当前玩家
-                RetreatManager.updateCache(player.getUUID(), unassignedPos);
+        long searchStartTime = System.currentTimeMillis();
+
+        // 0. 共享模式 + 配额限制：首次使用铃时注册并分配配额（兼容 TP 直接进入维度的情况）
+        if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+            RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
+            RetreatDimensionData.DimensionInfo info = data.getDimensionInfo(player.getUUID());
+            if (info == null) {
+                data.registerDimension(player.getUUID());
+                info = data.getDimensionInfo(player.getUUID());
+                info.structureQuota = 1;
+                data.updateAccessTime(player.getUUID());
+
+                player.displayClientMessage(
+                        Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared")
+                                .withStyle(ChatFormatting.LIGHT_PURPLE), true);
+            }
+        }
+
+        // 1. 共享模式 + 配额限制：已找到的结构免费查看
+        if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+            RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
+            BlockPos persistedPos = data.getFoundStructurePos(player.getUUID());
+            if (persistedPos != null) {
+                ItemStack displayItem = itemStack.copy();
+                displayItem.setCount(1);
                 consumeItem(player, itemStack);
-                handleSearchResult(serverLevel, playerPos, player, unassignedPos,
-                    System.currentTimeMillis() - searchStartTime);
+                player.getCooldowns().addCooldown(this, 20);
+                handleSearchResult(serverLevel, playerPos, player, persistedPos,
+                        System.currentTimeMillis() - searchStartTime, true, displayItem);
                 return;
             }
         }
 
-        // 3. 加入队列获取 Future
-        CompletableFuture<BlockPos> resultFuture = StructureSearchQueue.addSearchRequest(
-            worldSeed, player.getUUID(), playerPos);
-
-        int queuePosition = StructureSearchQueue.getPlayerPosition(worldSeed, player.getUUID());
-        int totalWaiting = StructureSearchQueue.getWaitingCount(worldSeed);
-
-        if (queuePosition > 0) {
-            player.displayClientMessage(
-                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.waiting_in_queue",
-                    queuePosition, totalWaiting).withStyle(ChatFormatting.YELLOW), true);
-        } else {
-            player.displayClientMessage(
-                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure")
-                    .withStyle(ChatFormatting.YELLOW), true);
+        // 2. 检查内存缓存
+        RetreatManager.CacheResult cacheResult = RetreatManager.checkCache(player.getUUID());
+        if (cacheResult.hasCache && !cacheResult.isNegative) {
+            ItemStack displayItem = itemStack.copy();
+            displayItem.setCount(1);
+            consumeItem(player, itemStack);
+            player.getCooldowns().addCooldown(this, 20);
+            handleSearchResult(serverLevel, playerPos, player, cacheResult.position,
+                    System.currentTimeMillis() - searchStartTime, true, displayItem);
+            return;
         }
 
-        // 4. 触发搜索（单线程异步 findNearestMapStructure）
-        RetreatManager.triggerStructureSearch(serverLevel, playerPos);
+        // 3. 共享模式 + 配额限制：检查配额
+        if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+            if (!SharedRetreatManager.hasQuota(player.getServer(), player.getUUID())) {
+                player.displayClientMessage(
+                        Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.no_quota")
+                                .withStyle(ChatFormatting.RED), true);
+                return;
+            }
+        }
 
-        // 5. 等待回调结果 — 成功后才消耗物品
-        resultFuture.thenAccept(result -> {
+        // 4. 提示搜索中
+        player.displayClientMessage(
+                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure")
+                        .withStyle(ChatFormatting.YELLOW), true);
+
+        // 5. 发起搜索
+        CompletableFuture<BlockPos> future = RetreatManager.searchStructure(
+                serverLevel, player.getUUID(), playerPos);
+
+        // 6. 处理结果
+        future.thenAccept(result -> {
             long searchTime = System.currentTimeMillis() - searchStartTime;
             serverLevel.getServer().execute(() -> {
                 if (result != null) {
-                    // 搜索成功：消耗物品并展示结果
-                    consumeItem(player, itemStack);
-                    handleSearchResult(serverLevel, playerPos, player, result, searchTime);
+                    // 共享模式 + 配额限制：消耗配额，失败则中止
+                    if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                        if (!SharedRetreatManager.tryConsumeQuota(player.getServer(), player.getUUID())) {
+                            player.displayClientMessage(
+                                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.no_quota")
+                                            .withStyle(ChatFormatting.RED), true);
+                            return;
+                        }
+                        RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
+                        data.setFoundStructurePos(player.getUUID(), result);
+                    }
+                    RetreatManager.updateCache(player.getUUID(), result);
+
+                    // 检查玩家手上是否仍持有寻风之铃（异步搜索期间可能已切换物品）
+                    boolean holdingBell = player.getMainHandItem().getItem() instanceof WindSeekingBell
+                            || player.getOffhandItem().getItem() instanceof WindSeekingBell;
+                    if (holdingBell) {
+                        ItemStack displayItem = itemStack.copy();
+                        displayItem.setCount(1);
+                        consumeItem(player, itemStack);
+                        player.getCooldowns().addCooldown(WindSeekingBell.this, 20);
+                        handleSearchResult(serverLevel, playerPos, player, result, searchTime, true, displayItem);
+                    } else {
+                        // 铃不在手上：仅展示坐标，不消耗物品，不飞铃
+                        handleSearchResult(serverLevel, playerPos, player, result, searchTime, false, ItemStack.EMPTY);
+                    }
+                    player.sendSystemMessage(Component.translatable(
+                            "item.touhou_little_maid_spell.wind_seeking_bell.first_use"
+                    ).withStyle(ChatFormatting.LIGHT_PURPLE));
                 } else {
-                    // 搜索失败：不消耗物品，设置负缓存，显示失败消息
+                    // 搜索失败：不消耗物品，设置负缓存
                     RetreatManager.updateCache(player.getUUID(), null);
-                    handleSearchResult(serverLevel, playerPos, player, null, searchTime);
+                    handleSearchResult(serverLevel, playerPos, player, null, searchTime, false, ItemStack.EMPTY);
                 }
             });
         }).exceptionally(throwable -> {
-            // CancellationException 是预期行为（玩家再次使用铃铛时取消旧请求），不记录为错误
             Throwable cause = throwable instanceof java.util.concurrent.CompletionException
-                ? throwable.getCause() : throwable;
+                    ? throwable.getCause() : throwable;
             if (!(cause instanceof java.util.concurrent.CancellationException)) {
                 Global.LOGGER.error("搜索请求异常 - 玩家: {}", player.getName().getString(), throwable);
             }
@@ -234,10 +270,14 @@ public class WindSeekingBell extends Item {
     }
 
     /**
-     * 处理搜索结果（展示飞行实体和坐标信息）
+     * 处理搜索结果（展示坐标信息，可选飞行实体）
+     *
+     * @param launchBell  true = 铃飞出（类似末影之眼）；false = 仅显示坐标
+     * @param displayItem 飞行实体使用的显示物品（在消耗前拷贝），launchBell=false 时忽略
      */
     private void handleSearchResult(ServerLevel serverLevel, BlockPos playerPos, Player player,
-                                    BlockPos structurePos, long searchTime) {
+                                    BlockPos structurePos, long searchTime, boolean launchBell,
+                                    ItemStack displayItem) {
         serverLevel.getServer().execute(() -> {
             if (structurePos != null) {
                 int height = serverLevel.getChunkSource().getGenerator().getFirstOccupiedHeight(
@@ -249,43 +289,34 @@ public class WindSeekingBell extends Item {
                 BlockPos structurePosXZ = new BlockPos(structurePos.getX(), 0, structurePos.getZ());
                 BlockPos playerPosXZ = new BlockPos(playerPos.getX(), 0, playerPos.getZ());
 
-                WindSeekingBellEntity bell = new WindSeekingBellEntity(serverLevel, player);
-                ItemStack displayItem = player.getMainHandItem().copy();
-                displayItem.setCount(1);
-                bell.setItem(displayItem);
-                bell.signalTo(structurePosXZ.above(height + 3));
-                serverLevel.addFreshEntity(bell);
+                if (launchBell) {
+                    WindSeekingBellEntity bell = new WindSeekingBellEntity(serverLevel, player);
+                    bell.setItem(displayItem);
+                    bell.signalTo(structurePosXZ.above(height + 3));
+                    serverLevel.addFreshEntity(bell);
+                }
 
                 int distance = (int) Math.sqrt(structurePosXZ.distSqr(playerPosXZ));
                 String tpCommand = String.format("/tp %f %d %f",
-                    structurePos.getX() + 0.5, height + 3, structurePos.getZ() + 0.5);
+                        structurePos.getX() + 0.5, height + 3, structurePos.getZ() + 0.5);
 
                 Component coordinateMessage = Component.translatable(
                     "item.touhou_little_maid_spell.wind_seeking_bell.found_structure",
-                    structurePos.getX(), height, structurePos.getZ(), distance
+                                structurePos.getX(), height, structurePos.getZ(), distance
                 ).withStyle(ChatFormatting.GREEN)
                 .withStyle(style -> style
                     .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, tpCommand))
-                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, CLICK_SUGGEST_MESSAGE)));
+                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, CLICK_SUGGEST_MESSAGE)));
 
                 Component timingMessage = Component.translatable(
-                    "item.touhou_little_maid_spell.wind_seeking_bell.search_time", searchTime
+                        "item.touhou_little_maid_spell.wind_seeking_bell.search_time", searchTime
                 ).withStyle(ChatFormatting.AQUA);
 
                 player.sendSystemMessage(coordinateMessage);
                 player.sendSystemMessage(timingMessage);
-
-                if (player instanceof ServerPlayer sp) {
-                    int count = sp.getStats().getValue(Stats.ITEM_USED.get(this));
-                    if (count == 0) {
-                        sp.sendSystemMessage(Component.translatable(
-                            "item.touhou_little_maid_spell.wind_seeking_bell.first_use"
-                        ).withStyle(ChatFormatting.LIGHT_PURPLE));
-                    }
-                }
             } else {
                 Component timingMessage = Component.translatable(
-                    "item.touhou_little_maid_spell.wind_seeking_bell.search_time", searchTime
+                        "item.touhou_little_maid_spell.wind_seeking_bell.search_time", searchTime
                 ).withStyle(ChatFormatting.GREEN);
                 player.displayClientMessage(NO_STRUCTURE_MESSAGE, true);
                 player.sendSystemMessage(timingMessage);
@@ -294,7 +325,7 @@ public class WindSeekingBell extends Item {
     }
 
     @Override
-    public void appendHoverText(@Nonnull ItemStack stack, @Nullable Level level,
+    public void appendHoverText(@Nonnull ItemStack stack, @javax.annotation.Nullable net.minecraft.world.level.Level level,
                                 @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
         tooltip.add(Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.desc1")

@@ -8,11 +8,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 
 import java.util.UUID;
 
@@ -27,7 +28,6 @@ public class PlayerRetreatManager {
     /**
      * 获取或创建玩家的归隐之地维度
      */
-    @SuppressWarnings("removal")
     public static ServerLevel getOrCreatePlayerRetreat(MinecraftServer server, UUID playerUUID) {
         if (!Config.enablePrivateDimensions) {
             return getOrCreateSharedRetreat(server);
@@ -55,7 +55,6 @@ public class PlayerRetreatManager {
         return createPlayerRetreat(server, playerUUID);
     }
 
-    @SuppressWarnings("removal")
     private static ServerLevel createPlayerRetreat(MinecraftServer server, UUID playerUUID) {
         try {
             ResourceKey<Level> dimensionKey = TheRetreatDimension.getPlayerRetreatDimension(playerUUID);
@@ -87,11 +86,10 @@ public class PlayerRetreatManager {
     /**
      * 获取或创建共享的归隐之地维度
      */
-    @SuppressWarnings("removal")
     public static ServerLevel getOrCreateSharedRetreat(MinecraftServer server) {
         ResourceKey<Level> dimensionKey = ResourceKey.create(
-            net.minecraft.core.registries.Registries.DIMENSION,
-            new ResourceLocation(MaidSpellMod.MOD_ID, "the_retreat")
+                net.minecraft.core.registries.Registries.DIMENSION,
+                new ResourceLocation(MaidSpellMod.MOD_ID, "the_retreat")
         );
 
         ServerLevel existingLevel = server.getLevel(dimensionKey);
@@ -121,27 +119,11 @@ public class PlayerRetreatManager {
         }
     }
 
-    /**
-     * 移除玩家的归隐之地维度（统一清理所有状态）
-     */
-    public static void removePlayerRetreat(MinecraftServer server, UUID playerUUID) {
-        ResourceKey<Level> dimensionKey = TheRetreatDimension.getPlayerRetreatDimension(playerUUID);
-
-        RetreatManager.removeCachedPlayerRetreat(playerUUID);
-        RetreatManager.unregisterDimension(dimensionKey);
-
-        RetreatDimensionData data = RetreatDimensionData.get(server);
-        data.removeDimension(playerUUID);
-
-        ((MinecraftServerAccessor) server).maidspell$removeWorld(dimensionKey);
-        MaidSpellMod.LOGGER.info("Removed retreat dimension for player: {}", playerUUID);
-    }
-
     // ========== 服务器事件 ==========
 
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
-        RetreatManager.clearPlayerRetreatCache();
+        RetreatManager.shutdown();
     }
 
     @SubscribeEvent
@@ -152,23 +134,41 @@ public class PlayerRetreatManager {
         RetreatDimensionData data = RetreatDimensionData.get(server);
 
         if (Config.enablePrivateDimensions) {
-            for (UUID playerUUID : data.getAllDimensions().keySet()) {
+            int restoredStructureFlags = 0;
+            for (var entry : data.getAllDimensions().entrySet()) {
+                UUID playerUUID = entry.getKey();
+                RetreatDimensionData.DimensionInfo info = entry.getValue();
                 ResourceKey<Level> dimensionKey = TheRetreatDimension.getPlayerRetreatDimension(playerUUID);
                 ServerLevel existingLevel = server.getLevel(dimensionKey);
                 if (existingLevel != null) {
                     RetreatManager.cachePlayerRetreat(playerUUID, existingLevel);
                     RetreatManager.registerDimension(dimensionKey, existingLevel);
+                    // 恢复结构已生成标记，防止重启后重复生成
+                    if (info.structureGenerated) {
+                        RetreatManager.tryMarkStructureGenerated(dimensionKey);
+                        restoredStructureFlags++;
+                    }
                     MaidSpellMod.LOGGER.info("Loaded existing retreat dimension for player: {}", playerUUID);
                 } else {
                     MaidSpellMod.LOGGER.info("Recreating retreat dimension for player: {}", playerUUID);
                     createPlayerRetreat(server, playerUUID);
                 }
             }
-            MaidSpellMod.LOGGER.info("Loaded {} retreat dimensions", RetreatManager.getCachedPlayerRetreatCount());
+            MaidSpellMod.LOGGER.info("Loaded {} retreat dimensions, restored {} structure generated flags",
+                    RetreatManager.getCachedPlayerRetreatCount(), restoredStructureFlags);
         } else {
             int totalQuota = data.getAllDimensions().values().stream()
-                .mapToInt(info -> info.structureQuota).sum();
-            MaidSpellMod.LOGGER.info("Shared retreat mode, total quota: {}", totalQuota);
+                    .mapToInt(info -> info.structureQuota).sum();
+            // 恢复持久化的结构位置到内存缓存
+            int restoredCount = 0;
+            for (var entry : data.getAllDimensions().entrySet()) {
+                if (entry.getValue().foundStructurePos != null) {
+                    RetreatManager.updateCache(entry.getKey(), entry.getValue().foundStructurePos);
+                    restoredCount++;
+                }
+            }
+            MaidSpellMod.LOGGER.info("Shared retreat mode, total quota: {}, restored {} cached structure positions",
+                    totalQuota, restoredCount);
         }
     }
 

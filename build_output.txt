@@ -1,0 +1,178 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :
+MixinGradle did not locate the diffplug APT plugin, skipping eclipse task configuration
+files(...) dependencies are not deobfuscated. Use a flatDir repository instead: https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:flat_dir_resolver
+Cannot deobfuscate dependency of type DefaultFileCollectionDependency_Decorated, using obfuscated version!
+
+> Task :downloadMcpConfig
+> Task :extractSrg UP-TO-DATE
+> Task :createMcpToSrg UP-TO-DATE
+
+> Task :compileJava
+注: SpongePowered MIXIN Annotation Processor Version=0.8.5 (MixinGradle Version=0.7.38)
+注: Supported obfuscation types: ObfuscationServiceMCP supports [notch] ObfuscationServiceFG3 supports [searge]
+注: Loading searge mappings from E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\createMcpToSrg\output.tsrg
+注: Writing refmap to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-refmap.json
+注: Writing refmap to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-refmap.json
+注: Writing searge composite mappings to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-mappings.tsrg
+注: Writing refmap to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-refmap.json
+注: Writing refmap to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-refmap.json
+注: Writing searge composite mappings to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-mappings.tsrg
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\PlayerRetreatManager.java:61: 错误: 找不到符号
+            boolean success = ((MinecraftServerAccessor) server).maidspell$createWorld(dimensionKey, templateDimension);
+                                ^
+  符号:   类 MinecraftServerAccessor
+  位置: 类 PlayerRetreatManager
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\PlayerRetreatManager.java:102: 错误: 找不到符号
+            boolean success = ((MinecraftServerAccessor) server).maidspell$createWorld(dimensionKey, templateDimension);
+                                ^
+  符号:   类 MinecraftServerAccessor
+  位置: 类 PlayerRetreatManager
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\StructureSearchWorker.java:298: 错误: 无法将类 StructureManager中的方法 checkStructurePresence应用到给定类型;
+            StructureCheckResult checkResult = structureManager.checkStructurePresence(
+                                                               ^
+  需要: ChunkPos,Structure,boolean
+  找到:    ChunkPos,Structure,RandomSpreadStructurePlacement,boolean
+  原因: 实际参数列表和形式参数列表长度不同
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:123: 错误: 找不到符号
+            if (Config.enableSharedQuotaLimit) {
+                      ^
+  符号:   变量 enableSharedQuotaLimit
+  位置: 类 Config
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:152: 错误: 找不到符号
+        if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                                                     ^
+  符号:   变量 enableSharedQuotaLimit
+  位置: 类 Config
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:168: 错误: 找不到符号
+        if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                                                     ^
+  符号:   变量 enableSharedQuotaLimit
+  位置: 类 Config
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:195: 错误: 找不到符号
+        if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                                                     ^
+  符号:   变量 enableSharedQuotaLimit
+  位置: 类 Config
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:219: 错误: 找不到符号
+                    if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                                                                 ^
+  符号:   变量 enableSharedQuotaLimit
+  位置: 类 Config
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\MaidSpellStructures.java:17: 错误: 不兼容的类型: 无法推断类型变量 I
+    public static final RegistryObject<StructureType<HiddenRetreatStructure>> HIDDEN_RETREAT = STRUCTURE_TYPES.register(
+                                                                                                                       ^
+    (参数不匹配; lambda 表达式中的返回类型错误
+      lambda 表达式中的返回类型错误
+        MapCodec<HiddenRetreatStructure>无法转换为Codec<HiddenRetreatStructure>)
+  其中, I是类型变量:
+    I扩展已在方法 <I>register(String,Supplier<? extends I>)中声明的StructureType<?>
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\structure\HiddenRetreatStructure.java:207: 错误: 找不到符号
+                if (Config.enableSharedQuotaLimit) {
+                          ^
+  符号:   变量 enableSharedQuotaLimit
+  位置: 类 Config
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\structure\HiddenRetreatStructure.java:280: 错误: 找不到符号
+        if (!insideGenerate.get() && !Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                                                                              ^
+  符号:   变量 enableSharedQuotaLimit
+  位置: 类 Config
+注: 某些输入文件使用或覆盖了已过时的 API。
+注: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+注: 某些输入文件使用或覆盖了标记为待删除的已过时 API。
+注: 有关详细信息, 请使用 -Xlint:removal 重新编译。
+11 个错误
+
+> Task :compileJava FAILED
+
+[Incubating] Problems report is available at: file:///E:/Desktop/%E8%84%86%E9%AA%A8%E7%97%87dlc/mod%E5%BC%80%E5%8F%91/forge-1.20.1-47.4.0-mdk/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava'.
+> Compilation failed; see the compiler output below.
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\StructureSearchWorker.java:298: 错误: 无法将类 StructureManager中的方法 checkStructurePresence应用到给定类型;
+              StructureCheckResult checkResult = structureManager.checkStructurePresence(
+                                                                 ^
+    需要: ChunkPos,Structure,boolean
+    找到:    ChunkPos,Structure,RandomSpreadStructurePlacement,boolean
+    原因: 实际参数列表和形式参数列表长度不同
+  注: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+  注: 某些输入文件使用或覆盖了标记为待删除的已过时 API。
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\MaidSpellStructures.java:17: 错误: 不兼容的类型: 无法推断类型变量 I
+      public static final RegistryObject<StructureType<HiddenRetreatStructure>> HIDDEN_RETREAT = STRUCTURE_TYPES.register(
+                                                                                                                         ^
+      (参数不匹配; lambda 表达式中的返回类型错误
+        lambda 表达式中的返回类型错误
+          MapCodec<HiddenRetreatStructure>无法转换为Codec<HiddenRetreatStructure>)
+    其中, I是类型变量:
+      I扩展已在方法 <I>register(String,Supplier<? extends I>)中声明的StructureType<?>
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\PlayerRetreatManager.java:61: 错误: 找不到符号
+              boolean success = ((MinecraftServerAccessor) server).maidspell$createWorld(dimensionKey, templateDimension);
+                                  ^
+    符号:   类 MinecraftServerAccessor
+    位置: 类 PlayerRetreatManager
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\PlayerRetreatManager.java:102: 错误: 找不到符号
+              boolean success = ((MinecraftServerAccessor) server).maidspell$createWorld(dimensionKey, templateDimension);
+                                  ^
+    符号:   类 MinecraftServerAccessor
+    位置: 类 PlayerRetreatManager
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:123: 错误: 找不到符号
+              if (Config.enableSharedQuotaLimit) {
+                        ^
+    符号:   变量 enableSharedQuotaLimit
+    位置: 类 Config
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:152: 错误: 找不到符号
+          if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                                                       ^
+    符号:   变量 enableSharedQuotaLimit
+    位置: 类 Config
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:168: 错误: 找不到符号
+          if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                                                       ^
+    符号:   变量 enableSharedQuotaLimit
+    位置: 类 Config
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:195: 错误: 找不到符号
+          if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                                                       ^
+    符号:   变量 enableSharedQuotaLimit
+    位置: 类 Config
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:219: 错误: 找不到符号
+                      if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                                                                   ^
+    符号:   变量 enableSharedQuotaLimit
+    位置: 类 Config
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\structure\HiddenRetreatStructure.java:207: 错误: 找不到符号
+                  if (Config.enableSharedQuotaLimit) {
+                            ^
+    符号:   变量 enableSharedQuotaLimit
+    位置: 类 Config
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\structure\HiddenRetreatStructure.java:280: 错误: 找不到符号
+          if (!insideGenerate.get() && !Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
+                                                                                ^
+    符号:   变量 enableSharedQuotaLimit
+    位置: 类 Config
+  注: 某些输入文件使用或覆盖了已过时的 API。
+  注: SpongePowered MIXIN Annotation Processor Version=0.8.5 (MixinGradle Version=0.7.38)
+  注: Supported obfuscation types: ObfuscationServiceMCP supports [notch] ObfuscationServiceFG3 supports [searge]
+  注: Loading searge mappings from E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\createMcpToSrg\output.tsrg
+  注: Writing refmap to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-refmap.json
+  注: Writing searge composite mappings to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-mappings.tsrg
+  注: 有关详细信息, 请使用 -Xlint:removal 重新编译。
+  11 个错误
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 26s
+4 actionable tasks: 2 executed, 2 up-to-date

@@ -393,7 +393,18 @@ public class Config {
             .comment("true: Each player has their own retreat dimension")
             .comment("false: All players share one retreat dimension, each with one structure")
             .define("enablePrivateDimensions", true);
-    
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.BooleanValue ENABLE_SHARED_QUOTA_LIMIT = BUILDER
+            .comment("共享模式下是否启用配额限制 (默认: true，仅在 enablePrivateDimensions=false 时生效)")
+            .comment("true: 每个玩家只能搜索一次隐世之境，使用寻风之铃消耗配额")
+            .comment("false: 不限制搜索次数，每次使用寻风之铃均可搜索")
+            .comment("Whether to enable quota limit in shared mode (default: true, only effective when enablePrivateDimensions=false)")
+            .define("enableSharedQuotaLimit", true);
+
     static {
         BUILDER.pop(); // retreat_dimension
     }
@@ -457,6 +468,7 @@ public class Config {
 
     // 归隐之地维度相关
     public static boolean enablePrivateDimensions;
+    public static boolean enableSharedQuotaLimit;
 
 
     @SubscribeEvent
@@ -518,6 +530,7 @@ public class Config {
 
         // 归隐之地维度相关
         enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
+        enableSharedQuotaLimit = ENABLE_SHARED_QUOTA_LIMIT.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.dimension;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -8,6 +9,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 
+import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -27,50 +29,76 @@ public class RetreatDimensionData extends SavedData {
     }
     
     /**
-     * 维度信息（扩展以支持共享模式）
+     * 维度信息（扩展以支持共享模式和私人模式）
      */
     public static class DimensionInfo {
         public final UUID playerUUID;
         public long createdTime;
         public long lastAccessTime;
-        
+
         // 共享模式专属字段
         public int structureQuota;      // 结构配额（0=无配额，1=有一个配额）
-        
+        @Nullable
+        public BlockPos foundStructurePos; // 已找到的结构位置（持久化，共享模式下用于重复查看）
+
+        // 私人模式专属字段
+        public boolean structureGenerated; // 结构是否已生成（持久化，防止重启后重复生成）
+
         public DimensionInfo(UUID playerUUID) {
             this.playerUUID = playerUUID;
             this.createdTime = System.currentTimeMillis();
             this.lastAccessTime = this.createdTime;
             this.structureQuota = 0;
+            this.foundStructurePos = null;
+            this.structureGenerated = false;
         }
-        
-        public DimensionInfo(UUID playerUUID, long createdTime, long lastAccessTime, int structureQuota) {
+
+        public DimensionInfo(UUID playerUUID, long createdTime, long lastAccessTime, int structureQuota,
+                             @Nullable BlockPos foundStructurePos, boolean structureGenerated) {
             this.playerUUID = playerUUID;
             this.createdTime = createdTime;
             this.lastAccessTime = lastAccessTime;
             this.structureQuota = structureQuota;
+            this.foundStructurePos = foundStructurePos;
+            this.structureGenerated = structureGenerated;
         }
-        
+
         public void updateAccessTime() {
             this.lastAccessTime = System.currentTimeMillis();
         }
-        
+
         public CompoundTag save() {
             CompoundTag tag = new CompoundTag();
             tag.putUUID("PlayerUUID", playerUUID);
             tag.putLong("CreatedTime", createdTime);
             tag.putLong("LastAccessTime", lastAccessTime);
             tag.putInt("StructureQuota", structureQuota);
+            if (foundStructurePos != null) {
+                tag.putInt("FoundStructureX", foundStructurePos.getX());
+                tag.putInt("FoundStructureY", foundStructurePos.getY());
+                tag.putInt("FoundStructureZ", foundStructurePos.getZ());
+                tag.putBoolean("HasFoundStructure", true);
+            }
+            tag.putBoolean("StructureGenerated", structureGenerated);
             return tag;
         }
-        
+
         public static DimensionInfo load(CompoundTag tag) {
             UUID playerUUID = tag.getUUID("PlayerUUID");
             long createdTime = tag.getLong("CreatedTime");
             long lastAccessTime = tag.getLong("LastAccessTime");
             int structureQuota = tag.getInt("StructureQuota");
-            
-            return new DimensionInfo(playerUUID, createdTime, lastAccessTime, structureQuota);
+            BlockPos foundPos = null;
+            if (tag.contains("HasFoundStructure") && tag.getBoolean("HasFoundStructure")) {
+                foundPos = new BlockPos(
+                    tag.getInt("FoundStructureX"),
+                    tag.getInt("FoundStructureY"),
+                    tag.getInt("FoundStructureZ")
+                );
+            }
+            boolean structureGenerated = tag.getBoolean("StructureGenerated");
+
+            return new DimensionInfo(playerUUID, createdTime, lastAccessTime, structureQuota, foundPos, structureGenerated);
         }
     }
     
@@ -191,10 +219,43 @@ public class RetreatDimensionData extends SavedData {
             }
             return shouldRemove;
         });
-        
+
         if (!playerDimensions.isEmpty()) {
             setDirty();
         }
+    }
+
+    /**
+     * 标记玩家维度的结构已生成（私人模式持久化）
+     */
+    public void markStructureGenerated(UUID playerUUID) {
+        DimensionInfo info = playerDimensions.get(playerUUID);
+        if (info != null && !info.structureGenerated) {
+            info.structureGenerated = true;
+            setDirty();
+            MaidSpellMod.LOGGER.info("Persisted structure generated flag for player: {}", playerUUID);
+        }
+    }
+
+    /**
+     * 设置玩家已找到的结构位置
+     */
+    public void setFoundStructurePos(UUID playerUUID, @Nullable BlockPos pos) {
+        DimensionInfo info = playerDimensions.get(playerUUID);
+        if (info != null) {
+            info.foundStructurePos = pos;
+            setDirty();
+            MaidSpellMod.LOGGER.info("Saved found structure position for player {}: {}", playerUUID, pos);
+        }
+    }
+
+    /**
+     * 获取玩家已找到的结构位置
+     */
+    @Nullable
+    public BlockPos getFoundStructurePos(UUID playerUUID) {
+        DimensionInfo info = playerDimensions.get(playerUUID);
+        return info != null ? info.foundStructurePos : null;
     }
 }
 

@@ -1,0 +1,116 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :
+MixinGradle did not locate the diffplug APT plugin, skipping eclipse task configuration
+files(...) dependencies are not deobfuscated. Use a flatDir repository instead: https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:flat_dir_resolver
+Cannot deobfuscate dependency of type DefaultFileCollectionDependency_Decorated, using obfuscated version!
+
+> Task :downloadMcpConfig
+> Task :extractSrg UP-TO-DATE
+> Task :createMcpToSrg UP-TO-DATE
+
+> Task :compileJava
+注: SpongePowered MIXIN Annotation Processor Version=0.8.5 (MixinGradle Version=0.7.38)
+注: Supported obfuscation types: ObfuscationServiceMCP supports [notch] ObfuscationServiceFG3 supports [searge]
+注: Loading searge mappings from E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\createMcpToSrg\output.tsrg
+注: Writing refmap to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-refmap.json
+注: Writing refmap to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-refmap.json
+注: Writing searge composite mappings to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-mappings.tsrg
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\PlayerRetreatManager.java:24: 错误: 程序包Mod不存在
+@Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
+    ^
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\TheRetreatDimension.java:15: 错误: 程序包net.minecraft.world.level.chunk.status不存在
+import net.minecraft.world.level.chunk.status.ChunkStatus;
+                                             ^
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\TheRetreatDimension.java:16: 错误: 找不到符号
+import net.minecraft.world.level.portal.DimensionTransition;
+                                       ^
+  符号:   类 DimensionTransition
+  位置: 程序包 net.minecraft.world.level.portal
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\TheRetreatDimension.java:38: 错误: 程序包Mod不存在
+@Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
+    ^
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:328: 错误: 找不到符号
+    public void appendHoverText(@Nonnull ItemStack stack, @Nonnull Item.TooltipContext context,
+                                                                       ^
+  符号:   类 TooltipContext
+  位置: 类 Item
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\structure\HiddenRetreatStructure.java:30: 错误: 找不到符号
+import net.minecraft.world.level.levelgen.structure.pools.DimensionPadding;
+                                                         ^
+  符号:   类 DimensionPadding
+  位置: 程序包 net.minecraft.world.level.levelgen.structure.pools
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\structure\HiddenRetreatStructure.java:33: 错误: 程序包net.minecraft.world.level.levelgen.structure.pools.alias不存在
+import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
+                                                               ^
+E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\structure\HiddenRetreatStructure.java:34: 错误: 找不到符号
+import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
+                                                                  ^
+  符号:   类 LiquidSettings
+  位置: 程序包 net.minecraft.world.level.levelgen.structure.templatesystem
+注: Writing refmap to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-refmap.json
+注: Writing refmap to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-refmap.json
+注: Writing searge composite mappings to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-mappings.tsrg
+8 个错误
+
+> Task :compileJava FAILED
+
+[Incubating] Problems report is available at: file:///E:/Desktop/%E8%84%86%E9%AA%A8%E7%97%87dlc/mod%E5%BC%80%E5%8F%91/forge-1.20.1-47.4.0-mdk/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava'.
+> Compilation failed; see the compiler output below.
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\TheRetreatDimension.java:16: 错误: 找不到符号
+  import net.minecraft.world.level.portal.DimensionTransition;
+                                         ^
+    符号:   类 DimensionTransition
+    位置: 程序包 net.minecraft.world.level.portal
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\item\common\WindSeekingBell\WindSeekingBell.java:328: 错误: 找不到符号
+      public void appendHoverText(@Nonnull ItemStack stack, @Nonnull Item.TooltipContext context,
+                                                                         ^
+    符号:   类 TooltipContext
+    位置: 类 Item
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\structure\HiddenRetreatStructure.java:30: 错误: 找不到符号
+  import net.minecraft.world.level.levelgen.structure.pools.DimensionPadding;
+                                                           ^
+    符号:   类 DimensionPadding
+    位置: 程序包 net.minecraft.world.level.levelgen.structure.pools
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\structure\HiddenRetreatStructure.java:34: 错误: 找不到符号
+  import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
+                                                                    ^
+    符号:   类 LiquidSettings
+    位置: 程序包 net.minecraft.world.level.levelgen.structure.templatesystem
+  注: SpongePowered MIXIN Annotation Processor Version=0.8.5 (MixinGradle Version=0.7.38)
+  注: Supported obfuscation types: ObfuscationServiceMCP supports [notch] ObfuscationServiceFG3 supports [searge]
+  注: Loading searge mappings from E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\createMcpToSrg\output.tsrg
+  注: Writing refmap to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-refmap.json
+  注: Writing searge composite mappings to E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\build\tmp\compileJava\compileJava-mappings.tsrg
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\PlayerRetreatManager.java:24: 错误: 程序包Mod不存在
+  @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
+      ^
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\TheRetreatDimension.java:15: 错误: 程序包net.minecraft.world.level.chunk.status不存在
+  import net.minecraft.world.level.chunk.status.ChunkStatus;
+                                               ^
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\dimension\TheRetreatDimension.java:38: 错误: 程序包Mod不存在
+  @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
+      ^
+  E:\Desktop\脆骨症dlc\mod开发\forge-1.20.1-47.4.0-mdk\src\main\java\com\github\yimeng261\maidspell\worldgen\structure\HiddenRetreatStructure.java:33: 错误: 程序包net.minecraft.world.level.levelgen.structure.pools.alias不存在
+  import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
+                                                                 ^
+  8 个错误
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 19s
+4 actionable tasks: 2 executed, 2 up-to-date

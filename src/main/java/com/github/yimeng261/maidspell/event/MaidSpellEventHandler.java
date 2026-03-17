@@ -13,7 +13,6 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.dimension.StructureSearchQueue;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.server.MinecraftServer;
@@ -178,7 +177,7 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            StructureSearchQueue.removePlayerFromAllQueues(player.getUUID());
+            // 玩家登出时自动清理由 StructureSearchWorker 处理
         }
     }
 
