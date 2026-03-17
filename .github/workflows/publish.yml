@@ -2,9 +2,8 @@ name: Publish Mod
 
 on:
   push:
-    branches:
-      - '1.21'
-      - '1.21-neoforge'
+    tags:
+      - 'v*'
 
 jobs:
   publish:
