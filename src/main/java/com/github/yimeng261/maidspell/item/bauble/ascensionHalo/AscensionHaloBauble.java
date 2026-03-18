@@ -46,15 +46,6 @@ public class AscensionHaloBauble implements IMaidBauble {
         
         initialized = true;
         Global.LOGGER.info("正在初始化晋升之环女仆效果...");
-        
-        // ========== 伤害处理已移至 AscensionHaloMaidEvents ==========
-        // 使用与 revelationfix 相同的事件优先级系统：
-        // - MobEffectEvent.Applicable (HIGHEST) - 药水效果免疫
-        // - LivingAttackEvent (HIGHEST) - 完全免疫
-        // - LivingDamageEvent (HIGHEST) - 特殊减免
-        // - LivingDamageEvent (LOWEST) - 维度减伤和限伤
-
-        // ========== 战斗增强 ==========
 
         // 法术冷却减半
         Global.baubleCooldownHandlers.put(ascensionHalo, (coolDown) -> {
@@ -73,6 +64,11 @@ public class AscensionHaloBauble implements IMaidBauble {
      * 处理：维度特殊效果、无敌倒计时、复活后范围伤害
      * 参考：OdamanePlayerExpandedContext#baseTick
      */
+    @Override
+    public boolean syncClient(EntityMaid maid, ItemStack baubleItem) {
+        return true;
+    }
+
     @Override
     public void onTick(EntityMaid maid, ItemStack baubleItem) {
         if (maid.level().isClientSide) return;

@@ -14,12 +14,8 @@ import net.minecraft.resources.ResourceLocation;
  * 不洁光环模型（使徒同款光环）
  *
  * 参考 Goety 的 UnholyHatModel，简化为仅渲染光环部分
- * 贴图大小：32x32（从原版 64x64 的光环部分裁剪）
- *
- * 特点：
- * - 单层光环，带有旋转动画
- * - 45度倾斜放置
- * - 使用 entityTranslucent 渲染类型
+ * 使用独立 16x16 贴图，整张图即为光环纹理
+ * 初始倾斜 45° 绕 X 轴，旋转动画绕 Z 轴（与 Goety 原版逻辑一致）
  */
 public class UnholyHaloModel extends Model {
 
@@ -35,19 +31,18 @@ public class UnholyHaloModel extends Model {
 
     /**
      * 创建光环模型
-     * 与 Goety 原版一致：32x32 贴图的平面光环
+     * 使用 16x16 独立贴图，整张图映射到光环面
      */
     public static LayerDefinition createBodyLayer() {
         MeshDefinition meshdefinition = new MeshDefinition();
         PartDefinition partdefinition = meshdefinition.getRoot();
 
-        // 主光环 - 16x16 平面（使用 32x32 贴图的纹理坐标）
         PartDefinition halo = partdefinition.addOrReplaceChild("halo",
             CubeListBuilder.create()
-                .texOffs(0, 0).addBox(-8.0F, -8.0F, 0.0F, 16.0F, 16.0F, 0.0F, new CubeDeformation(0.0F)),
+                .texOffs(32, 17).addBox(-8.0F, -8.0F, 0.0F, 16.0F, 16.0F, 0.0F, new CubeDeformation(0.0F)),
             PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        return LayerDefinition.create(meshdefinition, 32, 32);
+        return LayerDefinition.create(meshdefinition, 64, 64);
     }
 
     @Override

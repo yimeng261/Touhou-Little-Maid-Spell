@@ -8,7 +8,6 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.ILocation
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.network.message.MaidBaubleSyncClientHandler;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -23,14 +22,9 @@ import net.minecraft.world.entity.Mob;
 /**
  * 不洁光环渲染层
  *
- * 参考 Goety 的 UnholyHatModel 和 CuriosRenderer
- * 为装备不洁圣冠的女仆在头顶渲染使徒同款光环
- *
- * 特点：
- * - 放置在头顶上方
- * - 45度倾斜（与 AscensionHalo 一致）
- * - 持续旋转动画
- * - 使用发光渲染
+ * 参考 Goety 原版 UnholyHatModel：
+ * - 初始倾斜 45° 绕 X 轴（原版 halo 的 PartPose xRot = 0.7854F）
+ * - 旋转动画绕 Z 轴（原版 halo1.zRot = ageInTicks * 0.01F）
  */
 public class GeckoLayerUnholyHalo<T extends Mob, R extends IGeoEntityRenderer<T>> extends GeoLayerRenderer<T, R> {
 
@@ -61,12 +55,14 @@ public class GeckoLayerUnholyHalo<T extends Mob, R extends IGeoEntityRenderer<T>
             return;
         }
 
-        // 尝试应用待同步的饰品数据
-        MaidBaubleSyncClientHandler.tryApplyPendingSync(maid);
+        // 检查是否装备不洁圣冠（任一版本）
+        var unholyHat = MaidSpellItems.getUnholyHat();
+        var unholyHatHalo = MaidSpellItems.getUnholyHatHalo();
 
-        // 检查是否装备不洁圣冠
-        if (MaidSpellItems.getUnholyHat() == null ||
-            !BaubleStateManager.hasBauble(maid, MaidSpellItems.getUnholyHat())) {
+        boolean hasHat = unholyHat != null && BaubleStateManager.hasBauble(maid, unholyHat);
+        boolean hasHalo = unholyHatHalo != null && BaubleStateManager.hasBauble(maid, unholyHatHalo);
+
+        if (!hasHat && !hasHalo) {
             return;
         }
 
@@ -89,7 +85,7 @@ public class GeckoLayerUnholyHalo<T extends Mob, R extends IGeoEntityRenderer<T>
         RenderUtils.prepMatrixForLocator(poseStack, locationModel.headBones());
 
         // 调整位置（放在头顶上方）
-        poseStack.translate(0, 0.4, 0.6);
+        poseStack.translate(0, 0.7, 0.6);
 
         // 计算旋转动画（与 Goety 原版一致：ageInTicks * 0.01F）
         float rotation = ageInTicks * 0.01F;
@@ -102,7 +98,7 @@ public class GeckoLayerUnholyHalo<T extends Mob, R extends IGeoEntityRenderer<T>
 
     /**
      * 渲染光环
-     * 使用 entityTranslucent 渲染类型，与原版一致
+     * 与 Goety 原版 UnholyHatModel 一致：X轴初始倾斜 + Z轴旋转动画
      */
     private void renderHalo(PoseStack poseStack, MultiBufferSource buffer, float rotation, EntityMaid maid) {
         MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
@@ -110,10 +106,10 @@ public class GeckoLayerUnholyHalo<T extends Mob, R extends IGeoEntityRenderer<T>
 
         poseStack.pushPose();
 
-        // 应用初始45度倾斜（绕z轴）- 与 Goety 原版一致
-        poseStack.mulPose(com.mojang.math.Axis.ZP.rotation(45.0F * Mth.DEG_TO_RAD));
+        // 初始 45° 倾斜绕 X 轴（对应原版 halo PartPose xRot = 0.7854F）
+        poseStack.mulPose(com.mojang.math.Axis.XP.rotation(-45.0F * Mth.DEG_TO_RAD));
 
-        // 应用旋转动画（绕z轴旋转）
+        // 旋转动画绕 Z 轴（对应原版 halo1.zRot = ageInTicks * 0.01F）
         poseStack.mulPose(com.mojang.math.Axis.ZP.rotation(rotation));
 
         // 渲染模型

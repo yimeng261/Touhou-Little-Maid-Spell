@@ -20,6 +20,7 @@ import com.github.yimeng261.maidspell.item.bauble.rockCrystal.RockCrystalBauble;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
+import com.github.yimeng261.maidspell.item.bauble.unholyHat.UnholyHatBauble;
 import com.github.yimeng261.maidspell.item.bauble.ascensionHalo.AscensionHaloBauble;
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
 import net.minecraftforge.fml.ModList;
@@ -121,9 +122,17 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         // 不洁圣冠（使用原版 Goety 的物品）
         if(ModList.get().isLoaded("goety")){
+            // 初始化不洁圣冠的女仆效果
+            UnholyHatBauble.init();
+
             var unholyHat = MaidSpellItems.getUnholyHat();
             if(unholyHat != null){
-                manager.bind(unholyHat, new com.github.yimeng261.maidspell.item.bauble.unholyHat.UnholyHatBauble());
+                manager.bind(unholyHat, new UnholyHatBauble());
+            }
+
+            var unholyHatHalo = MaidSpellItems.getUnholyHatHalo();
+            if(unholyHatHalo != null){
+                manager.bind(unholyHatHalo, new UnholyHatBauble());
             }
         }
 

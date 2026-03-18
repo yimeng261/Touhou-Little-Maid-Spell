@@ -61,7 +61,7 @@ public class MaidSpellItems {
     //public static final RegistryObject<Item> CRYSTAL_CIRCUIT = ITEMS.register("crystal_circuit", CrystalCircuit::new);
 
     // 梦云水晶
-    public static final RegistryObject<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dreamCat_crystal", DreamCatCrystal::new);
+    public static final RegistryObject<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal", DreamCatCrystal::new);
 
     // 寻风之铃
     public static final RegistryObject<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
@@ -108,6 +108,22 @@ public class MaidSpellItems {
         if (ModList.get().isLoaded("goety")) {
             try {
                 return com.Polarice3.Goety.common.items.ModItems.UNHOLY_HAT.get();
+            } catch (Exception e) {
+                // 模组加载但物品不存在
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 获取原版 Goety 模组的不洁圣冠光环（另一种皮肤）
+     * 如果模组未加载，返回 null
+     */
+    public static Item getUnholyHatHalo() {
+        if (ModList.get().isLoaded("goety")) {
+            try {
+                return com.Polarice3.Goety.common.items.ModItems.UNHOLY_HAT_HALO.get();
             } catch (Exception e) {
                 // 模组加载但物品不存在
                 return null;

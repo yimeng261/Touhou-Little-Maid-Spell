@@ -8,7 +8,6 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.ILocation
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils;
 import com.github.yimeng261.maidspell.client.model.AscensionHaloModel;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.network.message.MaidBaubleSyncClientHandler;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -53,9 +52,6 @@ public class GeckoLayerAscensionHalo<T extends Mob, R extends IGeoEntityRenderer
         if (maid == null || maid.isInvisible() || maid.isSleeping()) {
             return;
         }
-
-        // 尝试应用待同步的饰品数据
-        MaidBaubleSyncClientHandler.tryApplyPendingSync(maid);
 
         // 检查是否装备晋升之环
         if (MaidSpellItems.getAscensionHalo() == null || !BaubleStateManager.hasBauble(maid, MaidSpellItems.getAscensionHalo())) {
