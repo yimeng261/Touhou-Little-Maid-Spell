@@ -125,11 +125,11 @@
   "item.maidspell.melee_task_icon.desc": "近战法术战斗任务图标",
   "item.touhou_little_maid_spell.far_task_icon": "远程法术图标",
   "item.maidspell.far_task_icon.desc": "远程法术战斗任务图标",
-  "item.touhou_little_maid_spell.dreamCat_crystal": "梦云水晶",
-  "item.touhou_little_maid_spell.dreamCat_crystal.desc1": "梦中之云，万法皆通",
-  "item.touhou_little_maid_spell.dreamCat_crystal.desc2": "遨游星海，万象由心",
-  "item.touhou_little_maid_spell.dreamCat_crystal.desc3": "归隐前的叹息，旅途的终点",
-  "item.touhou_little_maid_spell.dreamCat_crystal.desc4": "以及创世的善意",
+  "item.touhou_little_maid_spell.dream_cat_crystal": "梦云水晶",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc1": "云间幻梦，万法归宗。",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc2": "身游星海，万象随心。",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc3": "归隐一叹，终途渐近。",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc4": "创世余晖，皆为善因。",
   "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.title": "万法皆通",
-  "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.description": "为女仆装备梦云水晶，解锁终极法术潜能"
+  "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.description": "一路至今，辛苦了，主人。"
 }

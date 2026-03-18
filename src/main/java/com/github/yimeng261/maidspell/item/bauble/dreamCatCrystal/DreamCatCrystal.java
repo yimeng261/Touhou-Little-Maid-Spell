@@ -34,13 +34,13 @@ public class DreamCatCrystal extends Item {
     public void appendHoverText(@Nonnull ItemStack stack, @Nullable Level level,
                                 @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dreamCat_crystal.desc1")
+        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc1")
             .withStyle(ChatFormatting.AQUA));
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dreamCat_crystal.desc2")
+        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc2")
             .withStyle(ChatFormatting.LIGHT_PURPLE));
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dreamCat_crystal.desc3")
+        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc3")
             .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dreamCat_crystal.desc4")
+        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc4")
             .withStyle(ChatFormatting.DARK_PURPLE));
     }
 }

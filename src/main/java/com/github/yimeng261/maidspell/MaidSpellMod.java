@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell;
 
+import com.github.yimeng261.maidspell.crafting.OptionalModIngredientSerializer;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -10,7 +11,9 @@ import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.crafting.CraftingHelper;
 import net.minecraftforge.common.world.ForgeChunkManager;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
@@ -61,6 +64,7 @@ public class MaidSpellMod {
 
     private void setup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            CraftingHelper.register(new ResourceLocation(MOD_ID, "optional_mod_item"), OptionalModIngredientSerializer.INSTANCE);
             // 注册网络消息
             NetworkHandler.registerMessages();
             
