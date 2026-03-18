@@ -58,14 +58,15 @@ public class TheRetreatDimension {
         MinecraftServer server = player.getServer();
         if (server == null) return;
 
-        // 使用PlayerRetreatManager统一获取或创建维度
-        ServerLevel retreatLevel = PlayerRetreatManager.getOrCreatePlayerRetreat(server, player.getUUID());
-
+        ServerLevel retreatLevel = PlayerRetreatManager.getLoadedPlayerRetreat(server, player.getUUID());
         if (retreatLevel == null) {
-            MaidSpellMod.LOGGER.error("Failed to get or create retreat dimension for player: {}", player.getName().getString());
+            MaidSpellMod.LOGGER.error("Retreat dimension is not ready for player: {}", player.getName().getString());
             return;
         }
+        teleportToRetreat(player, retreatLevel);
+    }
 
+    public static void teleportToRetreat(ServerPlayer player, ServerLevel retreatLevel) {
         try {
             // 使用玩家当前坐标作为传送目标（私人和共享模式都一样）
             BlockPos targetPos = player.blockPosition();
@@ -239,4 +240,3 @@ public class TheRetreatDimension {
         }
     }
 }
-

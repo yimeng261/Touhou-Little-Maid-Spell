@@ -20,6 +20,7 @@ import java.util.UUID;
  */
 public class RetreatDimensionData extends SavedData {
     private static final String DATA_NAME = MaidSpellMod.MOD_ID + "_retreat_dimensions";
+    private static final long ACCESS_TIME_UPDATE_INTERVAL_MS = 30_000L;
     
     // 存储玩家UUID到维度信息的映射
     private final Map<UUID, DimensionInfo> playerDimensions = new HashMap<>();
@@ -170,8 +171,11 @@ public class RetreatDimensionData extends SavedData {
     public void updateAccessTime(UUID playerUUID) {
         DimensionInfo info = playerDimensions.get(playerUUID);
         if (info != null) {
-            info.updateAccessTime();
-            setDirty();
+            long now = System.currentTimeMillis();
+            if ((now - info.lastAccessTime) >= ACCESS_TIME_UPDATE_INTERVAL_MS) {
+                info.lastAccessTime = now;
+                setDirty();
+            }
         }
     }
     
