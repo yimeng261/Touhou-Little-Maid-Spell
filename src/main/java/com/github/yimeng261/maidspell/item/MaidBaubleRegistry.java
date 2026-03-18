@@ -21,7 +21,7 @@ import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBaubl
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
 import com.github.yimeng261.maidspell.item.bauble.ascensionHalo.AscensionHaloBauble;
-import com.github.yimeng261.maidspell.item.bauble.dreamCrystal.DreamCatCrystalBauble;
+import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
 import net.minecraftforge.fml.ModList;
 
 /**
@@ -116,6 +116,14 @@ public class MaidBaubleRegistry implements ILittleMaid {
             var ascensionHalo = MaidSpellItems.getAscensionHalo();
             if(ascensionHalo != null){
                 manager.bind(ascensionHalo, new AscensionHaloBauble());
+            }
+        }
+
+        // 不洁圣冠（使用原版 Goety 的物品）
+        if(ModList.get().isLoaded("goety")){
+            var unholyHat = MaidSpellItems.getUnholyHat();
+            if(unholyHat != null){
+                manager.bind(unholyHat, new com.github.yimeng261.maidspell.item.bauble.unholyHat.UnholyHatBauble());
             }
         }
 

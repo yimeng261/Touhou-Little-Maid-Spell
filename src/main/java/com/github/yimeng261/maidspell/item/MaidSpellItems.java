@@ -18,7 +18,7 @@ import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocket;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBlade;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCore;
-import com.github.yimeng261.maidspell.item.bauble.dreamCrystal.DreamCatCrystal;
+import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystal;
 import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
@@ -100,5 +100,20 @@ public class MaidSpellItems {
         return null;
     }
 
+    /**
+     * 获取原版 Goety 模组的不洁圣冠
+     * 如果模组未加载，返回 null
+     */
+    public static Item getUnholyHat() {
+        if (ModList.get().isLoaded("goety")) {
+            try {
+                return com.Polarice3.Goety.common.items.ModItems.UNHOLY_HAT.get();
+            } catch (Exception e) {
+                // 模组加载但物品不存在
+                return null;
+            }
+        }
+        return null;
+    }
 
 } 

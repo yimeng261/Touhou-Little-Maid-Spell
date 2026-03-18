@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.item.bauble.dreamCrystal;
+package com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal;
 
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -79,6 +79,36 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     // ========== NBT 键名 ==========
     private static final String NBT_REVIVE_TIMESTAMPS = "dream_crystal_revive_timestamps";
     public static final String NBT_INVULNERABLE_TIME = "dream_crystal_invulnerable_time";
+
+    // ========== 正面效果缓存 ==========
+    // 缓存所有正面效果，避免每次都遍历注册表
+    private static List<MobEffect> CACHED_BENEFICIAL_EFFECTS = null;
+
+    /**
+     * 获取缓存的正面效果列表（延迟初始化）
+     * 只在第一次调用时构建，后续直接返回缓存
+     */
+    private static List<MobEffect> getBeneficialEffects() {
+        if (CACHED_BENEFICIAL_EFFECTS != null) {
+            return CACHED_BENEFICIAL_EFFECTS;
+        }
+
+        List<MobEffect> candidates = new ArrayList<>();
+        List<String> blacklist = Config.dreamCrystalEffectBlacklist;
+
+        BuiltInRegistries.MOB_EFFECT.entrySet().forEach(entry -> {
+            MobEffect effect = entry.getValue();
+            if (effect.getCategory() == MobEffectCategory.BENEFICIAL) {
+                ResourceLocation location = BuiltInRegistries.MOB_EFFECT.getKey(effect);
+                if (location != null && !blacklist.contains(location.toString())) {
+                    candidates.add(effect);
+                }
+            }
+        });
+
+        CACHED_BENEFICIAL_EFFECTS = candidates;
+        return candidates;
+    }
 
     // ========== 属性修饰符 UUID ==========
     private static final UUID DC_HP_UUID = UUID.fromString("dc000001-0000-0000-0000-000000000001");
@@ -427,18 +457,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     // ========== 随机正面效果 ==========
     private void applyRandomBeneficialEffects(EntityMaid maid) {
-        List<MobEffect> candidates = new ArrayList<>();
-        List<String> blacklist = Config.dreamCrystalEffectBlacklist;
-
-        BuiltInRegistries.MOB_EFFECT.entrySet().forEach(entry -> {
-            MobEffect effect = entry.getValue();
-            if (effect.getCategory() == MobEffectCategory.BENEFICIAL) {
-                ResourceLocation location = BuiltInRegistries.MOB_EFFECT.getKey(effect);
-                if (location != null && !blacklist.contains(location.toString())) {
-                    candidates.add(effect);
-                }
-            }
-        });
+        // 使用缓存列表，避免重复遍历注册表
+        List<MobEffect> candidates = getBeneficialEffects();
 
         if (candidates.isEmpty()) return;
 

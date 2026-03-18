@@ -3,7 +3,7 @@ package com.github.yimeng261.maidspell.event;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.item.bauble.dreamCrystal.DreamCatCrystalBauble;
+import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 
 import net.minecraft.nbt.CompoundTag;
