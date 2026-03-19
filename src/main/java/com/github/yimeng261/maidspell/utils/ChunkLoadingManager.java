@@ -30,6 +30,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.Iterator;
 import java.util.concurrent.Executors;
 
@@ -44,6 +45,11 @@ import java.util.concurrent.Executors;
  */
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class ChunkLoadingManager {
+    private static final ExecutorService CHUNK_GENERATION_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r, "maidspell-chunk-generation");
+        thread.setDaemon(true);
+        return thread;
+    });
     
     // 存储每个女仆的区块加载状态，包含维度信息
     private static final Map<UUID, Set<ChunkKey>> maidChunkPositions = new ConcurrentHashMap<>();
@@ -401,7 +407,7 @@ public class ChunkLoadingManager {
                 Global.LOGGER.error("异步生成区块 [{}, {}] 时发生错误", chunkPos.x, chunkPos.z, e);
                 return false;
             }
-        }, Executors.newSingleThreadExecutor()).thenAcceptAsync(success -> {
+        }, CHUNK_GENERATION_EXECUTOR).thenAcceptAsync(success -> {
             // 区块生成完成后，在主线程启用强制加载
             if (success) {
                 level.getServer().execute(() -> {

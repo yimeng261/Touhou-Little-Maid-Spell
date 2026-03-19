@@ -17,21 +17,18 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.UUID;
 
 /**
  * 法术强化饰品实现
  * 根据主人的铁魔法属性为女仆提供相应的属性加成
  * 使用注册表查找，完全避免反射
- * 优化：女仆始终保有modifier，只更新数值
+ * 优化：直接对比女仆当前 modifier 数值，避免玩家级共享缓存导致多女仆串状态
  */
 public class SpellEnhancementBauble implements IMaidBauble {
 
     // 支持的属性列表
     private static final ArrayList<AttributeConfig> ATTRIBUTES = new ArrayList<>();
-
-    private static final HashMap<UUID, HashMap<String,Double>> playerAttributeValues = new HashMap<>();
 
     @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -51,7 +48,8 @@ public class SpellEnhancementBauble implements IMaidBauble {
         ForgeRegistries.ATTRIBUTES.forEach(attribute -> {
             if(attribute.getDescriptionId().startsWith("attribute.irons_spellbooks.")){
                 double defaultValue = attribute.getDefaultValue();
-                ATTRIBUTES.add(new AttributeConfig(attribute, defaultValue,attribute.getDescriptionId().replace("attribute.irons_spellbooks.", "")));
+                String attributeName = attribute.getDescriptionId().replace("attribute.irons_spellbooks.", "");
+                ATTRIBUTES.add(new AttributeConfig(attribute, defaultValue, attributeName));
             }
         });
     }
@@ -69,6 +67,17 @@ public class SpellEnhancementBauble implements IMaidBauble {
         }
         
     }
+
+    @Override
+    public void onTakeOff(EntityMaid maid, ItemStack baubleItem) {
+        for (AttributeConfig config : ATTRIBUTES) {
+            AttributeInstance maidAttr = maid.getAttribute(config.attribute);
+            if (maidAttr == null) {
+                continue;
+            }
+            maidAttr.removeModifier(config.modifierUuid);
+        }
+    }
     
     /**
      * 更新女仆的属性加成
@@ -76,24 +85,33 @@ public class SpellEnhancementBauble implements IMaidBauble {
     private void updateMaidEnhancements(EntityMaid maid, ServerPlayer player) {
         for (AttributeConfig config : ATTRIBUTES) {
             double playerValue = player.getAttributeValue(config.attribute);
-            HashMap<String, Double> attributeValues = playerAttributeValues.computeIfAbsent(player.getUUID(), k -> new HashMap<>());
-
-            if (attributeValues.get(config.attributeName) == null || attributeValues.get(config.attributeName) != playerValue) {
-                attributeValues.put(config.attributeName, playerValue);
-            } else {
+            double bonus = Math.max(0, playerValue - config.defaultValue);
+            AttributeInstance maidAttr = maid.getAttribute(config.attribute);
+            if (maidAttr == null) {
                 continue;
             }
 
-            double bonus = Math.max(0, playerValue - config.defaultValue);
-
-            AttributeInstance maidAttr = maid.getAttribute(config.attribute);
-            UUID uuid = new UUID(MaidSpellMod.MOD_ID.hashCode(), config.attribute.getDescriptionId().hashCode());
-            AttributeModifier modifier = new AttributeModifier(uuid, "yimeng" + config.attributeName, bonus, AttributeModifier.Operation.ADDITION);
-            if (maidAttr == null) {
-                return;
+            AttributeModifier currentModifier = maidAttr.getModifier(config.modifierUuid);
+            if (bonus <= 0) {
+                if (currentModifier != null) {
+                    maidAttr.removeModifier(config.modifierUuid);
+                }
+                continue;
             }
-            maidAttr.removeModifier(uuid);
-            maidAttr.addTransientModifier(modifier);
+
+            if (currentModifier != null && Double.compare(currentModifier.getAmount(), bonus) == 0) {
+                continue;
+            }
+
+            if (currentModifier != null) {
+                maidAttr.removeModifier(config.modifierUuid);
+            }
+            maidAttr.addTransientModifier(new AttributeModifier(
+                config.modifierUuid,
+                config.modifierName,
+                bonus,
+                AttributeModifier.Operation.ADDITION
+            ));
         }
     }
 
@@ -105,13 +123,17 @@ public class SpellEnhancementBauble implements IMaidBauble {
     private static class AttributeConfig {
         final Attribute attribute;
         final double defaultValue;
-        String attributeName;
+        final String attributeName;
+        final UUID modifierUuid;
+        final String modifierName;
 
 
         AttributeConfig(Attribute attribute, double defaultValue, String attributeName) {
             this.attribute = attribute;
             this.defaultValue = defaultValue;
             this.attributeName = attributeName;
+            this.modifierUuid = new UUID(MaidSpellMod.MOD_ID.hashCode(), attribute.getDescriptionId().hashCode());
+            this.modifierName = "yimeng" + attributeName;
         }
     }
 } 

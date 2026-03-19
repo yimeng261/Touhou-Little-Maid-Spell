@@ -314,11 +314,11 @@ public class AscensionHaloMaidEvents {
      */
     private static void recordMaidAttackedBoss(EntityMaid maid, LivingEntity boss) {
         UUID maidUUID = maid.getUUID();
-        UUID bossUUID = boss.getUUID();
         long currentTime = maid.level().getGameTime();
 
-        MAID_ATTACKED_BOSSES.computeIfAbsent(maidUUID, k -> new HashMap<>())
-            .put(bossUUID, currentTime);
+        Map<UUID, Long> attackedBosses = MAID_ATTACKED_BOSSES.computeIfAbsent(maidUUID, k -> new HashMap<>());
+        cleanupExpiredBossAggro(maidUUID, attackedBosses, currentTime);
+        attackedBosses.put(boss.getUUID(), currentTime);
     }
 
     /**
@@ -333,6 +333,7 @@ public class AscensionHaloMaidEvents {
         if (attackedBosses == null) {
             return false;
         }
+        cleanupExpiredBossAggro(maidUUID, attackedBosses, currentTime);
 
         Long lastAttackTime = attackedBosses.get(bossUUID);
         if (lastAttackTime == null) {
@@ -341,5 +342,12 @@ public class AscensionHaloMaidEvents {
 
         // 检查是否在超时时间内
         return (currentTime - lastAttackTime) < BOSS_AGGRO_TIMEOUT;
+    }
+
+    private static void cleanupExpiredBossAggro(UUID maidUUID, Map<UUID, Long> attackedBosses, long currentTime) {
+        attackedBosses.entrySet().removeIf(entry -> currentTime - entry.getValue() >= BOSS_AGGRO_TIMEOUT);
+        if (attackedBosses.isEmpty()) {
+            MAID_ATTACKED_BOSSES.remove(maidUUID);
+        }
     }
 }

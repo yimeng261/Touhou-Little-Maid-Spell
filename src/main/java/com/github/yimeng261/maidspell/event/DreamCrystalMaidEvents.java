@@ -17,7 +17,9 @@ import net.minecraftforge.common.Tags;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.server.ServerAboutToStartEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -34,7 +36,7 @@ import java.util.UUID;
  * - 记录女仆攻击 Boss 的历史（LivingHurtEvent）
  * - 特定伤害免疫（LivingAttackEvent）
  * - 复活后无敌（LivingAttackEvent）
- * - 解除时停的冻结目标（LivingEvent.LivingTickEvent）
+ * - 在服务端 tick 中统一处理时停/范围强化到期
  */
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class DreamCrystalMaidEvents {
@@ -102,28 +104,26 @@ public class DreamCrystalMaidEvents {
         }
     }
 
-    // ========== 时停：解除冻结 ==========
+    // ========== 时停/范围强化调度 ==========
 
     /**
-     * 每 tick 检查是否需要解除被时停的实体
+     * 在服务端 tick 中统一处理到期效果，避免对所有活体逐个轮询
      */
     @SubscribeEvent
-    public static void onLivingTick(LivingEvent.LivingTickEvent event) {
-        LivingEntity entity = event.getEntity();
-        if (entity.level().isClientSide() || !(entity instanceof Mob mob)) return;
-
-        UUID uuid = mob.getUUID();
-        Long unfreezeTime = DreamCatCrystalBauble.FROZEN_TARGETS.get(uuid);
-        if (unfreezeTime == null) return;
-
-        long currentTime = mob.level().getGameTime();
-        if (currentTime >= unfreezeTime) {
-            DreamCatCrystalBauble.FROZEN_TARGETS.remove(uuid);
-            // 只有在实体仍然存活时才解除冻结
-            if (mob.isAlive()) {
-                mob.setNoAi(false);
-            }
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) {
+            DreamCatCrystalBauble.processScheduledEffects(event.getServer());
         }
+    }
+
+    @SubscribeEvent
+    public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+        DreamCatCrystalBauble.clearScheduledEffects();
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        DreamCatCrystalBauble.clearScheduledEffects();
     }
 
     // ========== 私有辅助方法 ==========
@@ -144,16 +144,29 @@ public class DreamCrystalMaidEvents {
     }
 
     private static void recordMaidAttackedBoss(EntityMaid maid, LivingEntity boss) {
-        MAID_ATTACKED_BOSSES
-            .computeIfAbsent(maid.getUUID(), k -> new HashMap<>())
-            .put(boss.getUUID(), maid.level().getGameTime());
+        UUID maidUUID = maid.getUUID();
+        long currentTime = maid.level().getGameTime();
+
+        Map<UUID, Long> attackedBosses = MAID_ATTACKED_BOSSES.computeIfAbsent(maidUUID, k -> new HashMap<>());
+        cleanupExpiredBossAggro(maidUUID, attackedBosses, currentTime);
+        attackedBosses.put(boss.getUUID(), currentTime);
     }
 
     private static boolean hasMaidRecentlyAttackedBoss(EntityMaid maid, LivingEntity boss) {
-        Map<UUID, Long> bosses = MAID_ATTACKED_BOSSES.get(maid.getUUID());
+        UUID maidUUID = maid.getUUID();
+        long currentTime = maid.level().getGameTime();
+        Map<UUID, Long> bosses = MAID_ATTACKED_BOSSES.get(maidUUID);
         if (bosses == null) return false;
+        cleanupExpiredBossAggro(maidUUID, bosses, currentTime);
         Long lastTime = bosses.get(boss.getUUID());
         if (lastTime == null) return false;
-        return (maid.level().getGameTime() - lastTime) < BOSS_AGGRO_TIMEOUT;
+        return (currentTime - lastTime) < BOSS_AGGRO_TIMEOUT;
+    }
+
+    private static void cleanupExpiredBossAggro(UUID maidUUID, Map<UUID, Long> bosses, long currentTime) {
+        bosses.entrySet().removeIf(entry -> currentTime - entry.getValue() >= BOSS_AGGRO_TIMEOUT);
+        if (bosses.isEmpty()) {
+            MAID_ATTACKED_BOSSES.remove(maidUUID);
+        }
     }
 }

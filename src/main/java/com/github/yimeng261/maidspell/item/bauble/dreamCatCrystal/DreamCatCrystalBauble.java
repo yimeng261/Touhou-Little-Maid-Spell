@@ -18,6 +18,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.PlayerAdvancements;
 import net.minecraft.server.ServerAdvancementManager;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -43,7 +44,6 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 梦云水晶饰品逻辑
@@ -71,12 +71,14 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     // ========== 时停状态追踪 ==========
-    // UUID → 解除冻结的游戏时间
-    public static final ConcurrentHashMap<UUID, Long> FROZEN_TARGETS = new ConcurrentHashMap<>();
+    private static final Map<UUID, FrozenTargetState> FROZEN_TARGETS = new HashMap<>();
+    private static final PriorityQueue<ScheduledExpiry> FROZEN_TARGET_EXPIRIES =
+        new PriorityQueue<>(Comparator.comparingLong(ScheduledExpiry::expiry));
 
     // ========== 范围强化追踪 ==========
-    // 被强化的女仆 UUID → 强化到期游戏时间
-    public static final ConcurrentHashMap<UUID, Long> BOOSTED_MAIDS = new ConcurrentHashMap<>();
+    private static final Map<UUID, BoostedMaidState> BOOSTED_MAIDS = new HashMap<>();
+    private static final PriorityQueue<ScheduledExpiry> BOOSTED_MAID_EXPIRIES =
+        new PriorityQueue<>(Comparator.comparingLong(ScheduledExpiry::expiry));
 
     // ========== NBT 键名 ==========
     private static final String NBT_REVIVE_TIMESTAMPS = "dream_crystal_revive_timestamps";
@@ -87,7 +89,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     private static List<MobEffect> CACHED_BENEFICIAL_EFFECTS = null;
 
     // ========== 加速梦云水晶查找 ==========
-    private static final ConcurrentHashMap<UUID, ItemStack> HAS_DREAM_CRYSTAL = new ConcurrentHashMap<>();
+    private static final Map<UUID, ItemStack> HAS_DREAM_CRYSTAL = new HashMap<>();
 
     /**
      * 获取缓存的正面效果列表（延迟初始化）
@@ -99,7 +101,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         }
 
         List<MobEffect> candidates = new ArrayList<>();
-        List<String> blacklist = Config.dreamCrystalEffectBlacklist;
+        Set<String> blacklist = new HashSet<>(Config.dreamCrystalEffectBlacklist);
 
         BuiltInRegistries.MOB_EFFECT.entrySet().forEach(entry -> {
             MobEffect effect = entry.getValue();
@@ -179,11 +181,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
             // 2. 时停 1 秒（仅在服务端执行）
             if (!maid.level().isClientSide() && target.isAlive() && target instanceof Mob mob) {
-                UUID targetUUID = target.getUUID();
                 long unfreezeTime = maid.level().getGameTime() + 20L;
-                // 取最大值，避免提前解除（多次命中延长冻结时间）
-                FROZEN_TARGETS.merge(targetUUID, unfreezeTime, Math::max);
-                mob.setNoAi(true);
+                freezeTarget(mob, unfreezeTime);
             }
 
             // 3. 弹幕溅射：对目标周围 5 格内的敌方实体造成 10% 伤害
@@ -259,8 +258,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     public static void registerCommonCallbacks() {
         Global.commonCoolDownCalc.add(coolDown -> {
             if (coolDown.maid == null) return null;
-            Long expiry = BOOSTED_MAIDS.get(coolDown.maid.getUUID());
-            if (expiry != null && coolDown.maid.level().getGameTime() < expiry) {
+            if (isMaidBoosted(coolDown.maid)) {
                 coolDown.cooldownticks = coolDown.cooldownticks / 3;
             }
             return null;
@@ -276,7 +274,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         // ========== 每 tick：无敌倒计时 ==========
         handleInvulnerable(maid, baubleItem);
 
-        if (tick % 20 != 0) return;
+        if (tick % 20 != 3) return;
 
         // ========== 每 20 tick（约 1 秒）的效果 ==========
 
@@ -311,7 +309,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         applyCuriosSlot(maid);
 
         // ========== 每 600 tick（30 秒）随机正面效果 ==========
-        if (tick % 600 == 0) {
+        if (tick % 600 == 2) {
             applyRandomBeneficialEffects(maid);
         }
     }
@@ -369,7 +367,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         instance.addTransientModifier(modifier);
     }
 
-    private void removeAttributeModifier(EntityMaid maid, Attribute attribute, UUID uuid) {
+    private static void removeAttributeModifier(EntityMaid maid, Attribute attribute, UUID uuid) {
         AttributeInstance instance = maid.getAttribute(attribute);
         if (instance == null) return;
         instance.removeModifier(uuid);
@@ -409,8 +407,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     // ========== 范围女仆强化 ==========
     private void applyRangeMaidBoost(EntityMaid sourceMaid) {
-        long currentTime = sourceMaid.level().getGameTime();
-        long expiry = currentTime + 40L; // 40 tick 有效期（比 20tick 扫描间隔多 20tick 缓冲）
+        long expiry = sourceMaid.level().getGameTime() + 40L; // 40 tick 有效期（比 20tick 扫描间隔多 20tick 缓冲）
 
         // 扫描 20 格内的女仆（排除自身）
         List<EntityMaid> nearbyMaids = sourceMaid.level().getEntitiesOfClass(
@@ -420,35 +417,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         );
 
         for (EntityMaid nearMaid : nearbyMaids) {
-            // 更新强化到期时间
-            BOOSTED_MAIDS.put(nearMaid.getUUID(), expiry);
-
-            // 应用伤害 +50% 属性修饰符
-            AttributeInstance attackDmg = nearMaid.getAttribute(Attributes.ATTACK_DAMAGE);
-            if (attackDmg != null) {
-                AttributeModifier dmgMod = new AttributeModifier(
-                    DC_NEARBY_DAMAGE_UUID, "dream_crystal_nearby_boost",
-                    0.5, AttributeModifier.Operation.MULTIPLY_TOTAL
-                );
-                attackDmg.removeModifier(DC_NEARBY_DAMAGE_UUID);
-                attackDmg.addTransientModifier(dmgMod);
-            }
+            applyOrRefreshMaidBoost(nearMaid, expiry);
         }
-
-        // 清理已过期的强化（移除属性修饰符）
-        BOOSTED_MAIDS.entrySet().removeIf(entry -> {
-            if (currentTime >= entry.getValue()) {
-                // 尝试找到对应女仆并移除修饰符
-                UUID maidUUID = entry.getKey();
-                for (EntityMaid m : sourceMaid.level().getEntitiesOfClass(EntityMaid.class,
-                    sourceMaid.getBoundingBox().inflate(30.0), e -> e.getUUID().equals(maidUUID))) {
-                    AttributeInstance attackDmg = m.getAttribute(Attributes.ATTACK_DAMAGE);
-                    if (attackDmg != null) attackDmg.removeModifier(DC_NEARBY_DAMAGE_UUID);
-                }
-                return true;
-            }
-            return false;
-        });
     }
 
     // ========== 修复背包耐久度 ==========
@@ -548,6 +518,149 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     private void removeCuriosSlots(ICuriosItemHandler handler) {
         for (String slotType : handler.getCurios().keySet()) {
             handler.removeSlotModifier(slotType, DC_CURIOS_SLOT_UUID);
+        }
+    }
+
+    // ========== 调度器 ==========
+
+    public static void processScheduledEffects(MinecraftServer server) {
+        if (server == null) {
+            return;
+        }
+        processFrozenTargets();
+        processBoostedMaids();
+    }
+
+    public static void clearScheduledEffects() {
+        FROZEN_TARGETS.clear();
+        FROZEN_TARGET_EXPIRIES.clear();
+        BOOSTED_MAIDS.clear();
+        BOOSTED_MAID_EXPIRIES.clear();
+        HAS_DREAM_CRYSTAL.clear();
+    }
+
+    private static void freezeTarget(Mob mob, long expiry) {
+        UUID targetUUID = mob.getUUID();
+        FrozenTargetState existing = FROZEN_TARGETS.get(targetUUID);
+        if (existing != null && existing.expiry >= expiry) {
+            existing.target = mob;
+            mob.setNoAi(true);
+            return;
+        }
+
+        FrozenTargetState state = new FrozenTargetState(mob, expiry);
+        FROZEN_TARGETS.put(targetUUID, state);
+        FROZEN_TARGET_EXPIRIES.add(new ScheduledExpiry(targetUUID, expiry));
+        mob.setNoAi(true);
+    }
+
+    private static void processFrozenTargets() {
+        while (!FROZEN_TARGET_EXPIRIES.isEmpty()) {
+            ScheduledExpiry scheduled = FROZEN_TARGET_EXPIRIES.peek();
+            FrozenTargetState state = FROZEN_TARGETS.get(scheduled.entityId());
+            if (state == null || state.expiry != scheduled.expiry()) {
+                FROZEN_TARGET_EXPIRIES.poll();
+                continue;
+            }
+
+            Mob target = state.target;
+            if (target == null || !target.isAlive()) {
+                FROZEN_TARGETS.remove(scheduled.entityId());
+                FROZEN_TARGET_EXPIRIES.poll();
+                continue;
+            }
+
+            if (target.level().getGameTime() < scheduled.expiry()) {
+                break;
+            }
+
+            FROZEN_TARGETS.remove(scheduled.entityId());
+            FROZEN_TARGET_EXPIRIES.poll();
+            target.setNoAi(false);
+        }
+    }
+
+    private static boolean isMaidBoosted(EntityMaid maid) {
+        BoostedMaidState state = BOOSTED_MAIDS.get(maid.getUUID());
+        if (state == null) {
+            return false;
+        }
+        state.maid = maid;
+        return maid.level().getGameTime() < state.expiry;
+    }
+
+    private static void applyOrRefreshMaidBoost(EntityMaid maid, long expiry) {
+        AttributeInstance attackDmg = maid.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (attackDmg == null) {
+            return;
+        }
+
+        if (attackDmg.getModifier(DC_NEARBY_DAMAGE_UUID) == null) {
+            attackDmg.addTransientModifier(new AttributeModifier(
+                DC_NEARBY_DAMAGE_UUID,
+                "dream_crystal_nearby_boost",
+                0.5,
+                AttributeModifier.Operation.MULTIPLY_TOTAL
+            ));
+        }
+
+        UUID maidUUID = maid.getUUID();
+        BoostedMaidState existing = BOOSTED_MAIDS.get(maidUUID);
+        if (existing != null && existing.expiry >= expiry) {
+            existing.maid = maid;
+            return;
+        }
+
+        BOOSTED_MAIDS.put(maidUUID, new BoostedMaidState(maid, expiry));
+        BOOSTED_MAID_EXPIRIES.add(new ScheduledExpiry(maidUUID, expiry));
+    }
+
+    private static void processBoostedMaids() {
+        while (!BOOSTED_MAID_EXPIRIES.isEmpty()) {
+            ScheduledExpiry scheduled = BOOSTED_MAID_EXPIRIES.peek();
+            BoostedMaidState state = BOOSTED_MAIDS.get(scheduled.entityId());
+            if (state == null || state.expiry != scheduled.expiry()) {
+                BOOSTED_MAID_EXPIRIES.poll();
+                continue;
+            }
+
+            EntityMaid maid = state.maid;
+            if (maid == null || !maid.isAlive()) {
+                BOOSTED_MAIDS.remove(scheduled.entityId());
+                BOOSTED_MAID_EXPIRIES.poll();
+                continue;
+            }
+
+            if (maid.level().getGameTime() < scheduled.expiry()) {
+                break;
+            }
+
+            removeAttributeModifier(maid, Attributes.ATTACK_DAMAGE, DC_NEARBY_DAMAGE_UUID);
+            BOOSTED_MAIDS.remove(scheduled.entityId());
+            BOOSTED_MAID_EXPIRIES.poll();
+        }
+    }
+
+    private record ScheduledExpiry(UUID entityId, long expiry) {
+    }
+
+    private static final class FrozenTargetState {
+        private Mob target;
+        private final long expiry;
+
+        private FrozenTargetState(Mob target, long expiry) {
+            this.target = target;
+            this.expiry = expiry;
+        }
+    }
+
+    private static final class BoostedMaidState {
+        private EntityMaid maid;
+        private final long expiry;
+
+        private BoostedMaidState(EntityMaid maid, long expiry) {
+            this.maid = maid;
+            this.expiry = expiry;
         }
     }
 
