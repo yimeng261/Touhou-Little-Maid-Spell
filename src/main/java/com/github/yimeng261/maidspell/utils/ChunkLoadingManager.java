@@ -140,6 +140,12 @@ public class ChunkLoadingManager {
             associatedMaids.add(maidId);
         }
         
+        /**
+         * 返回关联女仆的快照。
+         * 这里故意不暴露内部 Set：
+         * 1. 卸载区块时，在 timer 已经从 chunkTimers 移除后仍然需要一份稳定的关联女仆列表；
+         * 2. 调用方不应依赖返回值去修改 ChunkTimer 内部状态，否则容易把“修改副本”误当成“修改真实追踪集合”。
+         */
         public Set<UUID> getAssociatedMaids() {
             return new HashSet<>(associatedMaids);
         }
@@ -268,7 +274,8 @@ public class ChunkLoadingManager {
                 continue;
             }
 
-            // 使用 Iterator 原地移除无效的女仆，避免创建临时集合
+            // 注意：getAssociatedMaids() 返回的是快照，目的是保证后续卸载区块时仍能拿到关联女仆列表。
+            // 这里不要对返回集合做“会影响内部状态”的假设；它只是当前关联关系的只读视图。
             Set<UUID> associatedMaids = timer.getAssociatedMaids();
             Iterator<UUID> iterator = associatedMaids.iterator();
             while (iterator.hasNext()) {

@@ -397,10 +397,35 @@ public class Config {
     private static final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> DREAM_CRYSTAL_EFFECT_BLACKLIST = BUILDER
             .comment("梦云水晶随机正面效果黑名单，黑名单内的效果不会被随机赋予")
             .comment("Dream Crystal random beneficial effect blacklist")
-            .comment("示例: [\"minecraft:bad_omen\"]")
+            .comment("支持精确匹配和 regex: 前缀正则匹配")
+            .comment("示例: [\"minecraft:bad_omen\", \"regex:irons_spellbooks:.*\"]")
             .defineListAllowEmpty(
                 java.util.List.of("dreamCrystalEffectBlacklist"),
                 () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST,
+                obj -> obj instanceof String
+            );
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.BooleanValue DREAM_CRYSTAL_USE_EFFECT_WHITELIST = BUILDER
+            .comment("是否启用梦云水晶随机正面效果白名单 (默认: false)")
+            .comment("Whether to enable Dream Crystal random beneficial effect whitelist")
+            .define("dreamCrystalUseEffectWhitelist", false);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> DREAM_CRYSTAL_EFFECT_WHITELIST = BUILDER
+            .comment("梦云水晶随机正面效果白名单，启用后只会从该列表中随机")
+            .comment("Dream Crystal random beneficial effect whitelist")
+            .comment("支持精确匹配和 regex: 前缀正则匹配")
+            .comment("示例: [\"minecraft:speed\", \"regex:minecraft:.*\"]")
+            .defineListAllowEmpty(
+                java.util.List.of("dreamCrystalEffectWhitelist"),
+                java.util.List::of,
                 obj -> obj instanceof String
             );
 
@@ -497,6 +522,8 @@ public class Config {
 
     // 梦云水晶
     public static List<String> dreamCrystalEffectBlacklist;
+    public static boolean dreamCrystalUseEffectWhitelist;
+    public static List<String> dreamCrystalEffectWhitelist;
 
     // 归隐之地维度相关
     public static boolean enablePrivateDimensions;
@@ -560,6 +587,9 @@ public class Config {
 
         // 梦云水晶
         dreamCrystalEffectBlacklist = new java.util.ArrayList<>(DREAM_CRYSTAL_EFFECT_BLACKLIST.get());
+        dreamCrystalUseEffectWhitelist = DREAM_CRYSTAL_USE_EFFECT_WHITELIST.get();
+        dreamCrystalEffectWhitelist = new java.util.ArrayList<>(DREAM_CRYSTAL_EFFECT_WHITELIST.get());
+        DreamCatCrystalBauble.invalidateBeneficialEffectsCache();
 
         // 归隐之地维度相关
         enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
