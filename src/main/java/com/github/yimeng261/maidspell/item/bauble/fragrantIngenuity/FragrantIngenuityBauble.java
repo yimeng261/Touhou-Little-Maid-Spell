@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.Config;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartedEvent;
@@ -33,9 +34,14 @@ public class FragrantIngenuityBauble implements IMaidBauble {
     @SubscribeEvent
     public void onServerStarted(ServerStartedEvent event) {
         POSITIVE_EFFECTS.clear();
+        List<String> blacklist = Config.fragrantIngenuityEffectBlacklist;
         BuiltInRegistries.MOB_EFFECT.entrySet().forEach(entry -> {
-            if(entry.getValue().isBeneficial()){
-                POSITIVE_EFFECTS.add(entry.getValue());
+            MobEffect effect = entry.getValue();
+            if (effect.isBeneficial()) {
+                ResourceLocation location = BuiltInRegistries.MOB_EFFECT.getKey(effect);
+                if (location != null && !blacklist.contains(location.toString())) {
+                    POSITIVE_EFFECTS.add(effect);
+                }
             }
         });
     }
