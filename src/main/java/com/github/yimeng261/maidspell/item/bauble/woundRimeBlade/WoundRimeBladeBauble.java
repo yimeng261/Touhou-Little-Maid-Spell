@@ -7,29 +7,34 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
-import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.common.MinecraftForge;
 import oshi.util.tuples.Pair;
 
 /**
  * 破愈咒锋饰品实现
  * 监听周围敌对实体的治疗并阻止
  */
-@Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class WoundRimeBladeBauble implements IMaidBauble {
 
     private static final ConcurrentHashMap<UUID, ConcurrentHashMap<LivingEntity, Pair<Float,Integer>>> maidWoundRimeBladeMap = new ConcurrentHashMap<>();
 
+    static {
+        Global.registerBaubleHurtHeadHandler(MaidSpellItems.WOUND_RIME_BLADE, context -> {
+            EntityMaid maid = context.getSourceMaid();
+            if (maid != null) {
+                updateWoundRimeMap(maid, context.getTarget(), context.getAmount());
+            }
+        });
+    }
+
     public WoundRimeBladeBauble() {
-        MinecraftForge.EVENT_BUS.register(this);
     }
 
     @Override

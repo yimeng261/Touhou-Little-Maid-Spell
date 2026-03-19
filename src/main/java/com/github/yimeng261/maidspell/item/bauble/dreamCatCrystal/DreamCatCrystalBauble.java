@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal;
 
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHandler;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
@@ -21,7 +22,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -32,13 +32,15 @@ import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.items.ItemStackHandler;
+import net.minecraftforge.items.wrapper.CombinedInvWrapper;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 import top.theillusivec4.curios.api.CuriosApi;
+import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -84,6 +86,9 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     // 缓存所有正面效果，避免每次都遍历注册表
     private static List<MobEffect> CACHED_BENEFICIAL_EFFECTS = null;
 
+    // ========== 加速梦云水晶查找 ==========
+    private static final ConcurrentHashMap<UUID, ItemStack> HAS_DREAM_CRYSTAL = new ConcurrentHashMap<>();
+
     /**
      * 获取缓存的正面效果列表（延迟初始化）
      * 只在第一次调用时构建，后续直接返回缓存
@@ -117,8 +122,6 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     // ========== Curios 槽位修饰符 UUID ==========
     private static final UUID DC_CURIOS_SLOT_UUID = UUID.fromString("dc000001-0000-0000-0000-000000000004");
-    /** 梦云水晶为女仆增加的 curios 槽位类型（与 Iron's Spellbooks 法术书槽一致） */
-    private static final String DC_CURIOS_SLOT_TYPE = "necklace";
 
     // ========== 进度 ResourceLocation ==========
     @SuppressWarnings("removal")
@@ -157,18 +160,19 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             return null;
         });
 
-        // ========== 女仆造成伤害后：真实伤害 + 时停 + 弹幕溅射 ==========
-        Global.baubleDamageHandlers.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (event, maid) -> {
-            // 跳过由 InfoDamageSource 产生的次级伤害（如混沌之书分割伤害），避免重复触发
-            DamageSource source = event.getSource();
-            if (source instanceof com.github.yimeng261.maidspell.damage.InfoDamageSource) {
-                return null;
+        // ========== 女仆造成伤害头部处理：真实伤害 + 时停 + 弹幕溅射 ==========
+        Global.registerBaubleHurtHeadHandler(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), context -> {
+            EntityMaid maid = context.getSourceMaid();
+            if (maid == null) {
+                return;
             }
 
-            LivingEntity target = event.getEntity();
-            if (target == null || !target.isAlive()) return null;
+            LivingEntity target = context.getTarget();
+            if (target == null || !target.isAlive()) {
+                return;
+            }
 
-            float damage = event.getAmount();
+            float damage = context.getAmount();
 
             // 1. 真实伤害（额外等于攻击伤害）
             TrueDamageUtil.dealTrueDamage(target, damage, maid);
@@ -185,20 +189,17 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             // 3. 弹幕溅射：对目标周围 5 格内的敌方实体造成 10% 伤害
             if (!maid.level().isClientSide()) {
                 float barrageDamage = damage * 0.1f;
-                UUID ownerUUID = maid.getOwnerUUID();
                 maid.level().getEntitiesOfClass(
                     LivingEntity.class,
                     target.getBoundingBox().inflate(5.0),
                     entity -> entity != maid
                         && entity != target
                         && entity.isAlive()
-                        && !entity.isSpectator()
-                        && !(entity instanceof EntityMaid) // 不攻击其他女仆
-                        && (ownerUUID == null || !entity.getUUID().equals(ownerUUID)) // 不攻击主人
+                        && !(entity instanceof Player)
+                        && !(entity instanceof EntityMaid)
                 ).forEach(nearby -> TrueDamageUtil.dealTrueDamage(nearby, barrageDamage, maid));
             }
 
-            return null;
         });
 
         // ========== 有害效果双重免疫过滤器（与 MobEffectMixin + LivingEntityMixin 配合） ==========
@@ -229,8 +230,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             // 触发复活
             event.setCanceled(true);
 
-            // 恢复到 75% 最大生命值
-            float healAmount = maid.getMaxHealth() * 0.75f;
+            // 恢复到最大生命值
+            float healAmount = maid.getMaxHealth();
             maid.setHealth(healAmount);
 
             // 记录本次复活时间戳
@@ -317,8 +318,9 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     @Override
     public void onPutOn(EntityMaid maid, ItemStack baubleItem) {
+        HAS_DREAM_CRYSTAL.put(maid.getUUID(), baubleItem);
         if (maid.level().isClientSide()) return;
-        // 装备时立即增加 curios 槽位
+
         applyCuriosSlot(maid);
         // 触发"万法皆通"进度
         grantAdvancement(maid);
@@ -326,11 +328,21 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     @Override
     public void onTakeOff(EntityMaid maid, ItemStack baubleItem) {
+        HAS_DREAM_CRYSTAL.remove(maid.getUUID(), baubleItem);
         if (maid.level().isClientSide()) return;
         // 卸下时移除 curios 额外槽位
         CuriosApi.getCuriosInventory(maid).ifPresent(handler ->
-            handler.removeSlotModifier(DC_CURIOS_SLOT_TYPE, DC_CURIOS_SLOT_UUID)
+            removeCuriosSlots(handler)
         );
+
+        removeAttributeModifier(maid, Attributes.MAX_HEALTH, DC_HP_UUID);
+        removeAttributeModifier(maid, Attributes.ATTACK_SPEED, DC_ATTACK_SPEED_UUID);
+        if (!ISS_ATTRIBUTES.isEmpty()) {
+            for (Attribute attr : ISS_ATTRIBUTES) {
+                removeAttributeModifier(maid, attr, new UUID("dream_crystal_iss".hashCode(),
+                    attr.getDescriptionId().hashCode()));
+            }
+        }
     }
 
     // ========== 无敌倒计时处理 ==========
@@ -357,6 +369,12 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         instance.addTransientModifier(modifier);
     }
 
+    private void removeAttributeModifier(EntityMaid maid, Attribute attribute, UUID uuid) {
+        AttributeInstance instance = maid.getAttribute(attribute);
+        if (instance == null) return;
+        instance.removeModifier(uuid);
+    }
+
     // ========== 维度特定 Buff ==========
     private void applyDimensionBuffs(EntityMaid maid) {
         // 归隐之地：无敌（通过 NBT 机制在 DreamCrystalMaidEvents 中处理）
@@ -365,28 +383,17 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             ItemStack baubleStack = findDreamCrystalStack(maid);
             if (baubleStack != null) {
                 CompoundTag tag = baubleStack.getOrCreateTag();
-                // 只在没有复活无敌时才设置（避免覆盖复活无敌倒计时）
-                if (!tag.contains(NBT_INVULNERABLE_TIME)) {
-                    tag.putInt(NBT_INVULNERABLE_TIME, 40); // 维持 2 秒，每 20tick 刷新
-                }
+                tag.putInt(NBT_INVULNERABLE_TIME, 40); // 维持 2 秒，每 20tick 刷新
             }
             return;
         }
 
         Level level = maid.level();
         if (level.dimension() == Level.OVERWORLD) {
-            long dayTime = level.getDayTime() % 24000L;
-            if (dayTime < 12000L) {
-                // 白天：饱和 II、抗性提升 II、生命恢复 II
-                maid.addEffect(new MobEffectInstance(MobEffects.SATURATION, 300, 1, false, false));
-                maid.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 300, 1, false, false));
-                maid.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 300, 1, false, false));
-            } else {
-                // 夜晚：夜视 IV、迅捷 III、急迫 III
-                maid.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 1360, 3, false, false));
-                maid.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 300, 2, false, false));
-                maid.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 300, 2, false, false));
-            }
+            // 主世界：饱和 II、抗性提升 II、生命恢复 II
+            maid.addEffect(new MobEffectInstance(MobEffects.SATURATION, 300, 1, false, false));
+            maid.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 300, 1, false, false));
+            maid.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 300, 1, false, false));
         } else if (level.dimension() == Level.NETHER) {
             // 下界：力量 III、迅捷 III、急迫 III
             maid.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 300, 2, false, false));
@@ -446,7 +453,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     // ========== 修复背包耐久度 ==========
     private void repairInventory(EntityMaid maid) {
-        ItemStackHandler handler = maid.getMaidInv();
+        CombinedInvWrapper handler = maid.getAvailableInv(false);
         for (int i = 0; i < handler.getSlots(); i++) {
             ItemStack stack = handler.getStackInSlot(i);
             if (!stack.isEmpty() && stack.isDamaged()) {
@@ -485,13 +492,19 @@ public class DreamCatCrystalBauble implements IMaidBauble {
      * 在女仆饰品背包中查找梦云水晶的 ItemStack
      */
     public static ItemStack findDreamCrystalStack(EntityMaid maid) {
-        for (int i = 0; i < maid.getMaidBauble().getSlots(); i++) {
-            ItemStack stack = maid.getMaidBauble().getStackInSlot(i);
-            if (stack.getItem() == MaidSpellItems.DREAM_CAT_CRYSTAL.get()) {
-                return stack;
+        ItemStack result = HAS_DREAM_CRYSTAL.getOrDefault(maid.getUUID(), null);
+        if(result == null && BaubleStateManager.hasBauble(maid,MaidSpellItems.DREAM_CAT_CRYSTAL)) {
+            BaubleItemHandler handler = maid.getMaidBauble();
+            for(int i = 0; i < handler.getSlots(); i++) {
+                ItemStack stack = handler.getStackInSlot(i);
+                if(stack.getItem() == MaidSpellItems.DREAM_CAT_CRYSTAL.get()){
+                    result = stack;
+                    HAS_DREAM_CRYSTAL.put(maid.getUUID(), stack);
+                    break;
+                }
             }
         }
-        return null;
+        return result;
     }
 
     /**
@@ -518,15 +531,24 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     // ========== Curios 槽位 ==========
 
     /**
-     * 为女仆添加一个额外的 curios 槽位（transient，需要每 20tick 刷新以维持）
+     * 为女仆当前已有的每一种 curios 槽位类型增加 1 格（transient，需要周期性刷新）
      */
     private void applyCuriosSlot(EntityMaid maid) {
-        CuriosApi.getCuriosInventory(maid).ifPresent(handler -> {
-            // removeSlotModifier 后再 addTransientSlotModifier 确保不叠加
-            handler.removeSlotModifier(DC_CURIOS_SLOT_TYPE, DC_CURIOS_SLOT_UUID);
-            handler.addTransientSlotModifier(DC_CURIOS_SLOT_TYPE, DC_CURIOS_SLOT_UUID,
+        CuriosApi.getCuriosInventory(maid).ifPresent(this::applyCuriosSlots);
+    }
+
+    private void applyCuriosSlots(ICuriosItemHandler handler) {
+        for (String slotType : handler.getCurios().keySet()) {
+            handler.removeSlotModifier(slotType, DC_CURIOS_SLOT_UUID);
+            handler.addTransientSlotModifier(slotType, DC_CURIOS_SLOT_UUID,
                 "dream_crystal_slot", 1.0, AttributeModifier.Operation.ADDITION);
-        });
+        }
+    }
+
+    private void removeCuriosSlots(ICuriosItemHandler handler) {
+        for (String slotType : handler.getCurios().keySet()) {
+            handler.removeSlotModifier(slotType, DC_CURIOS_SLOT_UUID);
+        }
     }
 
     // ========== 进度触发 ==========

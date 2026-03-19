@@ -90,10 +90,8 @@ public class DreamCrystalMaidEvents {
 
         DamageSource source = event.getSource();
 
-        // 复活后无敌：检查 NBT
         ItemStack baubleStack = DreamCatCrystalBauble.findDreamCrystalStack(maid);
-        if (baubleStack != null && isInvulnerable(baubleStack)
-            && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+        if (baubleStack != null && isInvulnerable(baubleStack)) {
             event.setCanceled(true);
             return;
         }

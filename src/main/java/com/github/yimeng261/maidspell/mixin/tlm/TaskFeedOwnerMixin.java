@@ -18,6 +18,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Mixin用于在女仆喂食主人时触发馥郁巧思饰品效果
  * 注入到 TaskFeedOwner.feed() 方法，在喂食完成后为主人添加随机的1级正面buff
@@ -69,14 +72,16 @@ public class TaskFeedOwnerMixin {
         boolean hasDreamCrystal = BaubleStateManager.hasBauble(feedingMaid, MaidSpellItems.DREAM_CAT_CRYSTAL);
 
         if (hasDreamCrystal) {
-            // 梦云水晶组合效果：给予主人 2 个随机正面 buff，等级提升至 3（amplifier = 2）
-            for (int i = 0; i < 2; i++) {
-                MobEffect effect = FragrantIngenuityBauble.POSITIVE_EFFECTS.get(
-                    owner.getRandom().nextInt(FragrantIngenuityBauble.POSITIVE_EFFECTS.size())
-                );
-                if (effect != null) {
-                    owner.addEffect(new MobEffectInstance(effect, duration, 2));
-                }
+            // 梦云水晶组合效果：给予主人 2 个不重复正面 buff，等级 2-10，持续 120s-240s
+            List<MobEffect> pool = new ArrayList<>(FragrantIngenuityBauble.POSITIVE_EFFECTS);
+            int effectCount = Math.min(2, pool.size());
+
+            for (int i = 0; i < effectCount; i++) {
+                int selectedIndex = owner.getRandom().nextInt(pool.size());
+                MobEffect effect = pool.remove(selectedIndex);
+                int dreamDuration = 2400 + owner.getRandom().nextInt(2401);
+                int amplifier = 1 + owner.getRandom().nextInt(9);
+                owner.addEffect(new MobEffectInstance(effect, dreamDuration, amplifier));
             }
         } else {
             // 普通馥郁巧思效果：随机 1 个正面 buff，1 级（amplifier = 0）
