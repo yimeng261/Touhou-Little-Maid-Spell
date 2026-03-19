@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.enderPocket;
 
+import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -32,12 +33,17 @@ public class EnderPocket extends Item {
     @Override
     public void appendHoverText(@Nonnull ItemStack stack, @Nullable Level level, @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
-        
-        tooltip.add(Component.translatable("item.maidspell.ender_pocket.desc1")
-                .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.maidspell.ender_pocket.desc2")
-                .withStyle(ChatFormatting.DARK_PURPLE));
-        tooltip.add(Component.translatable("item.maidspell.ender_pocket.desc3")
-                .withStyle(ChatFormatting.GOLD));
+
+        TooltipHelper.addShiftTooltip(tooltip,
+            List.of(
+                Component.translatable("item.maidspell.ender_pocket.desc1")
+                    .withStyle(ChatFormatting.GRAY)
+            ),
+            List.of(
+                Component.translatable("item.maidspell.ender_pocket.desc2")
+                    .withStyle(ChatFormatting.DARK_PURPLE),
+                Component.translatable("item.maidspell.ender_pocket.desc3")
+                    .withStyle(ChatFormatting.GOLD)
+            ));
     }
 }

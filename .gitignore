@@ -23,11 +23,8 @@ Psi-1.20
 SlashBlade_Resharped
 TouhouLittleMaid
 ModularGolems
-Goety-2-1.20-2.5.34-
-Goety-2
-irons-spells-n-spellbooks-1.20.1
-irons-spells-n-spellbooks-new
-irons-spells-n-spellbooks
+Goety-2*
+irons-spells-n-spellbooks*
 minecraft-1.20.1-src
 revelationfix
 Cataclysm
@@ -48,6 +45,7 @@ libs
 ElectroblobsWizardryRedux
 traveloptics*
 Valkyrien-Skies-2
+Incendium*
 
 # other
 eclipse

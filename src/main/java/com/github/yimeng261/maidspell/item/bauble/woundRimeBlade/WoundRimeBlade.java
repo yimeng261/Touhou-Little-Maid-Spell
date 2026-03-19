@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.woundRimeBlade;
 
+import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -32,12 +33,19 @@ public class WoundRimeBlade extends Item {
     @Override
     public void appendHoverText(@Nonnull ItemStack stack, @Nullable Level level, @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
-        
-        tooltip.add(Component.translatable("item.maidspell.wound_rime_blade.desc1")
-                .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.maidspell.wound_rime_blade.desc2")
-                .withStyle(ChatFormatting.DARK_RED));
-        tooltip.add(Component.translatable("item.maidspell.wound_rime_blade.desc3")
-                .withStyle(ChatFormatting.RED));
+
+        TooltipHelper.addShiftTooltip(tooltip,
+            List.of(
+                Component.translatable("item.maidspell.wound_rime_blade.desc1")
+                    .withStyle(ChatFormatting.GRAY),
+                Component.translatable("item.maidspell.wound_rime_blade.desc3")
+                    .withStyle(ChatFormatting.RED)
+            ),
+            List.of(
+                Component.translatable("item.maidspell.wound_rime_blade.desc2")
+                    .withStyle(ChatFormatting.DARK_RED),
+                Component.translatable("item.maidspell.wound_rime_blade.desc4")
+                    .withStyle(ChatFormatting.YELLOW)
+            ));
     }
 }

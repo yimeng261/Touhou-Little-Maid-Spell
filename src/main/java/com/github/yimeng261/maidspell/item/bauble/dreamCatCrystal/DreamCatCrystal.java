@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal;
 
+import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -34,13 +35,34 @@ public class DreamCatCrystal extends Item {
     public void appendHoverText(@Nonnull ItemStack stack, @Nullable Level level,
                                 @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc1")
-            .withStyle(ChatFormatting.AQUA));
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc2")
-            .withStyle(ChatFormatting.LIGHT_PURPLE));
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc3")
-            .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc4")
-            .withStyle(ChatFormatting.DARK_PURPLE));
+        TooltipHelper.addShiftTooltip(tooltip,
+            List.of(
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc1")
+                    .withStyle(ChatFormatting.AQUA),
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc2")
+                    .withStyle(ChatFormatting.LIGHT_PURPLE),
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc3")
+                    .withStyle(ChatFormatting.GRAY),
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc4")
+                    .withStyle(ChatFormatting.DARK_PURPLE)
+            ),
+            List.of(
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc5")
+                    .withStyle(ChatFormatting.GOLD),
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc6")
+                    .withStyle(ChatFormatting.YELLOW),
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc7")
+                    .withStyle(ChatFormatting.GREEN),
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc8")
+                    .withStyle(ChatFormatting.AQUA),
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc9")
+                    .withStyle(ChatFormatting.RED),
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc10")
+                    .withStyle(ChatFormatting.LIGHT_PURPLE),
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc11")
+                    .withStyle(ChatFormatting.BLUE),
+                Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc12")
+                    .withStyle(ChatFormatting.BLUE)
+            ));
     }
 }
