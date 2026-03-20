@@ -409,7 +409,7 @@ public class HiddenRetreatStructure extends Structure {
      * 通过二分法在 [minY, maxY] 范围内找到 depth ≈ 0 的 Y 值。
      * 精度为 ±1 格（二分法收敛到范围宽度 ≤ 2）。
      */
-    private static int estimateSurfaceHeight(DensityFunction depthFn, int x, int z, GenerationContext context) {
+    public static int estimateSurfaceHeight(DensityFunction depthFn, int x, int z, GenerationContext context) {
         int minY = context.heightAccessor().getMinBuildHeight();
         int maxY = context.heightAccessor().getMaxBuildHeight();
 

@@ -6,6 +6,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 
@@ -44,6 +47,10 @@ public class RetreatDimensionData extends SavedData {
 
         // 私人模式专属字段
         public boolean structureGenerated; // 结构是否已生成（持久化，防止重启后重复生成）
+        @Nullable
+        public String pendingRestoreDimension; // 玩家下线于归隐之地时，记录待恢复的维度
+        @Nullable
+        public BlockPos pendingRestorePos; // 玩家下线于归隐之地时，记录待恢复的位置
 
         public DimensionInfo(UUID playerUUID) {
             this.playerUUID = playerUUID;
@@ -52,16 +59,21 @@ public class RetreatDimensionData extends SavedData {
             this.structureQuota = 0;
             this.foundStructurePos = null;
             this.structureGenerated = false;
+            this.pendingRestoreDimension = null;
+            this.pendingRestorePos = null;
         }
 
         public DimensionInfo(UUID playerUUID, long createdTime, long lastAccessTime, int structureQuota,
-                             @Nullable BlockPos foundStructurePos, boolean structureGenerated) {
+                             @Nullable BlockPos foundStructurePos, boolean structureGenerated,
+                             @Nullable String pendingRestoreDimension, @Nullable BlockPos pendingRestorePos) {
             this.playerUUID = playerUUID;
             this.createdTime = createdTime;
             this.lastAccessTime = lastAccessTime;
             this.structureQuota = structureQuota;
             this.foundStructurePos = foundStructurePos;
             this.structureGenerated = structureGenerated;
+            this.pendingRestoreDimension = pendingRestoreDimension;
+            this.pendingRestorePos = pendingRestorePos;
         }
 
         public void updateAccessTime() {
@@ -81,6 +93,12 @@ public class RetreatDimensionData extends SavedData {
                 tag.putBoolean("HasFoundStructure", true);
             }
             tag.putBoolean("StructureGenerated", structureGenerated);
+            if (pendingRestoreDimension != null && pendingRestorePos != null) {
+                tag.putString("PendingRestoreDimension", pendingRestoreDimension);
+                tag.putInt("PendingRestoreX", pendingRestorePos.getX());
+                tag.putInt("PendingRestoreY", pendingRestorePos.getY());
+                tag.putInt("PendingRestoreZ", pendingRestorePos.getZ());
+            }
             return tag;
         }
 
@@ -98,8 +116,47 @@ public class RetreatDimensionData extends SavedData {
                 );
             }
             boolean structureGenerated = tag.getBoolean("StructureGenerated");
+            String pendingRestoreDimension = tag.contains("PendingRestoreDimension", Tag.TAG_STRING)
+                ? tag.getString("PendingRestoreDimension")
+                : null;
+            BlockPos pendingRestorePos = null;
+            if (pendingRestoreDimension != null
+                && tag.contains("PendingRestoreX", Tag.TAG_INT)
+                && tag.contains("PendingRestoreY", Tag.TAG_INT)
+                && tag.contains("PendingRestoreZ", Tag.TAG_INT)) {
+                pendingRestorePos = new BlockPos(
+                    tag.getInt("PendingRestoreX"),
+                    tag.getInt("PendingRestoreY"),
+                    tag.getInt("PendingRestoreZ")
+                );
+            }
 
-            return new DimensionInfo(playerUUID, createdTime, lastAccessTime, structureQuota, foundPos, structureGenerated);
+            return new DimensionInfo(
+                playerUUID,
+                createdTime,
+                lastAccessTime,
+                structureQuota,
+                foundPos,
+                structureGenerated,
+                pendingRestoreDimension,
+                pendingRestorePos
+            );
+        }
+
+        @Nullable
+        public ResourceKey<Level> getPendingRestoreDimensionKey() {
+            if (pendingRestoreDimension == null || pendingRestoreDimension.isBlank()) {
+                return null;
+            }
+
+            ResourceLocation location = ResourceLocation.tryParse(pendingRestoreDimension);
+            if (location == null) {
+                return null;
+            }
+
+            @SuppressWarnings("removal")
+            ResourceKey<Level> dimensionKey = ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, location);
+            return dimensionKey;
         }
     }
     
@@ -260,6 +317,24 @@ public class RetreatDimensionData extends SavedData {
     public BlockPos getFoundStructurePos(UUID playerUUID) {
         DimensionInfo info = playerDimensions.get(playerUUID);
         return info != null ? info.foundStructurePos : null;
+    }
+
+    public void setPendingRestore(UUID playerUUID, ResourceKey<Level> dimensionKey, BlockPos pos) {
+        DimensionInfo info = playerDimensions.computeIfAbsent(playerUUID, DimensionInfo::new);
+        info.pendingRestoreDimension = dimensionKey.location().toString();
+        info.pendingRestorePos = pos.immutable();
+        setDirty();
+        MaidSpellMod.LOGGER.info("Saved pending retreat restore for player {}: {} @ {}", playerUUID, info.pendingRestoreDimension, pos);
+    }
+
+    public void clearPendingRestore(UUID playerUUID) {
+        DimensionInfo info = playerDimensions.get(playerUUID);
+        if (info != null && (info.pendingRestoreDimension != null || info.pendingRestorePos != null)) {
+            info.pendingRestoreDimension = null;
+            info.pendingRestorePos = null;
+            setDirty();
+            MaidSpellMod.LOGGER.debug("Cleared pending retreat restore for player {}", playerUUID);
+        }
     }
 }
 

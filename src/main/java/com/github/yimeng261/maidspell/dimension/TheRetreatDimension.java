@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.dimension;
 
+import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -10,8 +11,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.portal.PortalInfo;
+import net.minecraft.core.Direction;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.util.ITeleporter;
 import net.minecraftforge.event.level.LevelEvent;
@@ -36,6 +42,9 @@ import java.util.function.Function;
  */
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class TheRetreatDimension {
+    private static final ResourceLocation SHARED_RETREAT_LOCATION =
+        new ResourceLocation(MaidSpellMod.MOD_ID, "the_retreat");
+
     /**
      * 获取玩家专属的归隐之地维度ResourceKey
      * 格式：touhou_little_maid_spell:the_retreat_<player_uuid>
@@ -47,40 +56,31 @@ public class TheRetreatDimension {
             new ResourceLocation(MaidSpellMod.MOD_ID, "the_retreat_" + playerUUID.toString().replace("-", "_"))
         );
     }
-    
-    
-    /**
-     * 将玩家传送到归隐之地（同步版本，修复死锁问题）
-     * changeDimension 方法会自动处理区块加载，无需手动异步加载
-     * @param player 要传送的玩家
-     */
-    public static void teleportToRetreat(ServerPlayer player) {
-        MinecraftServer server = player.getServer();
-        if (server == null) return;
 
-        ServerLevel retreatLevel = PlayerRetreatManager.getLoadedPlayerRetreat(server, player.getUUID());
-        if (retreatLevel == null) {
-            MaidSpellMod.LOGGER.error("Retreat dimension is not ready for player: {}", player.getName().getString());
-            return;
-        }
-        teleportToRetreat(player, retreatLevel);
+    @SuppressWarnings("removal")
+    public static ResourceKey<Level> getSharedRetreatDimension() {
+        return ResourceKey.create(Registries.DIMENSION, SHARED_RETREAT_LOCATION);
     }
 
-    public static void teleportToRetreat(ServerPlayer player, ServerLevel retreatLevel) {
-        try {
-            // 使用玩家当前坐标作为传送目标（私人和共享模式都一样）
-            BlockPos targetPos = player.blockPosition();
+    public static boolean isRetreatDimension(ResourceLocation dimensionLocation) {
+        return dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID)
+            && dimensionLocation.getPath().startsWith("the_retreat");
+    }
 
+
+    public static void teleportToRetreat(ServerPlayer player, ServerLevel retreatLevel) {
+        teleportToRetreat(player, retreatLevel, player.blockPosition());
+    }
+
+    public static void teleportToRetreat(ServerPlayer player, ServerLevel retreatLevel, BlockPos targetPos) {
+        try {
             // 查找安全位置（changeDimension会自动加载区块）
             BlockPos safePos = findSafePosition(retreatLevel, targetPos);
 
             // 使用自定义传送器传送玩家
             player.changeDimension(retreatLevel, new RetreatTeleporter(safePos));
 
-            // 设置玩家在隐世之境的重生点
-            player.setRespawnPosition(retreatLevel.dimension(), safePos, 0.0f, true, false);
-
-            MaidSpellMod.LOGGER.info("Teleported player {} to retreat dimension at {} and set respawn point",
+            MaidSpellMod.LOGGER.info("Teleported player {} to retreat dimension at {}",
                 player.getName().getString(), safePos);
         } catch (Exception e) {
             MaidSpellMod.LOGGER.error("Error during teleportation for player {}: {}",
@@ -122,8 +122,7 @@ public class TheRetreatDimension {
      */
     public static boolean isInRetreat(Entity entity) {
         ResourceLocation dimensionLocation = entity.level().dimension().location();
-        return dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID) 
-            && dimensionLocation.getPath().startsWith("the_retreat");
+        return isRetreatDimension(dimensionLocation);
     }
     
     /**
@@ -135,41 +134,78 @@ public class TheRetreatDimension {
     }
     /**
      * 查找安全的传送位置
-     * changeDimension 会自动加载区块，因此这里可以直接访问方块状态
-     * 确保玩家不会卡在方块里或掉入虚空
+     * 采用单列二分搜索估算落点，再在估算值附近做极小范围校正。
+     * 这样可以把开销压到 O(logH) 级别，避免邻列扫描和高度图查询。
      */
     private static BlockPos findSafePosition(ServerLevel level, BlockPos targetPos) {
-        // 二次验证区块是否已加载
-        if (!level.hasChunk(targetPos.getX() >> 4, targetPos.getZ() >> 4)) {
-            MaidSpellMod.LOGGER.warn("Chunk still not loaded at {}, using default safe height", targetPos);
-            // 使用默认安全高度
-            int safeY = Math.max(level.getSeaLevel() + 5, 100);
-            return createSafePlatform(level, new BlockPos(targetPos.getX(), safeY, targetPos.getZ()));
-        }
-        
-        // 限制搜索范围，避免过度迭代
-        int maxY = Math.min(level.getMaxBuildHeight() - 1, 319);
-        int minY = Math.max(level.getMinBuildHeight(), -64);
-        
-        // 从高处向下搜索第一个固体方块
+        int fallbackY = Math.max(level.getSeaLevel() + 5, 100);
         try {
-            for(int y = maxY; y >= minY; y--) {
-                BlockPos pos = new BlockPos(targetPos.getX(), y, targetPos.getZ());
-                if(level.getBlockState(pos).isSolid()) {
-                    BlockPos safePos = pos.above();
-                    MaidSpellMod.LOGGER.debug("Found safe position at {}", safePos);
-                    return safePos;
-                }
+            ensureChunkLoaded(level, targetPos.getX(), targetPos.getZ());
+
+            if (isSafeStandingPosition(level, targetPos)) {
+                MaidSpellMod.LOGGER.debug("Found direct safe position at {}", targetPos);
+                return targetPos.immutable();
             }
+
+            DensityFunction depthFn = level.getChunkSource().randomState().router().depth();
+            int estimatedY = estimateSurfaceHeight(depthFn, targetPos.getX(), targetPos.getZ(), level);
+            return new BlockPos(targetPos.getX(), estimatedY, targetPos.getZ());
         } catch (Exception e) {
             MaidSpellMod.LOGGER.error("Error while finding safe position at {}: {}", targetPos, e.getMessage(), e);
         }
         
-        // 如果没有找到固体方块，在合理高度创建安全平台
-        int platformY = Math.max(level.getSeaLevel() + 5, 100);
-        BlockPos platformPos = new BlockPos(targetPos.getX(), platformY, targetPos.getZ());
+        BlockPos platformPos = new BlockPos(targetPos.getX(), fallbackY, targetPos.getZ());
         MaidSpellMod.LOGGER.info("No safe ground found, creating platform at {}", platformPos);
         return createSafePlatform(level, platformPos);
+    }
+
+    private static int estimateSurfaceHeight(DensityFunction depthFn, int x, int z, ServerLevel level) {
+        int lo = level.getMinBuildHeight();
+        int hi = level.getMaxBuildHeight();
+
+        while (hi - lo > 2) {
+            int mid = (lo + hi) >>> 1;
+            double depthAtMid = depthFn.compute(new DensityFunction.SinglePointContext(x, mid, z));
+            if (depthAtMid > 0) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+
+        return hi + 5;
+    }
+
+    private static boolean isSafeStandingPosition(ServerLevel level, BlockPos pos) {
+        if (pos.getY() <= level.getMinBuildHeight() || pos.getY() >= level.getMaxBuildHeight() - 1) {
+            return false;
+        }
+
+        BlockPos floorPos = pos.below();
+        BlockState floorState = level.getBlockState(floorPos);
+        if (!floorState.isFaceSturdy(level, floorPos, Direction.UP) || isHazardousFloor(floorState)) {
+            return false;
+        }
+
+        return isOpenForPlayer(level, pos) && isOpenForPlayer(level, pos.above());
+    }
+
+    private static boolean isOpenForPlayer(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        FluidState fluidState = level.getFluidState(pos);
+        return fluidState.isEmpty() && state.getCollisionShape(level, pos).isEmpty();
+    }
+
+    private static boolean isHazardousFloor(BlockState state) {
+        Block block = state.getBlock();
+        return block == Blocks.MAGMA_BLOCK
+            || block == Blocks.CAMPFIRE
+            || block == Blocks.SOUL_CAMPFIRE
+            || block == Blocks.CACTUS;
+    }
+
+    private static void ensureChunkLoaded(ServerLevel level, int x, int z) {
+        level.getChunk(x >> 4, z >> 4);
     }
 
     
@@ -233,8 +269,7 @@ public class TheRetreatDimension {
     public static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof ServerLevel serverLevel) {
             ResourceLocation dimensionLocation = serverLevel.dimension().location();
-            if (dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID) 
-                && dimensionLocation.getPath().startsWith("the_retreat_")) {
+            if (isRetreatDimension(dimensionLocation) && !dimensionLocation.equals(SHARED_RETREAT_LOCATION)) {
                 MaidSpellMod.LOGGER.info("Unloading retreat dimension: " + dimensionLocation);
             }
         }

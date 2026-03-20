@@ -11,6 +11,9 @@ import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
+import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
+import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
+import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
@@ -45,8 +48,10 @@ import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.Level;
 
 /**
  * 女仆法术事件处理器
@@ -168,6 +173,13 @@ public class MaidSpellEventHandler {
                 LOGGER.error("[MaidSpell] Failed to check/send festival greeting for player {} on login: {}",
                             player.getName().getString(), e.getMessage(), e);
             }
+
+            try {
+                restoreRetreatLocationIfNeeded(player);
+            } catch (Exception e) {
+                LOGGER.error("[MaidSpell] Failed to restore retreat location for player {} on login: {}",
+                    player.getName().getString(), e.getMessage(), e);
+            }
         }
     }
 
@@ -177,7 +189,17 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            // 玩家登出时自动清理由 StructureSearchWorker 处理
+            MinecraftServer server = player.getServer();
+            if (server == null) {
+                return;
+            }
+
+            RetreatDimensionData data = RetreatDimensionData.get(server);
+            if (TheRetreatDimension.isInRetreat(player)) {
+                data.setPendingRestore(player.getUUID(), player.level().dimension(), player.blockPosition());
+            } else {
+                data.clearPendingRestore(player.getUUID());
+            }
         }
     }
 
@@ -254,6 +276,15 @@ public class MaidSpellEventHandler {
      */
     @SubscribeEvent
     public static void onEntityTravelToDimension(EntityTravelToDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player
+            && TheRetreatDimension.isInRetreat(player)
+            && !TheRetreatDimension.isRetreatDimension(event.getDimension().location())) {
+            MinecraftServer server = player.getServer();
+            if (server != null) {
+                RetreatDimensionData.get(server).clearPendingRestore(player.getUUID());
+            }
+        }
+
         if (event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
             try {
                 // 检查女仆是否装备了锚定核心
@@ -514,6 +545,50 @@ public class MaidSpellEventHandler {
             LogUtils.getLogger().debug("Error checking hidden_retreat structure at {}: {}", pos, e.getMessage());
         }
         return false;
+    }
+
+    private static void restoreRetreatLocationIfNeeded(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+
+        RetreatDimensionData data = RetreatDimensionData.get(server);
+        RetreatDimensionData.DimensionInfo info = data.getDimensionInfo(player.getUUID());
+        if (info == null || info.pendingRestorePos == null) {
+            return;
+        }
+
+        ResourceKey<Level> targetDimension = info.getPendingRestoreDimensionKey();
+        if (targetDimension == null || !TheRetreatDimension.isRetreatDimension(targetDimension.location())) {
+            data.clearPendingRestore(player.getUUID());
+            return;
+        }
+
+        if (player.level().dimension().equals(targetDimension)) {
+            return;
+        }
+
+        BlockPos targetPos = info.pendingRestorePos;
+        PlayerRetreatManager.getOrCreateRetreatByKeyAsync(server, targetDimension, player.getUUID())
+            .whenComplete((targetLevel, throwable) -> server.execute(() -> {
+                ServerPlayer currentPlayer = server.getPlayerList().getPlayer(player.getUUID());
+                if (currentPlayer == null) {
+                    return;
+                }
+
+                if (throwable != null || targetLevel == null) {
+                    LOGGER.error("[MaidSpell] Failed to prepare retreat dimension {} for player {}",
+                        targetDimension.location(), player.getName().getString(), throwable);
+                    return;
+                }
+
+                if (currentPlayer.level().dimension().equals(targetDimension)) {
+                    return;
+                }
+
+                TheRetreatDimension.teleportToRetreat(currentPlayer, targetLevel, targetPos);
+            }));
     }
 
 }
