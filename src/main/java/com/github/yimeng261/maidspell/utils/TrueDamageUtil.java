@@ -129,7 +129,7 @@ public class TrueDamageUtil {
             if (nbt.contains("Health")) {
                 nbt.putFloat("Health", newHealth);
                 modified = true;
-                LOGGER.debug("[TrueDamage] Modified NBT Health: {}", newHealth);
+                //LOGGER.debug("[TrueDamage] Modified NBT Health: {}", newHealth);
             }
             
             
@@ -163,7 +163,7 @@ public class TrueDamageUtil {
                 if (isHealthMatch(value, originalHealth)) {
                     nbt.putFloat(key, newHealth);
                     modified = true;
-                    LOGGER.debug("[TrueDamage] Modified NBT Float {}: {}", key, newHealth);
+                    //LOGGER.debug("[TrueDamage] Modified NBT Float {}: {}", key, newHealth);
                 }
             } else if (nbt.get(key) instanceof CompoundTag) {
                 if (modifyFloatValuesInNBT(nbt.getCompound(key), originalHealth, newHealth)) {
