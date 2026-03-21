@@ -13,6 +13,7 @@ import com.github.yimeng261.maidspell.item.bauble.springRing.SpringRing;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.Hairpin;
 import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBook;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBook;
+import com.github.yimeng261.maidspell.item.bauble.transmogNecklace.TransmogNecklace;
 import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuity;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocket;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBlade;
@@ -51,6 +52,7 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> ROCK_CRYSTAL = ITEMS.register("rock_crystal", RockCrystal::new);
     public static final RegistryObject<Item> SLIVER_CERCIS = ITEMS.register("sliver_cercis", SilverCercis::new);
     public static final RegistryObject<Item> HAIRPIN = ITEMS.register("hairpin", Hairpin::new);
+    public static final RegistryObject<Item> TRANSMOG_NECKLACE = ITEMS.register("transmog_necklace", TransmogNecklace::new);
     public static final RegistryObject<Item> CHAOS_BOOK = ITEMS.register("chaos_book", ChaosBook::new);
     public static final RegistryObject<Item> SOUL_BOOK = ITEMS.register("soul_book", SoulBook::new);
     public static final RegistryObject<Item> ENDER_POCKET = ITEMS.register("ender_pocket", EnderPocket::new);

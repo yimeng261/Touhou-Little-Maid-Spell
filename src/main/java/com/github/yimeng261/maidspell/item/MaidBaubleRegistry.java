@@ -10,6 +10,7 @@ import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.HairpinBauble;
 import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
+import com.github.yimeng261.maidspell.item.bauble.transmogNecklace.TransmogNecklaceBauble;
 import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
@@ -74,6 +75,10 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         if(MaidSpellItems.HAIRPIN != null){
             manager.bind(MaidSpellItems.HAIRPIN, new HairpinBauble());
+        }
+
+        if(MaidSpellItems.TRANSMOG_NECKLACE != null){
+            manager.bind(MaidSpellItems.TRANSMOG_NECKLACE, new TransmogNecklaceBauble());
         }
 
         if(MaidSpellItems.CHAOS_BOOK != null){

@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.network;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
 import com.github.yimeng261.maidspell.network.message.SpellSyncMessage;
+import com.github.yimeng261.maidspell.network.message.TransmogNecklaceMessage;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
@@ -38,6 +39,14 @@ public class NetworkHandler {
                 SpellSyncMessage::encode,
                 SpellSyncMessage::decode,
                 SpellSyncMessage::handle
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                TransmogNecklaceMessage.class,
+                TransmogNecklaceMessage::encode,
+                TransmogNecklaceMessage::decode,
+                TransmogNecklaceMessage::handle
         );
 
     }

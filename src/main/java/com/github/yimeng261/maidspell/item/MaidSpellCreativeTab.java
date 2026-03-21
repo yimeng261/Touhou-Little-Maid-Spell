@@ -37,6 +37,7 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.ROCK_CRYSTAL.get());
                 output.accept(MaidSpellItems.DOUBLE_HEART_CHAIN.get());
                 output.accept(MaidSpellItems.HAIRPIN.get());
+                output.accept(MaidSpellItems.TRANSMOG_NECKLACE.get());
                 output.accept(MaidSpellItems.CHAOS_BOOK.get());
                 output.accept(MaidSpellItems.SOUL_BOOK.get());
                 output.accept(MaidSpellItems.ENDER_POCKET.get());

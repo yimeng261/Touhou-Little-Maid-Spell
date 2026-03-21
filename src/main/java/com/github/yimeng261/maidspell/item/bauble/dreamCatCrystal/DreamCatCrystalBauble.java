@@ -23,6 +23,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -281,49 +282,6 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         Global.baubleEffectBlockFilters.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(),
             (maid, effect) -> effect.getCategory() != MobEffectCategory.BENEFICIAL);
 
-        // ========== 死亡概率复活 ==========
-        Global.baubleDeathHandlers.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (event, maid) -> {
-            if (event.isCanceled()) return null;
-
-            ItemStack baubleStack = findDreamCrystalStack(maid);
-            if (baubleStack == null) return null;
-
-            // 获取并过滤最近 120 秒（2400 tick）内的复活时间戳
-            CompoundTag tag = baubleStack.getOrCreateTag();
-            long currentTime = maid.level().getGameTime();
-            List<Long> timestamps = getReviveTimestamps(tag);
-            timestamps.removeIf(t -> currentTime - t > 2400L);
-
-            int n = timestamps.size();
-            // 复活概率 = 100% - N×10%
-            float reviveChance = Math.max(0.0f, 1.0f - n * 0.1f);
-            if (reviveChance <= 0.0f) return null; // N >= 10，无法复活
-
-            if (maid.getRandom().nextFloat() >= reviveChance) return null; // 概率未触发
-
-            // 触发复活
-            event.setCanceled(true);
-
-            // 恢复到最大生命值
-            float healAmount = maid.getMaxHealth();
-            maid.setHealth(healAmount);
-
-            // 记录本次复活时间戳
-            timestamps.add(currentTime);
-            saveReviveTimestamps(tag, timestamps);
-
-            // 设置 15 秒无敌（300 tick）
-            tag.putInt(NBT_INVULNERABLE_TIME, 300);
-
-            // 播放音效
-            maid.playSound(SoundEvents.TOTEM_USE, 1.0f, 1.0f);
-
-            LOGGER.info("女仆 {} 触发梦云水晶概率复活（N={}，概率={}%），恢复至 {} 生命值",
-                maid.getCustomName() != null ? maid.getCustomName().getString() : "未命名",
-                n, (int)(reviveChance * 100), healAmount);
-
-            return null;
-        });
     }
 
     /**
@@ -338,6 +296,11 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             }
             return null;
         });
+    }
+
+    @Override
+    public boolean syncClient(EntityMaid maid, ItemStack baubleItem) {
+        return true;
     }
 
     @Override
@@ -416,6 +379,40 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                     attr.getDescriptionId().hashCode()));
             }
         }
+    }
+
+    @Override
+    public boolean onDeath(EntityMaid maid, ItemStack baubleItem, DamageSource source) {
+        CompoundTag tag = baubleItem.getOrCreateTag();
+        long currentTime = maid.level().getGameTime();
+        List<Long> timestamps = getReviveTimestamps(tag);
+        timestamps.removeIf(t -> currentTime - t > 2400L);
+
+        int reviveCount = timestamps.size();
+        float reviveChance = Math.max(0.0f, 1.0f - reviveCount * 0.1f);
+        if (reviveChance <= 0.0f) {
+            return false;
+        }
+
+        if (maid.getRandom().nextFloat() >= reviveChance) {
+            return false;
+        }
+
+        float healAmount = maid.getMaxHealth();
+        maid.setHealth(healAmount);
+
+        timestamps.add(currentTime);
+        saveReviveTimestamps(tag, timestamps);
+
+        tag.putInt(NBT_INVULNERABLE_TIME, 300);
+
+        maid.playSound(SoundEvents.TOTEM_USE, 1.0f, 1.0f);
+
+        LOGGER.info("女仆 {} 触发梦云水晶概率复活（N={}，概率={}%），恢复至 {} 生命值",
+            maid.getCustomName() != null ? maid.getCustomName().getString() : "未命名",
+            reviveCount, (int) (reviveChance * 100), healAmount);
+
+        return true;
     }
 
     // ========== 无敌倒计时处理 ==========

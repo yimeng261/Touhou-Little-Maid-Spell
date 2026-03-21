@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 public class TrueDamageUtil {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final float HEALTH_TOLERANCE = 0.01f;
+    private static final float FAILED_ATTEMPT_GAP = Float.POSITIVE_INFINITY;
     
     private static final Map<String, List<Integer>> healthIdMap = new HashMap<>();
 
@@ -56,22 +57,55 @@ public class TrueDamageUtil {
             return false;
         }
         float originalHealth = target.getHealth();
+        float healthGap = FAILED_ATTEMPT_GAP;
 
-        // 尝试EntityData修改，失败则尝试NBT修改
-        boolean success = tryEntityDataDamage(target, newHealth) || tryNBTDamage(target, originalHealth, newHealth);
-
-        if(success&&newHealth<=0.0f){
-            handleTrueDamageDeath(target, attacker);
+        // 优先尝试 actuallyHurt，失败后再回退到直接修改 EntityData / NBT
+        if (newHealth < originalHealth) {
+            healthGap = tryActuallyHurtDamage(target, originalHealth, newHealth, attacker);
+            if (healthGap <= HEALTH_TOLERANCE) {
+                return finishHealthChange(target, newHealth, attacker);
+            }
         }
 
-        //LOGGER.debug("[TrueDamage] NewHealth {} applied: {} -> {} (success: {})", newHealth, originalHealth, target.getHealth(), success);
-        return success;
+        healthGap = tryEntityDataDamage(target, newHealth);
+        if (healthGap <= HEALTH_TOLERANCE) {
+            return finishHealthChange(target, newHealth, attacker);
+        }
+
+        healthGap = tryNBTDamage(target, newHealth);
+        if (healthGap <= HEALTH_TOLERANCE) {
+            return finishHealthChange(target, newHealth, attacker);
+        }
+
+        //LOGGER.debug("[TrueDamage] NewHealth {} applied: {} -> {} (gap: {})", newHealth, originalHealth, target.getHealth(), healthGap);
+        return false;
     }
     
     /**
-     * 尝试通过EntityData造成伤害
+     * 尝试通过 actuallyHurt 造成伤害。
+     * 返回预期血量与当前血量的差距；失败返回正无穷。
      */
-    private static boolean tryEntityDataDamage(LivingEntity target, float newHealth) {
+    private static float tryActuallyHurtDamage(LivingEntity target, float originalHealth, float newHealth, LivingEntity attacker) {
+        float damage = originalHealth - newHealth;
+        if (damage <= 0.0f) {
+            return getHealthGap(target, newHealth);
+        }
+
+        try {
+            DamageSource damageSource = createDamageSource(target, attacker);
+            ((LivingEntityInvoker) target).maidspell$invokeActuallyHurt(damageSource, damage);
+            return getHealthGap(target, newHealth);
+        } catch (Exception e) {
+            LOGGER.debug("[TrueDamage] actuallyHurt damage failed: {}", e.getMessage());
+            return FAILED_ATTEMPT_GAP;
+        }
+    }
+
+    /**
+     * 尝试通过EntityData造成伤害。
+     * 返回预期血量与当前血量的差距；失败返回正无穷。
+     */
+    private static float tryEntityDataDamage(LivingEntity target, float newHealth) {
         try {
             SynchedEntityDataMixin dataMixin = (SynchedEntityDataMixin) target.getEntityData();
             Int2ObjectMap<SynchedEntityData.DataItem<?>> itemsById = dataMixin.getItemsById();
@@ -80,7 +114,7 @@ public class TrueDamageUtil {
             List<Integer> healthIds = findAllHealthIds(target, itemsById);
             
             if (healthIds.isEmpty()) {
-                return false;
+                return FAILED_ATTEMPT_GAP;
             }
             
             // 修改所有匹配的EntityData项
@@ -98,23 +132,24 @@ public class TrueDamageUtil {
                 }
             }
 
-            
-            return modified&&isHealthMatch(target.getHealth(), newHealth);
+            return modified ? getHealthGap(target, newHealth) : FAILED_ATTEMPT_GAP;
             
         } catch (Exception e) {
             LOGGER.debug("[TrueDamage] EntityData damage failed: {}", e.getMessage());
-            return false;
+            return FAILED_ATTEMPT_GAP;
         }
     }
     
     /**
-     * 尝试通过NBT造成伤害
+     * 尝试通过NBT造成伤害。
+     * 返回预期血量与当前血量的差距；失败返回正无穷。
      */
-    private static boolean tryNBTDamage(LivingEntity target, float originalHealth, float newHealth) {
+    private static float tryNBTDamage(LivingEntity target, float newHealth) {
         try {
             // 获取实体的NBT数据
             CompoundTag nbt = new CompoundTag();
             target.saveWithoutId(nbt);
+            float currentHealth = target.getHealth();
             
             boolean modified = false;
             
@@ -127,7 +162,7 @@ public class TrueDamageUtil {
             
             
             // 递归搜索并修改所有匹配的Float值
-            if (modifyFloatValuesInNBT(nbt, originalHealth, newHealth)) {
+            if (modifyFloatValuesInNBT(nbt, currentHealth, newHealth)) {
                 modified = true;
             }
             
@@ -136,11 +171,11 @@ public class TrueDamageUtil {
                 target.load(nbt);
             }
             
-            return modified&&isHealthMatch(target.getHealth(), newHealth);
+            return modified ? getHealthGap(target, newHealth) : FAILED_ATTEMPT_GAP;
             
         } catch (Exception e) {
             LOGGER.debug("[TrueDamage] NBT damage failed: {}", e.getMessage());
-            return false;
+            return FAILED_ATTEMPT_GAP;
         }
     }
     
@@ -173,6 +208,10 @@ public class TrueDamageUtil {
      */
     private static boolean isHealthMatch(float value1, float value2) {
         return Math.abs(value1 - value2) < HEALTH_TOLERANCE;
+    }
+
+    private static float getHealthGap(LivingEntity target, float expectedHealth) {
+        return Math.abs(target.getHealth() - expectedHealth);
     }
     
     /**
@@ -227,6 +266,13 @@ public class TrueDamageUtil {
         if (!target.isRemoved() && target.isDeadOrDying()) {
             ((LivingEntityInvoker) target).maidspell$invokeTickDeath();
         }
+    }
+
+    private static boolean finishHealthChange(LivingEntity target, float newHealth, LivingEntity attacker) {
+        if (newHealth <= 0.0f && target.getHealth() <= HEALTH_TOLERANCE) {
+            handleTrueDamageDeath(target, attacker);
+        }
+        return true;
     }
 
     private static DamageSource createDamageSource(LivingEntity target, LivingEntity attacker) {

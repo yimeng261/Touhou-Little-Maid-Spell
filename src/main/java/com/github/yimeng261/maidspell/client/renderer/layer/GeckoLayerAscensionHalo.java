@@ -12,6 +12,8 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -107,10 +109,10 @@ public class GeckoLayerAscensionHalo<T extends Mob, R extends IGeoEntityRenderer
         poseStack.pushPose();
 
         // 应用初始45度倾斜（绕z轴）
-        poseStack.mulPose(com.mojang.math.Axis.ZP.rotation(45.0F * Mth.DEG_TO_RAD));
+        poseStack.mulPose(Axis.ZP.rotation(45.0F * Mth.DEG_TO_RAD));
 
         // 应用旋转动画
-        poseStack.mulPose(com.mojang.math.Axis.ZP.rotation(rotation));
+        poseStack.mulPose(Axis.ZP.rotation(rotation));
 
         // 渲染模型
         model.renderToBuffer(poseStack, vertexConsumer, LIGHT_LEVEL, OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
@@ -127,10 +129,10 @@ public class GeckoLayerAscensionHalo<T extends Mob, R extends IGeoEntityRenderer
             poseStack.pushPose();
 
             // 应用初始45度倾斜（绕z轴）
-            poseStack.mulPose(com.mojang.math.Axis.ZP.rotation(45.0F * Mth.DEG_TO_RAD));
+            poseStack.mulPose(Axis.ZP.rotation(45.0F * Mth.DEG_TO_RAD));
 
             // 应用旋转动画
-            poseStack.mulPose(com.mojang.math.Axis.ZP.rotation(rotation));
+            poseStack.mulPose(Axis.ZP.rotation(rotation));
 
             // 设置发光颜色（更亮）
             RenderSystem.setShaderColor(1f, 1f, 1f, 1.5F);
