@@ -8,7 +8,6 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedW
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitSounds;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
-import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -189,6 +188,38 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         return maid.distanceTo(target) > this.searchRadius(maid);
     }
 
+    protected static LivingEntity resolveIronsSpellbooksOwnerCastTarget(EntityMaid maid, LivingEntity fallbackTarget) {
+        if (fallbackTarget != maid.getOwner() || !ModList.get().isLoaded("irons_spellbooks")) {
+            return fallbackTarget;
+        }
+
+        try {
+            Class<?> dataClass = Class.forName("com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData");
+            Object data = dataClass.getMethod("getOrCreate", EntityMaid.class).invoke(null, maid);
+            Object originTarget = dataClass.getMethod("getOriginTarget").invoke(data);
+            return originTarget instanceof LivingEntity livingEntity ? livingEntity : fallbackTarget;
+        } catch (ReflectiveOperationException | LinkageError e) {
+            return fallbackTarget;
+        }
+    }
+
+    protected static boolean isIronsSpellbooksSpecialCase(EntityMaid maid) {
+        if (!ModList.get().isLoaded("irons_spellbooks")) {
+            return false;
+        }
+
+        try {
+            Class<?> dataClass = Class.forName("com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData");
+            Object data = dataClass.getMethod("getOrCreate", EntityMaid.class).invoke(null, maid);
+            Object currentTarget = dataClass.getMethod("getTarget").invoke(data);
+            Object originTarget = dataClass.getMethod("getOriginTarget").invoke(data);
+            LivingEntity owner = maid.getOwner();
+            return currentTarget == owner && originTarget instanceof LivingEntity living && living != owner;
+        } catch (ReflectiveOperationException | LinkageError e) {
+            return false;
+        }
+    }
+
 
     /**
      * 统一的法术战斗行为控制器
@@ -229,9 +260,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             this.currentSpellCaster = new SimplifiedSpellCaster(maid);
 
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            if(target == maid.getOwner() && ModList.get().isLoaded("irons_spellbooks")){
-                target = MaidIronsSpellData.getOrCreate(maid).getOriginTarget();
-            }
+            target = resolveIronsSpellbooksOwnerCastTarget(maid, target);
             if (!(target instanceof Player)) {
                 this.currentSpellCaster.setTarget(target);
             }
@@ -328,28 +357,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
          * 这种情况下女仆需要对主人施法，因此应该看向主人
          */
         private boolean isIronSpellSpecialCase(EntityMaid maid) {
-            if (!ModList.get().isLoaded("irons_spellbooks")) {
-                return false;
-            }
-            
-            try {
-                // 获取女仆的铁魔法数据
-                MaidIronsSpellData data = MaidIronsSpellData.getOrCreate(maid);
-                if (data == null) {
-                    return false;
-                }
-                
-                // 检查当前目标是否是原始目标切换到主人的结果
-                LivingEntity currentTarget = data.getTarget();
-                LivingEntity originTarget = data.getOriginTarget();
-                LivingEntity owner = maid.getOwner();
-                
-                return currentTarget == owner && originTarget != null && originTarget != owner;
-                
-            } catch (Exception e) {
-                // 如果出现任何异常，安全返回false
-                return false;
-            }
+            return SpellCombatMeleeTask.isIronsSpellbooksSpecialCase(maid);
         }
     }
 

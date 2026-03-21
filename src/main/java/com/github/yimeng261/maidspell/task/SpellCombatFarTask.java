@@ -3,7 +3,6 @@ package com.github.yimeng261.maidspell.task;
 import com.Polarice3.Goety.api.entities.IOwned;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
-import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -129,9 +128,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
             currentSpellCaster = new SimplifiedSpellCaster(maid);
 
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            if(target == maid.getOwner() && ModList.get().isLoaded("irons_spellbooks")){
-                target = MaidIronsSpellData.getOrCreate(maid).getOriginTarget();
-            }
+            target = resolveIronsSpellbooksOwnerCastTarget(maid, target);
             if (!(target instanceof Player)) {
                 currentSpellCaster.setTarget(target);
             }

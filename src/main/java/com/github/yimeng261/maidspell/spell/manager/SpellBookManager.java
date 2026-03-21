@@ -49,14 +49,14 @@ public class SpellBookManager {
     private static void initializeProviderFactories() {
         LOGGER.info("Initializing spell book provider factories...");
 
-        // 使用传统方式注册（无版本检测）
-        registerProviderFactoryByClass("irons_spellbooks", "IronsSpellbooksProvider", com.github.yimeng261.maidspell.spell.providers.IronsSpellbooksProvider.class);
-        registerProviderFactoryByClass("ars_nouveau", "ArsNouveauProvider", com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider.class);
-        registerProviderFactoryByClass("psi","PsiProvider", com.github.yimeng261.maidspell.spell.providers.PsiProvider.class);
-        registerProviderFactoryByClass("slashblade","SlashBladeProvider", com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider.class);
-        registerProviderFactoryByClass("goety", "GoetyProvider", com.github.yimeng261.maidspell.spell.providers.GoetyProvider.class);
-        registerProviderFactoryByClass("youkaishomecoming", "YoukaiHomecomingProvider", com.github.yimeng261.maidspell.spell.providers.YoukaiHomecomingProvider.class);
-        registerProviderFactoryByClass("ebwizardry", "WizardryProvider", com.github.yimeng261.maidspell.spell.providers.WizardryProvider.class);
+        // 仅在对应模组存在时通过反射加载 provider，避免可选依赖缺失时触发 NoClassDefFoundError
+        registerProviderFactory("irons_spellbooks", "IronsSpellbooksProvider", "com.github.yimeng261.maidspell.spell.providers.IronsSpellbooksProvider");
+        registerProviderFactory("ars_nouveau", "ArsNouveauProvider", "com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider");
+        registerProviderFactory("psi", "PsiProvider", "com.github.yimeng261.maidspell.spell.providers.PsiProvider");
+        registerProviderFactory("slashblade", "SlashBladeProvider", "com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider");
+        registerProviderFactory("goety", "GoetyProvider", "com.github.yimeng261.maidspell.spell.providers.GoetyProvider");
+        registerProviderFactory("youkaishomecoming", "YoukaiHomecomingProvider", "com.github.yimeng261.maidspell.spell.providers.YoukaiHomecomingProvider");
+        registerProviderFactory("ebwizardry", "WizardryProvider", "com.github.yimeng261.maidspell.spell.providers.WizardryProvider");
         
     }
     
@@ -66,12 +66,13 @@ public class SpellBookManager {
      * 
      * @param modId 模组ID
      * @param providerName 提供者名称（用于日志）
-     * @param providerClass 提供者类
+     * @param providerClassName 提供者类全名
      */
-    private static void registerProviderFactoryByClass(String modId, String providerName, Class<?> providerClass) {
+    private static void registerProviderFactory(String modId, String providerName, String providerClassName) {
         try {
             // 检查模组是否加载
             if (ModList.get().isLoaded(modId)) {
+                Class<?> providerClass = Class.forName(providerClassName);
                 ISpellBookProvider<?, ?> provider = (ISpellBookProvider<?, ?>) providerClass.getConstructor().newInstance();
                 providerMap.put(modId, provider);
                 LOGGER.debug("Mod {} loaded, finished {} registration", modId, providerName);

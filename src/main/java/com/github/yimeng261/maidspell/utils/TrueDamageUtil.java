@@ -50,22 +50,14 @@ public class TrueDamageUtil {
      * @param target 目标实体
      * @param newHealth 新血量
      * @param attacker 攻击者
-     * @return success 是否成功
+     * @return 是否成功
      */
     public static boolean setNewHealth(LivingEntity target, float newHealth, LivingEntity attacker) {
         if(target == null){
             return false;
         }
-        float originalHealth = target.getHealth();
         float healthGap = FAILED_ATTEMPT_GAP;
 
-        // 优先尝试 actuallyHurt，失败后再回退到直接修改 EntityData / NBT
-        if (newHealth < originalHealth) {
-            healthGap = tryActuallyHurtDamage(target, originalHealth, newHealth, attacker);
-            if (healthGap <= HEALTH_TOLERANCE) {
-                return finishHealthChange(target, newHealth, attacker);
-            }
-        }
 
         healthGap = tryEntityDataDamage(target, newHealth);
         if (healthGap <= HEALTH_TOLERANCE) {
@@ -79,26 +71,6 @@ public class TrueDamageUtil {
 
         //LOGGER.debug("[TrueDamage] NewHealth {} applied: {} -> {} (gap: {})", newHealth, originalHealth, target.getHealth(), healthGap);
         return false;
-    }
-    
-    /**
-     * 尝试通过 actuallyHurt 造成伤害。
-     * 返回预期血量与当前血量的差距；失败返回正无穷。
-     */
-    private static float tryActuallyHurtDamage(LivingEntity target, float originalHealth, float newHealth, LivingEntity attacker) {
-        float damage = originalHealth - newHealth;
-        if (damage <= 0.0f) {
-            return getHealthGap(target, newHealth);
-        }
-
-        try {
-            DamageSource damageSource = createDamageSource(target, attacker);
-            ((LivingEntityInvoker) target).maidspell$invokeActuallyHurt(damageSource, damage);
-            return getHealthGap(target, newHealth);
-        } catch (Exception e) {
-            LOGGER.debug("[TrueDamage] actuallyHurt damage failed: {}", e.getMessage());
-            return FAILED_ATTEMPT_GAP;
-        }
     }
 
     /**
