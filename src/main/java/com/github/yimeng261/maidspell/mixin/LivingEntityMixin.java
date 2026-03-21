@@ -7,6 +7,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
+import com.github.yimeng261.maidspell.coremod.HurtHeadCoremodHooks;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.mojang.logging.LogUtils;
@@ -194,6 +195,10 @@ public abstract class LivingEntityMixin {
     @Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
     private void onHurt(DamageSource damageSource, float amount, CallbackInfoReturnable<Boolean> cir) {
         LivingEntity entity = (LivingEntity) (Object) this;
+
+        if (HurtHeadCoremodHooks.maidspell$isInsideInstrumentedHurt(entity)) {
+            return;
+        }
 
         // 安全检查：确保伤害源不为空
         if (damageSource == null) {
