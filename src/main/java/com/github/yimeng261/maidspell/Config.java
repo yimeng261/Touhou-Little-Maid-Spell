@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell;
 
+import com.github.yimeng261.maidspell.item.bauble.dreamCrystal.DreamCatCrystalBauble;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.task.SpellCombatFarTask;
 import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
@@ -366,6 +367,27 @@ public class Config {
 
     static {
         BUILDER.pop(); // special
+    }
+
+    // 梦云水晶
+    static {
+        BUILDER.comment("梦云水晶相关配置")
+                .comment("Dream Crystal configurations")
+                .push("dream_crystal");
+    }
+
+    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DREAM_CRYSTAL_EFFECT_BLACKLIST = BUILDER
+            .comment("梦云水晶随机正面效果黑名单，黑名单内的效果不会被随机赋予")
+            .comment("Dream Crystal random beneficial effect blacklist")
+            .comment("示例: [\"minecraft:bad_omen\"]")
+            .defineListAllowEmpty(
+                    List.of("dreamCrystalEffectBlacklist"),
+                    () -> List.of(),
+                    obj -> obj instanceof String
+            );
+
+    static {
+        BUILDER.pop(); // dream_crystal
         BUILDER.pop(); // baubles
     }
 
@@ -502,6 +524,9 @@ public class Config {
     public static double soulBookDamageThresholdPercent;
     public static int soulBookDamageIntervalThreshold;
 
+    // 梦云水晶
+    public static List<String> dreamCrystalEffectBlacklist;
+
     // 归隐之地维度相关
     public static boolean enablePrivateDimensions;
     public static boolean enableSharedQuotaLimit;
@@ -577,6 +602,9 @@ public class Config {
         soulBookDamageThresholdPercent = SOUL_BOOK_DAMAGE_THRESHOLD_PERCENT.get();
         soulBookDamageIntervalThreshold = SOUL_BOOK_DAMAGE_INTERVAL_THRESHOLD.get();
 
+        // 梦云水晶
+        dreamCrystalEffectBlacklist = new ArrayList<>(DREAM_CRYSTAL_EFFECT_BLACKLIST.get());
+
         // 归隐之地维度相关
         enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
         enableSharedQuotaLimit = ENABLE_SHARED_QUOTA_LIMIT.get();
@@ -598,6 +626,7 @@ public class Config {
 
         Global.resetCommonDamageCalc();
         Global.resetCommonCoolDownCalc();
+        DreamCatCrystalBauble.registerCommonCallbacks();
     }
 
 

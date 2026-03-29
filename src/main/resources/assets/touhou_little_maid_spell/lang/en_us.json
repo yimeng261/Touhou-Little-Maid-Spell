@@ -170,5 +170,14 @@
   "touhou_little_maid_spell.configuration.allowAllStructures": "Whether to allow all structures in retreat dimensions (default: false)\ntrue: Allow all structures, ignore whitelist\nfalse: Only allow whitelisted structures",
   "touhou_little_maid_spell.configuration.allowedStructures": "Whitelist of structures allowed in retreat dimensions (effective when allowAllStructures is false)",
   "command.maidspell.retreat.reset.no_record": "This player has no retreat dimension record",
-  "command.maidspell.retreat.reset.success": "Reset Hidden Retreat quota for player %s"
+  "command.maidspell.retreat.reset.success": "Reset Hidden Retreat quota for player %s",
+  "item.touhou_little_maid_spell.dream_cat_crystal": "Dream Cat Crystal",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc1": "Cloud of dreams, mastery of all",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc2": "Unlocks the maid's ultimate potential",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc3": "A supreme bauble combining protection, enhancement, and healing",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc4": "Dreams, too, are a form of power",
+  "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.title": "Master of All Spells",
+  "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.description": "Equip a maid with the Dream Cat Crystal and unlock the ultimate spell potential",
+  "touhou_little_maid_spell.configuration.dream_crystal": "Dream Crystal configurations",
+  "touhou_little_maid_spell.configuration.dreamCrystalEffectBlacklist": "Dream Crystal random beneficial effect blacklist"
 }

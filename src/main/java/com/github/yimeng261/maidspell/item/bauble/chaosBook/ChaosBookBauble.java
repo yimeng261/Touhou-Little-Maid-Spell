@@ -22,7 +22,10 @@ public class ChaosBookBauble implements IMaidBauble {
 
     public static void chaosBookProcess(EntityMaid maid, LivingEntity target) {
         if(BaubleStateManager.hasBauble(maid, MaidSpellItems.CHAOS_BOOK)) {
-            float damage = (float) Math.max(Config.chaosBookTrueDamageMin, target.getMaxHealth() * Config.chaosBookTrueDamagePercent);
+            // 梦云水晶组合：真实伤害百分比翻倍
+            float multiplier = BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL) ? 2.0f : 1.0f;
+            float damage = (float) Math.max(Config.chaosBookTrueDamageMin,
+                    target.getMaxHealth() * Config.chaosBookTrueDamagePercent) * multiplier;
             TrueDamageUtil.dealTrueDamage(target, damage, maid);
         }
     }

@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeartBau
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNoteBauble;
 import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChainBauble;
+import com.github.yimeng261.maidspell.item.bauble.dreamCrystal.DreamCatCrystalBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
@@ -98,6 +99,11 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         if(MaidSpellItems.FRAGRANT_INGENUITY != null){
             manager.bind(MaidSpellItems.FRAGRANT_INGENUITY, new FragrantIngenuityBauble());
+        }
+
+        // 梦云水晶
+        if (MaidSpellItems.DREAM_CAT_CRYSTAL != null) {
+            manager.bind(MaidSpellItems.DREAM_CAT_CRYSTAL, new DreamCatCrystalBauble());
         }
     }
 }

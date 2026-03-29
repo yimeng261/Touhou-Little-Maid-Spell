@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import net.minecraft.world.entity.player.Player;
 
 public class DoubleHeartChainBauble implements IMaidBauble {
@@ -16,14 +17,20 @@ public class DoubleHeartChainBauble implements IMaidBauble {
             Player owner = (Player) maid.getOwner();
             if (owner != null && !owner.level().isClientSide) {
                 float originalDamage = data.getAmount();
-                float sharedDamage = originalDamage * (float)Config.doubleHeartChainShareRatio; // 使用配置的分摊比例
 
-                // 女仆承担配置比例的伤害
-                data.setAmount(sharedDamage);
-                // 使用安全的创建方法，基于默认伤害源
-                var defaultDamageSource = owner.damageSources().generic();
-                var infoDamageSource = InfoDamageSource.create(owner.level(), "double_heart_chain", defaultDamageSource);
-                owner.hurt(infoDamageSource, sharedDamage);
+                // 梦云水晶组合：主人不承担伤害，女仆只受 50%
+                if (BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL)) {
+                    data.setAmount(originalDamage * 0.5f);
+                } else {
+                    float sharedDamage = originalDamage * (float) Config.doubleHeartChainShareRatio; // 使用配置的分摊比例
+
+                    // 女仆承担配置比例的伤害
+                    data.setAmount(sharedDamage);
+                    // 使用安全的创建方法，基于默认伤害源
+                    var defaultDamageSource = owner.damageSources().generic();
+                    var infoDamageSource = InfoDamageSource.create(owner.level(), "double_heart_chain", defaultDamageSource);
+                    owner.hurt(infoDamageSource, sharedDamage);
+                }
             }
             return null;
         });

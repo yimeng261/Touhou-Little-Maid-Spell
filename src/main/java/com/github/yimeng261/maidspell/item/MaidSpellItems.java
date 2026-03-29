@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
 import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBook;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChain;
+import com.github.yimeng261.maidspell.item.bauble.dreamCrystal.DreamCatCrystal;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocket;
 import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCore;
 import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuity;
@@ -54,6 +55,9 @@ public class MaidSpellItems {
     public static final DeferredItem<Item> ANCHOR_CORE = ITEMS.register("anchor_core", AnchorCore::new);
     public static final DeferredItem<Item> SPELL_OVERLIMIT_CORE = ITEMS.register("spell_overlimit_core", SpellOverlimitCore::new);
     public static final DeferredItem<Item> FRAGRANT_INGENUITY = ITEMS.register("fragrant_ingenuity", FragrantIngenuity::new);
+
+    // 梦云水晶
+    public static final DeferredItem<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal", DreamCatCrystal::new);
 
     // 寻风之铃
     public static final DeferredItem<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);

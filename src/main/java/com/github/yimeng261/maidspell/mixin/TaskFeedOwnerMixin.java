@@ -6,6 +6,7 @@ import com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
@@ -65,16 +66,28 @@ public class TaskFeedOwnerMixin {
             return;
         }
 
-        // 随机选择一个正面buff
-        Holder<MobEffect> randomEffect = FragrantIngenuityBauble.POSITIVE_EFFECTS.get(
-            owner.getRandom().nextInt(FragrantIngenuityBauble.POSITIVE_EFFECTS.size())
-        );
-
-        // 持续时间：从配置中读取
         int duration = Config.fragrantIngenuityBuffDuration;
+        boolean hasDreamCrystal = BaubleStateManager.hasBauble(feedingMaid, MaidSpellItems.DREAM_CAT_CRYSTAL);
 
-        // 添加buff（1级，即amplifier = 0）
-        owner.addEffect(new MobEffectInstance(randomEffect, duration, 0));
+        if (hasDreamCrystal) {
+            // 梦云水晶组合效果：给予主人 2 个随机正面 buff，等级提升至 3（amplifier = 2）
+            for (int i = 0; i < 2; i++) {
+                Holder<MobEffect> effect = FragrantIngenuityBauble.POSITIVE_EFFECTS.get(
+                        owner.getRandom().nextInt(FragrantIngenuityBauble.POSITIVE_EFFECTS.size())
+                );
+                if (effect != null) {
+                    owner.addEffect(new MobEffectInstance(effect, duration, 2));
+                }
+            }
+        } else {
+            // 普通馥郁巧思效果：随机 1 个正面 buff，1 级（amplifier = 0）
+            Holder<MobEffect> randomEffect = FragrantIngenuityBauble.POSITIVE_EFFECTS.get(
+                    owner.getRandom().nextInt(FragrantIngenuityBauble.POSITIVE_EFFECTS.size())
+            );
+            if (randomEffect != null) {
+                owner.addEffect(new MobEffectInstance(randomEffect, duration, 0));
+            }
+        }
 
     }
 }
