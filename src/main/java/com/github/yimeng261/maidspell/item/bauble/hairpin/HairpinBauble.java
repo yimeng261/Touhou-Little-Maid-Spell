@@ -45,7 +45,7 @@ public class HairpinBauble implements IMaidBauble {
 
     static {
         // 注册女仆受伤时的处理器 - 将伤害转移给主人
-        Global.baubleCommonHurtCalcPre.put(MaidSpellItems.HAIRPIN.get(), (event, maid) -> {
+        Global.baubleHurtEventHandlers.put(MaidSpellItems.HAIRPIN.get(), (event, maid) -> {
             LivingEntity owner = maid.getOwner();
             DamageSource source = event.getSource();
 
@@ -72,7 +72,7 @@ public class HairpinBauble implements IMaidBauble {
         });
 
         // 注册玩家受伤时的处理器 - 处理hairpin重定向的伤害
-        Global.playerHurtCalcAft.add((event, player) -> {
+        Global.playerDamageHandlers.add((event, player) -> {
             DamageSource source = event.getSource();
 
             if (source instanceof InfoDamageSource infoDamage && "hairpin_redirect".equals(infoDamage.msg_type)) {

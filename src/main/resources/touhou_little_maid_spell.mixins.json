@@ -7,9 +7,7 @@
   "refmap": "maidspell.refmap.json",
   "plugin": "com.github.yimeng261.maidspell.mixin.MaidSpellMixinPlugin",
   "mixins": [
-    "AbstractMaidContainerMixin",
     "ChunkGeneratorMixin",
-    "EntityMaidMixin",
     "EntityMixin",
     "JigsawPlacerMixin",
     "LivingEntityMixin",
@@ -17,14 +15,16 @@
     "MinecraftServerMixin",
     "MobEffectMixin",
     "MobMixin",
-    "MobUtilMixin",
-    "OpenMaidGuiPackageMixin",
     "ServerLevelMixin",
     "StructureTemplateMixin",
-    "TaskFeedOwnerMixin",
-    "WandUtilMixin",
+    "goety.MobUtilMixin",
+    "goety.WandUtilMixin",
     "iss.SyncedSpellDataMixin",
-    "iss.UtilsMixin"
+    "iss.UtilsMixin",
+    "tlm.AbstractMaidContainerMixin",
+    "tlm.EntityMaidMixin",
+    "tlm.OpenMaidGuiPackageMixin",
+    "tlm.TaskFeedOwnerMixin"
   ],
   "client": [
     "ClientPacketListenerMixin",

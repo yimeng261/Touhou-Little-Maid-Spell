@@ -98,7 +98,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         }
 
         // ========== 法术冷却取消 ==========
-        Global.baubleCoolDownCalc.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (coolDown) -> {
+        Global.baubleCooldownHandlers.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (coolDown) -> {
             if (coolDown.maid != null && BaubleStateManager.hasBauble(coolDown.maid, MaidSpellItems.DREAM_CAT_CRYSTAL)) {
                 coolDown.cooldownticks = 0;
             }
@@ -106,7 +106,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         });
 
         // ========== 女仆受伤最终处理：30% 抗性 + 40 伤害上限 ==========
-        Global.baubleHurtCalcFinal.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (data) -> {
+        Global.baubleSetHealthFinalHandlers.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (data) -> {
             float amount = data.getAmount();
             // 30% 全伤害抗性
             amount *= 0.7f;
@@ -117,7 +117,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         });
 
         // ========== 女仆造成伤害后：真实伤害 + 时停 + 弹幕溅射 ==========
-        Global.baubleDamageCalcAft.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (event, maid) -> {
+        Global.baubleDamageHandlers.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (event, maid) -> {
             // 跳过由 InfoDamageSource 产生的次级伤害（如混沌之书分割伤害），避免重复触发
             DamageSource source = event.getSource();
             if (source instanceof com.github.yimeng261.maidspell.damage.InfoDamageSource) {
@@ -162,11 +162,11 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
         // ========== 有害效果双重免疫过滤器（与 MobEffectMixin + LivingEntityMixin 配合） ==========
         // 返回 true → 阻止效果写入 activeEffects（不 tick/不显示）且阻止其属性修改器被应用
-        Global.baubleEffectBlockFilter.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(),
+        Global.baubleEffectBlockFilters.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(),
                 (maid, effect) -> effect.value().getCategory() != MobEffectCategory.BENEFICIAL);
 
         // ========== 死亡概率复活 ==========
-        Global.baubleDeathCalc.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (event, maid) -> {
+        Global.baubleDeathHandlers.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (event, maid) -> {
             if (event.isCanceled()) return null;
 
             UUID maidUUID = maid.getUUID();

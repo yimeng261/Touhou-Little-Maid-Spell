@@ -32,7 +32,7 @@ public class ChaosBookBauble implements IMaidBauble {
 
     static {
         // 注册女仆造成伤害时的处理器
-        Global.baubleDamageCalcPre.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
+        Global.baubleHurtHandlers.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
 
             LivingEntity target = event.getEntity();
             DamageSource source = event.getSource();

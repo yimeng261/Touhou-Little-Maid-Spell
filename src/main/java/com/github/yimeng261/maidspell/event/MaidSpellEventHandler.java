@@ -116,7 +116,7 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            for(EntityMaid maid : Global.maidList){
+            for (EntityMaid maid : Global.activeMaids) {
                 LivingEntity owner = maid.getOwner();
                 if(owner != null) {
                     Global.getOrCreatePlayerMaidMap(owner.getUUID()).put(maid.getUUID(), maid);
@@ -336,7 +336,7 @@ public class MaidSpellEventHandler {
         if(entity instanceof EntityMaid maid){
             Global.commonHurtCalc.forEach(function -> function.apply(event, maid));
 
-            Global.baubleCommonHurtCalcPre.forEach((item, func)->{
+            Global.baubleHurtEventHandlers.forEach((item, func) -> {
                 if(BaubleStateManager.hasBauble(maid, item)){
                     func.apply(event, maid);
                 }
@@ -344,7 +344,7 @@ public class MaidSpellEventHandler {
         }
 
         if(entity instanceof Player player){
-            Global.playerHurtCalcAft.forEach(func-> func.apply(event,player));
+            Global.playerDamageHandlers.forEach(func -> func.apply(event, player));
         }
     }
 
@@ -363,7 +363,7 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onMaidEffectAdded(MobEffectEvent.Added event) {
         if (event.getEntity() instanceof EntityMaid maid) {
-            Global.baubleEffectAddedCalc.forEach((item, func)->{
+            Global.baubleEffectAddedHandlers.forEach((item, func) -> {
                 if(BaubleStateManager.hasBauble(maid,item)){
                     func.apply(event, maid);
                 }
@@ -374,7 +374,7 @@ public class MaidSpellEventHandler {
 
 
     private static void processorAft(LivingDamageEvent.Post event, EntityMaid maid) {
-        Global.baubleDamageCalcAft.forEach((item, func) -> {
+        Global.baubleDamageHandlers.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(event, maid);
             }
@@ -382,9 +382,9 @@ public class MaidSpellEventHandler {
     }
 
     private static void processorPre(LivingIncomingDamageEvent event, EntityMaid maid) {
-        Global.commonDamageCalc.forEach(function -> function.apply(event, maid));
+        Global.commonHurtHandlers.forEach(function -> function.apply(event, maid));
 
-        Global.baubleDamageCalcPre.forEach((item, func) -> {
+        Global.baubleHurtHandlers.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(event, maid);
             }
@@ -399,7 +399,7 @@ public class MaidSpellEventHandler {
         if (event.getEntity() instanceof EntityMaid maid) {
             // 先处理饰品的死亡事件
 
-            Global.baubleDeathCalc.forEach((item, func)->{
+            Global.baubleDeathHandlers.forEach((item, func) -> {
                 if(BaubleStateManager.hasBauble(maid,item)){
                     func.apply(event, maid);
                 }
@@ -471,8 +471,8 @@ public class MaidSpellEventHandler {
         Player player = event.getPlayer();
 
         if (!player.level().isClientSide() && player.level() instanceof ServerLevel level) {
-            Global.maidList.add(maid);
-            Global.maidInfos.computeIfAbsent(player.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
+            Global.activeMaids.add(maid);
+            Global.ownerMaidRegistry.computeIfAbsent(player.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
             if(maid.isOrderedToSit()&&!maid.isStructureSpawn()&&isInHiddenRetreatStructure(level, maid.blockPosition())){
                 player.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat").withStyle(ChatFormatting.LIGHT_PURPLE));
             }
@@ -486,8 +486,8 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent
     public static void onServerStart(ServerAboutToStartEvent event) {
-        Global.maidList.clear();
-        Global.maidInfos.clear();
+        Global.activeMaids.clear();
+        Global.ownerMaidRegistry.clear();
     }
 
     /**

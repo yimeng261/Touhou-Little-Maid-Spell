@@ -126,13 +126,13 @@ public abstract class LivingEntityMixin {
 
         SoulBookBauble_process(dataItem); //处理魂之书(最先计算是否取消)
 
-        Global.baubleHurtCalcPre.forEach((item, func)->{
+        Global.baubleSetHealthHandlers.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(dataItem);
             }
         });
 
-        Global.baubleHurtCalcFinal.forEach((item, func)->{
+        Global.baubleSetHealthFinalHandlers.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(dataItem);
             }
@@ -169,7 +169,7 @@ public abstract class LivingEntityMixin {
      * @Redirect 重定向 addEffect 中的 activeEffects.put 调用。
      *
      * <p>拦截点在 NeoForge 事件 post 之后、效果真正写入 Map 之前。
-     * 若 baubleEffectBlockFilter 中有任意过滤器返回 true，则不写入 Map，
+     * 若 baubleEffectBlockFilters 中有任意过滤器返回 true，则不写入 Map，
      * 效果既不会 tick，也不会显示图标/粒子。
      *
      * <p>同时设置 {@link Global#effectBlockFlag} 通知 MobEffectMixin 阻止属性修改器应用。
@@ -189,7 +189,7 @@ public abstract class LivingEntityMixin {
         if (self instanceof EntityMaid maid) {
             Holder<MobEffect> effect = (Holder<MobEffect>) key;
             for (Map.Entry<Item, BiFunction<EntityMaid, Holder<MobEffect>, Boolean>> entry
-                    : Global.baubleEffectBlockFilter.entrySet()) {
+                    : Global.baubleEffectBlockFilters.entrySet()) {
                 if (BaubleStateManager.hasBauble(maid, entry.getKey())
                         && Boolean.TRUE.equals(entry.getValue().apply(maid, effect))) {
                     Global.effectBlockFlag.set(Boolean.TRUE);
