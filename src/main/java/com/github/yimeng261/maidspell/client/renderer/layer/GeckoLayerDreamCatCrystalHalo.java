@@ -67,7 +67,7 @@ public class GeckoLayerDreamCatCrystalHalo<T extends Mob, R extends IGeoEntityRe
             return;
         }
 
-        if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL)) {
+        if (!MaidHaloRenderPriority.shouldRenderDreamHalo(maid)) {
             return;
         }
 

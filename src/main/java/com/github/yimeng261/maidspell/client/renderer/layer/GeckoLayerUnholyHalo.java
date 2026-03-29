@@ -55,14 +55,7 @@ public class GeckoLayerUnholyHalo<T extends Mob, R extends IGeoEntityRenderer<T>
             return;
         }
 
-        // 检查是否装备不洁圣冠（任一版本）
-        var unholyHat = MaidSpellItems.getUnholyHat();
-        var unholyHatHalo = MaidSpellItems.getUnholyHatHalo();
-
-        boolean hasHat = unholyHat != null && BaubleStateManager.hasBauble(maid, unholyHat);
-        boolean hasHalo = unholyHatHalo != null && BaubleStateManager.hasBauble(maid, unholyHatHalo);
-
-        if (!hasHat && !hasHalo) {
+        if (!MaidHaloRenderPriority.shouldRenderUnholyHalo(maid)) {
             return;
         }
 

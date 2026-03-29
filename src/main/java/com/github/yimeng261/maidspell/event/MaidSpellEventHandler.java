@@ -60,7 +60,6 @@ import net.minecraft.world.level.Level;
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class MaidSpellEventHandler {
     private static final Logger LOGGER = LogUtils.getLogger();
-
     // 女仆步高属性修饰符的UUID
     private static final UUID MAID_STEP_HEIGHT_UUID = UUID.fromString("8e2c4a16-7f9d-4b45-a3e2-1c8f5d9a6b47");
 
@@ -512,7 +511,6 @@ public class MaidSpellEventHandler {
             EnderPocketBauble.pushEnderPocketDataToClient((ServerPlayer) player);
         }
     }
-
 
     @SubscribeEvent
     public static void onServerStart(ServerAboutToStartEvent event) {

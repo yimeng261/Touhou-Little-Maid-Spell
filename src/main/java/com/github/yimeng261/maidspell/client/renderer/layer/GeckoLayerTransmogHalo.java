@@ -48,7 +48,7 @@ public class GeckoLayerTransmogHalo<T extends Mob, R extends IGeoEntityRenderer<
             return;
         }
 
-        if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.TRANSMOG_NECKLACE)) {
+        if (!MaidHaloRenderPriority.shouldRenderTransmogHalo(maid)) {
             return;
         }
 

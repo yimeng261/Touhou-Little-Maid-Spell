@@ -30,9 +30,12 @@ public class Config {
             "traveloptics:meteor_storm",
             "traveloptics:aerial_collapse",
             "traveloptics:aerial_collapse_helper",
+            "soulsweapons:chungus_tonic_effct",
             "goety:fire_trail",
             "goety:charged",
-            "goety:shadow_walk"
+            "goety:shadow_walk",
+            "goety:fiery_aura",
+            "goety:frosty_aura"
     );
     
     // ========== 战斗系统配置 ==========

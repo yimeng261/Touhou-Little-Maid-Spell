@@ -25,6 +25,7 @@ import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
 import net.minecraft.Util;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
@@ -33,10 +34,16 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import z1gned.goetyrevelation.item.ModItems;
 
+import java.lang.reflect.Field;
+
 /**
  * 女仆法术饰品物品注册
  */
 public class MaidSpellItems {
+
+    private static volatile boolean goetyItemsResolved = false;
+    private static Item cachedUnholyHat;
+    private static Item cachedUnholyHatHalo;
 
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MaidSpellMod.MOD_ID);
 
@@ -107,15 +114,8 @@ public class MaidSpellItems {
      * 如果模组未加载，返回 null
      */
     public static Item getUnholyHat() {
-        if (ModList.get().isLoaded("goety")) {
-            try {
-                return com.Polarice3.Goety.common.items.ModItems.UNHOLY_HAT.get();
-            } catch (Exception e) {
-                // 模组加载但物品不存在
-                return null;
-            }
-        }
-        return null;
+        ensureGoetyItemsResolved();
+        return cachedUnholyHat;
     }
 
     /**
@@ -123,14 +123,50 @@ public class MaidSpellItems {
      * 如果模组未加载，返回 null
      */
     public static Item getUnholyHatHalo() {
-        if (ModList.get().isLoaded("goety")) {
-            try {
-                return com.Polarice3.Goety.common.items.ModItems.UNHOLY_HAT_HALO.get();
-            } catch (Exception e) {
-                // 模组加载但物品不存在
-                return null;
-            }
+        ensureGoetyItemsResolved();
+        return cachedUnholyHatHalo;
+    }
+
+    private static void ensureGoetyItemsResolved() {
+        if (goetyItemsResolved) {
+            return;
         }
+
+        synchronized (MaidSpellItems.class) {
+            if (goetyItemsResolved) {
+                return;
+            }
+
+            if (ModList.get().isLoaded("goety")) {
+                cachedUnholyHat = resolveOptionalGoetyItem("unholy_hat", "UNHOLY_HAT");
+                cachedUnholyHatHalo = resolveOptionalGoetyItem("unholy_hat_halo", "UNHOLY_HAT_HALO");
+            }
+
+            goetyItemsResolved = true;
+        }
+    }
+
+    private static Item resolveOptionalGoetyItem(String itemId, String fieldName) {
+        Item itemFromRegistry = ForgeRegistries.ITEMS.getValue(new ResourceLocation("goety", itemId));
+        if (itemFromRegistry != null) {
+            return itemFromRegistry;
+        }
+
+        try {
+            Class<?> modItemsClass = Class.forName("com.Polarice3.Goety.common.items.ModItems");
+            Field field = modItemsClass.getField(fieldName);
+            Object value = field.get(null);
+
+            if (value instanceof RegistryObject<?> registryObject) {
+                Object item = registryObject.get();
+                if (item instanceof Item resolvedItem) {
+                    return resolvedItem;
+                }
+            }
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            // 旧版 Goety 可能没有该字段，直接忽略即可
+        }
+
         return null;
     }
 

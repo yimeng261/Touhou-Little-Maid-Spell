@@ -55,8 +55,7 @@ public class GeckoLayerAscensionHalo<T extends Mob, R extends IGeoEntityRenderer
             return;
         }
 
-        // 检查是否装备晋升之环
-        if (MaidSpellItems.getAscensionHalo() == null || !BaubleStateManager.hasBauble(maid, MaidSpellItems.getAscensionHalo())) {
+        if (!MaidHaloRenderPriority.shouldRenderAscensionHalo(maid)) {
             return;
         }
 

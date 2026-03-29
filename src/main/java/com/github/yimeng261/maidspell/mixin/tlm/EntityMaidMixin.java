@@ -71,6 +71,32 @@ public class EntityMaidMixin {
 
 
     /**
+     * 拦截直接对女仆附加存档数据的调用，防止第三方通过 addAdditionalSaveData 复制女仆状态。
+     */
+    @Inject(method = "addAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V",
+            at = @At("HEAD"),
+            cancellable = true, remap = true)
+    public void onAddAdditionalSaveData(CompoundTag compound, CallbackInfo ci) {
+        try {
+            if ((Object) this instanceof EntityMaid maid) {
+                if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                    return;
+                }
+
+                String illegalCaller = maidSpell$findIllegalSerializationCaller();
+                if (illegalCaller != null) {
+                    maidSpell$clearCompound(compound);
+                    Global.LOGGER.warn("[MaidSpell] Illegal addAdditionalSaveData called for {} by {} (anchor_core protection)",
+                            maid.getUUID(), illegalCaller);
+                    ci.cancel();
+                }
+            }
+        } catch (Exception e) {
+            Global.LOGGER.error("Failed to check maid addAdditionalSaveData source", e);
+        }
+    }
+
+    /**
      * 拦截女仆的remove方法，防止非正常途径移除血量不为0的女仆
      */
     @Inject(method = "remove(Lnet/minecraft/world/entity/Entity$RemovalReason;)V",
@@ -93,7 +119,7 @@ public class EntityMaidMixin {
                 }
 
                 // 检查调用栈，判断是否来自touhou-little-maid模组
-                if (!maidSpell$isCallValid()) {
+                if (!maidSpell$isCallValid(reason)) {
                     Global.LOGGER.debug("Prevented non-TLM removal of maid {} with health {} (anchor_core protection)",
                             maid.getUUID(), maid.getHealth());
                     ci.cancel();
@@ -118,11 +144,58 @@ public class EntityMaidMixin {
     }
 
     /**
+     * 检查 addAdditionalSaveData 的调用栈，找到第一个不可信的调用方。
+     */
+    @Unique
+    @Nullable
+    private static String maidSpell$findIllegalSerializationCaller() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        for (StackTraceElement stackTraceElement : stackTrace) {
+            String className = stackTraceElement.getClassName();
+            if (className.endsWith("EntityMaid")) {
+                continue;
+            }
+            if (!maidSpell$isSerializationCallerAllowed(className)) {
+                return className;
+            }
+        }
+        return null;
+    }
+
+    @Unique
+    private static void maidSpell$clearCompound(CompoundTag compound) {
+        for (String key : new java.util.ArrayList<>(compound.getAllKeys())) {
+            compound.remove(key);
+        }
+    }
+
+    /**
+     * addAdditionalSaveData 允许的调用方白名单。
+     */
+    @Unique
+    private static boolean maidSpell$isSerializationCallerAllowed(String className) {
+        return className.startsWith("net.minecraft") ||
+                className.startsWith("net.minecraftforge") ||
+                className.startsWith("java") ||
+                className.startsWith("it.unimi.dsi") ||
+                className.startsWith("com.github.tartaricacid") ||
+                className.startsWith("com.github.yimeng261") ||
+                className.startsWith("com.google") ||
+                className.startsWith("com.mojang") ||
+                className.startsWith("io.redspace.ironsspellbooks") ||
+                className.startsWith("whocraft.tardis_refined") ||
+                className.startsWith("top.theillusivec4.curios") ||
+                className.contains("backup") ||
+                className.contains("maid") ||
+                className.contains("c2me");
+    }
+
+    /**
      * 检查调用栈是否来自touhou-little-maid模组或其他可信任的模组
      * @return 如果调用来自可信任模组返回true
      */
     @Unique
-    private boolean maidSpell$isCallValid() {
+    private boolean maidSpell$isCallValid(Entity.RemovalReason reason) {
         StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
         boolean callFromTouhouLittleMaidMod = false;
         for(int i=stackTrace.length-10; i>=0; i--) {
@@ -136,6 +209,11 @@ public class EntityMaidMixin {
                 className.toLowerCase().contains("maid") ||
                 className.contains("ironsspellbooks") ||
                 className.contains("curios")) {
+                callFromTouhouLittleMaidMod = true;
+                break;
+            }
+            if (reason == Entity.RemovalReason.CHANGED_DIMENSION
+                    && className.startsWith("whocraft.tardis_refined")) {
                 callFromTouhouLittleMaidMod = true;
                 break;
             }
