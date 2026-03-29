@@ -16,7 +16,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
@@ -161,13 +160,14 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             return null;
         });
 
+        // ========== 有害效果双重免疫过滤器（与 MobEffectMixin + LivingEntityMixin 配合） ==========
+        // 返回 true → 阻止效果写入 activeEffects（不 tick/不显示）且阻止其属性修改器被应用
+        Global.baubleEffectBlockFilter.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(),
+                (maid, effect) -> effect.value().getCategory() != MobEffectCategory.BENEFICIAL);
+
         // ========== 死亡概率复活 ==========
         Global.baubleDeathCalc.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (event, maid) -> {
             if (event.isCanceled()) return null;
-
-            DamageSource source = event.getSource();
-            // 无法绕过无敌的伤害（如 /kill）无法触发复活
-            if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return null;
 
             UUID maidUUID = maid.getUUID();
 

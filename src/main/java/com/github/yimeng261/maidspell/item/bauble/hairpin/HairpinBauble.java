@@ -1,7 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.hairpin;
 
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
-import com.github.tartaricacid.touhoulittlemaid.api.event.MaidAfterEatEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil;
 import com.github.yimeng261.maidspell.Config;
@@ -9,7 +8,9 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.Holder;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -17,6 +18,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import org.slf4j.Logger;
+
+import java.util.List;
 
 /**
  * 发簪 Hairpin 饰品扩展行为
@@ -30,12 +33,13 @@ public class HairpinBauble implements IMaidBauble {
 
     @Override
     public void onTick(EntityMaid maid, ItemStack baubleItem) {
-        if(maid.tickCount%10 == 0){
-            maid.getActiveEffects().forEach(effect -> {
-                if(!effect.getEffect().value().isBeneficial()){
-                    effect.update(new MobEffectInstance(effect.getEffect(), 0, 0));
-                }
-            });
+        if (maid.tickCount % 10 == 0) {
+            // 收集后再移除，避免迭代时 ConcurrentModification
+            List<Holder<MobEffect>> toRemove = maid.getActiveEffects().stream()
+                    .map(MobEffectInstance::getEffect)
+                    .filter(holder -> !holder.value().isBeneficial())
+                    .toList();
+            toRemove.forEach(maid::removeEffect);
         }
     }
 

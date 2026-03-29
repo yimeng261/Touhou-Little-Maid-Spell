@@ -4,6 +4,8 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.Holder;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -64,6 +66,29 @@ public class Global {
 
     public static final Map<Item,BiFunction<LivingDeathEvent,EntityMaid,Void>> baubleDeathCalc = new ConcurrentHashMap<>();
 
+    /**
+     * 女仆效果双重阻断过滤器。
+     *
+     * <p>同时作用于两个拦截点，形成双重防护：
+     * <ol>
+     *   <li>{@code LivingEntity.addEffect} 中的 {@code activeEffects.put} 调用被 @Redirect 重定向——
+     *       若过滤器返回 {@code true}，效果不会写入 activeEffects Map，
+     *       因此既不会触发 tick 效果，也不会显示粒子/图标。</li>
+     *   <li>{@code MobEffect.addAttributeModifiers} 被 @Inject 拦截——
+     *       即使效果通过其他途径绕过了第一关（如直接操作 activeEffects），
+     *       其属性修改器也不会被应用到实体属性上。</li>
+     * </ol>
+     *
+     * <p>返回 {@code true} 表示阻止该效果；返回 {@code false} 表示放行。
+     */
+    public static final Map<Item, BiFunction<EntityMaid, Holder<MobEffect>, Boolean>> baubleEffectBlockFilter = new ConcurrentHashMap<>();
+
+    /**
+     * 跨 Mixin 通信标志：当 LivingEntityMixin 的 @Redirect 阻止了效果写入时设为 true，
+     * MobEffectMixin 的 @Inject 检查并清除此标志以阻止属性修改器被应用。
+     * 使用 ThreadLocal 保证线程安全（addEffect 整个流程在同一线程同步执行）。
+     */
+    public static final ThreadLocal<Boolean> effectBlockFlag = new ThreadLocal<>();
 
     public static void resetCommonDamageCalc() {
         commonDamageCalc.clear();

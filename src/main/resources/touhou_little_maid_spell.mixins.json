@@ -15,6 +15,7 @@
     "LivingEntityMixin",
     "LocateCommandMixin",
     "MinecraftServerMixin",
+    "MobEffectMixin",
     "MobMixin",
     "MobUtilMixin",
     "OpenMaidGuiPackageMixin",

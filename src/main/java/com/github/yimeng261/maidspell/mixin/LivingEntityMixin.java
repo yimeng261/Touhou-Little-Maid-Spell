@@ -11,13 +11,17 @@ import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeB
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.Holder;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.CombatEntry;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -25,11 +29,14 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import oshi.util.tuples.Pair;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
 
 /**
  * LivingEntity的Mixin，用于修改setHealth方法
@@ -156,6 +163,41 @@ public abstract class LivingEntityMixin {
             return false;
         }
         return true;
+    }
+
+    /**
+     * @Redirect 重定向 addEffect 中的 activeEffects.put 调用。
+     *
+     * <p>拦截点在 NeoForge 事件 post 之后、效果真正写入 Map 之前。
+     * 若 baubleEffectBlockFilter 中有任意过滤器返回 true，则不写入 Map，
+     * 效果既不会 tick，也不会显示图标/粒子。
+     *
+     * <p>同时设置 {@link Global#effectBlockFlag} 通知 MobEffectMixin 阻止属性修改器应用。
+     */
+    @SuppressWarnings("unchecked")
+    @Redirect(
+            method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ljava/util/Map;put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                    ordinal = 0
+            )
+    )
+    private Object maidspell$redirectEffectPut(Map<Holder<MobEffect>, MobEffectInstance> map,
+                                               Object key, Object value) {
+        LivingEntity self = (LivingEntity) (Object) this;
+        if (self instanceof EntityMaid maid) {
+            Holder<MobEffect> effect = (Holder<MobEffect>) key;
+            for (Map.Entry<Item, BiFunction<EntityMaid, Holder<MobEffect>, Boolean>> entry
+                    : Global.baubleEffectBlockFilter.entrySet()) {
+                if (BaubleStateManager.hasBauble(maid, entry.getKey())
+                        && Boolean.TRUE.equals(entry.getValue().apply(maid, effect))) {
+                    Global.effectBlockFlag.set(Boolean.TRUE);
+                    return null;
+                }
+            }
+        }
+        return map.put((Holder<MobEffect>) key, (MobEffectInstance) value);
     }
 
     @Inject(method = "hurt", at = @At("HEAD"))

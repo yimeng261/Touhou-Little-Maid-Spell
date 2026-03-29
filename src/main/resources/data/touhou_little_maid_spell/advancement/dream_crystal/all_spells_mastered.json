@@ -1,0 +1,27 @@
+{
+  "display": {
+    "icon": {
+      "id": "touhou_little_maid_spell:dream_cat_crystal"
+    },
+    "title": {
+      "translate": "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.title"
+    },
+    "description": {
+      "translate": "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "equip_dream_crystal": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "equip_dream_crystal"
+    ]
+  ]
+}
