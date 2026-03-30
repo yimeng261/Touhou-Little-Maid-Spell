@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.item.bauble.dreamCrystal;
+package com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;

@@ -82,6 +82,20 @@ public class EntityMixin {
         }
     }
 
+    /**
+     * 注入 fireImmune()，当女仆装备不洁圣冠时返回 true
+     * 与下界生物相同机制，从源头阻止着火
+     */
+    @Inject(method = "fireImmune", at = @At("HEAD"), cancellable = true, remap = true)
+    private void onFireImmune(CallbackInfoReturnable<Boolean> cir) {
+        if ((Object) this instanceof EntityMaid maid) {
+            var unholyHat = MaidSpellItems.getUnholyHat();
+            if (unholyHat != null && BaubleStateManager.hasBauble(maid, unholyHat)) {
+                cir.setReturnValue(true);
+            }
+        }
+    }
+
     @Unique
     private static boolean maidSpell$classValid(String className) {
         return className.startsWith("net.minecraft") ||

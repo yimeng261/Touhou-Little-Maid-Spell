@@ -6,7 +6,7 @@ import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
 import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBook;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChain;
-import com.github.yimeng261.maidspell.item.bauble.dreamCrystal.DreamCatCrystal;
+import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystal;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocket;
 import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCore;
 import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuity;
@@ -26,6 +26,7 @@ import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import net.minecraft.Util;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -78,6 +79,21 @@ public class MaidSpellItems {
 
     public static String itemDesc(DeferredItem<Item> item) {
         return Util.makeDescriptionId("item", item.getId());
+    }
+
+    /**
+     * 获取原版 Goety 模组的不洁圣冠
+     * 如果模组未加载，返回 null
+     */
+    public static Item getUnholyHat() {
+        if (ModList.get().isLoaded("goety")) {
+            try {
+                return za.co.infernos.goety.common.items.ModItems.UNHOLY_HAT.get();
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
     }
 
 }

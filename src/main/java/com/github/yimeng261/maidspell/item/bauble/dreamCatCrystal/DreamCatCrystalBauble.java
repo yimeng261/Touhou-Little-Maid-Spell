@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.item.bauble.dreamCrystal;
+package com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal;
 
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -415,8 +415,19 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         }
     }
 
-    // ========== 随机正面效果 ==========
-    private void applyRandomBeneficialEffects(EntityMaid maid) {
+    // ========== 正面效果缓存 ==========
+    // 缓存所有正面效果，避免每次都遍历注册表
+    private static List<Holder.Reference<MobEffect>> CACHED_BENEFICIAL_EFFECTS = null;
+
+    /**
+     * 获取缓存的正面效果列表（延迟初始化）
+     * 只在第一次调用时构建，后续直接返回缓存
+     */
+    private static List<Holder.Reference<MobEffect>> getBeneficialEffects() {
+        if (CACHED_BENEFICIAL_EFFECTS != null) {
+            return CACHED_BENEFICIAL_EFFECTS;
+        }
+
         List<Holder.Reference<MobEffect>> candidates = new ArrayList<>();
         List<String> blacklist = Config.dreamCrystalEffectBlacklist;
 
@@ -429,6 +440,15 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 }
             }
         });
+
+        CACHED_BENEFICIAL_EFFECTS = candidates;
+        return candidates;
+    }
+
+    // ========== 随机正面效果 ==========
+    private void applyRandomBeneficialEffects(EntityMaid maid) {
+        // 使用缓存列表，避免重复遍历注册表
+        List<Holder.Reference<MobEffect>> candidates = getBeneficialEffects();
 
         if (candidates.isEmpty()) return;
 
