@@ -8,9 +8,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
 
-import javax.annotation.Nullable;
 import java.util.List;
 
 /**
@@ -43,7 +41,8 @@ public class FragrantIngenuity extends Item {
                         Component.translatable("item.maidspell.fragrant_ingenuity.desc2",
                                 String.format("%d", Config.fragrantIngenuityFavorabilityGain)).withStyle(ChatFormatting.GOLD),
                         Component.translatable("item.maidspell.fragrant_ingenuity.desc3",
-                                String.format("%.0f", Config.fragrantIngenuityBuffDuration / 20.0)).withStyle(ChatFormatting.AQUA)
+                                String.format("%.0f", Config.fragrantIngenuityBuffDuration / 20.0)).withStyle(ChatFormatting.AQUA),
+                        Component.translatable("item.maidspell.fragrant_ingenuity.desc4").withStyle(ChatFormatting.LIGHT_PURPLE)
                 ));
     }
 }

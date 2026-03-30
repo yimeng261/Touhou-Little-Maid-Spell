@@ -43,7 +43,8 @@ public class SilverCercis extends Item {
                         Component.translatable("item.maidspell.sliver_cercis.desc2",
                                 String.format("%d", Config.silverCercisTriggerCount),
                                 String.format("%d", Config.silverCercisCooldownTicks),
-                                String.format("%.0f", Config.silverCercisTrueDamageMultiplier * 100)).withStyle(ChatFormatting.BLUE)
+                                String.format("%.0f", Config.silverCercisTrueDamageMultiplier * 100)).withStyle(ChatFormatting.BLUE),
+                        Component.translatable("item.maidspell.sliver_cercis.desc4").withStyle(ChatFormatting.LIGHT_PURPLE)
                 ));
     }
 }
