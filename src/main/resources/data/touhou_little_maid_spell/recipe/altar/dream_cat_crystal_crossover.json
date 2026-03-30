@@ -1,0 +1,86 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:or",
+      "values": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "goety"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "ars_nouveau"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "psi"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "slashblade"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaishomecoming"
+        }
+      ]
+    }
+  ],
+  "type": "touhou_little_maid:altar_recipe_serializers",
+  "category": "misc",
+  "entity": "minecraft:item",
+  "group": "altar_recipe",
+  "result": {
+    "id": "touhou_little_maid_spell:dream_cat_crystal",
+    "count": 1
+  },
+  "power": 1.0,
+  "ingredients": [
+    {
+      "type": "touhou_little_maid_spell:optional_mod_item",
+      "modid": "irons_spellbooks",
+      "ingredient": {
+        "item": "irons_spellbooks:dragonskin_spell_book"
+      }
+    },
+    {
+      "type": "touhou_little_maid_spell:optional_mod_item",
+      "modid": "goety",
+      "ingredient": {
+        "item": "goety:unholy_blood"
+      }
+    },
+    {
+      "type": "touhou_little_maid_spell:optional_mod_item",
+      "modid": "ars_nouveau",
+      "ingredient": {
+        "item": "ars_nouveau:archmage_spell_book"
+      }
+    },
+    {
+      "type": "touhou_little_maid_spell:optional_mod_item",
+      "modid": "psi",
+      "ingredient": {
+        "item": "psi:cad_assembly_ivory_psimetal"
+      }
+    },
+    {
+      "type": "touhou_little_maid_spell:optional_mod_item",
+      "modid": "slashblade",
+      "ingredient": {
+        "item": "slashblade:slashblade"
+      }
+    },
+    {
+      "type": "touhou_little_maid_spell:optional_mod_item",
+      "modid": "youkaishomecoming",
+      "ingredient": {
+        "item": "youkaishomecoming:reimu_hairband"
+      }
+    }
+  ]
+}

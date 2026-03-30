@@ -22,6 +22,7 @@
     "iss.SyncedSpellDataMixin",
     "iss.UtilsMixin",
     "tlm.AbstractMaidContainerMixin",
+    "tlm.AltarRecipeSerializerMixin",
     "tlm.EntityMaidMixin",
     "tlm.OpenMaidGuiPackageMixin",
     "tlm.TaskFeedOwnerMixin"

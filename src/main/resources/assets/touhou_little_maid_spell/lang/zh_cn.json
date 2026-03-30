@@ -173,12 +173,12 @@
   "command.maidspell.retreat.reset.no_record": "该玩家没有归隐之地记录",
   "command.maidspell.retreat.reset.success": "已重置玩家 %s 的隐世之境额度",
   "item.touhou_little_maid_spell.dream_cat_crystal": "梦云水晶",
-  "item.touhou_little_maid_spell.dream_cat_crystal.desc1": "梦中之云，万法皆通",
-  "item.touhou_little_maid_spell.dream_cat_crystal.desc2": "遨游星海，万象由心",
-  "item.touhou_little_maid_spell.dream_cat_crystal.desc3": "归隐前的叹息，旅途的终点",
-  "item.touhou_little_maid_spell.dream_cat_crystal.desc4": "以及创世的善意",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc1": "云间幻梦，万法归宗。",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc2": "身游星海，万象随心。",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc3": "归隐一叹，终途渐近。",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc4": "创世余晖，皆为善因。",
   "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.title": "万法皆通",
-  "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.description": "为女仆装备梦云水晶，解锁终极法术潜能",
+  "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.description": "一路至今，辛苦了，主人。",
   "touhou_little_maid_spell.configuration.dream_crystal": "梦云水晶相关配置",
   "touhou_little_maid_spell.configuration.dreamCrystalEffectBlacklist": "梦云水晶随机正面效果黑名单，黑名单内的效果不会被随机赋予"
 }

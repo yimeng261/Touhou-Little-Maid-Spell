@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell;
 
+import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
@@ -59,6 +60,7 @@ public class MaidSpellMod {
         MaidSpellStructures.STRUCTURE_TYPES.register(modEventBus);
         MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modEventBus);
         MaidSpellPoolElementTypes.POOL_ELEMENT_TYPES.register(modEventBus);
+        MaidSpellIngredientTypes.INGREDIENT_TYPES.register(modEventBus);
 
         // 铁魔法属性修改器获取
         if (ModList.get().isLoaded("irons_spellbooks")) {
