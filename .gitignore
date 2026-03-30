@@ -17,22 +17,6 @@ out
 build
 .gradle
 
-#mods source code
-Ars-Nouveau-1.20
-Psi-1.20
-SlashBlade_Resharped
-TouhouLittleMaid
-ModularGolems
-Goety-2-1.20
-irons-spells-n-spellbooks-1.20.1
-minecraft-1.20.1-src
-revelationfix
-Cataclysm
-
-
 # other
 eclipse
 run
-
-# Files from Forge MDK
-forge*changelog.txt
