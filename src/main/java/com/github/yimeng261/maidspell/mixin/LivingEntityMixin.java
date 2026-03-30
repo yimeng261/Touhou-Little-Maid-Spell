@@ -4,7 +4,6 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
@@ -200,7 +199,7 @@ public abstract class LivingEntityMixin {
         return map.put((Holder<MobEffect>) key, (MobEffectInstance) value);
     }
 
-    @Inject(method = "hurt", at = @At("HEAD"))
+    @Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
     private void onHurt(DamageSource damageSource, float amount, CallbackInfoReturnable<Boolean> cir) {
         LivingEntity entity = (LivingEntity) (Object) this;
 
@@ -211,6 +210,10 @@ public abstract class LivingEntityMixin {
         }
 
         if(damageSource instanceof InfoDamageSource){
+            if (entity instanceof EntityMaid || entity instanceof Player) {
+                cir.setReturnValue(false);
+                return;
+            }
             return;
         }
 
@@ -218,17 +221,10 @@ public abstract class LivingEntityMixin {
             return;
         }
 
-        Entity sourceEntity = damageSource.getEntity();
-        Entity directEntity = damageSource.getDirectEntity();
-
-        if(sourceEntity instanceof EntityMaid maid){
-            ChaosBookBauble.chaosBookProcess(maid, entity);
-            WoundRimeBladeBauble.updateWoundRimeMap(maid,entity,amount);
-        }else if(directEntity instanceof EntityMaid maid){
-            ChaosBookBauble.chaosBookProcess(maid, entity);
-            WoundRimeBladeBauble.updateWoundRimeMap(maid,entity,amount);
+        Global.HurtHeadContext hurtHeadContext = Global.dispatchHurtHeadHandlers(entity, damageSource, amount);
+        if (hurtHeadContext.isHandled()) {
+            cir.setReturnValue(hurtHeadContext.getReturnValue());
         }
-
     }
 
     @Unique

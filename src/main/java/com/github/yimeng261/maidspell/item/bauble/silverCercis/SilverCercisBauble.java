@@ -22,8 +22,9 @@ public class SilverCercisBauble implements IMaidBauble {
         UUID uuid = maid.getUUID();
         Pair<Integer,Integer> record = maidCercisMap.computeIfAbsent(uuid, k -> new Pair<>(0, 0));
         int tick = maid.tickCount;
+        float multiplier = BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL) ? 2.0f : 1.0f;
         if (record.getA() >= Config.silverCercisTriggerCount || tick - record.getB() > Config.silverCercisCooldownTicks || BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL)) {
-            if(TrueDamageUtil.dealTrueDamage(target, dataItem.getAmount()*(float)Config.silverCercisTrueDamageMultiplier,maid)){
+            if (TrueDamageUtil.dealTrueDamage(target, dataItem.getAmount() * (float) Config.silverCercisTrueDamageMultiplier * multiplier, maid)) {
                 maidCercisMap.put(uuid, new Pair<>(0,tick));
             }
         }else{

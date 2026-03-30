@@ -92,8 +92,7 @@ public class DreamCrystalMaidEvents {
         DamageSource source = event.getSource();
 
         // 复活后无敌
-        if (DreamCatCrystalBauble.isInvulnerable(maid.getUUID())
-                && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+        if (DreamCatCrystalBauble.isInvulnerable(maid.getUUID())) {
             event.setCanceled(true);
             return;
         }

@@ -17,7 +17,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -30,7 +29,6 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.items.ItemStackHandler;
 import org.slf4j.Logger;
 import top.theillusivec4.curios.api.CuriosApi;
 
@@ -116,18 +114,19 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             return null;
         });
 
-        // ========== 女仆造成伤害后：真实伤害 + 时停 + 弹幕溅射 ==========
-        Global.baubleDamageHandlers.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (event, maid) -> {
-            // 跳过由 InfoDamageSource 产生的次级伤害（如混沌之书分割伤害），避免重复触发
-            DamageSource source = event.getSource();
-            if (source instanceof com.github.yimeng261.maidspell.damage.InfoDamageSource) {
-                return null;
+        // ========== 女仆造成伤害头部处理：真实伤害 + 时停 + 弹幕溅射 ==========
+        Global.registerBaubleHurtHeadHandler(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), context -> {
+            EntityMaid maid = context.getSourceMaid();
+            if (maid == null) {
+                return;
             }
 
-            LivingEntity target = event.getEntity();
-            if (target == null || !target.isAlive()) return null;
+            LivingEntity target = context.getTarget();
+            if (target == null || !target.isAlive()) {
+                return;
+            }
 
-            float damage = event.getNewDamage();
+            float damage = context.getAmount();
 
             // 1. 真实伤害（额外等于攻击伤害）
             TrueDamageUtil.dealTrueDamage(target, damage, maid);
@@ -144,20 +143,17 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             // 3. 弹幕溅射：对目标周围 5 格内的敌方实体造成 10% 伤害
             if (!maid.level().isClientSide()) {
                 float barrageDamage = damage * 0.1f;
-                UUID ownerUUID = maid.getOwnerUUID();
                 maid.level().getEntitiesOfClass(
                         LivingEntity.class,
                         target.getBoundingBox().inflate(5.0),
                         entity -> entity != maid
                                 && entity != target
                                 && entity.isAlive()
-                                && !entity.isSpectator()
-                                && !(entity instanceof EntityMaid) // 不攻击其他女仆
-                                && (ownerUUID == null || !entity.getUUID().equals(ownerUUID)) // 不攻击主人
+                                && !(entity instanceof net.minecraft.world.entity.player.Player)
+                                && !(entity instanceof EntityMaid)
                 ).forEach(nearby -> TrueDamageUtil.dealTrueDamage(nearby, barrageDamage, maid));
             }
 
-            return null;
         });
 
         // ========== 有害效果双重免疫过滤器（与 MobEffectMixin + LivingEntityMixin 配合） ==========
@@ -187,8 +183,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 // 触发复活
                 event.setCanceled(true);
 
-                // 恢复到 75% 最大生命值
-                float healAmount = maid.getMaxHealth() * 0.75f;
+                // 恢复到最大生命值
+                float healAmount = maid.getMaxHealth();
                 maid.setHealth(healAmount);
 
                 // 记录本次复活时间戳
@@ -296,6 +292,17 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 handler.getCurios().keySet().forEach(slotType ->
                         handler.removeSlotModifier(slotType, DC_CURIOS_SLOT_ID))
         );
+
+        // 卸下时移除属性修饰符
+        removeAttributeModifier(maid, Attributes.MAX_HEALTH, DC_HP_ID);
+        removeAttributeModifier(maid, Attributes.ATTACK_SPEED, DC_ATTACK_SPEED_ID);
+        if (!ISS_ATTRIBUTES.isEmpty()) {
+            for (Holder<net.minecraft.world.entity.ai.attributes.Attribute> attrHolder : ISS_ATTRIBUTES) {
+                ResourceLocation issId = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID,
+                        "dream_crystal_iss_" + attrHolder.getRegisteredName().replace(':', '_'));
+                removeAttributeModifier(maid, attrHolder, issId);
+            }
+        }
     }
 
     // ========== 无敌倒计时处理 ==========
@@ -320,6 +327,13 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         instance.addTransientModifier(new AttributeModifier(id, value, operation));
     }
 
+    private void removeAttributeModifier(EntityMaid maid, Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute,
+                                         ResourceLocation id) {
+        AttributeInstance instance = maid.getAttribute(attribute);
+        if (instance == null) return;
+        instance.removeModifier(id);
+    }
+
     // ========== 维度特定 Buff ==========
     private void applyDimensionBuffs(EntityMaid maid) {
         UUID maidUUID = maid.getUUID();
@@ -327,28 +341,16 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         // 归隐之地：无敌
         if (TheRetreatDimension.isInRetreat(maid)) {
             // 归隐之地期间持续刷新无敌计时（2 秒窗口，每 20tick 刷新）
-            Integer currentInvul = INVULNERABLE_TICKS.get(maidUUID);
-            // 只在没有复活无敌时才设置（避免覆盖复活无敌倒计时）
-            if (currentInvul == null || currentInvul <= 0) {
-                INVULNERABLE_TICKS.put(maidUUID, 40); // 维持 2 秒，每 20tick 刷新
-            }
+            INVULNERABLE_TICKS.put(maidUUID, 40); // 维持 2 秒，每 20tick 刷新
             return;
         }
 
         Level level = maid.level();
         if (level.dimension() == Level.OVERWORLD) {
-            long dayTime = level.getDayTime() % 24000L;
-            if (dayTime < 12000L) {
-                // 白天：饱和 II、抗性提升 II、生命恢复 II
-                maid.addEffect(new MobEffectInstance(MobEffects.SATURATION, 300, 1, false, false));
-                maid.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 300, 1, false, false));
-                maid.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 300, 1, false, false));
-            } else {
-                // 夜晚：夜视 IV、迅捷 III、急迫 III
-                maid.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 1360, 3, false, false));
-                maid.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 300, 2, false, false));
-                maid.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 300, 2, false, false));
-            }
+            // 主世界：饱和 II、抗性提升 II、生命恢复 II
+            maid.addEffect(new MobEffectInstance(MobEffects.SATURATION, 300, 1, false, false));
+            maid.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 300, 1, false, false));
+            maid.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 300, 1, false, false));
         } else if (level.dimension() == Level.NETHER) {
             // 下界：力量 III、迅捷 III、急迫 III
             maid.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 300, 2, false, false));
@@ -406,7 +408,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     // ========== 修复背包耐久度 ==========
     private void repairInventory(EntityMaid maid) {
-        ItemStackHandler handler = maid.getMaidInv();
+        var handler = maid.getAvailableInv(false);
         for (int i = 0; i < handler.getSlots(); i++) {
             ItemStack stack = handler.getStackInSlot(i);
             if (!stack.isEmpty() && stack.isDamaged()) {

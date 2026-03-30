@@ -31,6 +31,13 @@ public class ChaosBookBauble implements IMaidBauble {
     }
 
     static {
+        Global.registerBaubleHurtHeadHandler(MaidSpellItems.CHAOS_BOOK.get(), context -> {
+            EntityMaid maid = context.getSourceMaid();
+            if (maid != null) {
+                chaosBookProcess(maid, context.getTarget());
+            }
+        });
+
         // 注册女仆造成伤害时的处理器
         Global.baubleHurtHandlers.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
 
