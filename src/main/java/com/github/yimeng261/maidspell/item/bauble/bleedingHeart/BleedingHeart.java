@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item.bauble.bleedingHeart;
 
 import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -32,12 +33,17 @@ public class BleedingHeart extends Item {
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
 
-        tooltip.add(Component.translatable("item.maidspell.bleeding_heart.desc1")
-            .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.maidspell.bleeding_heart.desc2", 
-            String.format("%.0f", Config.bleedingHeartHealRatio * 100))
-            .withStyle(ChatFormatting.BLUE));
-        tooltip.add(Component.translatable("item.maidspell.bleeding_heart.desc3")
-            .withStyle(ChatFormatting.YELLOW));
+        TooltipHelper.addShiftTooltip(tooltip,
+                List.of(
+                        Component.translatable("item.maidspell.bleeding_heart.desc1")
+                                .withStyle(ChatFormatting.GRAY)
+                ),
+                List.of(
+                        Component.translatable("item.maidspell.bleeding_heart.desc2",
+                                        String.format("%.0f", Config.bleedingHeartHealRatio * 100))
+                                .withStyle(ChatFormatting.BLUE),
+                        Component.translatable("item.maidspell.bleeding_heart.desc3")
+                                .withStyle(ChatFormatting.YELLOW)
+                ));
     }
 }

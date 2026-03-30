@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item.bauble.quickChantRing;
 
 import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -28,10 +29,15 @@ public class QuickChantRing extends Item {
     public void appendHoverText(ItemStack stack, @Nonnull TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
 
-        tooltip.add(Component.translatable("item.maidspell.quick_chant_ring.desc1")
-                .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.maidspell.quick_chant_ring.desc2",
-                String.format("%.0f", Config.quickChantRingCooldownReduction * 100))
-                .withStyle(ChatFormatting.BLUE));
+        TooltipHelper.addShiftTooltip(tooltip,
+                List.of(
+                        Component.translatable("item.maidspell.quick_chant_ring.desc1")
+                                .withStyle(ChatFormatting.GRAY)
+                ),
+                List.of(
+                        Component.translatable("item.maidspell.quick_chant_ring.desc2",
+                                        String.format("%.0f", Config.quickChantRingCooldownReduction * 100))
+                                .withStyle(ChatFormatting.BLUE)
+                ));
     }
 }

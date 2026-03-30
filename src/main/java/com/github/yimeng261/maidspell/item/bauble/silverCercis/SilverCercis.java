@@ -1,5 +1,7 @@
 package com.github.yimeng261.maidspell.item.bauble.silverCercis;
 
+import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -32,8 +34,16 @@ public class SilverCercis extends Item {
     public void appendHoverText(ItemStack stack, @Nonnull TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
 
-        tooltip.add(Component.translatable("item.maidspell.sliver_cercis.desc1").withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.maidspell.sliver_cercis.desc2").withStyle(ChatFormatting.BLUE));
-        tooltip.add(Component.translatable("item.maidspell.sliver_cercis.desc3").withStyle(ChatFormatting.RED));
+        TooltipHelper.addShiftTooltip(tooltip,
+                List.of(
+                        Component.translatable("item.maidspell.sliver_cercis.desc1").withStyle(ChatFormatting.GRAY),
+                        Component.translatable("item.maidspell.sliver_cercis.desc3").withStyle(ChatFormatting.RED)
+                ),
+                List.of(
+                        Component.translatable("item.maidspell.sliver_cercis.desc2",
+                                String.format("%d", Config.silverCercisTriggerCount),
+                                String.format("%d", Config.silverCercisCooldownTicks),
+                                String.format("%.0f", Config.silverCercisTrueDamageMultiplier * 100)).withStyle(ChatFormatting.BLUE)
+                ));
     }
 }
