@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell;
 
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
+import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.task.SpellCombatFarTask;
 import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
@@ -23,6 +24,19 @@ import java.util.Set;
 public class Config {
 
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+    private static final List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST = List.of(
+            "irons_spellbooks:ascension",
+            "irons_spellbooks:burning_dash",
+            "irons_spellbooks:antigravity",
+            "irons_spellbooks:volt_strike",
+            "traveloptics:aqua_missiles_hover",
+            "traveloptics:meteor_storm",
+            "traveloptics:aerial_collapse",
+            "traveloptics:aerial_collapse_helper",
+            "goety:fire_trail",
+            "goety:charged",
+            "goety:shadow_walk"
+    );
 
     // ========== 战斗系统配置 ==========
     static {
@@ -271,6 +285,20 @@ public class Config {
             .defineInRange("fragrantIngenuityBuffDuration", 2400, 200, 120000);
 
     static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> FRAGRANT_INGENUITY_EFFECT_BLACKLIST = BUILDER
+            .comment("馥郁巧思随机正面效果黑名单，黑名单内的效果不会被随机赋予")
+            .comment("Fragrant Ingenuity random beneficial effect blacklist")
+            .comment("默认值与梦云水晶黑名单相同")
+            .defineListAllowEmpty(
+                    List.of("fragrantIngenuityEffectBlacklist"),
+                    () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST,
+                    obj -> obj instanceof String
+            );
+
+    static {
         BUILDER.pop(); // utility
     }
 
@@ -382,7 +410,7 @@ public class Config {
             .comment("示例: [\"minecraft:bad_omen\"]")
             .defineListAllowEmpty(
                     List.of("dreamCrystalEffectBlacklist"),
-                    () -> List.of(),
+                    () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST,
                     obj -> obj instanceof String
             );
 
@@ -515,6 +543,7 @@ public class Config {
     public static int hairpinMinExtensionTicks;
     public static int fragrantIngenuityFavorabilityGain;
     public static int fragrantIngenuityBuffDuration;
+    public static List<String> fragrantIngenuityEffectBlacklist;
 
     // 特殊饰品相关
     public static double chaosBookTrueDamageMin;
@@ -593,6 +622,8 @@ public class Config {
         hairpinMinExtensionTicks = HAIRPIN_MIN_EXTENSION_TICKS.get();
         fragrantIngenuityFavorabilityGain = FRAGRANT_INGENUITY_FAVORABILITY_GAIN.get();
         fragrantIngenuityBuffDuration = FRAGRANT_INGENUITY_BUFF_DURATION.get();
+        fragrantIngenuityEffectBlacklist = new ArrayList<>(FRAGRANT_INGENUITY_EFFECT_BLACKLIST.get());
+        FragrantIngenuityBauble.refreshEffectsList();
 
         // 特殊饰品相关
         chaosBookTrueDamageMin = CHAOS_BOOK_TRUE_DAMAGE_MIN.get();

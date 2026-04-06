@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.Config;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.effect.MobEffect;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -41,6 +42,24 @@ public class FragrantIngenuityBauble implements IMaidBauble {
         }
         POSITIVE_EFFECTS.clear();
         registry.holders().filter(holder -> holder.value().isBeneficial()).forEach(POSITIVE_EFFECTS::add);
+    }
+
+    /**
+     * 根据配置中的黑名单重建正面效果列表，在配置加载/重载时调用
+     * Rebuild the positive effects list according to the blacklist in config, called on config load/reload
+     */
+    public static void refreshEffectsList() {
+        List<String> blacklist = Config.fragrantIngenuityEffectBlacklist;
+        POSITIVE_EFFECTS.clear();
+        BuiltInRegistries.MOB_EFFECT.holders()
+                .filter(holder -> holder.value().isBeneficial())
+                .filter(holder -> {
+                    if (blacklist == null || blacklist.isEmpty()) return true;
+                    return holder.unwrapKey()
+                            .map(key -> !blacklist.contains(key.location().toString()))
+                            .orElse(true);
+                })
+                .forEach(POSITIVE_EFFECTS::add);
     }
 
     /**
