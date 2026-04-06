@@ -247,7 +247,7 @@ public class Config {
             .comment("流转核心效果触发间隔 (tick) (默认: 10)")
             .comment("Flow Core effect trigger interval in ticks")
             .defineInRange("flowCoreTickInterval", 10, 1, 100);
-    
+
     static {
         BUILDER.comment("");
     }
@@ -274,11 +274,83 @@ public class Config {
             .comment("馥郁巧思进食好感度增长 (默认: 2)")
             .comment("Fragrant Ingenuity favorability gain when eating")
             .defineInRange("fragrantIngenuityFavorabilityGain", 2, 1, 10);
-    
+
     static {
         BUILDER.comment("");
     }
-    
+
+    private static final ForgeConfigSpec.IntValue SPRING_BLOOM_RETURN_MAX_STACKS = BUILDER
+            .comment("春花-返最大层数 (默认: 3)")
+            .comment("Spring Bloom Return maximum stack count")
+            .defineInRange("springBloomReturnMaxStacks", 3, 1, 8);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.IntValue SPRING_BLOOM_RETURN_STACK_DURATION_TICKS = BUILDER
+            .comment("春花-返每层持续时间 (tick) (默认: 400)")
+            .comment("Spring Bloom Return stack duration in ticks")
+            .defineInRange("springBloomReturnStackDurationTicks", 400, 20, 72000);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.IntValue SPRING_BLOOM_RETURN_GAIN_COOLDOWN_TICKS = BUILDER
+            .comment("春花-返叠层获取冷却 (tick) (默认: 20)")
+            .comment("Spring Bloom Return stack gain cooldown in ticks")
+            .defineInRange("springBloomReturnGainCooldownTicks", 20, 0, 1200);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.IntValue SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_TICKS = BUILDER
+            .comment("春花-返触发冷却 (tick) (默认: 200)")
+            .comment("Spring Bloom Return trigger cooldown in ticks")
+            .defineInRange("springBloomReturnTriggerCooldownTicks", 200, 0, 72000);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.DoubleValue SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD = BUILDER
+            .comment("春花-返伤害触发固定阈值 (默认: 4.0)")
+            .comment("Spring Bloom Return flat damage threshold")
+            .defineInRange("springBloomReturnDamageThreshold", 4.0, 0.0, 100.0);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.DoubleValue SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD_RATIO = BUILDER
+            .comment("春花-返伤害触发最大生命比例阈值 (默认: 0.10)")
+            .comment("Spring Bloom Return max health ratio threshold")
+            .defineInRange("springBloomReturnDamageThresholdRatio", 0.10, 0.0, 1.0);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.DoubleValue SPRING_BLOOM_RETURN_HEAL_RATIO = BUILDER
+            .comment("春花-返触发时等效回复比例 (默认: 0.05)")
+            .comment("Spring Bloom Return heal ratio")
+            .defineInRange("springBloomReturnHealRatio", 0.05, 0.0, 1.0);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.DoubleValue SPRING_BLOOM_RETURN_COOLDOWN_REFUND_RATIO = BUILDER
+            .comment("春花-返触发时返还剩余法术冷却比例 (默认: 0.20)")
+            .comment("Spring Bloom Return cooldown refund ratio")
+            .defineInRange("springBloomReturnCooldownRefundRatio", 0.20, 0.0, 1.0);
+
+    static {
+        BUILDER.comment("");
+    }
+
     private static final ForgeConfigSpec.IntValue FRAGRANT_INGENUITY_BUFF_DURATION = BUILDER
             .comment("馥郁巧思喂食buff持续时间 (tick)")
             .comment("Fragrant Ingenuity buff duration when maid feeds owner")
@@ -297,7 +369,38 @@ public class Config {
                 () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST,
                 obj -> obj instanceof String
             );
-    
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> SPRING_BLOOM_RETURN_SUPPORT_SPELL_WHITELIST = BUILDER
+            .comment("春花-返直接识别为治疗/增益法术的白名单")
+            .comment("Spring Bloom Return support spell exact whitelist")
+            .defineListAllowEmpty(
+                java.util.List.of("springBloomReturnSupportSpellWhitelist"),
+                () -> java.util.List.of(),
+                obj -> obj instanceof String
+            );
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> SPRING_BLOOM_RETURN_SUPPORT_SPELL_KEYWORDS = BUILDER
+            .comment("春花-返识别治疗/增益法术的关键词")
+            .comment("Spring Bloom Return support spell keywords")
+            .defineListAllowEmpty(
+                java.util.List.of("springBloomReturnSupportSpellKeywords"),
+                () -> java.util.List.of(
+                    "heal", "healing", "cure", "cleanse", "regen", "regeneration",
+                    "ward", "shield", "barrier", "protect", "protection", "bless",
+                    "support", "recovery", "restore", "renew", "vigor", "aura",
+                    "buff", "haste", "fortify", "mend"
+                ),
+                obj -> obj instanceof String
+            );
+
     static {
         BUILDER.pop(); // utility
     }
@@ -532,6 +635,16 @@ public class Config {
     public static int fragrantIngenuityFavorabilityGain;
     public static int fragrantIngenuityBuffDuration;
     public static List<String> fragrantIngenuityEffectBlacklist;
+    public static int springBloomReturnMaxStacks;
+    public static int springBloomReturnStackDurationTicks;
+    public static int springBloomReturnGainCooldownTicks;
+    public static int springBloomReturnTriggerCooldownTicks;
+    public static double springBloomReturnDamageThreshold;
+    public static double springBloomReturnDamageThresholdRatio;
+    public static double springBloomReturnHealRatio;
+    public static double springBloomReturnCooldownRefundRatio;
+    public static List<String> springBloomReturnSupportSpellWhitelist;
+    public static List<String> springBloomReturnSupportSpellKeywords;
     
     // 特殊饰品相关
     public static double chaosBookTrueDamageMin;
@@ -599,6 +712,16 @@ public class Config {
         fragrantIngenuityFavorabilityGain = FRAGRANT_INGENUITY_FAVORABILITY_GAIN.get();
         fragrantIngenuityBuffDuration = FRAGRANT_INGENUITY_BUFF_DURATION.get();
         fragrantIngenuityEffectBlacklist = new ArrayList<>(FRAGRANT_INGENUITY_EFFECT_BLACKLIST.get());
+        springBloomReturnMaxStacks = SPRING_BLOOM_RETURN_MAX_STACKS.get();
+        springBloomReturnStackDurationTicks = SPRING_BLOOM_RETURN_STACK_DURATION_TICKS.get();
+        springBloomReturnGainCooldownTicks = SPRING_BLOOM_RETURN_GAIN_COOLDOWN_TICKS.get();
+        springBloomReturnTriggerCooldownTicks = SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_TICKS.get();
+        springBloomReturnDamageThreshold = SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD.get();
+        springBloomReturnDamageThresholdRatio = SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD_RATIO.get();
+        springBloomReturnHealRatio = SPRING_BLOOM_RETURN_HEAL_RATIO.get();
+        springBloomReturnCooldownRefundRatio = SPRING_BLOOM_RETURN_COOLDOWN_REFUND_RATIO.get();
+        springBloomReturnSupportSpellWhitelist = new ArrayList<>(SPRING_BLOOM_RETURN_SUPPORT_SPELL_WHITELIST.get());
+        springBloomReturnSupportSpellKeywords = new ArrayList<>(SPRING_BLOOM_RETURN_SUPPORT_SPELL_KEYWORDS.get());
         
         // 特殊饰品相关
         chaosBookTrueDamageMin = CHAOS_BOOK_TRUE_DAMAGE_MIN.get();

@@ -12,6 +12,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.MobEffectEvent;
@@ -26,6 +27,34 @@ import java.util.List;
  */
 public class HairpinBauble implements IMaidBauble {
     public static final Logger LOGGER = LogUtils.getLogger();
+    private static final ThreadLocal<RedirectContext> ACTIVE_REDIRECT = new ThreadLocal<>();
+
+    private static final class RedirectContext {
+        private final EntityMaid maid;
+        private final Player owner;
+        private float redirectedAmount;
+        private boolean captured;
+
+        private RedirectContext(EntityMaid maid, Player owner) {
+            this.maid = maid;
+            this.owner = owner;
+        }
+    }
+
+    public static boolean captureRedirectedDamage(Player player, float amount) {
+        RedirectContext context = ACTIVE_REDIRECT.get();
+        if (context == null || context.owner != player) {
+            return false;
+        }
+        context.redirectedAmount = Math.max(0.0f, amount);
+        context.captured = true;
+        return true;
+    }
+
+    public static boolean isSamplingOwnerDamage(LivingEntity entity) {
+        RedirectContext context = ACTIVE_REDIRECT.get();
+        return context != null && context.owner == entity;
+    }
 
     public HairpinBauble() {
         MinecraftForge.EVENT_BUS.register(this);
@@ -49,39 +78,32 @@ public class HairpinBauble implements IMaidBauble {
             LivingEntity owner = maid.getOwner();
             DamageSource source = event.getSource();
 
-            if (owner == null) {
+            if (!(owner instanceof Player player)) {
                 return null;
             }
 
             // 如果伤害源已经是InfoDamageSource且标记为hairpin_redirect，说明是回流伤害，不再转移
             if (source instanceof InfoDamageSource infoDamage && "hairpin_redirect".equals(infoDamage.msg_type)) {
-                //LOGGER.debug("[hairpin] damage redirected finished, amount: {}, already redirected", event.getAmount());
                 return null;
             }
 
-            // 创建带有hairpin标记的InfoDamageSource转发给主人，使用安全的创建方法
-            InfoDamageSource hairpinDamage = InfoDamageSource.create(owner.level(), "hairpin_redirect", source);
-            hairpinDamage.setSourceEntity(maid);
-            owner.setInvulnerable(false);
-            owner.invulnerableTime = 0;
-            owner.hurt(hairpinDamage, event.getAmount());
-            event.setCanceled(true);
+            RedirectContext existing = ACTIVE_REDIRECT.get();
+            if (existing != null && existing.maid == maid) {
+                return null;
+            }
 
-            //LOGGER.debug("[hairpin] damage redirected from maid {} to owner {}, amount: {}", maid.getUUID(), owner.getUUID(), event.getAmount());
-            return null;
-        });
-
-        // 注册玩家受伤时的处理器 - 处理hairpin重定向的伤害
-        Global.playerDamageHandlers.add((event, player) -> {
-            DamageSource source = event.getSource();
-            
-            if (source instanceof InfoDamageSource infoDamage && "hairpin_redirect".equals(infoDamage.msg_type)) {
-                EntityMaid maid = (EntityMaid) infoDamage.sourceEntity;
-                maid.setInvulnerable(false);
-                maid.invulnerableTime = 0;
-                maid.hurt(source, event.getAmount());
-                event.setCanceled(true);
-                //LOGGER.debug("[hairpin] damage redirected back from owner {} to maid {}, amount: {}", player.getUUID(), maid.getUUID(), event.getAmount());
+            RedirectContext context = new RedirectContext(maid, player);
+            ACTIVE_REDIRECT.set(context);
+            try {
+                // Route the hit through the owner's full hurt/setHealth pipeline, then reuse the final HP loss on the maid.
+                InfoDamageSource hairpinDamage = InfoDamageSource.create(player.level(), "hairpin_redirect", source);
+                hairpinDamage.setSourceEntity(maid);
+                player.setInvulnerable(false);
+                player.invulnerableTime = 0;
+                player.hurt(hairpinDamage, event.getAmount());
+                event.setAmount(context.captured ? context.redirectedAmount : 0.0f);
+            } finally {
+                ACTIVE_REDIRECT.remove();
             }
             return null;
         });

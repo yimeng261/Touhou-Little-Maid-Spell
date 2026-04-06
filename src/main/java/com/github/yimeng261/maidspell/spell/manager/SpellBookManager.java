@@ -213,6 +213,12 @@ public class SpellBookManager {
         }
     }
 
+    public void refundCooldowns(double refundRatio) {
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
+            provider.refundCooldowns(maid, refundRatio);
+        }
+    }
+
 
     public void tick(){
         // 处理持续性施法

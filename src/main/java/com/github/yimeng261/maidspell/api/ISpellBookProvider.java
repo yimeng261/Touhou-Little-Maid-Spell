@@ -121,6 +121,13 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
     public void updateCooldown(EntityMaid maid){
         getData(maid).updateCooldowns();
     }
+
+    public void refundCooldowns(EntityMaid maid, double refundRatio) {
+        T data = getData(maid);
+        if (data != null) {
+            data.refundCooldowns(refundRatio);
+        }
+    }
     
     /**
      * 设置当前目标

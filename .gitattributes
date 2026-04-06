@@ -1,5 +1,17 @@
 # Disable autocrlf on generated files, they always generate with LF
 # Add any extra files or paths here to make git stop saying they
 # are changed when only line endings change.
+*.java text eol=lf
+*.json text eol=lf
+*.properties text eol=lf
+*.gradle text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.cfg text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+.gitignore text eol=lf
+
 src/generated/**/.cache/cache text eol=lf
 src/generated/**/*.json text eol=lf

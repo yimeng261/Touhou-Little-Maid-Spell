@@ -7,6 +7,7 @@ import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.BlueNoteSpellManager;
+import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -365,6 +366,12 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
                         castSource = getCastSource(data, data.getCurrentCastingSpell());
                     }
                     spell.onCast(maid.level(), data.getCurrentCastingSpell().getLevel(), maid, castSource, magicData);
+                    SpringBloomReturnBauble.onSpellCast(
+                        maid,
+                        "irons_spellbooks",
+                        spell.getSpellId(),
+                        data.getTarget()
+                    );
                 }
             }
         }
@@ -487,6 +494,12 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             // LONG和INSTANT类型在施法完成时调用onCast
             CastSource castSource = getCastSource(data, data.getCurrentCastingSpell());
             spell.onCast(maid.level(), data.getCurrentCastingSpell().getLevel(), maid, castSource, magicData);
+            SpringBloomReturnBauble.onSpellCast(
+                maid,
+                "irons_spellbooks",
+                spell.getSpellId(),
+                data.getTarget()
+            );
         }
         // CONTINUOUS类型的法术在施法过程中已经多次调用onCast，这里不需要再调用
 

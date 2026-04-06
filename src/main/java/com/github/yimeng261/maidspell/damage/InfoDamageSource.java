@@ -74,4 +74,8 @@ public class InfoDamageSource extends DamageSource {
         }
     }
 
+    public boolean canHurtProtectedEntity() {
+        return "hairpin_redirect".equals(msg_type) || "double_heart_chain".equals(msg_type);
+    }
+
 }

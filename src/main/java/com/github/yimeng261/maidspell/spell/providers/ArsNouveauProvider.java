@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.spell.providers;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidArsNouveauSpellData;
 
 import com.hollingsworth.arsnouveau.common.items.SpellBook;
@@ -313,6 +314,12 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
             }
             
             if (castSuccess) {
+                SpringBloomReturnBauble.onSpellCast(
+                    maid,
+                    "ars_nouveau",
+                    data.getCurrentSpell() != null ? data.getCurrentSpell().name : null,
+                    target
+                );
                 // 播放音效
                 if (data.getCurrentSpell().sound != null && data.getCurrentSpell().sound.sound != null) {
                     maid.level().playSound(null, 

@@ -162,6 +162,20 @@ public abstract class IMaidSpellData {
         return spellCooldowns.getOrDefault(spellId, 0);
     }
 
+    public void refundCooldowns(double refundRatio) {
+        if (refundRatio <= 0) {
+            return;
+        }
+        spellCooldowns.replaceAll((spellId, cooldown) -> {
+            if (cooldown <= 0) {
+                return 0;
+            }
+            int refund = Math.max(1, (int) Math.ceil(cooldown * refundRatio));
+            return Math.max(0, cooldown - refund);
+        });
+        spellCooldowns.entrySet().removeIf(entry -> entry.getValue() <= 0);
+    }
+
     /**
      * 更新所有法术的冷却时间(每秒一次)
      */

@@ -11,6 +11,7 @@ import com.binaris.wizardry.setup.registries.Spells;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidWizardrySpellData;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.logging.LogUtils;
@@ -231,6 +232,13 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
             if (!success) {
                 LOGGER.debug("法术 {} 施放失败", data.getCurrentSpell().getLocation());
                 completeCasting(maid);
+            } else {
+                SpringBloomReturnBauble.onSpellCast(
+                    maid,
+                    "ebwizardry",
+                    data.getCurrentSpell().getLocation().toString(),
+                    data.getTarget()
+                );
             }
         } catch (Exception e) {
             LOGGER.error("女仆 {} 施放法术 {} 时出错: {}",

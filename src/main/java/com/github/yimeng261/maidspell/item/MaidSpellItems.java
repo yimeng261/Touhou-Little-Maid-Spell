@@ -20,6 +20,7 @@ import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBlade;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCore;
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystal;
+import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturn;
 import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
@@ -66,6 +67,7 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> WOUND_RIME_BLADE = ITEMS.register("wound_rime_blade", WoundRimeBlade::new);
     public static final RegistryObject<Item> ANCHOR_CORE = ITEMS.register("anchor_core", AnchorCore::new);
     public static final RegistryObject<Item> SPELL_OVERLIMIT_CORE = ITEMS.register("spell_overlimit_core", SpellOverlimitCore::new);
+    public static final RegistryObject<Item> SPRING_BLOOM_RETURN = ITEMS.register("spring_bloom_return", SpringBloomReturn::new);
     public static final RegistryObject<Item> FRAGRANT_INGENUITY = ITEMS.register("fragrant_ingenuity", FragrantIngenuity::new);
     //public static final RegistryObject<Item> CRYSTAL_CIRCUIT = ITEMS.register("crystal_circuit", CrystalCircuit::new);
 

@@ -10,6 +10,8 @@
     "ChunkGeneratorMixin",
     "CombatTrackerMixin",
     "EntityMixin",
+    "HairpinServerLevelMixin",
+    "HairpinServerPlayerMixin",
     "LivingEntityInvoker",
     "LivingEntityMixin",
     "MinecraftServerMixin",

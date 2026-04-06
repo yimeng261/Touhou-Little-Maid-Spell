@@ -50,8 +50,9 @@ public final class HurtHeadCoremodHooks {
             return null;
         }
 
-        if (damageSource instanceof InfoDamageSource) {
-            if (entity instanceof EntityMaid || entity instanceof Player) {
+        if (damageSource instanceof InfoDamageSource infoDamageSource) {
+            if ((entity instanceof EntityMaid || entity instanceof Player)
+                && !infoDamageSource.canHurtProtectedEntity()) {
                 return Boolean.FALSE;
             }
             return null;

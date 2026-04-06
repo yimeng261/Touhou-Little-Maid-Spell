@@ -45,6 +45,7 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.SLIVER_CERCIS.get());
                 output.accept(MaidSpellItems.ANCHOR_CORE.get());
                 output.accept(MaidSpellItems.SPELL_OVERLIMIT_CORE.get());
+                output.accept(MaidSpellItems.SPRING_BLOOM_RETURN.get());
                 output.accept(MaidSpellItems.FRAGRANT_INGENUITY.get());
                 output.accept(MaidSpellItems.DREAM_CAT_CRYSTAL.get());
 

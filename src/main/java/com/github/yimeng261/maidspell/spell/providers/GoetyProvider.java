@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.spell.providers;
 
 import org.slf4j.Logger;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidGoetySpellData;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -335,6 +336,12 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
             stopSpellUnified(data.getCurrentSpell(), serverLevel, maid, data.getSpellBook(), 0);
             data.getCurrentSpell().SpellResult(serverLevel, maid, data.getSpellBook(),
                 data.getCurrentSpell().defaultStats());
+            SpringBloomReturnBauble.onSpellCast(
+                maid,
+                "goety",
+                getSpellId(data.getCurrentSpell()),
+                data.getTarget()
+            );
         }
 
         setCooldown(maid, data.getCurrentSpell());

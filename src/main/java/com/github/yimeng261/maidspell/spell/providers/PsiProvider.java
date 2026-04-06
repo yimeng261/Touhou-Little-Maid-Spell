@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.spell.providers;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidPsiSpellData;
 
 import net.minecraft.server.level.ServerLevel;
@@ -198,6 +199,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
             
             // 设置法术冷却时间
             data.setSpellCooldown(spellId, cooldownTicks, maid);
+            SpringBloomReturnBauble.onSpellCast(maid, "psi", spellId, data.getTarget());
 
             return true;
 
