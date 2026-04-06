@@ -33,6 +33,8 @@ import org.slf4j.Logger;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * 梦云水晶饰品逻辑
@@ -265,7 +267,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         applyCuriosSlots(maid);
 
         // ========== 每 600 tick（30 秒）随机正面效果 ==========
-        if (tick % 600 == 2) {
+        if (tick % 600 == 3) {
             applyRandomBeneficialEffects(maid);
         }
     }
@@ -402,13 +404,24 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         }
 
         List<Holder.Reference<MobEffect>> candidates = new ArrayList<>();
-        Set<String> blacklist = new HashSet<>(Config.dreamCrystalEffectBlacklist);
+        boolean useWhitelist = Config.dreamCrystalUseEffectWhitelist;
+        EffectMatcher whitelistMatcher = useWhitelist
+                ? EffectMatcher.from(Config.dreamCrystalEffectWhitelist)
+                : EffectMatcher.empty();
+        EffectMatcher blacklistMatcher = EffectMatcher.from(Config.dreamCrystalEffectBlacklist);
 
         BuiltInRegistries.MOB_EFFECT.holders().forEach(holder -> {
             MobEffect effect = holder.value();
             if (effect.getCategory() == MobEffectCategory.BENEFICIAL) {
                 ResourceLocation location = holder.key().location();
-                if (!blacklist.contains(location.toString())) {
+                if (location == null) {
+                    return;
+                }
+
+                String effectId = location.toString();
+                boolean allowedByWhitelist = !useWhitelist || whitelistMatcher.matches(effectId);
+                boolean blockedByBlacklist = blacklistMatcher.matches(effectId);
+                if (allowedByWhitelist && !blockedByBlacklist) {
                     candidates.add(holder);
                 }
             }
@@ -416,6 +429,66 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
         CACHED_BENEFICIAL_EFFECTS = candidates;
         return candidates;
+    }
+
+    public static void invalidateBeneficialEffectsCache() {
+        CACHED_BENEFICIAL_EFFECTS = null;
+    }
+
+    private record EffectMatcher(Set<String> exactMatches, List<Pattern> regexPatterns) {
+        private static final String REGEX_PREFIX = "regex:";
+        private static final EffectMatcher EMPTY = new EffectMatcher(Collections.emptySet(), Collections.emptyList());
+
+        private static EffectMatcher empty() {
+            return EMPTY;
+        }
+
+        private static EffectMatcher from(List<String> entries) {
+            if (entries == null || entries.isEmpty()) {
+                return empty();
+            }
+
+            Set<String> exactMatches = new HashSet<>();
+            List<Pattern> regexPatterns = new ArrayList<>();
+
+            for (String entry : entries) {
+                if (entry == null || entry.isBlank()) {
+                    continue;
+                }
+
+                if (entry.startsWith(REGEX_PREFIX)) {
+                    String regex = entry.substring(REGEX_PREFIX.length());
+                    if (regex.isBlank()) {
+                        continue;
+                    }
+                    try {
+                        regexPatterns.add(Pattern.compile(regex));
+                    } catch (PatternSyntaxException exception) {
+                        LOGGER.warn("梦云水晶效果匹配正则无效：{}，已跳过", entry, exception);
+                    }
+                    continue;
+                }
+
+                exactMatches.add(entry);
+            }
+
+            if (exactMatches.isEmpty() && regexPatterns.isEmpty()) {
+                return empty();
+            }
+            return new EffectMatcher(exactMatches, regexPatterns);
+        }
+
+        private boolean matches(String effectId) {
+            if (exactMatches.contains(effectId)) {
+                return true;
+            }
+            for (Pattern pattern : regexPatterns) {
+                if (pattern.matcher(effectId).matches()) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     // ========== 随机正面效果 ==========
