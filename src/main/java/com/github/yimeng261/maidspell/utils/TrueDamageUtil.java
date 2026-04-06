@@ -1,12 +1,13 @@
 package com.github.yimeng261.maidspell.utils;
 
+import com.github.yimeng261.maidspell.mixin.LivingEntityInvoker;
 import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
@@ -34,22 +35,8 @@ public class TrueDamageUtil {
         if(target == null){
             return false;
         }
-        float originalHealth = target.getHealth();
-        float newHealth = Math.max(0.0f, originalHealth - damage);
-
-        // 尝试EntityData修改，失败则尝试NBT修改
-        boolean success = tryEntityDataDamage(target, newHealth) || tryNBTDamage(target, originalHealth, newHealth);
-
-        if (success && newHealth <= 0.0f) {
-            // 使用原版的方式获取DamageSource
-            // 如果有攻击者，使用mobAttack，否则使用generic
-            DamageSource damageSource = target.damageSources().generic();
-            target.die(damageSource);
-            target.remove(Entity.RemovalReason.KILLED);
-        }
-
-        //LOGGER.debug("[TrueDamage] Damage {} applied: {} -> {} (success: {})", damage, originalHealth, target.getHealth(), success);
-        return success;
+        float newHealth = Math.max(0.0f, target.getHealth() - damage);
+        return setNewHealth(target, newHealth, attacker);
     }
 
     /**
@@ -68,12 +55,8 @@ public class TrueDamageUtil {
         // 尝试EntityData修改，失败则尝试NBT修改
         boolean success = tryEntityDataDamage(target, newHealth) || tryNBTDamage(target, originalHealth, newHealth);
 
-        if (success && newHealth <= 0.0f) {
-            // 使用原版的方式获取DamageSource
-            // 如果有攻击者，使用mobAttack，否则使用generic
-            DamageSource damageSource = target.damageSources().generic();
-            target.die(damageSource);
-            target.remove(Entity.RemovalReason.KILLED);
+        if (success && newHealth <= 0.0f && target.getHealth() <= HEALTH_TOLERANCE) {
+            handleTrueDamageDeath(target, attacker);
         }
 
         //LOGGER.debug("[TrueDamage] NewHealth {} applied: {} -> {} (success: {})", newHealth, originalHealth, target.getHealth(), success);
@@ -98,7 +81,7 @@ public class TrueDamageUtil {
                 LOGGER.debug("[TrueDamage] Failed to modify {}: {}", dataHealthIdAccessor, e.getMessage());
             }
 
-            return modified;
+            return modified && isHealthMatch(target.getHealth(), newHealth);
 
         } catch (Exception e) {
             LOGGER.debug("[TrueDamage] EntityData damage failed: {}", e.getMessage());
@@ -135,7 +118,7 @@ public class TrueDamageUtil {
                 target.load(nbt);
             }
 
-            return modified;
+            return modified && isHealthMatch(target.getHealth(), newHealth);
 
         } catch (Exception e) {
             LOGGER.debug("[TrueDamage] NBT damage failed: {}", e.getMessage());
@@ -172,6 +155,25 @@ public class TrueDamageUtil {
      */
     private static boolean isHealthMatch(float value1, float value2) {
         return Math.abs(value1 - value2) < HEALTH_TOLERANCE;
+    }
+
+    private static void handleTrueDamageDeath(LivingEntity target, LivingEntity attacker) {
+        DamageSource damageSource = createDamageSource(target, attacker);
+        target.die(damageSource);
+
+        if (!target.isRemoved() && target.isDeadOrDying()) {
+            ((LivingEntityInvoker) target).maidspell$invokeTickDeath();
+        }
+    }
+
+    private static DamageSource createDamageSource(LivingEntity target, LivingEntity attacker) {
+        if (attacker instanceof Player player) {
+            return target.damageSources().playerAttack(player);
+        }
+        if (attacker != null) {
+            return target.damageSources().mobAttack(attacker);
+        }
+        return target.damageSources().generic();
     }
 
     /**

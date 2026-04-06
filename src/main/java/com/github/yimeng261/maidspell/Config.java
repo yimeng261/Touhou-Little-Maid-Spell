@@ -440,6 +440,25 @@ public class Config {
             );
 
     static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue DREAM_CRYSTAL_EXTRA_TRUE_DAMAGE_ENABLED = BUILDER
+            .comment("是否启用梦云水晶额外真实伤害 (默认: true)")
+            .comment("Whether to enable Dream Crystal extra true damage")
+            .define("dreamCrystalExtraTrueDamageEnabled", true);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue DREAM_CRYSTAL_SET_NO_AI_ENABLED = BUILDER
+            .comment("是否启用梦云水晶冻结时设置无AI (默认: true)")
+            .comment("Whether to enable setNoAi during Dream Crystal freeze")
+            .define("dreamCrystalSetNoAiEnabled", true);
+
+
+    static {
         BUILDER.pop(); // dream_crystal
         BUILDER.pop(); // baubles
     }
@@ -582,6 +601,8 @@ public class Config {
     public static List<String> dreamCrystalEffectBlacklist;
     public static boolean dreamCrystalUseEffectWhitelist;
     public static List<String> dreamCrystalEffectWhitelist;
+    public static boolean dreamCrystalExtraTrueDamageEnabled;
+    public static boolean dreamCrystalSetNoAiEnabled;
 
     // 归隐之地维度相关
     public static boolean enablePrivateDimensions;
@@ -664,6 +685,8 @@ public class Config {
         dreamCrystalEffectBlacklist = new ArrayList<>(DREAM_CRYSTAL_EFFECT_BLACKLIST.get());
         dreamCrystalUseEffectWhitelist = DREAM_CRYSTAL_USE_EFFECT_WHITELIST.get();
         dreamCrystalEffectWhitelist = new ArrayList<>(DREAM_CRYSTAL_EFFECT_WHITELIST.get());
+        dreamCrystalExtraTrueDamageEnabled = DREAM_CRYSTAL_EXTRA_TRUE_DAMAGE_ENABLED.get();
+        dreamCrystalSetNoAiEnabled = DREAM_CRYSTAL_SET_NO_AI_ENABLED.get();
         DreamCatCrystalBauble.invalidateBeneficialEffectsCache();
 
         // 归隐之地维度相关

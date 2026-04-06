@@ -10,6 +10,7 @@
     "ChunkGeneratorMixin",
     "EntityMixin",
     "JigsawPlacerMixin",
+    "LivingEntityInvoker",
     "LivingEntityMixin",
     "LocateCommandMixin",
     "MinecraftServerMixin",

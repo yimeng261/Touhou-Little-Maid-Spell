@@ -132,7 +132,9 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             float damage = context.getAmount();
 
             // 1. 真实伤害（额外等于攻击伤害）
-            TrueDamageUtil.dealTrueDamage(target, damage, maid);
+            if (Config.dreamCrystalExtraTrueDamageEnabled) {
+                TrueDamageUtil.dealTrueDamage(target, damage, maid);
+            }
 
             // 2. 时停 1 秒（仅在服务端执行）
             if (!maid.level().isClientSide() && target.isAlive() && target instanceof Mob mob) {
@@ -561,14 +563,18 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         FrozenTargetState existing = FROZEN_TARGETS.get(targetUUID);
         if (existing != null && existing.expiry >= expiry) {
             existing.target = mob;
-            mob.setNoAi(true);
+            if (Config.dreamCrystalSetNoAiEnabled) {
+                mob.setNoAi(true);
+            }
             return;
         }
 
         FrozenTargetState state = new FrozenTargetState(mob, expiry);
         FROZEN_TARGETS.put(targetUUID, state);
         FROZEN_TARGET_EXPIRIES.add(new ScheduledExpiry(targetUUID, expiry));
-        mob.setNoAi(true);
+        if (Config.dreamCrystalSetNoAiEnabled) {
+            mob.setNoAi(true);
+        }
     }
 
     private static void processFrozenTargets() {
@@ -593,7 +599,9 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
             FROZEN_TARGETS.remove(scheduled.entityId());
             FROZEN_TARGET_EXPIRIES.poll();
-            target.setNoAi(false);
+            if (Config.dreamCrystalSetNoAiEnabled) {
+                target.setNoAi(false);
+            }
         }
     }
 
