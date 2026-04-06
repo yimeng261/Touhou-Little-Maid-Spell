@@ -9,7 +9,6 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -17,11 +16,14 @@ import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
-import net.neoforged.neoforge.event.tick.EntityTickEvent;
+import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+
 
 /**
  * 梦云水晶女仆效果事件监听器
@@ -31,7 +33,7 @@ import java.util.UUID;
  * - 记录女仆攻击 Boss 的历史（LivingDamageEvent.Post）
  * - 特定伤害免疫（LivingIncomingDamageEvent）
  * - 复活后无敌（LivingIncomingDamageEvent）
- * - 解除时停的冻结目标（EntityTickEvent.Post）
+ * - 在服务端 tick 中统一处理时停/范围强化到期
  */
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class DreamCrystalMaidEvents {
@@ -103,28 +105,24 @@ public class DreamCrystalMaidEvents {
         }
     }
 
-    // ========== 时停：解除冻结 ==========
+    // ========== 时停/范围强化调度 ==========
 
     /**
-     * 每 tick 检查是否需要解除被时停的实体
+     * 在服务端 tick 中统一处理到期效果，避免对所有活体逐个轮询
      */
     @SubscribeEvent
-    public static void onLivingTick(EntityTickEvent.Post event) {
-        if (!(event.getEntity() instanceof Mob mob)) return;
-        if (mob.level().isClientSide()) return;
+    public static void onServerTick(ServerTickEvent.Post event) {
+        DreamCatCrystalBauble.processScheduledEffects();
+    }
 
-        UUID uuid = mob.getUUID();
-        Long unfreezeTime = DreamCatCrystalBauble.FROZEN_TARGETS.get(uuid);
-        if (unfreezeTime == null) return;
+    @SubscribeEvent
+    public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+        DreamCatCrystalBauble.clearScheduledEffects();
+    }
 
-        long currentTime = mob.level().getGameTime();
-        if (currentTime >= unfreezeTime) {
-            DreamCatCrystalBauble.FROZEN_TARGETS.remove(uuid);
-            // 只有在实体仍然存活时才解除冻结
-            if (mob.isAlive()) {
-                mob.setNoAi(false);
-            }
-        }
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        DreamCatCrystalBauble.clearScheduledEffects();
     }
 
     // ========== 私有辅助方法 ==========
@@ -139,16 +137,29 @@ public class DreamCrystalMaidEvents {
     }
 
     private static void recordMaidAttackedBoss(EntityMaid maid, LivingEntity boss) {
-        MAID_ATTACKED_BOSSES
-                .computeIfAbsent(maid.getUUID(), k -> new HashMap<>())
-                .put(boss.getUUID(), maid.level().getGameTime());
+        UUID maidUUID = maid.getUUID();
+        long currentTime = maid.level().getGameTime();
+
+        Map<UUID, Long> attackedBosses = MAID_ATTACKED_BOSSES.computeIfAbsent(maidUUID, k -> new HashMap<>());
+        cleanupExpiredBossAggro(maidUUID, attackedBosses, currentTime);
+        attackedBosses.put(boss.getUUID(), currentTime);
     }
 
     private static boolean hasMaidRecentlyAttackedBoss(EntityMaid maid, LivingEntity boss) {
-        Map<UUID, Long> bosses = MAID_ATTACKED_BOSSES.get(maid.getUUID());
+        UUID maidUUID = maid.getUUID();
+        long currentTime = maid.level().getGameTime();
+        Map<UUID, Long> bosses = MAID_ATTACKED_BOSSES.get(maidUUID);
         if (bosses == null) return false;
+        cleanupExpiredBossAggro(maidUUID, bosses, currentTime);
         Long lastTime = bosses.get(boss.getUUID());
         if (lastTime == null) return false;
-        return (maid.level().getGameTime() - lastTime) < BOSS_AGGRO_TIMEOUT;
+        return (currentTime - lastTime) < BOSS_AGGRO_TIMEOUT;
+    }
+
+    private static void cleanupExpiredBossAggro(UUID maidUUID, Map<UUID, Long> bosses, long currentTime) {
+        bosses.entrySet().removeIf(entry -> currentTime - entry.getValue() >= BOSS_AGGRO_TIMEOUT);
+        if (bosses.isEmpty()) {
+            MAID_ATTACKED_BOSSES.remove(maidUUID);
+        }
     }
 }

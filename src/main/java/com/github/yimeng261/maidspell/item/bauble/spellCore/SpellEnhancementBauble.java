@@ -25,7 +25,7 @@ import java.util.List;
  * 法术强化饰品实现
  * 根据主人的铁魔法属性为女仆提供相应的属性加成
  * 使用注册表查找，完全避免反射
- * 优化：女仆始终保有modifier，只更新数值
+ * 优化：直接对比女仆当前 modifier 数值，避免玩家级共享缓存导致多女仆串状态
  */
 public class SpellEnhancementBauble implements IMaidBauble {
 
@@ -69,28 +69,49 @@ public class SpellEnhancementBauble implements IMaidBauble {
         updateMaidEnhancements(maid, player);
     }
 
+    @Override
+    public void onTakeOff(EntityMaid maid, ItemStack baubleItem) {
+        for (AttributeConfig config : ATTRIBUTES) {
+            AttributeInstance maidAttr = maid.getAttribute(config.attribute);
+            if (maidAttr == null) {
+                continue;
+            }
+            maidAttr.removeModifier(config.modifierId);
+        }
+    }
+
     /**
-     * 更新女仆的属性加成，优化版本
+     * 更新女仆的属性加成，直接对比当前 modifier 数值，避免多女仆串状态
      */
     private void updateMaidEnhancements(EntityMaid maid, Player player) {
         for (AttributeConfig config : ATTRIBUTES) {
-            double bonus = 0.0;
-            if (player != null) {
-                // 计算玩家属性加成（超过默认值的部分）
-                double playerValue = player.getAttributeValue(config.attribute);
-                bonus = Math.max(0, playerValue - config.defaultValue);
+            double playerValue = player.getAttributeValue(config.attribute);
+            double bonus = Math.max(0, playerValue - config.defaultValue);
+            AttributeInstance maidAttr = maid.getAttribute(config.attribute);
+            if (maidAttr == null) {
+                continue;
             }
 
-            AttributeInstance maidAttr=maid.getAttribute(config.attribute);
-            AttributeModifier modifier = new AttributeModifier(config.renamedId, bonus, AttributeModifier.Operation.ADD_VALUE);
-            if(maidAttr == null) {
-                return;
+            AttributeModifier currentModifier = maidAttr.getModifier(config.modifierId);
+            if (bonus <= 0) {
+                if (currentModifier != null) {
+                    maidAttr.removeModifier(config.modifierId);
+                }
+                continue;
             }
-            if (config.renamedId != null) {
-                maidAttr.removeModifier(config.renamedId);
+
+            if (currentModifier != null && Double.compare(currentModifier.amount(), bonus) == 0) {
+                continue;
             }
-            config.renamedId = modifier.id();
-            maidAttr.addTransientModifier(modifier);
+
+            if (currentModifier != null) {
+                maidAttr.removeModifier(config.modifierId);
+            }
+            maidAttr.addTransientModifier(new AttributeModifier(
+                    config.modifierId,
+                    bonus,
+                    AttributeModifier.Operation.ADD_VALUE
+            ));
         }
     }
 
@@ -100,13 +121,12 @@ public class SpellEnhancementBauble implements IMaidBauble {
     private static class AttributeConfig {
         final Holder<Attribute> attribute;
         final double defaultValue;
-        ResourceLocation renamedId;
+        final ResourceLocation modifierId;
 
-
-        AttributeConfig(Holder<Attribute> attribute, double defaultValue, ResourceLocation renamedId) {
+        AttributeConfig(Holder<Attribute> attribute, double defaultValue, ResourceLocation modifierId) {
             this.attribute = attribute;
             this.defaultValue = defaultValue;
-            this.renamedId = renamedId;
+            this.modifierId = modifierId;
         }
     }
 }
