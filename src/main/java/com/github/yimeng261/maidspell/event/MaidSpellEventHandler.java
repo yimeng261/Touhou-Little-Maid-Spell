@@ -132,17 +132,8 @@ public class MaidSpellEventHandler {
             restorePlayerMaidChunkLoading(player);
 
             try {
-                // 获取玩家的末影腰包女仆数据并推送给客户端
-                List<EnderPocketService.EnderPocketMaidInfo> maidInfos =
-                        EnderPocketService.getPlayerEnderPocketMaids(player);
-
-                if (!maidInfos.isEmpty()) {
-                    LOGGER.debug("[MaidSpell] Pushing ender pocket data to player {} on login: {} maids",
-                                player.getName().getString(), maidInfos.size());
-                    player.connection.send(new S2CEnderPocketPushUpdate(maidInfos, true));
-                    LOGGER.debug("[MaidSpell] Pushed ender pocket data to player {} on login: {} maids",
-                                player.getName().getString(), maidInfos.size());
-                }
+                // 始终推送一次，避免客户端保留旧列表。
+                EnderPocketBauble.pushEnderPocketDataToClient(player);
             } catch (Exception e) {
                 LOGGER.error("[MaidSpell] Failed to sync ender pocket data for player {} on login: {}",
                             player.getName().getString(), e.getMessage(), e);

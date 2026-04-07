@@ -325,7 +325,11 @@ public class MaidBackpackEnderPocketIntegration {
         if (currentMaidInfos.size() == maidInfos.size()) {
             boolean dataChanged = false;
             for (int i = 0; i < maidInfos.size(); i++) {
-                if (currentMaidInfos.get(i).maidEntityId != maidInfos.get(i).maidEntityId || !currentMaidInfos.get(i).maidName.equals(maidInfos.get(i).maidName)) {
+                EnderPocketService.EnderPocketMaidInfo oldInfo = currentMaidInfos.get(i);
+                EnderPocketService.EnderPocketMaidInfo newInfo = maidInfos.get(i);
+                if (oldInfo.maidEntityId != newInfo.maidEntityId
+                        || !oldInfo.maidName.equals(newInfo.maidName)
+                        || !oldInfo.levelKey.equals(newInfo.levelKey)) {
                     dataChanged = true;
                     break;
                 }
