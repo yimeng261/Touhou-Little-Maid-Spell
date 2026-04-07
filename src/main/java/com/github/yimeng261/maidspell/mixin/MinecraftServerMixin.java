@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatLevelData;
 import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
@@ -33,6 +34,9 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -64,6 +68,11 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
 
     public MinecraftServerMixin(String name) {
         super(name);
+    }
+
+    @Inject(method = "loadLevel", at = @At("TAIL"))
+    private void maidspell$preloadRetreatDimensionsBeforeLogin(CallbackInfo ci) {
+        PlayerRetreatManager.preloadPersistedRetreatState((MinecraftServer) (Object) this);
     }
 
     @Override
