@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/flower_pot_cross",
+  "textures": {
+    "plant": "touhou_little_maid_spell:block/scarlet_zhuhua"
+  }
+}
