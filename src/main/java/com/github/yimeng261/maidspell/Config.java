@@ -32,10 +32,7 @@ public class Config {
             "traveloptics:aqua_missiles_hover",
             "traveloptics:meteor_storm",
             "traveloptics:aerial_collapse",
-            "traveloptics:aerial_collapse_helper",
-            "goety:fire_trail",
-            "goety:charged",
-            "goety:shadow_walk"
+            "traveloptics:aerial_collapse_helper"
     );
 
     // ========== 战斗系统配置 ==========
@@ -301,6 +298,46 @@ public class Config {
     static {
         BUILDER.pop(); // utility
     }
+
+    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_MAX_STACKS = BUILDER
+            .comment("回春返照最大层数 (默认: 3)")
+            .comment("Spring Bloom Return max stacks")
+            .defineInRange("springBloomReturnMaxStacks", 3, 1, 8);
+
+    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_STACK_DURATION_TICKS = BUILDER
+            .comment("回春返照层数持续时间 (tick) (默认: 400)")
+            .comment("Spring Bloom Return stack duration in ticks")
+            .defineInRange("springBloomReturnStackDurationTicks", 400, 20, 72000);
+
+    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_GAIN_COOLDOWN_TICKS = BUILDER
+            .comment("回春返照获取层数冷却 (tick) (默认: 20)")
+            .comment("Spring Bloom Return stack gain cooldown in ticks")
+            .defineInRange("springBloomReturnGainCooldownTicks", 20, 0, 1200);
+
+    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_TICKS = BUILDER
+            .comment("回春返照触发冷却 (tick) (默认: 200)")
+            .comment("Spring Bloom Return trigger cooldown in ticks")
+            .defineInRange("springBloomReturnTriggerCooldownTicks", 200, 0, 72000);
+
+    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD = BUILDER
+            .comment("回春返照固定伤害阈值 (默认: 4.0)")
+            .comment("Spring Bloom Return flat damage threshold")
+            .defineInRange("springBloomReturnDamageThreshold", 4.0, 0.0, 100.0);
+
+    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD_RATIO = BUILDER
+            .comment("回春返照百分比伤害阈值 (默认: 0.10)")
+            .comment("Spring Bloom Return percent damage threshold")
+            .defineInRange("springBloomReturnDamageThresholdRatio", 0.10, 0.0, 1.0);
+
+    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_HEAL_RATIO = BUILDER
+            .comment("回春返照治疗比例 (默认: 0.05)")
+            .comment("Spring Bloom Return heal ratio")
+            .defineInRange("springBloomReturnHealRatio", 0.05, 0.0, 1.0);
+
+    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_COOLDOWN_REFUND_RATIO = BUILDER
+            .comment("回春返照冷却返还比例 (默认: 0.20)")
+            .comment("Spring Bloom Return cooldown refund ratio")
+            .defineInRange("springBloomReturnCooldownRefundRatio", 0.20, 0.0, 1.0);
 
     // 触发机制类饰品
     static {
@@ -588,6 +625,14 @@ public class Config {
     public static int fragrantIngenuityFavorabilityGain;
     public static int fragrantIngenuityBuffDuration;
     public static List<String> fragrantIngenuityEffectBlacklist;
+    public static int springBloomReturnMaxStacks;
+    public static int springBloomReturnStackDurationTicks;
+    public static int springBloomReturnGainCooldownTicks;
+    public static int springBloomReturnTriggerCooldownTicks;
+    public static double springBloomReturnDamageThreshold;
+    public static double springBloomReturnDamageThresholdRatio;
+    public static double springBloomReturnHealRatio;
+    public static double springBloomReturnCooldownRefundRatio;
 
     // 特殊饰品相关
     public static double chaosBookTrueDamageMin;
@@ -671,6 +716,14 @@ public class Config {
         fragrantIngenuityFavorabilityGain = FRAGRANT_INGENUITY_FAVORABILITY_GAIN.get();
         fragrantIngenuityBuffDuration = FRAGRANT_INGENUITY_BUFF_DURATION.get();
         fragrantIngenuityEffectBlacklist = new ArrayList<>(FRAGRANT_INGENUITY_EFFECT_BLACKLIST.get());
+        springBloomReturnMaxStacks = SPRING_BLOOM_RETURN_MAX_STACKS.get();
+        springBloomReturnStackDurationTicks = SPRING_BLOOM_RETURN_STACK_DURATION_TICKS.get();
+        springBloomReturnGainCooldownTicks = SPRING_BLOOM_RETURN_GAIN_COOLDOWN_TICKS.get();
+        springBloomReturnTriggerCooldownTicks = SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_TICKS.get();
+        springBloomReturnDamageThreshold = SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD.get();
+        springBloomReturnDamageThresholdRatio = SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD_RATIO.get();
+        springBloomReturnHealRatio = SPRING_BLOOM_RETURN_HEAL_RATIO.get();
+        springBloomReturnCooldownRefundRatio = SPRING_BLOOM_RETURN_COOLDOWN_REFUND_RATIO.get();
         FragrantIngenuityBauble.refreshEffectsList();
 
         // 特殊饰品相关

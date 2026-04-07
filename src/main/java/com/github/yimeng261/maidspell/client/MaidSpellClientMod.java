@@ -2,7 +2,7 @@ package com.github.yimeng261.maidspell.client;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.gui.BlueNoteScreen;
-import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
+import com.github.yimeng261.maidspell.client.model.AscensionHaloModel;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
@@ -33,7 +33,6 @@ public class MaidSpellClientMod {
 
     @SubscribeEvent
     public static void onRegisterLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
-        // 注册不洁光环模型
-        event.registerLayerDefinition(UnholyHaloModel.LAYER_LOCATION, UnholyHaloModel::createBodyLayer);
+        event.registerLayerDefinition(AscensionHaloModel.LAYER_LOCATION, AscensionHaloModel::createBodyLayer);
     }
 }

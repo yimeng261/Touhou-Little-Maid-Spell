@@ -76,6 +76,10 @@ java {
     withSourcesJar()
 }
 
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
 neoForge {
     // 指定 NeoForge 版本
     version = project.neo_version
@@ -167,9 +171,6 @@ dependencies {
     implementation("com.hollingsworth.ars_nouveau:ars_nouveau-${minecraft_version}:${ars_nouveau_version}")
     // PSI
     implementation("curse.maven:psi-241665:${psi_version}")
-    // Goety
-    implementation("maven.modrinth:goety-3:${goety_version}")
-
     // 不兼容
     // implementation("maven.modrinth:slashblade-resharped:1.6.54-forge,${minecraft_version}")
 

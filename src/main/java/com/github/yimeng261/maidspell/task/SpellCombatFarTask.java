@@ -24,10 +24,8 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
-import za.co.infernos.goety.api.entities.IOwned;
 
 import java.util.List;
-import java.util.Optional;
 
 
 /**
@@ -72,8 +70,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
     @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
-        // 使用自定义索敌方法，排除自己召唤的 Goety 召唤物
-        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
         BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
@@ -91,41 +88,9 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         );
     }
 
-    /**
-     * 自定义索敌方法，排除女仆自己召唤的 Goety 召唤物
-     */
-    private Optional<? extends LivingEntity> findValidAttackTarget(EntityMaid maid) {
-        // 首先使用默认方法找到目标
-        Optional<? extends LivingEntity> defaultTarget = IAttackTask.findFirstValidAttackTarget(maid);
-
-        // 如果没有找到目标，直接返回
-        if (defaultTarget.isEmpty()) {
-            return defaultTarget;
-        }
-
-        LivingEntity target = defaultTarget.get();
-
-        // 检查目标是否是 Goety 召唤物
-        if (ModList.get().isLoaded("goety")) {
-            try {
-                if (target instanceof IOwned ownedEntity) {
-                    LivingEntity owner = ownedEntity.getTrueOwner();
-                    if (owner instanceof EntityMaid || owner instanceof Player) {
-                        return Optional.empty();
-                    }
-                }
-            } catch (NoClassDefFoundError e) {
-                // Goety 未加载，忽略
-            }
-        }
-
-        return defaultTarget;
-    }
-
     @Override
     public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(EntityMaid maid) {
-        // 使用自定义索敌方法，排除自己召唤的 Goety 召唤物
-        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
         // 添加高优先级的视线控制任务，阻止女仆看向玩家

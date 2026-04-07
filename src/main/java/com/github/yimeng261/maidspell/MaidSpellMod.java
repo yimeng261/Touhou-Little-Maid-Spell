@@ -1,5 +1,7 @@
 package com.github.yimeng261.maidspell;
 
+import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
+import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
 import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
@@ -50,6 +52,8 @@ public class MaidSpellMod {
 
         // 手动注册事件处理器，确保事件能被正确监听
         NeoForge.EVENT_BUS.register(MaidSpellEventHandler.class);
+        MaidSpellBlocks.register(modEventBus);
+        MaidSpellBlockEntities.register(modEventBus);
         MaidSpellItems.register(modEventBus);
         MaidSpellCreativeTab.register(modEventBus);
         MaidSpellContainers.register(modEventBus);
@@ -75,6 +79,7 @@ public class MaidSpellMod {
 
     private void setup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            MaidSpellBlocks.registerPottedPlants();
             if (checkDependencies()) {
                 LOGGER.info("Dependencies verified - initialization complete");
             }

@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
@@ -17,16 +18,18 @@ import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercis;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBook;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementCore;
 import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCore;
+import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturn;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringRing;
+import com.github.yimeng261.maidspell.item.bauble.transmogNecklace.TransmogNecklace;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBlade;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import net.minecraft.Util;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -34,7 +37,6 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  * 女仆法术饰品物品注册
  */
 public class MaidSpellItems {
-
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MaidSpellMod.MOD_ID);
 
     public static final DeferredItem<Item> SPELL_ENHANCEMENT_CORE = ITEMS.register("spell_enhancement_core", SpellEnhancementCore::new);
@@ -49,12 +51,14 @@ public class MaidSpellItems {
     public static final DeferredItem<Item> ROCK_CRYSTAL = ITEMS.register("rock_crystal", RockCrystal::new);
     public static final DeferredItem<Item> SLIVER_CERCIS = ITEMS.register("sliver_cercis", SilverCercis::new);
     public static final DeferredItem<Item> HAIRPIN = ITEMS.register("hairpin", Hairpin::new);
+    public static final DeferredItem<Item> TRANSMOG_NECKLACE = ITEMS.register("transmog_necklace", TransmogNecklace::new);
     public static final DeferredItem<Item> CHAOS_BOOK = ITEMS.register("chaos_book", ChaosBook::new);
     public static final DeferredItem<Item> SOUL_BOOK = ITEMS.register("soul_book", SoulBook::new);
     public static final DeferredItem<Item> ENDER_POCKET = ITEMS.register("ender_pocket", EnderPocket::new);
     public static final DeferredItem<Item> WOUND_RIME_BLADE = ITEMS.register("wound_rime_blade", WoundRimeBlade::new);
     public static final DeferredItem<Item> ANCHOR_CORE = ITEMS.register("anchor_core", AnchorCore::new);
     public static final DeferredItem<Item> SPELL_OVERLIMIT_CORE = ITEMS.register("spell_overlimit_core", SpellOverlimitCore::new);
+    public static final DeferredItem<Item> SPRING_BLOOM_RETURN = ITEMS.register("spring_bloom_return", SpringBloomReturn::new);
     public static final DeferredItem<Item> FRAGRANT_INGENUITY = ITEMS.register("fragrant_ingenuity", FragrantIngenuity::new);
 
     // 梦云水晶
@@ -62,6 +66,9 @@ public class MaidSpellItems {
 
     // 寻风之铃
     public static final DeferredItem<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
+
+    public static final DeferredItem<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
+        () -> new BlockItem(MaidSpellBlocks.SCARLET_ZHUHUA.get(), new Item.Properties()));
 
     // 管理员工具
     public static final DeferredItem<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);
@@ -80,20 +87,4 @@ public class MaidSpellItems {
     public static String itemDesc(DeferredItem<Item> item) {
         return Util.makeDescriptionId("item", item.getId());
     }
-
-    /**
-     * 获取原版 Goety 模组的不洁圣冠
-     * 如果模组未加载，返回 null
-     */
-    public static Item getUnholyHat() {
-        if (ModList.get().isLoaded("goety")) {
-            try {
-                return za.co.infernos.goety.common.items.ModItems.UNHOLY_HAT.get();
-            } catch (Exception e) {
-                return null;
-            }
-        }
-        return null;
-    }
-
 }
