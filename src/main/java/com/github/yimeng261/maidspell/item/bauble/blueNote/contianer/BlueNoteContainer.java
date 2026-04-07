@@ -26,7 +26,7 @@ public class BlueNoteContainer extends AbstractContainerMenu {
         ItemStack blueNoteStack = ItemStack.OPTIONAL_STREAM_CODEC.decode(data);
         ItemStackHandler scrollHandler = new ItemStackHandler(27);
         // 客户端从NBT加载数据
-        BlueNoteSpellManager.loadScrollsFromItem(blueNoteStack, scrollHandler);
+        BlueNoteSpellManager.loadScrollsFromItem(blueNoteStack, scrollHandler, data.registryAccess());
         return new BlueNoteContainer(id, playerInventory, scrollHandler, blueNoteStack, slot);
     }
 
@@ -154,7 +154,7 @@ public class BlueNoteContainer extends AbstractContainerMenu {
         super.removed(player);
         // 保存卷轴到BlueNote的NBT，包括法术列表
         if (!blueNoteStack.isEmpty()) {
-            BlueNoteSpellManager.saveScrollsToItem(blueNoteStack, spellScrolls);
+            BlueNoteSpellManager.saveScrollsToItem(blueNoteStack, spellScrolls, player.level().registryAccess());
         }
     }
 

@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.spell.providers;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidArsNouveauSpellData;
 import com.hollingsworth.arsnouveau.api.registry.SpellCasterRegistry;
 import com.hollingsworth.arsnouveau.api.spell.Spell;
@@ -218,6 +219,7 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
     private void completeCasting(EntityMaid maid) {
         MaidArsNouveauSpellData data = getData(maid);
         try {
+            boolean castTriggered = false;
 
             // 确保女仆有足够的魔力
             ensureManaCapability(maid);
@@ -277,15 +279,18 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
 
                         // 添加到世界
                         maid.level().addFreshEntity(projectile);
+                        castTriggered = true;
 
                     } catch (Exception e) {
                         // 回退到标准方法
                         resolver.onCastOnEntity(data.getSpellBook(), target, InteractionHand.MAIN_HAND);
+                        castTriggered = true;
                     }
                 } else {
                     // 非弹射物法术使用标准方法
                     resolver.hitResult = new EntityHitResult(target, targetPos);
                     resolver.onCastOnEntity(data.getSpellBook(), target, InteractionHand.MAIN_HAND);
+                    castTriggered = true;
                 }
 
             } else {
@@ -296,13 +301,25 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
                 if (result instanceof EntityHitResult entityHitResult && entityHitResult.getEntity() instanceof LivingEntity) {
                     // 射线追踪到实体
                     resolver.onCastOnEntity(data.getSpellBook(), entityHitResult.getEntity(), InteractionHand.MAIN_HAND);
+                    castTriggered = true;
                 } else if (result instanceof BlockHitResult blockHitResult) {
                     // 射线追踪到方块
                     resolver.onCastOnBlock(blockHitResult);
+                    castTriggered = true;
                 } else {
                     // 没有特定目标，直接施法
                     resolver.onCast(data.getSpellBook(), maid.level());
+                    castTriggered = true;
                 }
+            }
+
+            if (castTriggered) {
+                SpringBloomReturnBauble.onSpellCast(
+                        maid,
+                        "ars_nouveau",
+                        data.getCurrentSpell() != null ? data.getCurrentSpell().name() : null,
+                        target
+                );
             }
         } catch (Exception ignored) {
         } finally {

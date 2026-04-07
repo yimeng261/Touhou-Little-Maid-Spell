@@ -162,6 +162,14 @@ public abstract class IMaidSpellData {
         spellCooldowns.entrySet().removeIf(entry -> entry.getValue() <= 0);
     }
 
+    public void refundCooldowns(double refundRatio) {
+        if (refundRatio <= 0) {
+            return;
+        }
+        spellCooldowns.replaceAll((spellId, cooldown) -> Math.max(0, (int) Math.floor(cooldown * (1.0 - refundRatio))));
+        spellCooldowns.entrySet().removeIf(entry -> entry.getValue() <= 0);
+    }
+
     public static class CoolDown{
         public int cooldownticks;
         public EntityMaid maid;

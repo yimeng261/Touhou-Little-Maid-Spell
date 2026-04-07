@@ -45,7 +45,7 @@ public class BlueNote extends Item {
 
     private void openGUI(ServerPlayer player, ItemStack blueNoteStack, int slot) {
         ItemStackHandler scrollHandler = new ItemStackHandler(27);
-        BlueNoteSpellManager.loadScrollsFromItem(blueNoteStack, scrollHandler);
+        BlueNoteSpellManager.loadScrollsFromItem(blueNoteStack, scrollHandler, player.level().registryAccess());
 
         player.openMenu(new BlueNoteContainerProvider(scrollHandler, blueNoteStack, slot),
                 buf -> {
