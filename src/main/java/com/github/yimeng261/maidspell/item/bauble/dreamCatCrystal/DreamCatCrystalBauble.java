@@ -2,10 +2,12 @@ package com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal;
 
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHandler;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
+import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
@@ -70,12 +72,6 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     private static final Map<UUID, BoostedMaidState> BOOSTED_MAIDS = new HashMap<>();
     private static final PriorityQueue<ScheduledExpiry> BOOSTED_MAID_EXPIRIES =
             new PriorityQueue<>(Comparator.comparingLong(ScheduledExpiry::expiry));
-
-    // ========== 复活与无敌状态（替代 NBT，使用静态 Map 追踪） ==========
-    // 女仆 UUID → 复活时间戳列表
-    private static final Map<UUID, List<Long>> REVIVE_TIMESTAMPS = new HashMap<>();
-    // 女仆 UUID → 无敌剩余 tick
-    public static final Map<UUID, Integer> INVULNERABLE_TICKS = new HashMap<>();
 
     // ========== 属性修饰符 ResourceLocation ==========
     private static final ResourceLocation DC_HP_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "dream_crystal_hp");
@@ -166,42 +162,43 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         // ========== 死亡概率复活 ==========
         Global.baubleDeathHandlers.put(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), (event, maid) -> {
             if (event.isCanceled()) return null;
-
-            UUID maidUUID = maid.getUUID();
+            ItemStack baubleStack = findDreamCrystalStack(maid);
+            if (baubleStack.isEmpty()) {
+                return null;
+            }
 
             // 获取并过滤最近 120 秒（2400 tick）内的复活时间戳
             long currentTime = maid.level().getGameTime();
-            List<Long> timestamps = REVIVE_TIMESTAMPS.computeIfAbsent(maidUUID, k -> new ArrayList<>());
-            synchronized (timestamps) {
-                timestamps.removeIf(t -> currentTime - t > 2400L);
+            List<Long> timestamps = getReviveTimestamps(baubleStack);
+            timestamps.removeIf(t -> currentTime - t > 2400L);
 
-                int n = timestamps.size();
-                // 复活概率 = 100% - N×10%
-                float reviveChance = Math.max(0.0f, 1.0f - n * 0.1f);
-                if (reviveChance <= 0.0f) return null; // N >= 10，无法复活
+            int n = timestamps.size();
+            // 复活概率 = 100% - N×10%
+            float reviveChance = Math.max(0.0f, 1.0f - n * 0.1f);
+            if (reviveChance <= 0.0f) return null; // N >= 10，无法复活
 
-                if (maid.getRandom().nextFloat() >= reviveChance) return null; // 概率未触发
+            if (maid.getRandom().nextFloat() >= reviveChance) return null; // 概率未触发
 
-                // 触发复活
-                event.setCanceled(true);
+            // 触发复活
+            event.setCanceled(true);
 
-                // 恢复到最大生命值
-                float healAmount = maid.getMaxHealth();
-                maid.setHealth(healAmount);
+            // 恢复到最大生命值
+            float healAmount = maid.getMaxHealth();
+            maid.setHealth(healAmount);
 
-                // 记录本次复活时间戳
-                timestamps.add(currentTime);
+            // 记录本次复活时间戳
+            timestamps.add(currentTime);
+            saveReviveTimestamps(baubleStack, timestamps);
 
-                // 设置 15 秒无敌（300 tick）
-                INVULNERABLE_TICKS.put(maidUUID, 300);
+            // 设置 15 秒无敌（300 tick）
+            setInvulnerableTicks(baubleStack, 300);
 
-                // 播放音效
-                maid.playSound(SoundEvents.TOTEM_USE, 1.0f, 1.0f);
+            // 播放音效
+            maid.playSound(SoundEvents.TOTEM_USE, 1.0f, 1.0f);
 
-                LOGGER.info("女仆 {} 触发梦云水晶概率复活（N={}，概率={}%），恢复至 {} 生命值",
-                        maid.getCustomName() != null ? maid.getCustomName().getString() : "未命名",
-                        n, (int) (reviveChance * 100), healAmount);
-            }
+            LOGGER.info("女仆 {} 触发梦云水晶概率复活（N={}，概率={}%），恢复至 {} 生命值",
+                    maid.getCustomName() != null ? maid.getCustomName().getString() : "未命名",
+                    n, (int) (reviveChance * 100), healAmount);
 
             return null;
         });
@@ -226,10 +223,9 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         if (maid.level().isClientSide()) return;
 
         int tick = maid.tickCount;
-        UUID maidUUID = maid.getUUID();
 
         // ========== 每 tick：无敌倒计时 ==========
-        handleInvulnerable(maidUUID);
+        handleInvulnerable(baubleItem);
 
         if (tick % 20 != 3) return;
 
@@ -287,7 +283,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     public void onTakeOff(EntityMaid maid, ItemStack baubleItem) {
         if (maid.level().isClientSide()) return;
         // 卸下时清除无敌状态
-        INVULNERABLE_TICKS.remove(maid.getUUID());
+        baubleItem.remove(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS);
         // 卸下时移除 curios 额外槽位
         CuriosApi.getCuriosInventory(maid).ifPresent(handler ->
                 handler.getCurios().keySet().forEach(slotType ->
@@ -307,14 +303,12 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     }
 
     // ========== 无敌倒计时处理 ==========
-    private void handleInvulnerable(UUID maidUUID) {
-        Integer invulTime = INVULNERABLE_TICKS.get(maidUUID);
-        if (invulTime == null) return;
-
-        if (invulTime > 0) {
-            INVULNERABLE_TICKS.put(maidUUID, invulTime - 1);
-        } else {
-            INVULNERABLE_TICKS.remove(maidUUID);
+    private void handleInvulnerable(ItemStack baubleItem) {
+        int invulTime = baubleItem.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS, 0);
+        if (invulTime > 1) {
+            baubleItem.set(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS, invulTime - 1);
+        } else if (invulTime == 1) {
+            baubleItem.remove(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS);
         }
     }
 
@@ -337,12 +331,13 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     // ========== 维度特定 Buff ==========
     private void applyDimensionBuffs(EntityMaid maid) {
-        UUID maidUUID = maid.getUUID();
-
         // 归隐之地：无敌
         if (TheRetreatDimension.isInRetreat(maid)) {
             // 归隐之地期间持续刷新无敌计时（2 秒窗口，每 20tick 刷新）
-            INVULNERABLE_TICKS.put(maidUUID, 40); // 维持 2 秒，每 20tick 刷新
+            ItemStack baubleStack = findDreamCrystalStack(maid);
+            if (!baubleStack.isEmpty()) {
+                setInvulnerableTicks(baubleStack, 40);
+            }
             return;
         }
 
@@ -522,9 +517,46 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     /**
      * 检查女仆是否处于无敌状态
      */
-    public static boolean isInvulnerable(UUID maidUUID) {
-        Integer ticks = INVULNERABLE_TICKS.get(maidUUID);
-        return ticks != null && ticks > 0;
+    public static boolean isInvulnerable(EntityMaid maid) {
+        return isInvulnerable(findDreamCrystalStack(maid));
+    }
+
+    public static boolean isInvulnerable(ItemStack stack) {
+        return !stack.isEmpty() && stack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS, 0) > 0;
+    }
+
+    public static ItemStack findDreamCrystalStack(EntityMaid maid) {
+        BaubleItemHandler handler = maid.getMaidBauble();
+        for (int i = 0; i < handler.getSlots(); i++) {
+            ItemStack stack = handler.getStackInSlot(i);
+            if (stack.is(MaidSpellItems.DREAM_CAT_CRYSTAL.get())) {
+                return stack;
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private static List<Long> getReviveTimestamps(ItemStack stack) {
+        return new ArrayList<>(stack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS, List.of()));
+    }
+
+    private static void saveReviveTimestamps(ItemStack stack, List<Long> timestamps) {
+        if (timestamps.isEmpty()) {
+            stack.remove(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS);
+            return;
+        }
+        stack.set(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS, List.copyOf(timestamps));
+    }
+
+    private static void setInvulnerableTicks(ItemStack stack, int ticks) {
+        if (stack.isEmpty()) {
+            return;
+        }
+        if (ticks > 0) {
+            stack.set(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS, ticks);
+        } else {
+            stack.remove(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS);
+        }
     }
 
     // ========== Curios 槽位 ==========
@@ -554,8 +586,6 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         FROZEN_TARGET_EXPIRIES.clear();
         BOOSTED_MAIDS.clear();
         BOOSTED_MAID_EXPIRIES.clear();
-        REVIVE_TIMESTAMPS.clear();
-        INVULNERABLE_TICKS.clear();
     }
 
     private static void freezeTarget(Mob mob, long expiry) {
