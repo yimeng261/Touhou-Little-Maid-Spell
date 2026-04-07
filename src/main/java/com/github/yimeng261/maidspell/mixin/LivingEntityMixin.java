@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.item.bauble.hairpin.HairpinBauble;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
@@ -90,6 +91,12 @@ public abstract class LivingEntityMixin {
     private void maidspell$handelHpDecrease(LivingEntity entity, float health, CallbackInfo ci) {
         //处理玩家hurt
         if(entity instanceof ServerPlayer player) {
+            if (HairpinBauble.captureRedirectedDamage(player, player.getHealth() - health)) {
+                player.invulnerableTime = 0;
+                ci.cancel();
+                return;
+            }
+
             if(SoulBookBauble.maidSoulBookCount.getOrDefault(player.getUUID(), 0) == 0) {
                 return;
             }
