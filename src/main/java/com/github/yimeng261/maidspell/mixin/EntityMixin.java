@@ -17,6 +17,36 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class EntityMixin {
 
     /**
+     * 拦截女仆的 saveAsPassenger 方法，防止第三方在写入 id 后继续序列化出半成品副本数据。
+     */
+    @Inject(method = "saveAsPassenger(Lnet/minecraft/nbt/CompoundTag;)Z",
+            at = @At("HEAD"),
+            cancellable = true, remap = true)
+    public void onSaveAsPassenger(CompoundTag pCompound, CallbackInfoReturnable<Boolean> cir) {
+        try {
+            if ((Object) this instanceof EntityMaid maid) {
+                if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                    return;
+                }
+
+                StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+                for (StackTraceElement stackTraceElement : stackTrace) {
+                    String className = stackTraceElement.getClassName();
+                    if (!maidSpell$classValid(className)) {
+                        maidSpell$clearCompound(pCompound);
+                        cir.setReturnValue(false);
+                        Global.LOGGER.warn("[MaidSpell] Illegal saveAsPassenger called for {} by {} (anchor_core protection)",
+                                maid.getUUID(), className);
+                        return;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Global.LOGGER.error("Failed to check maid saveAsPassenger source", e);
+        }
+    }
+
+    /**
      * 拦截女仆的save方法，防止数据被容器模组复制
      */
     @Inject(method = "save(Lnet/minecraft/nbt/CompoundTag;)Z",
@@ -37,6 +67,7 @@ public class EntityMixin {
                     String className = stackTraceElement.getClassName();
                     //Global.LOGGER.debug("[MaidSpell] Save className: {}", className);
                     if(!maidSpell$classValid(className)) {
+                        maidSpell$clearCompound(pCompound);
                         cir.setReturnValue(false);
                         Global.LOGGER.debug("[MaidSpell] Illegal Save called for {} (anchor_core protection), className: {}", maid, className);
                         return;
@@ -70,7 +101,8 @@ public class EntityMixin {
                     //Global.LOGGER.debug("[MaidSpell] SaveWithoutId className: {}", className);
 
                     if(!maidSpell$classValid(className)) {
-                        cir.setReturnValue(new CompoundTag()); // 返回空标签
+                        maidSpell$clearCompound(pCompound);
+                        cir.setReturnValue(pCompound);
                         Global.LOGGER.warn("[MaidSpell] Illegal SaveWithoutId called for {} by {} (anchor_core protection)",
                                 maid.getUUID(), className);
                         return;
@@ -79,20 +111,6 @@ public class EntityMixin {
             }
         } catch (Exception e) {
             Global.LOGGER.error("Failed to check maid saveWithoutId source", e);
-        }
-    }
-
-    /**
-     * 注入 fireImmune()，当女仆装备不洁圣冠时返回 true
-     * 与下界生物相同机制，从源头阻止着火
-     */
-    @Inject(method = "fireImmune", at = @At("HEAD"), cancellable = true, remap = true)
-    private void onFireImmune(CallbackInfoReturnable<Boolean> cir) {
-        if ((Object) this instanceof EntityMaid maid) {
-            var unholyHat = MaidSpellItems.getUnholyHat();
-            if (unholyHat != null && BaubleStateManager.hasBauble(maid, unholyHat)) {
-                cir.setReturnValue(true);
-            }
         }
     }
 
@@ -107,10 +125,18 @@ public class EntityMixin {
                 className.startsWith("com.google") ||
                 className.startsWith("com.mojang") ||
                 className.startsWith("io.redspace.ironsspellbooks") ||
+                className.startsWith("whocraft.tardis_refined") ||
                 className.startsWith("top.theillusivec4.curios") ||
                 className.contains("backup") ||
                 className.contains("maid") ||
                 className.contains("c2me");
+    }
+
+    @Unique
+    private static void maidSpell$clearCompound(CompoundTag compound) {
+        for (String key : new java.util.ArrayList<>(compound.getAllKeys())) {
+            compound.remove(key);
+        }
     }
 
 }
