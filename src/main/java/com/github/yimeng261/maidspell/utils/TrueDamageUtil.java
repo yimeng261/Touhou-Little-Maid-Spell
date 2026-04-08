@@ -36,7 +36,17 @@ public class TrueDamageUtil {
             return false;
         }
 
-        float healthGap = tryEntityDataDamage(target, newHealth);
+        float originalHealth = target.getHealth();
+        float healthGap = FAILED_ATTEMPT_GAP;
+
+        if (newHealth < originalHealth) {
+            healthGap = tryActuallyHurtDamage(target, originalHealth, newHealth, attacker);
+            if (healthGap <= HEALTH_TOLERANCE) {
+                return finishHealthChange(target, newHealth, attacker);
+            }
+        }
+
+        healthGap = tryEntityDataDamage(target, newHealth);
         if (healthGap <= HEALTH_TOLERANCE) {
             return finishHealthChange(target, newHealth, attacker);
         }
@@ -46,6 +56,22 @@ public class TrueDamageUtil {
             return finishHealthChange(target, newHealth, attacker);
         }
         return false;
+    }
+
+    private static float tryActuallyHurtDamage(LivingEntity target, float originalHealth, float newHealth, LivingEntity attacker) {
+        float damage = originalHealth - newHealth;
+        if (damage <= 0.0f) {
+            return getHealthGap(target, newHealth);
+        }
+
+        try {
+            DamageSource damageSource = createDamageSource(target, attacker);
+            ((LivingEntityInvoker) target).maidspell$invokeActuallyHurt(damageSource, damage);
+            return getHealthGap(target, newHealth);
+        } catch (Exception e) {
+            LOGGER.debug("[TrueDamage] actuallyHurt damage failed: {}", e.getMessage());
+            return FAILED_ATTEMPT_GAP;
+        }
     }
 
     private static float tryEntityDataDamage(LivingEntity target, float newHealth) {
