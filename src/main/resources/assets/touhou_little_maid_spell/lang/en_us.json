@@ -167,5 +167,14 @@
   "item.touhou_little_maid_spell.dream_cat_crystal.desc11": "On death, revives to full health with a chance of 100% minus 10% per revive in the last 120 seconds, then gains 15 seconds of invulnerability; creatures stay friendly and bosses only retaliate after being attacked by her",
   "item.touhou_little_maid_spell.dream_cat_crystal.desc12": "Synergies: Silver Cercis retaliates every hit and doubles in power; Chaos Book true damage doubles; Double Heart Chain becomes maid-only 50% damage; Fragrant Ingenuity feeding upgrades to 2 different high-level beneficial effects",
   "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.title": "Master of All Spells",
-  "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.description": "All the way through, you've worked hard, Master."
+  "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.description": "All the way through, you've worked hard, Master.",
+  "entity.touhou_little_maid_spell.corrupted_knight": "Corrupted Knight",
+  "item.touhou_little_maid_spell.corrupted_knight_spawn_egg": "Corrupted Knight Spawn Egg",
+  "entity.touhou_little_maid_spell.shadow_assassin": "Shadow Assassin",
+  "item.touhou_little_maid_spell.shadow_assassin_spawn_egg": "Shadow Assassin Spawn Egg",
+  "entity.touhou_little_maid_spell.elf_templar": "Elf Templar",
+  "item.touhou_little_maid_spell.elf_templar_spawn_egg": "Elf Templar Spawn Egg",
+  "item.touhou_little_maid_spell.loot.corrupted_knight_sword": "Nameless Knight's Sword",
+  "item.touhou_little_maid_spell.loot.shadow_assassin_rapier": "Shadow Fang",
+  "item.touhou_little_maid_spell.loot.elf_templar_claymore": "Elf Windblade"
 }
