@@ -6,6 +6,7 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHand
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -209,7 +210,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     static {
         // 初始化 ISS 属性（如果铁魔法加载）
-        if (ModList.get().isLoaded("irons_spellbooks")) {
+        if (IronsSpellbooksCompat.isLoaded()) {
             ForgeRegistries.ATTRIBUTES.forEach(attr -> {
                 if (attr.getDescriptionId().startsWith("attribute.irons_spellbooks.")) {
                     ISS_ATTRIBUTES.add(attr);

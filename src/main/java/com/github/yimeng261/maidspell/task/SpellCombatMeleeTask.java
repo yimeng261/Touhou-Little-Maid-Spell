@@ -1,14 +1,15 @@
 package com.github.yimeng261.maidspell.task;
 
 import com.Polarice3.Goety.api.entities.IOwned;
-import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitSounds;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
@@ -189,7 +190,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     protected static LivingEntity resolveIronsSpellbooksOwnerCastTarget(EntityMaid maid, LivingEntity fallbackTarget) {
-        if (fallbackTarget != maid.getOwner() || !ModList.get().isLoaded("irons_spellbooks")) {
+        if (fallbackTarget != maid.getOwner() || !IronsSpellbooksCompat.isLoaded()) {
             return fallbackTarget;
         }
 
@@ -204,7 +205,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     protected static boolean isIronsSpellbooksSpecialCase(EntityMaid maid) {
-        if (!ModList.get().isLoaded("irons_spellbooks")) {
+        if (!IronsSpellbooksCompat.isLoaded()) {
             return false;
         }
 

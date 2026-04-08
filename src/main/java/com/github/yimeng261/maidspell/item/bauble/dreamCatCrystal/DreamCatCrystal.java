@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal;
 
 import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -9,7 +10,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.fml.ModList;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -41,7 +41,7 @@ public class DreamCatCrystal extends Item {
         List<Component> detailLines = new ArrayList<>();
         detailLines.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc5_base")
             .withStyle(ChatFormatting.GOLD));
-        if (ModList.get().isLoaded("irons_spellbooks")) {
+        if (IronsSpellbooksCompat.isLoaded()) {
             detailLines.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc5_iss")
                 .withStyle(ChatFormatting.GOLD));
         }

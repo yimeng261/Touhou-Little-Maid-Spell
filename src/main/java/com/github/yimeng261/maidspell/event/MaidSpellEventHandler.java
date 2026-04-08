@@ -17,6 +17,7 @@ import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
@@ -40,7 +41,6 @@ import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
@@ -84,7 +84,7 @@ public class MaidSpellEventHandler {
             manager.setMaid(maid);
             manager.initSpellBooks();
 
-            if (ModList.get().isLoaded("irons_spellbooks")) {
+            if (IronsSpellbooksCompat.isLoaded()) {
                 MaidIronsSpellData ironsSpellData = MaidIronsSpellData.get(maid.getUUID());
                 if (ironsSpellData != null) {
                     ironsSpellData.getMagicData().setSyncedData(new SyncedSpellData(maid));
@@ -138,14 +138,14 @@ public class MaidSpellEventHandler {
         // 卸下的物品如果是法术书，从管理器中移除
         if (!from.isEmpty()) {
             manager.removeSpellItem(maid, from);
-            LOGGER.debug("女仆 {} 从curios槽位 {} 卸下物品: {}", 
+            LOGGER.debug("女仆 {} 从curios槽位 {} 卸下物品: {}",
                 maid.getUUID(), event.getIdentifier(), from.getItem());
         }
 
         // 装备的物品如果是法术书，添加到管理器
         if (!to.isEmpty()) {
             manager.addSpellItem(maid, to);
-            LOGGER.debug("女仆 {} 在curios槽位 {} 装备物品: {}", 
+            LOGGER.debug("女仆 {} 在curios槽位 {} 装备物品: {}",
                 maid.getUUID(), event.getIdentifier(), to.getItem());
         }
     }
@@ -165,7 +165,7 @@ public class MaidSpellEventHandler {
                 LOGGER.error("[MaidSpell] Failed to sync ender pocket data for player {} on login: {}",
                             player.getName().getString(), e.getMessage(), e);
             }
-            
+
             // 检查并发送节日祝福
             try {
                 FestivalGreetingManager.checkAndSendGreeting(player);
