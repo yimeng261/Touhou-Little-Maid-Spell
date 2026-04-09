@@ -32,7 +32,10 @@ public class Config {
             "traveloptics:aqua_missiles_hover",
             "traveloptics:meteor_storm",
             "traveloptics:aerial_collapse",
-            "traveloptics:aerial_collapse_helper"
+            "traveloptics:aerial_collapse_helper",
+            "soulsweapons:chungus_tonic_effct",
+            "goety:fiery_aura",
+            "goety:frosty_aura"
     );
 
     // ========== 战斗系统配置 ==========
