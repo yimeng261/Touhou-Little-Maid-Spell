@@ -55,12 +55,12 @@ public class DreamCrystalMaidEvents {
         if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL)) return;
 
         LivingEntity attacker = event.getEntity();
+        boolean isBoss = attacker.getType().is(Tags.EntityTypes.BOSSES);
 
-        if (attacker.getType().is(Tags.EntityTypes.BOSSES)) {
+        if (isBoss) {
             // Boss 中立：只有女仆先攻击才反击
-            if (!hasMaidRecentlyAttackedBoss(maid, attacker)) {
-                event.setCanceled(true);
-            }
+            boolean allowAggro = hasMaidRecentlyAttackedBoss(maid, attacker);
+            event.setCanceled(!allowAggro);
         } else {
             // 非 Boss 完全不攻击
             event.setCanceled(true);
@@ -76,7 +76,9 @@ public class DreamCrystalMaidEvents {
         if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL)) return;
 
         LivingEntity target = event.getEntity();
-        if (target.getType().is(Tags.EntityTypes.BOSSES)) {
+        boolean isBoss = target.getType().is(Tags.EntityTypes.BOSSES);
+
+        if (isBoss) {
             recordMaidAttackedBoss(maid, target);
         }
     }
@@ -138,22 +140,25 @@ public class DreamCrystalMaidEvents {
 
     private static void recordMaidAttackedBoss(EntityMaid maid, LivingEntity boss) {
         UUID maidUUID = maid.getUUID();
+        UUID bossUUID = boss.getUUID();
         long currentTime = maid.level().getGameTime();
 
         Map<UUID, Long> attackedBosses = MAID_ATTACKED_BOSSES.computeIfAbsent(maidUUID, k -> new HashMap<>());
-        cleanupExpiredBossAggro(maidUUID, attackedBosses, currentTime);
-        attackedBosses.put(boss.getUUID(), currentTime);
+        attackedBosses.entrySet().removeIf(entry -> currentTime - entry.getValue() >= BOSS_AGGRO_TIMEOUT);
+        attackedBosses.put(bossUUID, currentTime);
     }
 
     private static boolean hasMaidRecentlyAttackedBoss(EntityMaid maid, LivingEntity boss) {
         UUID maidUUID = maid.getUUID();
+        UUID bossUUID = boss.getUUID();
         long currentTime = maid.level().getGameTime();
         Map<UUID, Long> bosses = MAID_ATTACKED_BOSSES.get(maidUUID);
-        if (bosses == null) return false;
+        if (bosses == null) {
+            return false;
+        }
         cleanupExpiredBossAggro(maidUUID, bosses, currentTime);
-        Long lastTime = bosses.get(boss.getUUID());
-        if (lastTime == null) return false;
-        return (currentTime - lastTime) < BOSS_AGGRO_TIMEOUT;
+        Long lastTime = bosses.get(bossUUID);
+        return lastTime != null && (currentTime - lastTime) < BOSS_AGGRO_TIMEOUT;
     }
 
     private static void cleanupExpiredBossAggro(UUID maidUUID, Map<UUID, Long> bosses, long currentTime) {
