@@ -123,14 +123,6 @@ public abstract class LivingEntityMixin {
             return;
         }
 
-        // 检查女仆的无敌时间（黑曜石巨柱提供的无敌效果）
-        if (maid.invulnerableTime > 0) {
-            maidspell$LOGGER.debug("[MaidSpell] Damage cancelled for maid {} due to invulnerability", maid.getUUID());
-            dataItem.setCanceled(true);
-            ci.cancel();
-            return;
-        }
-
         SoulBookBauble_process(dataItem); //处理魂之书(最先计算是否取消)
 
         Global.baubleSetHealthHandlers.forEach((item, func) -> {
