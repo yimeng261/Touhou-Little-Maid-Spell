@@ -239,19 +239,16 @@ function recordMissingMethod(diagnostics, group, className) {
 }
 
 function logSummary(diagnostics) {
-    logInfo('Hurt hook target summary: declared=' + diagnostics.declaredTargets
-        + ', registered=' + diagnostics.registeredTargets
-        + ', missingClasses=' + diagnostics.missingClasses.length
-        + ', missingMethods=' + diagnostics.missingMethods.length);
+    logInfo('Hurt hook transformer summary: declaredTargets=' + diagnostics.declaredTargets
+        + ', registeredTransformers=' + diagnostics.registeredTargets
+        + ' (registration count only; does not prove runtime class/method presence)');
 
     var groupNames = Object.keys(diagnostics.groups);
     for (var i = 0; i < groupNames.length; i++) {
         var groupName = groupNames[i];
         var groupDiagnostics = diagnostics.groups[groupName];
-        logDebug('Group ' + groupName + ': declared=' + groupDiagnostics.declared
-            + ', registered=' + groupDiagnostics.registered
-            + ', missingClasses=' + groupDiagnostics.missingClasses
-            + ', missingMethods=' + groupDiagnostics.missingMethods);
+        logDebug('Group ' + groupName + ': declaredTargets=' + groupDiagnostics.declared
+            + ', registeredTransformers=' + groupDiagnostics.registered);
     }
 }
 
