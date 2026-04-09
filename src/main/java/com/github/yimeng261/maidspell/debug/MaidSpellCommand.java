@@ -27,7 +27,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModList;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import org.slf4j.Logger;
@@ -62,7 +62,7 @@ public class MaidSpellCommand {
 
         // 女仆施法命令
         // /maidspell iron_cast <targets> <spell_id> [level]
-        if (ModList.get().isLoaded("irons_spellbooks")) {
+        if (IronsSpellbooksCompat.isLoaded()) {
             root.then(Commands.literal("iron_cast")
                     .then(Commands.argument("targets", EntityArgument.entities())
                             .then(Commands.argument("spell", ResourceLocationArgument.id())

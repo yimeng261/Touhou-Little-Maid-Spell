@@ -23,7 +23,7 @@ import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomR
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
 import com.github.yimeng261.maidspell.item.bauble.transmogNecklace.TransmogNecklaceBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
-import net.neoforged.fml.ModList;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 
 /**
  * 女仆法术饰品注册器
@@ -34,7 +34,7 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
     @Override
     public void bindMaidBauble(BaubleManager manager) {
-        if (ModList.get().isLoaded("irons_spellbooks") && MaidSpellItems.SPELL_ENHANCEMENT_CORE != null) {
+        if (IronsSpellbooksCompat.isLoaded() && MaidSpellItems.SPELL_ENHANCEMENT_CORE != null) {
             manager.bind(MaidSpellItems.SPELL_ENHANCEMENT_CORE, new SpellEnhancementBauble());
         }
 

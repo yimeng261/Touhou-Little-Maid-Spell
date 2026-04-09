@@ -28,7 +28,7 @@ import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
-import net.neoforged.fml.ModList;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -176,7 +176,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     protected static LivingEntity resolveIronsSpellbooksOwnerCastTarget(EntityMaid maid, LivingEntity fallbackTarget) {
-        if (fallbackTarget != maid.getOwner() || !ModList.get().isLoaded("irons_spellbooks")) {
+        if (fallbackTarget != maid.getOwner() || !IronsSpellbooksCompat.isLoaded()) {
             return fallbackTarget;
         }
         LivingEntity origin = IronsSpellbooksDataBridge.getOriginTarget(maid);
@@ -184,7 +184,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     protected static boolean isIronsSpellbooksSpecialCase(EntityMaid maid) {
-        if (!ModList.get().isLoaded("irons_spellbooks")) {
+        if (!IronsSpellbooksCompat.isLoaded()) {
             return false;
         }
         return IronsSpellbooksDataBridge.isSpecialOwnerCastCase(maid);

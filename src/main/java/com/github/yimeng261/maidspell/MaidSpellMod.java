@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell;
 
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
@@ -59,6 +60,7 @@ public class MaidSpellMod {
         MaidSpellContainers.register(modEventBus);
         MaidSpellSounds.SOUNDS.register(modEventBus);
         MaidSpellEntities.register(modEventBus);
+        IronsSpellbooksCompat.init(modEventBus);
         modEventBus.addListener(FragrantIngenuityBauble::onRegisterEffects);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modEventBus);
@@ -67,7 +69,7 @@ public class MaidSpellMod {
         MaidSpellIngredientTypes.INGREDIENT_TYPES.register(modEventBus);
 
         // 铁魔法属性修改器获取
-        if (ModList.get().isLoaded("irons_spellbooks")) {
+        if (IronsSpellbooksCompat.isLoaded()) {
             modEventBus.addListener(SpellEnhancementBauble::initializeAttributes);
         }
 

@@ -8,7 +8,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
-import net.neoforged.fml.ModList;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -39,7 +39,7 @@ public class DreamCatCrystal extends Item {
         List<Component> detailLines = new ArrayList<>();
         detailLines.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc5_base")
                 .withStyle(ChatFormatting.GOLD));
-        if (ModList.get().isLoaded("irons_spellbooks")) {
+        if (IronsSpellbooksCompat.isLoaded()) {
             detailLines.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc5_iss")
                     .withStyle(ChatFormatting.GOLD));
         }

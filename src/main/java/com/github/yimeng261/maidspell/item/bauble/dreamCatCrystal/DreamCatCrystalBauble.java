@@ -30,7 +30,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.neoforged.fml.ModList;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import org.slf4j.Logger;
 import top.theillusivec4.curios.api.CuriosApi;
 
@@ -86,7 +86,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     static {
         // 初始化 ISS 属性（如果铁魔法加载）
-        if (ModList.get().isLoaded("irons_spellbooks")) {
+        if (IronsSpellbooksCompat.isLoaded()) {
             BuiltInRegistries.ATTRIBUTE.holders().forEach(holder -> {
                 if (holder.key().location().toString().startsWith("irons_spellbooks:")) {
                     ISS_ATTRIBUTES.add(holder);

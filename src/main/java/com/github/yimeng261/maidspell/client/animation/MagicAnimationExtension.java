@@ -5,7 +5,7 @@ import com.github.tartaricacid.touhoulittlemaid.api.LittleMaidExtension;
 import com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.magic.MagicCastingAnimationManager;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.fml.ModList;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 
 /**
  * 动画适配
@@ -18,7 +18,7 @@ public class MagicAnimationExtension implements ILittleMaid {
     @Override
     @OnlyIn(Dist.CLIENT)
     public void registerMagicCastingAnimation(MagicCastingAnimationManager manager) {
-        if (!ModList.get().isLoaded("irons_spellbooks")) {
+        if (!IronsSpellbooksCompat.isLoaded()) {
             return;
         }
         manager.register(new ISSCastingAnimationProvider());

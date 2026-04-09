@@ -5,7 +5,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.ModList;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -24,10 +25,13 @@ public class MaidSpellCreativeTab {
             .title(Component.translatable("itemGroup.touhou_little_maid_spell"))
             .icon(() -> new ItemStack(MaidSpellItems.FLOW_CORE.get()))
             .displayItems((parameters, output) -> {
-                if (ModList.get().isLoaded("irons_spellbooks")) {
+                if (IronsSpellbooksCompat.isLoaded()) {
                     output.accept(MaidSpellItems.SPELL_ENHANCEMENT_CORE.get());
                     output.accept(MaidSpellItems.BLUE_NOTE.get());
                     output.accept(MaidSpellItems.WIND_SEEKING_BELL.get());
+                    output.accept(IronsSpellbooksCompatItems.CORRUPTED_KNIGHT_SPAWN_EGG.get());
+                    output.accept(IronsSpellbooksCompatItems.SHADOW_ASSASSIN_SPAWN_EGG.get());
+                    output.accept(IronsSpellbooksCompatItems.ELF_TEMPLAR_SPAWN_EGG.get());
                 }
 
                 output.accept(MaidSpellItems.BLEEDING_HEART.get());
