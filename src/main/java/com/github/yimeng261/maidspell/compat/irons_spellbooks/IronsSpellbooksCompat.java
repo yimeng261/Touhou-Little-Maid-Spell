@@ -9,12 +9,13 @@ import net.minecraftforge.fml.ModList;
 
 public final class IronsSpellbooksCompat {
     public static final String MOD_ID = "irons_spellbooks";
+    private static final boolean LOADED = ModList.get().isLoaded(MOD_ID);
 
     private IronsSpellbooksCompat() {
     }
 
     public static boolean isLoaded() {
-        return ModList.get().isLoaded(MOD_ID);
+        return LOADED;
     }
 
     public static void init(IEventBus eventBus) {

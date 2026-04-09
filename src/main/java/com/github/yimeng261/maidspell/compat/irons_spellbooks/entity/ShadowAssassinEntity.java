@@ -12,7 +12,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Enemy;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.ForgeMod;
@@ -64,11 +63,6 @@ public class ShadowAssassinEntity extends AbstractSpellMeleeMob implements Enemy
     }
 
     @Override
-    protected List<AbstractSpell> getDefenseSpells() {
-        return List.of();
-    }
-
-    @Override
     protected List<AbstractSpell> getMovementSpells() {
         return List.of(SpellRegistry.BLOOD_STEP_SPELL.get());
     }
@@ -83,10 +77,5 @@ public class ShadowAssassinEntity extends AbstractSpellMeleeMob implements Enemy
         equipAndHideDrop(EquipmentSlot.LEGS, new ItemStack(ItemRegistry.SHADOWWALKER_LEGGINGS.get()));
         equipAndHideDrop(EquipmentSlot.FEET, new ItemStack(ItemRegistry.SHADOWWALKER_BOOTS.get()));
         equipAndHideDrop(EquipmentSlot.MAINHAND, new ItemStack(ItemRegistry.AMETHYST_RAPIER.get()));
-    }
-
-    @Override
-    public boolean isHostileTowards(LivingEntity target) {
-        return target instanceof Player || super.isHostileTowards(target);
     }
 }

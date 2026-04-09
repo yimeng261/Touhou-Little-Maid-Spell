@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.base;
 
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import io.redspace.ironsspellbooks.IronsSpellbooks;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.entity.mobs.IAnimatedAttacker;
@@ -19,6 +20,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.SpawnGroupData;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.ai.control.LookControl;
 import net.minecraft.world.entity.ai.control.MoveControl;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
@@ -28,9 +30,12 @@ import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.ResetUniversalAngerTargetGoal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.core.animation.AnimatableManager;
 import software.bernie.geckolib.core.animation.AnimationController;
@@ -38,12 +43,16 @@ import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.core.animation.RawAnimation;
 import software.bernie.geckolib.core.object.PlayState;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public abstract class AbstractSpellMeleeMob extends NeutralWizard implements IAnimatedAttacker {
+    private static final ResourceLocation CLAYMORE_ID = new ResourceLocation(IronsSpellbooksCompat.MOD_ID, "claymore");
+
     private RawAnimation animationToPlay = null;
     private final AnimationController<AbstractSpellMeleeMob> meleeController =
-            new AnimationController<>(this, "keeper_animations", 0, this::predicate);
+            new AnimationController<>(this, "melee_animations", 0, this::predicate);
 
     protected AbstractSpellMeleeMob(EntityType<? extends AbstractSpellCastingMob> entityType, Level level) {
         super(entityType, level);
@@ -120,9 +129,15 @@ public abstract class AbstractSpellMeleeMob extends NeutralWizard implements IAn
         return 0.75f;
     }
 
+    protected static Item getClaymoreItem() {
+        return Objects.requireNonNull(ForgeRegistries.ITEMS.getValue(CLAYMORE_ID));
+    }
+
     protected abstract List<AbstractSpell> getAttackSpells();
 
-    protected abstract List<AbstractSpell> getDefenseSpells();
+    protected List<AbstractSpell> getDefenseSpells() {
+        return Collections.emptyList();
+    }
 
     protected abstract List<AbstractSpell> getMovementSpells();
 
@@ -229,6 +244,14 @@ public abstract class AbstractSpellMeleeMob extends NeutralWizard implements IAn
     protected void equipAndHideDrop(EquipmentSlot slot, ItemStack stack) {
         this.setItemSlot(slot, stack);
         this.setDropChance(slot, 0.0f);
+    }
+
+    @Override
+    public boolean isHostileTowards(LivingEntity target) {
+        if (this instanceof Enemy && target instanceof Player) {
+            return true;
+        }
+        return super.isHostileTowards(target);
     }
 
     @Override
