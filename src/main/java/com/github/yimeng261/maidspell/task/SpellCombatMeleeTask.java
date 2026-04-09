@@ -8,6 +8,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitSounds;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksDataBridge;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.google.common.collect.ImmutableMap;
@@ -193,32 +194,15 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         if (fallbackTarget != maid.getOwner() || !IronsSpellbooksCompat.isLoaded()) {
             return fallbackTarget;
         }
-
-        try {
-            Class<?> dataClass = Class.forName("com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData");
-            Object data = dataClass.getMethod("getOrCreate", EntityMaid.class).invoke(null, maid);
-            Object originTarget = dataClass.getMethod("getOriginTarget").invoke(data);
-            return originTarget instanceof LivingEntity livingEntity ? livingEntity : fallbackTarget;
-        } catch (ReflectiveOperationException | LinkageError e) {
-            return fallbackTarget;
-        }
+        LivingEntity origin = IronsSpellbooksDataBridge.getOriginTarget(maid);
+        return origin instanceof LivingEntity ? origin : fallbackTarget;
     }
 
     protected static boolean isIronsSpellbooksSpecialCase(EntityMaid maid) {
         if (!IronsSpellbooksCompat.isLoaded()) {
             return false;
         }
-
-        try {
-            Class<?> dataClass = Class.forName("com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData");
-            Object data = dataClass.getMethod("getOrCreate", EntityMaid.class).invoke(null, maid);
-            Object currentTarget = dataClass.getMethod("getTarget").invoke(data);
-            Object originTarget = dataClass.getMethod("getOriginTarget").invoke(data);
-            LivingEntity owner = maid.getOwner();
-            return currentTarget == owner && originTarget instanceof LivingEntity living && living != owner;
-        } catch (ReflectiveOperationException | LinkageError e) {
-            return false;
-        }
+        return IronsSpellbooksDataBridge.isSpecialOwnerCastCase(maid);
     }
 
 
