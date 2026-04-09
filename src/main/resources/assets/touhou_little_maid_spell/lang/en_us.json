@@ -176,5 +176,7 @@
   "item.touhou_little_maid_spell.elf_templar_spawn_egg": "Elf Templar Spawn Egg",
   "item.touhou_little_maid_spell.loot.corrupted_knight_sword": "Nameless Knight's Sword",
   "item.touhou_little_maid_spell.loot.shadow_assassin_rapier": "Shadow Fang",
-  "item.touhou_little_maid_spell.loot.elf_templar_claymore": "Elf Windblade"
+  "item.touhou_little_maid_spell.loot.elf_templar_claymore": "Elf Windblade",
+  "pack.touhou_little_maid_spell.legacy_textures.title": "Touhou Little Maid: Spell Legacy Textures",
+  "pack.touhou_little_maid_spell.legacy_textures.desc": "Use legacy item textures"
 }

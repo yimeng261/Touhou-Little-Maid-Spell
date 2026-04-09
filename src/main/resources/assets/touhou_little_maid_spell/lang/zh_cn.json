@@ -173,5 +173,7 @@
   "item.touhou_little_maid_spell.elf_templar_spawn_egg": "精灵守卫刷怪蛋",
   "item.touhou_little_maid_spell.loot.corrupted_knight_sword": "无名骑士的剑",
   "item.touhou_little_maid_spell.loot.shadow_assassin_rapier": "影刃",
-  "item.touhou_little_maid_spell.loot.elf_templar_claymore": "精灵的风之剑"
+  "item.touhou_little_maid_spell.loot.elf_templar_claymore": "精灵的风之剑",
+  "pack.touhou_little_maid_spell.legacy_textures.title": "万法皆通旧版材质",
+  "pack.touhou_little_maid_spell.legacy_textures.desc": "使用旧版物品材质"
 }
