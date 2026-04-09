@@ -6,9 +6,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedW
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitSounds;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksDataBridge;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
-import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
@@ -175,6 +175,20 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         return maid.distanceTo(target) > this.searchRadius(maid);
     }
 
+    protected static LivingEntity resolveIronsSpellbooksOwnerCastTarget(EntityMaid maid, LivingEntity fallbackTarget) {
+        if (fallbackTarget != maid.getOwner() || !ModList.get().isLoaded("irons_spellbooks")) {
+            return fallbackTarget;
+        }
+        LivingEntity origin = IronsSpellbooksDataBridge.getOriginTarget(maid);
+        return origin instanceof LivingEntity ? origin : fallbackTarget;
+    }
+
+    protected static boolean isIronsSpellbooksSpecialCase(EntityMaid maid) {
+        if (!ModList.get().isLoaded("irons_spellbooks")) {
+            return false;
+        }
+        return IronsSpellbooksDataBridge.isSpecialOwnerCastCase(maid);
+    }
 
     /**
      * 统一的法术战斗行为控制器
@@ -215,9 +229,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             this.currentSpellCaster = new SimplifiedSpellCaster(maid);
 
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            if(target == maid.getOwner() && ModList.get().isLoaded("irons_spellbooks")){
-                target = MaidIronsSpellData.getOrCreate(maid).getOriginTarget();
-            }
+            target = resolveIronsSpellbooksOwnerCastTarget(maid, target);
             if (!(target instanceof Player)) {
                 this.currentSpellCaster.setTarget(target);
             }
@@ -314,29 +326,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
          * 这种情况下女仆需要对主人施法，因此应该看向主人
          */
         private boolean isIronSpellSpecialCase(EntityMaid maid) {
-            if (!ModList.get().isLoaded("irons_spellbooks")) {
-                return false;
-            }
-
-            try {
-                // 获取女仆的铁魔法数据
-                MaidIronsSpellData data = MaidIronsSpellData.getOrCreate(maid);
-                if (data == null) {
-                    return false;
-                }
-
-                // 检查当前目标是否是原始目标切换到主人的结果
-                // 这表明女仆正在施放蓝色音符标记的法术
-                LivingEntity currentTarget = data.getTarget();
-                LivingEntity originTarget = data.getOriginTarget();
-                LivingEntity owner = maid.getOwner();
-
-                return currentTarget == owner && originTarget != null && originTarget != owner;
-
-            } catch (Exception e) {
-                // 如果出现任何异常，安全返回false
-                return false;
-            }
+            return SpellCombatMeleeTask.isIronsSpellbooksSpecialCase(maid);
         }
     }
 

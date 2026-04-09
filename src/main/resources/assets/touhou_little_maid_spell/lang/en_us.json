@@ -161,6 +161,7 @@
   "item.touhou_little_maid_spell.dream_cat_crystal.desc8": "Every 30 seconds grants 2 different random beneficial effects at level 2-10 for 30-60 seconds, and blocks all harmful effects from being applied",
   "item.touhou_little_maid_spell.dream_cat_crystal.desc9_true_damage": "Each hit adds equal bonus true damage",
   "item.touhou_little_maid_spell.dream_cat_crystal.desc9_freeze": "Mob targets are frozen for 1 second",
+  "item.touhou_little_maid_spell.dream_cat_crystal.desc9_freeze_no_ai": "Mob targets are frozen for 1 second and have their AI disabled during the freeze",
   "item.touhou_little_maid_spell.dream_cat_crystal.desc9_splash": "Enemies within 5 blocks take 10% true-damage splash, excluding players and maids",
   "item.touhou_little_maid_spell.dream_cat_crystal.desc10": "Boosts other maids within 20 blocks with +50% attack damage and 1/3 spell cooldown, and repairs 1 durability per second on all items in the maid's inventory",
   "item.touhou_little_maid_spell.dream_cat_crystal.desc11": "On death, revives to full health with a chance of 100% minus 10% per revive in the last 120 seconds, then gains 15 seconds of invulnerability; creatures stay friendly and bosses only retaliate after being attacked by her",

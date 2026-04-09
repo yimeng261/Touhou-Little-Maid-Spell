@@ -5,7 +5,6 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedW
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
-import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.logging.LogUtils;
@@ -21,7 +20,6 @@ import net.minecraft.world.entity.ai.behavior.StopAttackingIfTargetInvalid;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -116,9 +114,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
             currentSpellCaster = new SimplifiedSpellCaster(maid);
 
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            if(target == maid.getOwner() && ModList.get().isLoaded("irons_spellbooks")){
-                target = MaidIronsSpellData.getOrCreate(maid).getOriginTarget();
-            }
+            target = resolveIronsSpellbooksOwnerCastTarget(maid, target);
             if (!(target instanceof Player)) {
                 currentSpellCaster.setTarget(target);
             }

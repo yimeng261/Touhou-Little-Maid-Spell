@@ -135,7 +135,10 @@ public class MaidSpellCommand {
         return 1;
     }
 
-    static class IronSpellHelper {
+    /**
+     * 将 ISS 相关实现隔离到桥接类中，避免顶层命令类在可选依赖缺失时解析这些类型。
+     */
+    static final class IronSpellHelper {
         /**
          * 法术 ID 自动补全提供器
          */
@@ -157,7 +160,6 @@ public class MaidSpellCommand {
             Collection<? extends Entity> targets = EntityArgument.getEntities(context, "targets");
             ResourceLocation spellId = ResourceLocationArgument.getId(context, "spell");
 
-            // 获取法术
             AbstractSpell spell = SpellRegistry.getSpell(spellId);
             if (spell == null || spell == SpellRegistry.none()) {
                 context.getSource().sendFailure(Component.literal("未找到法术: " + spellId));
@@ -183,7 +185,6 @@ public class MaidSpellCommand {
                 }
             }
 
-            // 发送结果消息
             if (successCount > 0) {
                 final int success = successCount;
                 context.getSource().sendSuccess(() -> Component.literal(
@@ -206,7 +207,6 @@ public class MaidSpellCommand {
         private static void castSpellOnMaid(EntityMaid maid, AbstractSpell spell, int level) {
             MaidIronsSpellData data = MaidIronsSpellData.getOrCreate(maid);
 
-            // 获取女仆当前的攻击目标作为法术目标
             LivingEntity target = maid.getTarget();
             if (target != null) {
                 data.setTarget(target);
@@ -216,33 +216,25 @@ public class MaidSpellCommand {
             SpellSlot spellSlot = new SpellSlot(spellData, 0);
             MagicData magicData = data.getMagicData();
 
-            // 检查前置条件
             if (!spell.checkPreCastConditions(maid.level(), level, maid, magicData)) {
                 LOGGER.debug("法术 {} 前置条件检查失败", spell.getSpellId());
-                // 即使前置条件失败，仍然尝试施法（命令强制施法）
             }
 
             int effectiveCastTime = spell.getEffectiveCastTime(level, maid);
             CastSource castSource = CastSource.COMMAND;
 
-            // 初始化施法
             magicData.initiateCast(spell, level, effectiveCastTime, castSource, "command");
-
-            // 调用施法前处理
             spell.onServerPreCast(maid.level(), level, maid, magicData);
 
-            // 设置当前施法状态
             data.setCurrentCastingSpell(spellSlot);
             data.setCachedCastSource(castSource);
             data.setCasting(true);
 
-            // 对于瞬发法术，直接完成施法
             if (spell.getCastType() == CastType.INSTANT || effectiveCastTime <= 0) {
                 spell.onCast(maid.level(), level, maid, castSource, magicData);
                 spell.onServerCastComplete(maid.level(), level, maid, magicData, false);
                 data.resetCastingState();
             }
-            // 对于非瞬发法术，施法将由 IronsSpellbooksProvider.processContinuousCasting 继续处理
         }
     }
 }
