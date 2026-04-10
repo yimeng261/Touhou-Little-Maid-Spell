@@ -29,9 +29,6 @@ public class MaidSpellCreativeTab {
                     output.accept(MaidSpellItems.SPELL_ENHANCEMENT_CORE.get());
                     output.accept(MaidSpellItems.BLUE_NOTE.get());
                     output.accept(MaidSpellItems.WIND_SEEKING_BELL.get());
-                    output.accept(IronsSpellbooksCompatItems.CORRUPTED_KNIGHT_SPAWN_EGG.get());
-                    output.accept(IronsSpellbooksCompatItems.SHADOW_ASSASSIN_SPAWN_EGG.get());
-                    output.accept(IronsSpellbooksCompatItems.ELF_TEMPLAR_SPAWN_EGG.get());
                 }
 
                 output.accept(MaidSpellItems.BLEEDING_HEART.get());
@@ -56,6 +53,13 @@ public class MaidSpellCreativeTab {
 
                 // 管理员工具
                 output.accept(MaidSpellItems.OWNER_CLEAR_TOOL.get());
+
+                // 怪物蛋
+                // if (IronsSpellbooksCompat.isLoaded()) {
+                //     output.accept(IronsSpellbooksCompatItems.CORRUPTED_KNIGHT_SPAWN_EGG.get());
+                //     output.accept(IronsSpellbooksCompatItems.SHADOW_ASSASSIN_SPAWN_EGG.get());
+                //     output.accept(IronsSpellbooksCompatItems.ELF_TEMPLAR_SPAWN_EGG.get());
+                // }
             })
             .build());
 
