@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 /**
@@ -86,7 +87,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
-        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
         BehaviorControl<EntityMaid> spellCastingTask = new SpellCombatBehavior();
@@ -106,7 +107,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(EntityMaid maid) {
-        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> spellCastingTask = new SpellCombatBehavior();
         // 添加高优先级的视线控制任务，阻止女仆看向玩家
@@ -118,6 +119,14 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
                 Pair.of(2, findTargetTask),
                 Pair.of(2, spellCastingTask)
         );
+    }
+
+    /**
+     * 自定义索敌方法，在默认索敌基础上进行额外过滤
+     * 子类可覆写此方法添加更多过滤逻辑
+     */
+    protected Optional<? extends LivingEntity> findValidAttackTarget(EntityMaid maid) {
+        return IAttackTask.findFirstValidAttackTarget(maid);
     }
 
     @Override

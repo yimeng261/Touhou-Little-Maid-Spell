@@ -68,7 +68,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
     @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
-        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
         BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
@@ -88,7 +88,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
     @Override
     public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(EntityMaid maid) {
-        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, IAttackTask::findFirstValidAttackTarget);
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
         // 添加高优先级的视线控制任务，阻止女仆看向玩家
