@@ -131,6 +131,8 @@
   "item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure": "No Hidden Retreat nearby, added to waiting queue...",
   "item.touhou_little_maid_spell.wind_seeking_bell.waiting_in_queue": "No Hidden Retreat nearby, waiting in queue... (Position %s/%s)",
   "item.touhou_little_maid_spell.wind_seeking_bell.structure_generated": "Your Hidden Retreat has been generated! Location: [%s, %s, %s] (%s blocks away)",
+  "block.touhou_little_maid_spell.scarlet_zhuhua": "Scarlet Zhuhua",
+  "block.touhou_little_maid_spell.potted_scarlet_zhuhua": "Potted Scarlet Zhuhua",
   "item.touhou_little_maid_spell.owner_clear_tool": "Maid Owner Clear Tool",
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line1": "Administrator Tool",
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line2": "Right-click on maid to clear owner",

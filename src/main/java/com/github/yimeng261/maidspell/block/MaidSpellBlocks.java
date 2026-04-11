@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.block;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.block.custom.PottedScarletZhuhuaBlock;
 import com.github.yimeng261.maidspell.block.custom.ScarletZhuhuaBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -19,11 +20,9 @@ public final class MaidSpellBlocks {
 
     public static final RegistryObject<Block> POTTED_SCARLET_ZHUHUA =
         BLOCKS.register("potted_scarlet_zhuhua",
-            () -> new FlowerPotBlock(
+            () -> new PottedScarletZhuhuaBlock(
                 () -> (FlowerPotBlock) Blocks.FLOWER_POT,
-                SCARLET_ZHUHUA,
-                ScarletZhuhuaBlock.createPottedProperties()
-            ));
+                SCARLET_ZHUHUA));
 
     private MaidSpellBlocks() {
     }

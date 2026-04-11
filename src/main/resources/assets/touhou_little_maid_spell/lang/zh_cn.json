@@ -131,6 +131,8 @@
   "item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure": "附近没有隐世之境，已加入等待队列...",
   "item.touhou_little_maid_spell.wind_seeking_bell.waiting_in_queue": "附近没有隐世之境，等待队列中... (第 %s/%s 位)",
   "item.touhou_little_maid_spell.wind_seeking_bell.structure_generated": "你的隐世之境已生成！位置: [%s, %s, %s]（距离 %s 方块）",
+  "block.touhou_little_maid_spell.scarlet_zhuhua": "猩红朱华",
+  "block.touhou_little_maid_spell.potted_scarlet_zhuhua": "盆栽猩红朱华",
   "item.touhou_little_maid_spell.owner_clear_tool": "女仆主人清除工具",
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line1": "管理员专用工具",
   "item.touhou_little_maid_spell.owner_clear_tool.tooltip.line2": "右键女仆可清除其主人",

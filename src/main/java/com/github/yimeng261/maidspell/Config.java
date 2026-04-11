@@ -21,7 +21,19 @@ import net.minecraftforge.fml.event.config.ModConfigEvent;
 public class Config {
     
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
-    private static final java.util.List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST = java.util.List.of(
+    private static final List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_WHITELIST = List.of(
+            "regex:minecraft:.*",
+            "regex:goety:.*",
+            "regex:irons_spellbooks:.*",
+            "regex:ars_nouveau:.*",
+            "regex:youkaishomecoming:.*",
+            "regex:farmersdelight:.*",
+            "regex:kaleidoscope_cookery:.*",
+            "regex:alexsmobs:.*",
+            "regex:alexscaves:.*",
+            "regex:cataclysm::.*"
+    );
+    private static final List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST = List.of(
             "irons_spellbooks:ascension",
             "irons_spellbooks:burning_dash",
             "irons_spellbooks:antigravity",
@@ -30,12 +42,15 @@ public class Config {
             "traveloptics:meteor_storm",
             "traveloptics:aerial_collapse",
             "traveloptics:aerial_collapse_helper",
-            "soulsweapons:chungus_tonic_effct",
+            "soulsweapons:chungus_tonic_effect",
             "goety:fire_trail",
             "goety:charged",
+            "goety:rampage",
             "goety:shadow_walk",
             "goety:fiery_aura",
-            "goety:frosty_aura"
+            "goety:frosty_aura",
+            "minecraft:invisibility",
+            "irons_spellbooks:true_invisibility"
     );
     
     // ========== 战斗系统配置 ==========
@@ -374,15 +389,6 @@ public class Config {
         BUILDER.comment("");
     }
 
-    private static final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> SPRING_BLOOM_RETURN_SUPPORT_SPELL_WHITELIST = BUILDER
-            .comment("春花-返直接识别为治疗/增益法术的白名单")
-            .comment("Spring Bloom Return support spell exact whitelist")
-            .defineListAllowEmpty(
-                java.util.List.of("springBloomReturnSupportSpellWhitelist"),
-                () -> java.util.List.of(),
-                obj -> obj instanceof String
-            );
-
     static {
         BUILDER.comment("");
     }
@@ -516,9 +522,9 @@ public class Config {
     }
 
     private static final ForgeConfigSpec.BooleanValue DREAM_CRYSTAL_USE_EFFECT_WHITELIST = BUILDER
-            .comment("是否启用梦云水晶随机正面效果白名单 (默认: false)")
+            .comment("是否启用梦云水晶随机正面效果白名单 (默认: true)")
             .comment("Whether to enable Dream Crystal random beneficial effect whitelist")
-            .define("dreamCrystalUseEffectWhitelist", false);
+            .define("dreamCrystalUseEffectWhitelist", true);
 
     static {
         BUILDER.comment("");
@@ -531,7 +537,7 @@ public class Config {
             .comment("示例: [\"minecraft:speed\", \"regex:minecraft:.*\"]")
             .defineListAllowEmpty(
                 java.util.List.of("dreamCrystalEffectWhitelist"),
-                java.util.List::of,
+                    () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_WHITELIST,
                 obj -> obj instanceof String
             );
 
@@ -643,7 +649,6 @@ public class Config {
     public static double springBloomReturnDamageThresholdRatio;
     public static double springBloomReturnHealRatio;
     public static double springBloomReturnCooldownRefundRatio;
-    public static List<String> springBloomReturnSupportSpellWhitelist;
     public static List<String> springBloomReturnSupportSpellKeywords;
     
     // 特殊饰品相关
@@ -720,7 +725,6 @@ public class Config {
         springBloomReturnDamageThresholdRatio = SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD_RATIO.get();
         springBloomReturnHealRatio = SPRING_BLOOM_RETURN_HEAL_RATIO.get();
         springBloomReturnCooldownRefundRatio = SPRING_BLOOM_RETURN_COOLDOWN_REFUND_RATIO.get();
-        springBloomReturnSupportSpellWhitelist = new ArrayList<>(SPRING_BLOOM_RETURN_SUPPORT_SPELL_WHITELIST.get());
         springBloomReturnSupportSpellKeywords = new ArrayList<>(SPRING_BLOOM_RETURN_SUPPORT_SPELL_KEYWORDS.get());
         
         // 特殊饰品相关

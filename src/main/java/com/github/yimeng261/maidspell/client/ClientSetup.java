@@ -1,6 +1,9 @@
 package com.github.yimeng261.maidspell.client;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -15,7 +18,8 @@ public class ClientSetup {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
-            // 客户端初始化逻辑
+            ItemBlockRenderTypes.setRenderLayer(MaidSpellBlocks.SCARLET_ZHUHUA.get(), RenderType.cutout());
+            ItemBlockRenderTypes.setRenderLayer(MaidSpellBlocks.POTTED_SCARLET_ZHUHUA.get(), RenderType.cutout());
         });
     }
 }

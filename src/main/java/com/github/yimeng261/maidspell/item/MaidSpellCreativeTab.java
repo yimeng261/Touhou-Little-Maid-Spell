@@ -48,6 +48,7 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.SPRING_BLOOM_RETURN.get());
                 output.accept(MaidSpellItems.FRAGRANT_INGENUITY.get());
                 output.accept(MaidSpellItems.DREAM_CAT_CRYSTAL.get());
+                output.accept(MaidSpellItems.SCARLET_ZHUHUA.get());
 
                 // 管理员工具
                 output.accept(MaidSpellItems.OWNER_CLEAR_TOOL.get());

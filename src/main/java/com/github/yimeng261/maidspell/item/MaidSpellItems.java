@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChain;
@@ -27,6 +28,7 @@ import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
 import net.minecraft.Util;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
@@ -76,6 +78,9 @@ public class MaidSpellItems {
 
     // 寻风之铃
     public static final RegistryObject<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
+
+    public static final RegistryObject<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
+        () -> new BlockItem(MaidSpellBlocks.SCARLET_ZHUHUA.get(), new Item.Properties()));
     
     // 管理员工具
     public static final RegistryObject<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);

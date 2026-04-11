@@ -20,6 +20,7 @@ import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
@@ -400,8 +401,6 @@ public class MaidSpellEventHandler {
             });
         }
     }
-
-
 
     private static void processorAft(LivingDamageEvent event, EntityMaid maid) {
         Global.baubleDamageHandlers.forEach((item, func) -> {

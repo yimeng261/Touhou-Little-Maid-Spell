@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.utils;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.mixin.LivingEntityInvoker;
 import com.github.yimeng261.maidspell.mixin.SynchedEntityDataMixin;
 import com.mojang.logging.LogUtils;
@@ -37,11 +38,15 @@ public class TrueDamageUtil {
      * @return 是否成功
      */
     public static boolean dealTrueDamage(LivingEntity target, float damage, LivingEntity attacker) {
-        if(target == null){
+        if(canNotBeApllied(target)){
             return false;
         }
         float newHealth = Math.max(0.0f, target.getHealth() - damage);
         return setNewHealth(target, newHealth, attacker);
+    }
+
+    private static boolean canNotBeApllied(LivingEntity target){
+        return (target == null || target instanceof Player || target instanceof EntityMaid);
     }
 
     /**
@@ -53,7 +58,7 @@ public class TrueDamageUtil {
      * @return 是否成功
      */
     public static boolean setNewHealth(LivingEntity target, float newHealth, LivingEntity attacker) {
-        if(target == null){
+        if(canNotBeApllied(target)){
             return false;
         }
         float healthGap = FAILED_ATTEMPT_GAP;

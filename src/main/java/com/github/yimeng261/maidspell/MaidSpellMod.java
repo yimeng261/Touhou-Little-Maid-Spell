@@ -1,5 +1,7 @@
 package com.github.yimeng261.maidspell;
 
+import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
+import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
 import com.github.yimeng261.maidspell.crafting.OptionalModIngredientSerializer;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
@@ -48,6 +50,8 @@ public class MaidSpellMod {
         
         // 手动注册事件处理器，确保事件能被正确监听
         forgeBus.register(MaidSpellEventHandler.class);
+        MaidSpellBlocks.register(modBus);
+        MaidSpellBlockEntities.register(modBus);
         MaidSpellItems.register(modBus);
         MaidSpellCreativeTab.register(modBus);
         MaidSpellContainers.register(modBus);
@@ -65,6 +69,7 @@ public class MaidSpellMod {
     private void setup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             CraftingHelper.register(new ResourceLocation(MOD_ID, "optional_mod_item"), OptionalModIngredientSerializer.INSTANCE);
+            MaidSpellBlocks.registerPottedPlants();
             // 注册网络消息
             NetworkHandler.registerMessages();
             

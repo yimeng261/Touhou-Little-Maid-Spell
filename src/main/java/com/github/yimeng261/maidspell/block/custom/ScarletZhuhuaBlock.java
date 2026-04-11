@@ -1,8 +1,9 @@
 package com.github.yimeng261.maidspell.block.custom;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
+import com.github.yimeng261.maidspell.block.entity.ScarletZhuhuaBlockEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
@@ -12,17 +13,22 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BushBlock;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.AABB;
 
-public class ScarletZhuhuaBlock extends BushBlock {
+import javax.annotation.Nullable;
+
+public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
     private static final int LIGHT_LEVEL = 10;
     private static final int AURA_RANGE = 3;
-    private static final double AURA_RANGE_SQR = AURA_RANGE * AURA_RANGE;
     private static final int EFFECT_DURATION_TICKS = 60;
 
     public ScarletZhuhuaBlock() {
@@ -50,37 +56,31 @@ public class ScarletZhuhuaBlock extends BushBlock {
         return state.is(Blocks.CRIMSON_NYLIUM) || super.mayPlaceOn(state, level, pos);
     }
 
-    public static void applyAuraIfNeeded(LivingEntity living) {
-        if (!living.isAlive() || isIronsSpellbooksNpc(living) || !hasScarletZhuhuaNearby(living)) {
-            return;
-        }
+    @Override
+    @Nullable
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new ScarletZhuhuaBlockEntity(pos, state);
+    }
 
-        living.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, EFFECT_DURATION_TICKS, 1, true, false, true));
+    @Override
+    @Nullable
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        return level.isClientSide ? null : ScarletZhuhuaBlockEntity.createTicker(type);
+    }
 
-        if (!(living instanceof EntityMaid)) {
-            living.addEffect(new MobEffectInstance(MobEffects.WITHER, EFFECT_DURATION_TICKS, 0, true, false, true));
+    public static void applyAura(ServerLevel level, BlockPos pos) {
+        AABB area = new AABB(pos).inflate(AURA_RANGE);
+        for (LivingEntity living : level.getEntitiesOfClass(LivingEntity.class, area, ScarletZhuhuaBlock::shouldAffect)) {
+            living.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, EFFECT_DURATION_TICKS, 1, true, false, true));
+
+            if (!(living instanceof EntityMaid)) {
+                living.addEffect(new MobEffectInstance(MobEffects.WITHER, EFFECT_DURATION_TICKS, 0, true, false, true));
+            }
         }
     }
 
-    private static boolean hasScarletZhuhuaNearby(LivingEntity living) {
-        Level level = living.level();
-        BlockPos origin = living.blockPosition();
-        Vec3 position = living.position();
-
-        for (BlockPos checkPos : BlockPos.betweenClosed(
-            origin.offset(-AURA_RANGE, -AURA_RANGE, -AURA_RANGE),
-            origin.offset(AURA_RANGE, AURA_RANGE, AURA_RANGE))) {
-            BlockState state = level.getBlockState(checkPos);
-            if (!state.is(MaidSpellBlocks.SCARLET_ZHUHUA.get()) && !state.is(MaidSpellBlocks.POTTED_SCARLET_ZHUHUA.get())) {
-                continue;
-            }
-
-            if (checkPos.getCenter().distanceToSqr(position) <= AURA_RANGE_SQR) {
-                return true;
-            }
-        }
-
-        return false;
+    private static boolean shouldAffect(LivingEntity living) {
+        return living.isAlive() && !isIronsSpellbooksNpc(living);
     }
 
     private static boolean isIronsSpellbooksNpc(LivingEntity living) {
