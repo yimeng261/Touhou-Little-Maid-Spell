@@ -22,8 +22,10 @@ import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverli
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
 import com.github.yimeng261.maidspell.item.bauble.transmogNecklace.TransmogNecklaceBauble;
+import com.github.yimeng261.maidspell.item.bauble.unholyHat.UnholyHatBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import net.neoforged.fml.ModList;
 
 /**
  * 女仆法术饰品注册器
@@ -116,5 +118,13 @@ public class MaidBaubleRegistry implements ILittleMaid {
             manager.bind(MaidSpellItems.DREAM_CAT_CRYSTAL, new DreamCatCrystalBauble());
         }
 
+        // 不洁圣冠（使用原版 Goety 的物品）
+        if (ModList.get().isLoaded("goety")) {
+            UnholyHatBauble.init();
+            var unholyHat = MaidSpellItems.getUnholyHat();
+            if (unholyHat != null) {
+                manager.bind(unholyHat, new UnholyHatBauble());
+            }
+        }
     }
 }

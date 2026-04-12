@@ -30,6 +30,7 @@ import net.minecraft.Util;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -86,5 +87,20 @@ public class MaidSpellItems {
 
     public static String itemDesc(DeferredItem<Item> item) {
         return Util.makeDescriptionId("item", item.getId());
+    }
+
+    /**
+     * 获取原版 Goety 模组的不洁圣冠
+     * 如果模组未加载，返回 null
+     */
+    public static Item getUnholyHat() {
+        if (ModList.get().isLoaded("goety")) {
+            try {
+                return za.co.infernos.goety.common.items.ModItems.UNHOLY_HAT.get();
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
     }
 }

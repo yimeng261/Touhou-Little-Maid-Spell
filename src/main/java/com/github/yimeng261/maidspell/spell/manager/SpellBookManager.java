@@ -51,6 +51,7 @@ public class SpellBookManager {
         registerProviderFactory("irons_spellbooks", "IronsSpellbooksProvider", "com.github.yimeng261.maidspell.spell.providers.IronsSpellbooksProvider");
         registerProviderFactory("ars_nouveau", "ArsNouveauProvider", "com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider");
         registerProviderFactory("psi", "PsiProvider", "com.github.yimeng261.maidspell.spell.providers.PsiProvider");
+        registerProviderFactory("goety", "GoetyProvider", "com.github.yimeng261.maidspell.spell.providers.GoetyProvider");
     }
 
     /**

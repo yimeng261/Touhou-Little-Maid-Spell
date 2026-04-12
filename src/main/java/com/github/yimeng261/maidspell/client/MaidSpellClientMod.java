@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.client;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.gui.BlueNoteScreen;
 import com.github.yimeng261.maidspell.client.model.AscensionHaloModel;
+import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
@@ -39,6 +40,7 @@ public class MaidSpellClientMod {
     @SubscribeEvent
     public static void onRegisterLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(AscensionHaloModel.LAYER_LOCATION, AscensionHaloModel::createBodyLayer);
+        event.registerLayerDefinition(UnholyHaloModel.LAYER_LOCATION, UnholyHaloModel::createBodyLayer);
     }
 
     @SubscribeEvent

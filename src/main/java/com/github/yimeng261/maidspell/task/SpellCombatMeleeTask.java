@@ -28,8 +28,10 @@ import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
+import net.neoforged.fml.ModList;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import org.jetbrains.annotations.NotNull;
+import za.co.infernos.goety.api.entities.IOwned;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -126,7 +128,25 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
      * 子类可覆写此方法添加更多过滤逻辑
      */
     protected Optional<? extends LivingEntity> findValidAttackTarget(EntityMaid maid) {
-        return IAttackTask.findFirstValidAttackTarget(maid);
+        Optional<? extends LivingEntity> defaultTarget = IAttackTask.findFirstValidAttackTarget(maid);
+        if (defaultTarget.isEmpty()) {
+            return defaultTarget;
+        }
+
+        // 排除女仆/玩家自己召唤的 Goety 召唤物
+        if (ModList.get().isLoaded("goety")) {
+            try {
+                if (defaultTarget.get() instanceof IOwned ownedEntity) {
+                    LivingEntity owner = ownedEntity.getTrueOwner();
+                    if (owner instanceof EntityMaid || owner instanceof Player) {
+                        return Optional.empty();
+                    }
+                }
+            } catch (NoClassDefFoundError ignored) {
+            }
+        }
+
+        return defaultTarget;
     }
 
     @Override

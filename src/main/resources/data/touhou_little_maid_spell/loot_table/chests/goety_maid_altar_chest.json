@@ -1,0 +1,87 @@
+{
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "goety:infernal_tome",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "goety:warlock_sash",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "goety:witch_hat_hedge",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "goety:ring_of_thirst",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "goety:ring_of_want",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "goety:ring_of_force",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "goety:forbidden_fragment",
+          "weight": 10
+        }
+      ]
+    },
+    {
+      "rolls": 6,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "goety:forbidden_piece",
+          "weight": 30
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 70
+        }
+      ]
+    },
+    {
+      "rolls": 10,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "goety:ectoplasm",
+          "weight": 60
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 60
+        }
+      ]
+    },
+    {
+      "rolls": 10,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "touhou_little_maid:power_point",
+          "weight": 60
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 60
+        }
+      ]
+    }
+  ]
+}
+

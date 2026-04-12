@@ -26,6 +26,7 @@ public class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     private static final List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_WHITELIST = List.of(
             "regex:minecraft:.*",
+            "regex:goety:.*",
             "regex:irons_spellbooks:.*",
             "regex:ars_nouveau:.*"
     );
@@ -39,6 +40,10 @@ public class Config {
             "traveloptics:aerial_collapse",
             "traveloptics:aerial_collapse_helper",
             "soulsweapons:chungus_tonic_effect",
+            "goety:fire_trail",
+            "goety:charged",
+            "goety:rampage",
+            "goety:shadow_walk",
             "goety:fiery_aura",
             "goety:frosty_aura",
             "minecraft:invisibility",

@@ -22,6 +22,8 @@
     "ServerLevelMixin",
     "StructureTemplateMixin",
     "enigmatic.ExtradimensionalScepterHelperMixin",
+    "goety.MobUtilMixin",
+    "goety.WandUtilMixin",
     "iss.SyncedSpellDataMixin",
     "iss.UtilsMixin",
     "tlm.AbstractMaidContainerMixin",
