@@ -24,6 +24,11 @@ import java.util.Set;
 public class Config {
 
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+    private static final List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_WHITELIST = List.of(
+            "regex:minecraft:.*",
+            "regex:irons_spellbooks:.*",
+            "regex:ars_nouveau:.*"
+    );
     private static final List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST = List.of(
             "irons_spellbooks:ascension",
             "irons_spellbooks:burning_dash",
@@ -33,9 +38,11 @@ public class Config {
             "traveloptics:meteor_storm",
             "traveloptics:aerial_collapse",
             "traveloptics:aerial_collapse_helper",
-            "soulsweapons:chungus_tonic_effct",
+            "soulsweapons:chungus_tonic_effect",
             "goety:fiery_aura",
-            "goety:frosty_aura"
+            "goety:frosty_aura",
+            "minecraft:invisibility",
+            "irons_spellbooks:true_invisibility"
     );
 
     // ========== 战斗系统配置 ==========
@@ -460,9 +467,9 @@ public class Config {
     }
 
     private static final ModConfigSpec.BooleanValue DREAM_CRYSTAL_USE_EFFECT_WHITELIST = BUILDER
-            .comment("是否启用梦云水晶随机正面效果白名单 (默认: false)")
+            .comment("是否启用梦云水晶随机正面效果白名单 (默认: true)")
             .comment("Whether to enable Dream Crystal random beneficial effect whitelist")
-            .define("dreamCrystalUseEffectWhitelist", false);
+            .define("dreamCrystalUseEffectWhitelist", true);
 
     static {
         BUILDER.comment("");
@@ -475,7 +482,7 @@ public class Config {
             .comment("示例: [\"minecraft:speed\", \"regex:minecraft:.*\"]")
             .defineListAllowEmpty(
                     List.of("dreamCrystalEffectWhitelist"),
-                    List::of,
+                    () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_WHITELIST,
                     obj -> obj instanceof String
             );
 
