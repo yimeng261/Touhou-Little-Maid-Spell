@@ -21,10 +21,6 @@ final class MaidHaloRenderPriority {
         return resolve(maid) == HaloRenderType.UNHOLY;
     }
 
-    static boolean shouldRenderAscensionHalo(EntityMaid maid) {
-        return resolve(maid) == HaloRenderType.ASCENSION;
-    }
-
     private static HaloRenderType resolve(EntityMaid maid) {
         if (BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL)) {
             return HaloRenderType.DREAM;
@@ -41,11 +37,6 @@ final class MaidHaloRenderPriority {
             return HaloRenderType.UNHOLY;
         }
 
-        Item ascensionHalo = MaidSpellItems.getAscensionHalo();
-        if (ascensionHalo != null && BaubleStateManager.hasBauble(maid, ascensionHalo)) {
-            return HaloRenderType.ASCENSION;
-        }
-
         return HaloRenderType.NONE;
     }
 
@@ -53,7 +44,6 @@ final class MaidHaloRenderPriority {
         NONE,
         DREAM,
         TRANSMOG,
-        UNHOLY,
-        ASCENSION
+        UNHOLY
     }
 }

@@ -10,10 +10,8 @@ import com.binaris.wizardry.content.item.WandItem;
 import com.binaris.wizardry.setup.registries.Spells;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidWizardrySpellData;
-import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
@@ -194,13 +192,8 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
             return;
         }
 
-        // 计算蓄力时间，考虑饰品加成
+        // 计算蓄力时间
         int chargeupTime = spell.getCharge();
-        
-        // 晋升之环：减少4倍蓄力时间
-        if (BaubleStateManager.hasBauble(maid, MaidSpellItems.getAscensionHalo())) {
-            chargeupTime = Math.max(1, chargeupTime / 4);
-        }
 
         // 计算最大施法时间（对于持续性法术）
         int maxCastingTime = chargeupTime;

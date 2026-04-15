@@ -5,8 +5,6 @@ import org.slf4j.Logger;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidGoetySpellData;
-import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.utils.VersionUtil;
 import com.mojang.logging.LogUtils;
 
@@ -173,10 +171,6 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
         }
 
         int castDuration = spell.defaultCastDuration();
-
-        if (BaubleStateManager.hasBauble(maid, MaidSpellItems.getAscensionHalo())) {
-            castDuration = Math.max(1, castDuration / 4); // 至少保留1 tick
-        }
 
         // 即时法术特殊处理（只有非蓄力法术才可能是即时的）
         if (castDuration <= 0 && !(spell instanceof IChargingSpell)) {

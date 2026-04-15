@@ -7,9 +7,7 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoEntityRenderer
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.ILocationModel;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils;
 import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.client.model.AscensionHaloModel;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.client.model.SharedHaloModel;
 import com.github.yimeng261.maidspell.task.SpellCombatFarTask;
 import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -47,7 +45,7 @@ public class GeckoLayerDreamCatCrystalHalo<T extends Mob, R extends IGeoEntityRe
         texture("dream_halo_3_part_2.png")
     };
 
-    private AscensionHaloModel model;
+    private SharedHaloModel model;
 
     public GeckoLayerDreamCatCrystalHalo(R entityRendererIn) {
         super(entityRendererIn);
@@ -72,8 +70,8 @@ public class GeckoLayerDreamCatCrystalHalo<T extends Mob, R extends IGeoEntityRe
         }
 
         if (model == null) {
-            model = new AscensionHaloModel(
-                Minecraft.getInstance().getEntityModels().bakeLayer(AscensionHaloModel.LAYER_LOCATION)
+            model = new SharedHaloModel(
+                Minecraft.getInstance().getEntityModels().bakeLayer(SharedHaloModel.LAYER_LOCATION)
             );
         }
 
