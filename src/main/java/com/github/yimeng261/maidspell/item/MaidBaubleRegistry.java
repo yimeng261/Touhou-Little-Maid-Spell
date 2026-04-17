@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeartBau
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNoteBauble;
 import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChainBauble;
+import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
@@ -18,8 +19,12 @@ import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBaubl
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCoreBauble;
+import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
+import com.github.yimeng261.maidspell.item.bauble.transmogNecklace.TransmogNecklaceBauble;
+import com.github.yimeng261.maidspell.item.bauble.unholyHat.UnholyHatBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import net.neoforged.fml.ModList;
 
 /**
@@ -31,7 +36,7 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
     @Override
     public void bindMaidBauble(BaubleManager manager) {
-        if (ModList.get().isLoaded("irons_spellbooks") && MaidSpellItems.SPELL_ENHANCEMENT_CORE != null) {
+        if (IronsSpellbooksCompat.isLoaded() && MaidSpellItems.SPELL_ENHANCEMENT_CORE != null) {
             manager.bind(MaidSpellItems.SPELL_ENHANCEMENT_CORE, new SpellEnhancementBauble());
         }
 
@@ -72,6 +77,10 @@ public class MaidBaubleRegistry implements ILittleMaid {
             manager.bind(MaidSpellItems.HAIRPIN, new HairpinBauble());
         }
 
+        if(MaidSpellItems.TRANSMOG_NECKLACE != null){
+            manager.bind(MaidSpellItems.TRANSMOG_NECKLACE, new TransmogNecklaceBauble());
+        }
+
         if(MaidSpellItems.CHAOS_BOOK != null){
             manager.bind(MaidSpellItems.CHAOS_BOOK, new ChaosBookBauble());
         }
@@ -96,8 +105,26 @@ public class MaidBaubleRegistry implements ILittleMaid {
             manager.bind(MaidSpellItems.SPELL_OVERLIMIT_CORE, new SpellOverlimitCoreBauble());
         }
 
+        if(MaidSpellItems.SPRING_BLOOM_RETURN != null){
+            manager.bind(MaidSpellItems.SPRING_BLOOM_RETURN, new SpringBloomReturnBauble());
+        }
+
         if(MaidSpellItems.FRAGRANT_INGENUITY != null){
             manager.bind(MaidSpellItems.FRAGRANT_INGENUITY, new FragrantIngenuityBauble());
+        }
+
+        // 梦云水晶
+        if (MaidSpellItems.DREAM_CAT_CRYSTAL != null) {
+            manager.bind(MaidSpellItems.DREAM_CAT_CRYSTAL, new DreamCatCrystalBauble());
+        }
+
+        // 不洁圣冠（使用原版 Goety 的物品）
+        if (ModList.get().isLoaded("goety")) {
+            UnholyHatBauble.init();
+            var unholyHat = MaidSpellItems.getUnholyHat();
+            if (unholyHat != null) {
+                manager.bind(unholyHat, new UnholyHatBauble());
+            }
         }
     }
 }

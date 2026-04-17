@@ -2,22 +2,27 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.coremod.HurtHeadCoremodHooks;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBookBauble;
+import com.github.yimeng261.maidspell.item.bauble.hairpin.HairpinBauble;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.Holder;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.CombatEntry;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -25,11 +30,14 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import oshi.util.tuples.Pair;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
 
 /**
  * LivingEntity的Mixin，用于修改setHealth方法
@@ -84,6 +92,12 @@ public abstract class LivingEntityMixin {
     private void maidspell$handelHpDecrease(LivingEntity entity, float health, CallbackInfo ci) {
         //处理玩家hurt
         if(entity instanceof ServerPlayer player) {
+            if (HairpinBauble.captureRedirectedDamage(player, player.getHealth() - health)) {
+                player.invulnerableTime = 0;
+                ci.cancel();
+                return;
+            }
+
             if(SoulBookBauble.maidSoulBookCount.getOrDefault(player.getUUID(), 0) == 0) {
                 return;
             }
@@ -109,23 +123,15 @@ public abstract class LivingEntityMixin {
             return;
         }
 
-        // 检查女仆的无敌时间（黑曜石巨柱提供的无敌效果）
-        if (maid.invulnerableTime > 0) {
-            maidspell$LOGGER.debug("[MaidSpell] Damage cancelled for maid {} due to invulnerability", maid.getUUID());
-            dataItem.setCanceled(true);
-            ci.cancel();
-            return;
-        }
-
         SoulBookBauble_process(dataItem); //处理魂之书(最先计算是否取消)
 
-        Global.baubleHurtCalcPre.forEach((item, func)->{
+        Global.baubleSetHealthHandlers.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(dataItem);
             }
         });
 
-        Global.baubleHurtCalcFinal.forEach((item, func)->{
+        Global.baubleSetHealthFinalHandlers.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(dataItem);
             }
@@ -158,9 +164,48 @@ public abstract class LivingEntityMixin {
         return true;
     }
 
-    @Inject(method = "hurt", at = @At("HEAD"))
+    /**
+     * @Redirect 重定向 addEffect 中的 activeEffects.put 调用。
+     *
+     * <p>拦截点在 NeoForge 事件 post 之后、效果真正写入 Map 之前。
+     * 若 baubleEffectBlockFilters 中有任意过滤器返回 true，则不写入 Map，
+     * 效果既不会 tick，也不会显示图标/粒子。
+     *
+     * <p>同时设置 {@link Global#effectBlockFlag} 通知 MobEffectMixin 阻止属性修改器应用。
+     */
+    @SuppressWarnings("unchecked")
+    @Redirect(
+            method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Ljava/util/Map;put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                    ordinal = 0
+            )
+    )
+    private Object maidspell$redirectEffectPut(Map<Holder<MobEffect>, MobEffectInstance> map,
+                                               Object key, Object value) {
+        LivingEntity self = (LivingEntity) (Object) this;
+        if (self instanceof EntityMaid maid) {
+            Holder<MobEffect> effect = (Holder<MobEffect>) key;
+            for (Map.Entry<Item, BiFunction<EntityMaid, Holder<MobEffect>, Boolean>> entry
+                    : Global.baubleEffectBlockFilters.entrySet()) {
+                if (BaubleStateManager.hasBauble(maid, entry.getKey())
+                        && Boolean.TRUE.equals(entry.getValue().apply(maid, effect))) {
+                    Global.effectBlockFlag.set(Boolean.TRUE);
+                    return null;
+                }
+            }
+        }
+        return map.put((Holder<MobEffect>) key, (MobEffectInstance) value);
+    }
+
+    @Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
     private void onHurt(DamageSource damageSource, float amount, CallbackInfoReturnable<Boolean> cir) {
         LivingEntity entity = (LivingEntity) (Object) this;
+
+        if (HurtHeadCoremodHooks.maidspell$isInsideInstrumentedHurt(entity)) {
+            return;
+        }
 
         // 安全检查：确保伤害源不为空
         if (damageSource == null) {
@@ -169,6 +214,10 @@ public abstract class LivingEntityMixin {
         }
 
         if(damageSource instanceof InfoDamageSource){
+            if (entity instanceof EntityMaid || entity instanceof Player) {
+                cir.setReturnValue(false);
+                return;
+            }
             return;
         }
 
@@ -176,17 +225,10 @@ public abstract class LivingEntityMixin {
             return;
         }
 
-        Entity sourceEntity = damageSource.getEntity();
-        Entity directEntity = damageSource.getDirectEntity();
-
-        if(sourceEntity instanceof EntityMaid maid){
-            ChaosBookBauble.chaosBookProcess(maid, entity);
-            WoundRimeBladeBauble.updateWoundRimeMap(maid,entity,amount);
-        }else if(directEntity instanceof EntityMaid maid){
-            ChaosBookBauble.chaosBookProcess(maid, entity);
-            WoundRimeBladeBauble.updateWoundRimeMap(maid,entity,amount);
+        Global.HurtHeadContext hurtHeadContext = Global.dispatchHurtHeadHandlers(entity, damageSource, amount);
+        if (hurtHeadContext.isHandled()) {
+            cir.setReturnValue(hurtHeadContext.getReturnValue());
         }
-
     }
 
     @Unique

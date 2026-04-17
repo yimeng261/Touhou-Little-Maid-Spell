@@ -1,5 +1,9 @@
 package com.github.yimeng261.maidspell;
 
+import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
+import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
@@ -49,19 +53,23 @@ public class MaidSpellMod {
 
         // 手动注册事件处理器，确保事件能被正确监听
         NeoForge.EVENT_BUS.register(MaidSpellEventHandler.class);
+        MaidSpellBlocks.register(modEventBus);
+        MaidSpellBlockEntities.register(modEventBus);
         MaidSpellItems.register(modEventBus);
         MaidSpellCreativeTab.register(modEventBus);
         MaidSpellContainers.register(modEventBus);
         MaidSpellSounds.SOUNDS.register(modEventBus);
         MaidSpellEntities.register(modEventBus);
+        IronsSpellbooksCompat.init(modEventBus);
         modEventBus.addListener(FragrantIngenuityBauble::onRegisterEffects);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modEventBus);
         MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modEventBus);
         MaidSpellPoolElementTypes.POOL_ELEMENT_TYPES.register(modEventBus);
+        MaidSpellIngredientTypes.INGREDIENT_TYPES.register(modEventBus);
 
         // 铁魔法属性修改器获取
-        if (ModList.get().isLoaded("irons_spellbooks")) {
+        if (IronsSpellbooksCompat.isLoaded()) {
             modEventBus.addListener(SpellEnhancementBauble::initializeAttributes);
         }
 
@@ -73,6 +81,7 @@ public class MaidSpellMod {
 
     private void setup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            MaidSpellBlocks.registerPottedPlants();
             if (checkDependencies()) {
                 LOGGER.info("Dependencies verified - initialization complete");
             }

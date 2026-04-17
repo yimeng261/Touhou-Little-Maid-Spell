@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item.bauble.chaosBook;
 
 import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -33,14 +34,20 @@ public class ChaosBook extends Item {
     public void appendHoverText(@Nonnull ItemStack stack, @Nonnull TooltipContext context, @Nonnull List<Component> tooltip, @Nonnull TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
 
-        tooltip.add(Component.translatable("item.maidspell.chaos_book.desc1")
-            .withStyle(ChatFormatting.DARK_PURPLE));
-        tooltip.add(Component.translatable("item.maidspell.chaos_book.desc2",
-            String.format("%d", Config.chaosBookDamageSplitCount))
-            .withStyle(ChatFormatting.RED));
-        tooltip.add(Component.translatable("item.maidspell.chaos_book.desc3",
-            String.format("%.0f", Config.chaosBookTrueDamagePercent * 100),
-            String.format("%.0f", Config.chaosBookTrueDamageMin))
-            .withStyle(ChatFormatting.GRAY));
+        TooltipHelper.addShiftTooltip(tooltip,
+                List.of(
+                        Component.translatable("item.maidspell.chaos_book.desc1")
+                                .withStyle(ChatFormatting.DARK_PURPLE)
+                ),
+                List.of(
+                        Component.translatable("item.maidspell.chaos_book.desc2",
+                                        String.format("%d", Config.chaosBookDamageSplitCount),
+                                        String.format("%.0f", Config.chaosBookMinSplitDamage))
+                                .withStyle(ChatFormatting.RED),
+                        Component.translatable("item.maidspell.chaos_book.desc3",
+                                        String.format("%.0f", Config.chaosBookTrueDamagePercent * 100),
+                                        String.format("%.0f", Config.chaosBookTrueDamageMin))
+                                .withStyle(ChatFormatting.GRAY)
+                ));
     }
 }

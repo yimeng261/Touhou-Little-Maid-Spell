@@ -43,11 +43,15 @@ public class TheRetreatDimension {
      */
     public static ResourceKey<Level> getPlayerRetreatDimension(UUID playerUUID) {
         return ResourceKey.create(
-            Registries.DIMENSION,
+                Registries.DIMENSION,
                 ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "the_retreat_" + playerUUID.toString().replace("-", "_"))
         );
     }
 
+    public static boolean isRetreatDimension(ResourceLocation dimensionLocation) {
+        return dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID)
+                && dimensionLocation.getPath().startsWith("the_retreat");
+    }
 
     /**
      * 将玩家传送到归隐之地（异步版本，避免区块加载导致主线程卡死）
@@ -57,15 +61,21 @@ public class TheRetreatDimension {
         MinecraftServer server = player.getServer();
         if (server == null) return;
 
-        // 使用PlayerRetreatManager统一获取或创建维度
-        ServerLevel retreatLevel = PlayerRetreatManager.getOrCreatePlayerRetreat(server, player.getUUID());
-
+        ServerLevel retreatLevel = PlayerRetreatManager.getLoadedPlayerRetreat(server, player.getUUID());
         if (retreatLevel == null) {
-            MaidSpellMod.LOGGER.error("Failed to get or create retreat dimension for player: {}", player.getName().getString());
+            MaidSpellMod.LOGGER.error("Retreat dimension is not ready for player: {}", player.getName().getString());
             return;
         }
+        teleportToRetreat(player, retreatLevel);
+    }
 
-        BlockPos targetPos = player.blockPosition();
+    public static void teleportToRetreat(ServerPlayer player, ServerLevel retreatLevel) {
+        teleportToRetreat(player, retreatLevel, player.blockPosition());
+    }
+
+    public static void teleportToRetreat(ServerPlayer player, ServerLevel retreatLevel, BlockPos targetPos) {
+        MinecraftServer server = player.getServer();
+        if (server == null) return;
 
         // 异步加载目标区块并查找安全位置
         loadChunkAsync(retreatLevel, targetPos).thenAccept(chunkLoaded -> {
@@ -83,10 +93,7 @@ public class TheRetreatDimension {
                     );
                     player.changeDimension(transition);
 
-                    // 设置玩家在隐世之境的重生点
-                    player.setRespawnPosition(retreatLevel.dimension(), safePos, 0.0f, true, false);
-
-                    MaidSpellMod.LOGGER.info("Teleported player {} to retreat dimension at {} and set respawn point",
+                    MaidSpellMod.LOGGER.info("Teleported player {} to retreat dimension at {}",
                             player.getName().getString(), safePos);
                 } catch (Exception e) {
                     MaidSpellMod.LOGGER.error("Error during teleportation for player {}: {}",
@@ -145,9 +152,7 @@ public class TheRetreatDimension {
      * 检查玩家是否在归隐之地维度
      */
     public static boolean isInRetreat(Entity entity) {
-        ResourceLocation dimensionLocation = entity.level().dimension().location();
-        return dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID)
-            && dimensionLocation.getPath().startsWith("the_retreat");
+        return isRetreatDimension(entity.level().dimension().location());
     }
 
     /**
@@ -250,12 +255,10 @@ public class TheRetreatDimension {
     public static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof ServerLevel serverLevel) {
             ResourceLocation dimensionLocation = serverLevel.dimension().location();
-            if (dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID)
-                    && dimensionLocation.getPath().startsWith("the_retreat")) {
+            if (isRetreatDimension(dimensionLocation)) {
                 RetreatManager.unregisterDimension(serverLevel.dimension());
                 MaidSpellMod.LOGGER.info("Unloading retreat dimension: {}", dimensionLocation);
             }
         }
     }
 }
-

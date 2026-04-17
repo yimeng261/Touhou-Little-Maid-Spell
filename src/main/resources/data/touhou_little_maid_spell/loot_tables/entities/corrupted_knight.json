@@ -1,0 +1,177 @@
+{
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:claymore",
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "minecraft:damage": 500,
+                "minecraft:custom_name": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_sword\"}",
+                "minecraft:enchantments": {
+                  "levels": {
+                    "minecraft:sharpness": 5,
+                    "minecraft:unbreaking": 2
+                  }
+                },
+                "irons_spellbooks:imbued_spell": "irons_spellbooks:flaming_strike",
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "data": [{"level": 5, "index": 0, "id": "irons_spellbooks:flaming_strike"}],
+                  "spellWheel": true
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 4,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:netherite_scrap"
+        }
+      ]
+    },
+    {
+      "rolls": 10,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:emerald"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:netherite_mage_helmet",
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "minecraft:damage": 300
+              }
+            }
+          ],
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:pyromancer_chestplate",
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "minecraft:damage": 300
+              }
+            }
+          ],
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:cultist_leggings",
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "minecraft:damage": 300
+              }
+            }
+          ],
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:cultist_boots",
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "minecraft:damage": 300
+              }
+            }
+          ],
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:written_book",
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "minecraft:written_book_content": {
+                  "title": {"raw": "残破的日记"},
+                  "author": "？？？",
+                  "pages": [
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_1\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_2\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_3\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_4\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_5\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_6\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_7\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_8\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_9\"}"}
+                  ],
+                  "generation": 0
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

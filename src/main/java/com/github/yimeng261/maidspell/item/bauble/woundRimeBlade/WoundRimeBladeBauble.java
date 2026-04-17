@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.item.bauble.woundRimeBlade;
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
@@ -22,6 +23,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class WoundRimeBladeBauble implements IMaidBauble {
 
     private static final ConcurrentHashMap<UUID, ConcurrentHashMap<LivingEntity, Pair<Float,Integer>>> maidWoundRimeBladeMap = new ConcurrentHashMap<>();
+
+    static {
+        Global.registerBaubleHurtHeadHandler(MaidSpellItems.WOUND_RIME_BLADE, context -> {
+            EntityMaid maid = context.getSourceMaid();
+            if (maid != null) {
+                updateWoundRimeMap(maid, context.getTarget(), context.getAmount());
+            }
+        });
+    }
 
     @Override
     public void onTakeOff(EntityMaid maid, ItemStack baubleItem) {

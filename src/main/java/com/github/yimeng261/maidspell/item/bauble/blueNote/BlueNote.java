@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.blueNote;
 
+import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.BlueNoteContainerProvider;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.BlueNoteSpellManager;
 import net.minecraft.ChatFormatting;
@@ -44,7 +45,7 @@ public class BlueNote extends Item {
 
     private void openGUI(ServerPlayer player, ItemStack blueNoteStack, int slot) {
         ItemStackHandler scrollHandler = new ItemStackHandler(27);
-        BlueNoteSpellManager.loadScrollsFromItem(blueNoteStack, scrollHandler);
+        BlueNoteSpellManager.loadScrollsFromItem(blueNoteStack, scrollHandler, player.level().registryAccess());
 
         player.openMenu(new BlueNoteContainerProvider(scrollHandler, blueNoteStack, slot),
                 buf -> {
@@ -57,11 +58,15 @@ public class BlueNote extends Item {
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
 
-        tooltip.add(Component.translatable("item.maidspell.blue_note.desc1")
-            .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.maidspell.blue_note.desc2")
-            .withStyle(ChatFormatting.BLUE));
-        tooltip.add(Component.translatable("item.maidspell.blue_note.desc3")
-            .withStyle(ChatFormatting.YELLOW));
+        TooltipHelper.addShiftTooltip(tooltip,
+                List.of(),
+                List.of(
+                        Component.translatable("item.maidspell.blue_note.desc1")
+                                .withStyle(ChatFormatting.GRAY),
+                        Component.translatable("item.maidspell.blue_note.desc2")
+                                .withStyle(ChatFormatting.BLUE),
+                        Component.translatable("item.maidspell.blue_note.desc3")
+                                .withStyle(ChatFormatting.YELLOW)
+                ));
     }
 }

@@ -9,6 +9,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
@@ -25,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -69,7 +71,7 @@ public class WindSeekingBell extends Item {
                 findHiddenRetreat(serverLevel, playerPos, player, itemStack);
             } else {
                 // 在主世界：传送到归隐之地
-                teleportToRetreat(serverPlayer, itemStack);
+                teleportToRetreat(serverPlayer);
             }
 
             return InteractionResultHolder.success(itemStack);
@@ -78,7 +80,7 @@ public class WindSeekingBell extends Item {
         return InteractionResultHolder.pass(itemStack);
     }
 
-    private void teleportToRetreat(ServerPlayer player, ItemStack itemStack) {
+    private void teleportToRetreat(ServerPlayer player) {
         if (Config.enablePrivateDimensions) {
             teleportToPrivateRetreat(player);
         } else {
@@ -87,31 +89,68 @@ public class WindSeekingBell extends Item {
     }
 
     private void teleportToPrivateRetreat(ServerPlayer player) {
-        ServerLevel retreatLevel = PlayerRetreatManager.getOrCreatePlayerRetreat(
-                player.getServer(), player.getUUID());
-
+        MinecraftServer server = player.server;
+        ServerLevel retreatLevel = PlayerRetreatManager.getLoadedPlayerRetreat(server, player.getUUID());
         if (retreatLevel == null) {
-            player.displayClientMessage(
-                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed")
-                        .withStyle(ChatFormatting.RED), true);
+            UUID playerUUID = player.getUUID();
+            PlayerRetreatManager.getOrCreatePlayerRetreatAsync(server, playerUUID).whenComplete((createdLevel, throwable) ->
+                    server.execute(() -> {
+                        ServerPlayer currentPlayer = server.getPlayerList().getPlayer(playerUUID);
+                        if (currentPlayer == null) {
+                            return;
+                        }
+
+                        if (throwable != null || createdLevel == null) {
+                            Global.LOGGER.error("Failed to prepare retreat dimension for player: {}", playerUUID, throwable);
+                            currentPlayer.displayClientMessage(
+                                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed")
+                                            .withStyle(ChatFormatting.RED), true);
+                            return;
+                        }
+
+                        TheRetreatDimension.teleportToRetreat(currentPlayer, createdLevel);
+                        currentPlayer.displayClientMessage(
+                                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
+                                        .withStyle(ChatFormatting.LIGHT_PURPLE), true);
+                    }));
             return;
         }
 
-        TheRetreatDimension.teleportToRetreat(player);
+        TheRetreatDimension.teleportToRetreat(player, retreatLevel);
         player.displayClientMessage(
             Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
                     .withStyle(ChatFormatting.LIGHT_PURPLE), true);
     }
 
     private void teleportToSharedRetreat(ServerPlayer player) {
-        ServerLevel sharedRetreat = PlayerRetreatManager.getOrCreateSharedRetreat(player.getServer());
-        if (sharedRetreat == null) {
-            player.displayClientMessage(
-                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed")
-                            .withStyle(ChatFormatting.RED), true);
+        MinecraftServer server = player.server;
+        ServerLevel sharedRetreat = PlayerRetreatManager.getLoadedSharedRetreat(server);
+        if (sharedRetreat != null) {
+            enterSharedRetreat(player, sharedRetreat);
             return;
         }
 
+        UUID playerUUID = player.getUUID();
+        PlayerRetreatManager.getOrCreateSharedRetreatAsync(server).whenComplete((createdLevel, throwable) ->
+                server.execute(() -> {
+                    ServerPlayer currentPlayer = server.getPlayerList().getPlayer(playerUUID);
+                    if (currentPlayer == null) {
+                        return;
+                    }
+
+                    if (throwable != null || createdLevel == null) {
+                        Global.LOGGER.error("Failed to prepare shared retreat dimension", throwable);
+                        currentPlayer.displayClientMessage(
+                                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed")
+                                        .withStyle(ChatFormatting.RED), true);
+                        return;
+                    }
+
+                    enterSharedRetreat(currentPlayer, createdLevel);
+                }));
+    }
+
+    private void enterSharedRetreat(ServerPlayer player, ServerLevel sharedRetreat) {
         RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
         RetreatDimensionData.DimensionInfo info = data.getDimensionInfo(player.getUUID());
 
@@ -130,7 +169,7 @@ public class WindSeekingBell extends Item {
                             .withStyle(ChatFormatting.LIGHT_PURPLE), true);
         }
 
-        TheRetreatDimension.teleportToRetreat(player);
+        TheRetreatDimension.teleportToRetreat(player, sharedRetreat);
         player.displayClientMessage(
                 Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
                         .withStyle(ChatFormatting.LIGHT_PURPLE), true);

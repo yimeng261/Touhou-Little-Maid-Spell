@@ -17,9 +17,15 @@ import java.util.Set;
 public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String ISS_MOD_ID = "irons_spellbooks";
     private static final String ISS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.iss.";
+    private static final String ENIGMATIC_ADDONS_MOD_ID = "enigmaticaddons";
+    private static final String ENIGMATIC_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.enigmatic.";
+    private static final String GOETY_MOD_ID = "goety";
+    private static final String GOETY_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.goety.";
 
     private boolean isIronsSpellbooksLoaded = false;
     private boolean isTlmMagicAnimationSupported = false;
+    private boolean isEnigmaticAddonsLoaded = false;
+    private boolean isGoetyLoaded = false;
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -30,6 +36,8 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
             isTlmMagicAnimationSupported = true;
         } catch (ClassNotFoundException ignored) {
         }
+        isEnigmaticAddonsLoaded = LoadingModList.get().getModFileById(ENIGMATIC_ADDONS_MOD_ID) != null;
+        isGoetyLoaded = LoadingModList.get().getModFileById(GOETY_MOD_ID) != null;
     }
 
     @Override
@@ -42,6 +50,12 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         // 如果是 iss 包下的 Mixin，需要检查 Iron's Spellbooks 模组是否存在
         if (mixinClassName.startsWith(ISS_MIXIN_PACKAGE)) {
             return isIronsSpellbooksLoaded && isTlmMagicAnimationSupported;
+        }
+        if (mixinClassName.startsWith(ENIGMATIC_MIXIN_PACKAGE)) {
+            return isEnigmaticAddonsLoaded;
+        }
+        if (mixinClassName.startsWith(GOETY_MIXIN_PACKAGE)) {
+            return isGoetyLoaded;
         }
 
         // 其他 Mixin 正常加载

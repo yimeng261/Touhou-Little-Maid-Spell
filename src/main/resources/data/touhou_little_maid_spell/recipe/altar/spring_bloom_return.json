@@ -1,0 +1,31 @@
+{
+  "type": "touhou_little_maid:altar_recipe_serializers",
+  "category": "misc",
+  "entity": "minecraft:item",
+  "group": "altar_recipe",
+  "result": {
+    "id": "touhou_little_maid_spell:spring_bloom_return",
+    "count": 1
+  },
+  "power": 0.35,
+  "ingredients": [
+    {
+      "item": "minecraft:pink_petals"
+    },
+    {
+      "tag": "c:ingots/gold"
+    },
+    {
+      "item": "minecraft:ghast_tear"
+    },
+    {
+      "tag": "c:ingots/gold"
+    },
+    {
+      "item": "minecraft:echo_shard"
+    },
+    {
+      "item": "minecraft:pink_petals"
+    }
+  ]
+}

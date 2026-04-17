@@ -26,8 +26,7 @@ public class SpellBookManager {
     private static final Map<UUID, SpellBookManager> MAID_MANAGERS = new ConcurrentHashMap<>();
 
 
-    // 实例相关的提供者列表 - 每个管理器可以有自己的提供者实例
-    private static final List<ISpellBookProvider<?, ?>> instanceProviders = new ArrayList<>();
+    private static final Map<String, ISpellBookProvider<?, ?>> providerMap = new ConcurrentHashMap<>();
     
     // 提供者列表的不可变视图，避免每次调用 getProviders 时创建新列表
     private static volatile List<ISpellBookProvider<?, ?>> immutableProviders = null;
@@ -49,14 +48,10 @@ public class SpellBookManager {
     private static void initializeProviderFactories() {
         LOGGER.info("Initializing spell book provider factories...");
 
-        // 使用传统方式注册（无版本检测）
-        registerProviderFactoryByClass("irons_spellbooks", "IronsSpellbooksProvider", com.github.yimeng261.maidspell.spell.providers.IronsSpellbooksProvider.class);
-        registerProviderFactoryByClass("ars_nouveau", "ArsNouveauProvider", com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider.class);
-        registerProviderFactoryByClass("psi","PsiProvider", com.github.yimeng261.maidspell.spell.providers.PsiProvider.class);
-        // registerProviderFactoryByClass("slashblade","SlashBladeProvider", com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider.class);
-        // registerProviderFactoryByClass("goety", "GoetyProvider", com.github.yimeng261.maidspell.spell.providers.GoetyProvider.class);
-        // registerProviderFactoryByClass("youkaishomecoming", "YoukaiHomecomingProvider", com.github.yimeng261.maidspell.spell.providers.YoukaiHomecomingProvider.class);
-
+        registerProviderFactory("irons_spellbooks", "IronsSpellbooksProvider", "com.github.yimeng261.maidspell.spell.providers.IronsSpellbooksProvider");
+        registerProviderFactory("ars_nouveau", "ArsNouveauProvider", "com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider");
+        registerProviderFactory("psi", "PsiProvider", "com.github.yimeng261.maidspell.spell.providers.PsiProvider");
+        registerProviderFactory("goety", "GoetyProvider", "com.github.yimeng261.maidspell.spell.providers.GoetyProvider");
     }
 
     /**
@@ -67,11 +62,12 @@ public class SpellBookManager {
      * @param providerName 提供者名称（用于日志）
      * @param providerClass 提供者类
      */
-    private static void registerProviderFactoryByClass(String modId, String providerName, Class<?> providerClass) {
+    private static void registerProviderFactory(String modId, String providerName, String providerClassName) {
         try {
-            // 检查模组是否加载
             if (ModList.get().isLoaded(modId)) {
-                instanceProviders.add((ISpellBookProvider<?, ?>) providerClass.getConstructor().newInstance());
+                Class<?> providerClass = Class.forName(providerClassName);
+                ISpellBookProvider<?, ?> provider = (ISpellBookProvider<?, ?>) providerClass.getConstructor().newInstance();
+                providerMap.put(modId, provider);
                 loadedMods.add(modId);
                 LOGGER.debug("Mod {} loaded, finished {} registration", modId, providerName);
             }
@@ -144,11 +140,23 @@ public class SpellBookManager {
         if (immutableProviders == null) {
             synchronized (SpellBookManager.class) {
                 if (immutableProviders == null) {
-                    immutableProviders = Collections.unmodifiableList(new ArrayList<>(instanceProviders));
+                    immutableProviders = Collections.unmodifiableList(new ArrayList<>(providerMap.values()));
                 }
             }
         }
         return immutableProviders;
+    }
+
+    public static ISpellBookProvider<?, ?> getProvider(String modId) {
+        return providerMap.get(modId);
+    }
+
+    public static boolean hasProvider(String modId) {
+        return providerMap.containsKey(modId);
+    }
+
+    public static List<String> getLoadedMods() {
+        return new ArrayList<>(providerMap.keySet());
     }
 
 
@@ -178,6 +186,12 @@ public class SpellBookManager {
     public void updateCooldown(){
         for (ISpellBookProvider<?, ?> provider : getProviders()) {
             provider.updateCooldown(maid);
+        }
+    }
+
+    public void refundCooldowns(double refundRatio) {
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
+            provider.refundCooldowns(maid, refundRatio);
         }
     }
 

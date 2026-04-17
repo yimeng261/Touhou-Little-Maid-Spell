@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.spell.providers;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidGoetySpellData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
@@ -316,6 +317,12 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
             stopSpell(data.getCurrentSpell(), serverLevel, maid, data.getSpellBook(), 0);
             data.getCurrentSpell().SpellResult(serverLevel, maid, data.getSpellBook(),
                     data.getCurrentSpell().defaultStats());
+            SpringBloomReturnBauble.onSpellCast(
+                    maid,
+                    "goety",
+                    getSpellId(data.getCurrentSpell()),
+                    data.getTarget()
+            );
         }
 
         setCooldown(maid, data.getCurrentSpell());

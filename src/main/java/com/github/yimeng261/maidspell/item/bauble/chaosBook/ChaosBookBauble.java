@@ -13,54 +13,100 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import org.slf4j.Logger;
 
-/**
- * 混沌之书饰品实现
- * 将女仆造成的伤害转换为InfoDamageSources类型
- */
+import java.util.IdentityHashMap;
+
 public class ChaosBookBauble implements IMaidBauble {
     public static final Logger LOGGER = LogUtils.getLogger();
+    private static final ThreadLocal<IdentityHashMap<LivingEntity, Integer>> ACTIVE_CHAOS_DAMAGE =
+            ThreadLocal.withInitial(IdentityHashMap::new);
 
     public static void chaosBookProcess(EntityMaid maid, LivingEntity target) {
-        if(BaubleStateManager.hasBauble(maid, MaidSpellItems.CHAOS_BOOK)) {
-            float damage = (float) Math.max(Config.chaosBookTrueDamageMin, target.getMaxHealth() * Config.chaosBookTrueDamagePercent);
+        if (BaubleStateManager.hasBauble(maid, MaidSpellItems.CHAOS_BOOK)) {
+            float multiplier = BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL) ? 2.0f : 1.0f;
+            float damage = (float) Math.max(Config.chaosBookTrueDamageMin,
+                    target.getMaxHealth() * Config.chaosBookTrueDamagePercent) * multiplier;
             TrueDamageUtil.dealTrueDamage(target, damage, maid);
         }
     }
 
-    static {
-        // 注册女仆造成伤害时的处理器
-        Global.baubleDamageCalcPre.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
+    private static boolean isApplyingChaosDamage(LivingEntity target) {
+        return target != null && ACTIVE_CHAOS_DAMAGE.get().containsKey(target);
+    }
 
+    private static void pushChaosDamage(LivingEntity target) {
+        if (target != null) {
+            ACTIVE_CHAOS_DAMAGE.get().merge(target, 1, Integer::sum);
+        }
+    }
+
+    private static void popChaosDamage(LivingEntity target) {
+        if (target == null) {
+            return;
+        }
+        IdentityHashMap<LivingEntity, Integer> activeCalls = ACTIVE_CHAOS_DAMAGE.get();
+        Integer depth = activeCalls.get(target);
+        if (depth == null) {
+            return;
+        }
+        if (depth <= 1) {
+            activeCalls.remove(target);
+            if (activeCalls.isEmpty()) {
+                ACTIVE_CHAOS_DAMAGE.remove();
+            }
+        } else {
+            activeCalls.put(target, depth - 1);
+        }
+    }
+
+    static {
+        Global.registerBaubleHurtHeadHandler(MaidSpellItems.CHAOS_BOOK.get(), context -> {
+            EntityMaid maid = context.getSourceMaid();
+            if (maid != null) {
+                chaosBookProcess(maid, context.getTarget());
+            }
+        });
+
+        Global.baubleDamageHandlers.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
             LivingEntity target = event.getEntity();
             DamageSource source = event.getSource();
-            Float amount = event.getAmount();
+            float amount = event.getOriginalDamage();
 
+            if (isApplyingChaosDamage(target)) {
+                return null;
+            }
 
-            if(source instanceof InfoDamageSource infoDamage){
-                if ("chaos_book".equals(infoDamage.msg_type)){
-                    InfoDamageSource newDamageSource = InfoDamageSource.create(target.level(), "chaos_book2", infoDamage.damage_source);
-                    target.setInvulnerable(false);
-                    target.invulnerableTime = 0;
-                    target.hurt(newDamageSource, amount);
-                    event.setCanceled(true);
-                    target.invulnerableTime = 0;
-                    target.setInvulnerable(false);
+            if (source instanceof InfoDamageSource infoDamage) {
+                if ("chaos_book".equals(infoDamage.msg_type)) {
+                    pushChaosDamage(target);
+                    try {
+                        InfoDamageSource newDamageSource = InfoDamageSource.create(target.level(), "chaos_book2", infoDamage.damage_source);
+                        target.setInvulnerable(false);
+                        target.invulnerableTime = 0;
+                        target.hurt(newDamageSource, amount);
+                    } finally {
+                        target.invulnerableTime = 0;
+                        target.setInvulnerable(false);
+                        popChaosDamage(target);
+                    }
                 }
-            }else{
-                int n = Config.chaosBookDamageSplitCount;
-                InfoDamageSource newDamageSource = InfoDamageSource.create(target.level(), "chaos_book", source);
-                float finalAmount = Math.max(amount/n, (float)Config.chaosBookMinSplitDamage);
-                for(int i=0;i<n;i++){
+            } else {
+                pushChaosDamage(target);
+                try {
+                    int n = Config.chaosBookDamageSplitCount;
+                    InfoDamageSource newDamageSource = InfoDamageSource.create(target.level(), "chaos_book", source);
+                    float finalAmount = Math.max(amount / n, (float) Config.chaosBookMinSplitDamage);
+                    for (int i = 0; i < n; i++) {
+                        target.setInvulnerable(false);
+                        target.invulnerableTime = 0;
+                        target.hurt(newDamageSource, finalAmount);
+                    }
+                } finally {
                     target.setInvulnerable(false);
                     target.invulnerableTime = 0;
-                    target.hurt(newDamageSource, finalAmount);
+                    popChaosDamage(target);
                 }
-                target.setInvulnerable(false);
-                target.invulnerableTime = 0;
-                event.setCanceled(true);
             }
             return null;
-
         });
     }
 }

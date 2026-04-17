@@ -1,5 +1,7 @@
 package com.github.yimeng261.maidspell;
 
+import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
+import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.task.SpellCombatFarTask;
 import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
@@ -22,6 +24,31 @@ import java.util.Set;
 public class Config {
 
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+    private static final List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_WHITELIST = List.of(
+            "regex:minecraft:.*",
+            "regex:goety:.*",
+            "regex:irons_spellbooks:.*",
+            "regex:ars_nouveau:.*"
+    );
+    private static final List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST = List.of(
+            "irons_spellbooks:ascension",
+            "irons_spellbooks:burning_dash",
+            "irons_spellbooks:antigravity",
+            "irons_spellbooks:volt_strike",
+            "traveloptics:aqua_missiles_hover",
+            "traveloptics:meteor_storm",
+            "traveloptics:aerial_collapse",
+            "traveloptics:aerial_collapse_helper",
+            "soulsweapons:chungus_tonic_effect",
+            "goety:fire_trail",
+            "goety:charged",
+            "goety:rampage",
+            "goety:shadow_walk",
+            "goety:fiery_aura",
+            "goety:frosty_aura",
+            "minecraft:invisibility",
+            "irons_spellbooks:true_invisibility"
+    );
 
     // ========== 战斗系统配置 ==========
     static {
@@ -270,8 +297,62 @@ public class Config {
             .defineInRange("fragrantIngenuityBuffDuration", 2400, 200, 120000);
 
     static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> FRAGRANT_INGENUITY_EFFECT_BLACKLIST = BUILDER
+            .comment("馥郁巧思随机正面效果黑名单，黑名单内的效果不会被随机赋予")
+            .comment("Fragrant Ingenuity random beneficial effect blacklist")
+            .comment("默认值与梦云水晶黑名单相同")
+            .defineListAllowEmpty(
+                    List.of("fragrantIngenuityEffectBlacklist"),
+                    () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST,
+                    obj -> obj instanceof String
+            );
+
+    static {
         BUILDER.pop(); // utility
     }
+
+    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_MAX_STACKS = BUILDER
+            .comment("回春返照最大层数 (默认: 3)")
+            .comment("Spring Bloom Return max stacks")
+            .defineInRange("springBloomReturnMaxStacks", 3, 1, 8);
+
+    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_STACK_DURATION_TICKS = BUILDER
+            .comment("回春返照层数持续时间 (tick) (默认: 400)")
+            .comment("Spring Bloom Return stack duration in ticks")
+            .defineInRange("springBloomReturnStackDurationTicks", 400, 20, 72000);
+
+    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_GAIN_COOLDOWN_TICKS = BUILDER
+            .comment("回春返照获取层数冷却 (tick) (默认: 20)")
+            .comment("Spring Bloom Return stack gain cooldown in ticks")
+            .defineInRange("springBloomReturnGainCooldownTicks", 20, 0, 1200);
+
+    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_TICKS = BUILDER
+            .comment("回春返照触发冷却 (tick) (默认: 200)")
+            .comment("Spring Bloom Return trigger cooldown in ticks")
+            .defineInRange("springBloomReturnTriggerCooldownTicks", 200, 0, 72000);
+
+    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD = BUILDER
+            .comment("回春返照固定伤害阈值 (默认: 4.0)")
+            .comment("Spring Bloom Return flat damage threshold")
+            .defineInRange("springBloomReturnDamageThreshold", 4.0, 0.0, 100.0);
+
+    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD_RATIO = BUILDER
+            .comment("回春返照百分比伤害阈值 (默认: 0.10)")
+            .comment("Spring Bloom Return percent damage threshold")
+            .defineInRange("springBloomReturnDamageThresholdRatio", 0.10, 0.0, 1.0);
+
+    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_HEAL_RATIO = BUILDER
+            .comment("回春返照治疗比例 (默认: 0.05)")
+            .comment("Spring Bloom Return heal ratio")
+            .defineInRange("springBloomReturnHealRatio", 0.05, 0.0, 1.0);
+
+    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_COOLDOWN_REFUND_RATIO = BUILDER
+            .comment("回春返照冷却返还比例 (默认: 0.20)")
+            .comment("Spring Bloom Return cooldown refund ratio")
+            .defineInRange("springBloomReturnCooldownRefundRatio", 0.20, 0.0, 1.0);
 
     // 触发机制类饰品
     static {
@@ -366,6 +447,71 @@ public class Config {
 
     static {
         BUILDER.pop(); // special
+    }
+
+    // 梦云水晶
+    static {
+        BUILDER.comment("梦云水晶相关配置")
+                .comment("Dream Crystal configurations")
+                .push("dream_crystal");
+    }
+
+    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DREAM_CRYSTAL_EFFECT_BLACKLIST = BUILDER
+            .comment("梦云水晶随机正面效果黑名单，黑名单内的效果不会被随机赋予")
+            .comment("Dream Crystal random beneficial effect blacklist")
+            .comment("支持精确匹配和 regex: 前缀正则匹配")
+            .comment("示例: [\"minecraft:bad_omen\", \"regex:irons_spellbooks:.*\"]")
+            .defineListAllowEmpty(
+                    List.of("dreamCrystalEffectBlacklist"),
+                    () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST,
+                    obj -> obj instanceof String
+            );
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue DREAM_CRYSTAL_USE_EFFECT_WHITELIST = BUILDER
+            .comment("是否启用梦云水晶随机正面效果白名单 (默认: true)")
+            .comment("Whether to enable Dream Crystal random beneficial effect whitelist")
+            .define("dreamCrystalUseEffectWhitelist", true);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DREAM_CRYSTAL_EFFECT_WHITELIST = BUILDER
+            .comment("梦云水晶随机正面效果白名单，启用后只会从该列表中随机")
+            .comment("Dream Crystal random beneficial effect whitelist")
+            .comment("支持精确匹配和 regex: 前缀正则匹配")
+            .comment("示例: [\"minecraft:speed\", \"regex:minecraft:.*\"]")
+            .defineListAllowEmpty(
+                    List.of("dreamCrystalEffectWhitelist"),
+                    () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_WHITELIST,
+                    obj -> obj instanceof String
+            );
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue DREAM_CRYSTAL_EXTRA_TRUE_DAMAGE_ENABLED = BUILDER
+            .comment("是否启用梦云水晶额外真实伤害 (默认: true)")
+            .comment("Whether to enable Dream Crystal extra true damage")
+            .define("dreamCrystalExtraTrueDamageEnabled", true);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue DREAM_CRYSTAL_SET_NO_AI_ENABLED = BUILDER
+            .comment("是否启用梦云水晶冻结时设置无AI (默认: true)")
+            .comment("Whether to enable setNoAi during Dream Crystal freeze")
+            .define("dreamCrystalSetNoAiEnabled", true);
+
+
+    static {
+        BUILDER.pop(); // dream_crystal
         BUILDER.pop(); // baubles
     }
 
@@ -493,6 +639,15 @@ public class Config {
     public static int hairpinMinExtensionTicks;
     public static int fragrantIngenuityFavorabilityGain;
     public static int fragrantIngenuityBuffDuration;
+    public static List<String> fragrantIngenuityEffectBlacklist;
+    public static int springBloomReturnMaxStacks;
+    public static int springBloomReturnStackDurationTicks;
+    public static int springBloomReturnGainCooldownTicks;
+    public static int springBloomReturnTriggerCooldownTicks;
+    public static double springBloomReturnDamageThreshold;
+    public static double springBloomReturnDamageThresholdRatio;
+    public static double springBloomReturnHealRatio;
+    public static double springBloomReturnCooldownRefundRatio;
 
     // 特殊饰品相关
     public static double chaosBookTrueDamageMin;
@@ -501,6 +656,13 @@ public class Config {
     public static double chaosBookMinSplitDamage;
     public static double soulBookDamageThresholdPercent;
     public static int soulBookDamageIntervalThreshold;
+
+    // 梦云水晶
+    public static List<String> dreamCrystalEffectBlacklist;
+    public static boolean dreamCrystalUseEffectWhitelist;
+    public static List<String> dreamCrystalEffectWhitelist;
+    public static boolean dreamCrystalExtraTrueDamageEnabled;
+    public static boolean dreamCrystalSetNoAiEnabled;
 
     // 归隐之地维度相关
     public static boolean enablePrivateDimensions;
@@ -568,6 +730,16 @@ public class Config {
         hairpinMinExtensionTicks = HAIRPIN_MIN_EXTENSION_TICKS.get();
         fragrantIngenuityFavorabilityGain = FRAGRANT_INGENUITY_FAVORABILITY_GAIN.get();
         fragrantIngenuityBuffDuration = FRAGRANT_INGENUITY_BUFF_DURATION.get();
+        fragrantIngenuityEffectBlacklist = new ArrayList<>(FRAGRANT_INGENUITY_EFFECT_BLACKLIST.get());
+        springBloomReturnMaxStacks = SPRING_BLOOM_RETURN_MAX_STACKS.get();
+        springBloomReturnStackDurationTicks = SPRING_BLOOM_RETURN_STACK_DURATION_TICKS.get();
+        springBloomReturnGainCooldownTicks = SPRING_BLOOM_RETURN_GAIN_COOLDOWN_TICKS.get();
+        springBloomReturnTriggerCooldownTicks = SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_TICKS.get();
+        springBloomReturnDamageThreshold = SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD.get();
+        springBloomReturnDamageThresholdRatio = SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD_RATIO.get();
+        springBloomReturnHealRatio = SPRING_BLOOM_RETURN_HEAL_RATIO.get();
+        springBloomReturnCooldownRefundRatio = SPRING_BLOOM_RETURN_COOLDOWN_REFUND_RATIO.get();
+        FragrantIngenuityBauble.refreshEffectsList();
 
         // 特殊饰品相关
         chaosBookTrueDamageMin = CHAOS_BOOK_TRUE_DAMAGE_MIN.get();
@@ -576,6 +748,14 @@ public class Config {
         chaosBookMinSplitDamage = CHAOS_BOOK_MIN_SPLIT_DAMAGE.get();
         soulBookDamageThresholdPercent = SOUL_BOOK_DAMAGE_THRESHOLD_PERCENT.get();
         soulBookDamageIntervalThreshold = SOUL_BOOK_DAMAGE_INTERVAL_THRESHOLD.get();
+
+        // 梦云水晶
+        dreamCrystalEffectBlacklist = new ArrayList<>(DREAM_CRYSTAL_EFFECT_BLACKLIST.get());
+        dreamCrystalUseEffectWhitelist = DREAM_CRYSTAL_USE_EFFECT_WHITELIST.get();
+        dreamCrystalEffectWhitelist = new ArrayList<>(DREAM_CRYSTAL_EFFECT_WHITELIST.get());
+        dreamCrystalExtraTrueDamageEnabled = DREAM_CRYSTAL_EXTRA_TRUE_DAMAGE_ENABLED.get();
+        dreamCrystalSetNoAiEnabled = DREAM_CRYSTAL_SET_NO_AI_ENABLED.get();
+        DreamCatCrystalBauble.invalidateBeneficialEffectsCache();
 
         // 归隐之地维度相关
         enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
@@ -598,6 +778,7 @@ public class Config {
 
         Global.resetCommonDamageCalc();
         Global.resetCommonCoolDownCalc();
+        DreamCatCrystalBauble.registerCommonCallbacks();
     }
 
 

@@ -277,6 +277,14 @@ public class RetreatManager {
     }
 
     /**
+     * [服务器重启恢复] 直接将维度标记为已生成（跳过 pending 阶段）。
+     * 仅供 PlayerRetreatManager.onServerStarted() 在恢复持久化数据时使用。
+     */
+    public static void restoreStructureGenerated(ResourceKey<Level> key) {
+        generatedDimensions.add(key);
+    }
+
+    /**
      * 回退结构生成标记（当 generate() 失败时调用）。
      */
     public static void unmarkStructureGenerated(ResourceKey<Level> key) {

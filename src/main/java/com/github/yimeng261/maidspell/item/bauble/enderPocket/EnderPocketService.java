@@ -99,11 +99,11 @@ public class EnderPocketService {
      * 打开女仆背包
      */
     public static boolean openMaidInventory(ServerPlayer player, ResourceKey<Level> maidLevelKey, int maidEntityId) {
-        ServerLevel maidLevel = player.server.getLevel(maidLevelKey);
-        Entity entity = maidLevel.getEntity(maidEntityId);
-        if (!(entity instanceof EntityMaid maid)) {
+        EntityMaid maid = findMaidForEnderPocket(player, maidLevelKey, maidEntityId);
+        if (maid == null) {
             return false;
         }
+        ServerLevel maidLevel = (ServerLevel) maid.level();
 
         // 检查权限
         if (!maid.isOwnedBy(player) || maid.isSleeping() || !maid.isAlive()) {
@@ -123,5 +123,25 @@ public class EnderPocketService {
         // 使用车万女仆本体的GUI打开方法
         maid.openMaidGui(player, com.github.tartaricacid.touhoulittlemaid.entity.passive.TabIndex.MAIN);
         return true;
+    }
+
+    private static EntityMaid findMaidForEnderPocket(ServerPlayer player, ResourceKey<Level> maidLevelKey, int maidEntityId) {
+        ServerLevel maidLevel = player.server.getLevel(maidLevelKey);
+        if (maidLevel != null) {
+            Entity entity = maidLevel.getEntity(maidEntityId);
+            if (entity instanceof EntityMaid maid) {
+                return maid;
+            }
+        }
+
+        for (EntityMaid activeMaid : Global.activeMaids) {
+            if (activeMaid.getId() == maidEntityId
+                    && activeMaid.level() instanceof ServerLevel activeLevel
+                    && activeLevel.dimension().equals(maidLevelKey)
+                    && activeMaid.isOwnedBy(player)) {
+                return activeMaid;
+            }
+        }
+        return null;
     }
 }

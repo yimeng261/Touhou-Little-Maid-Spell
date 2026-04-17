@@ -6,9 +6,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedW
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitSounds;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksDataBridge;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
-import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
@@ -29,9 +29,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.fml.ModList;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
 import za.co.infernos.goety.api.entities.IOwned;
+import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.Map;
@@ -88,7 +89,6 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
-        // 使用自定义索敌方法，排除自己召唤的 Goety 召唤物
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
@@ -107,40 +107,8 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         );
     }
 
-    /**
-     * 自定义索敌方法，排除女仆自己召唤的 Goety 召唤物
-     */
-    private Optional<? extends LivingEntity> findValidAttackTarget(EntityMaid maid) {
-        // 首先使用默认方法找到目标
-        Optional<? extends LivingEntity> defaultTarget = IAttackTask.findFirstValidAttackTarget(maid);
-
-        // 如果没有找到目标，直接返回
-        if (defaultTarget.isEmpty()) {
-            return defaultTarget;
-        }
-
-        LivingEntity target = defaultTarget.get();
-
-        // 检查目标是否是 Goety 召唤物
-        if (ModList.get().isLoaded("goety")) {
-            try {
-                if (target instanceof IOwned ownedEntity) {
-                    LivingEntity owner = ownedEntity.getTrueOwner();
-                    if (owner instanceof EntityMaid || owner instanceof Player) {
-                        return Optional.empty();
-                    }
-                }
-            } catch (NoClassDefFoundError e) {
-                // Goety 未加载，忽略
-            }
-        }
-
-        return defaultTarget;
-    }
-
     @Override
     public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(EntityMaid maid) {
-        // 使用自定义索敌方法，排除自己召唤的 Goety 召唤物
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
         BehaviorControl<EntityMaid> spellCastingTask = new SpellCombatBehavior();
@@ -153,6 +121,32 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
                 Pair.of(2, findTargetTask),
                 Pair.of(2, spellCastingTask)
         );
+    }
+
+    /**
+     * 自定义索敌方法，在默认索敌基础上进行额外过滤
+     * 子类可覆写此方法添加更多过滤逻辑
+     */
+    protected Optional<? extends LivingEntity> findValidAttackTarget(EntityMaid maid) {
+        Optional<? extends LivingEntity> defaultTarget = IAttackTask.findFirstValidAttackTarget(maid);
+        if (defaultTarget.isEmpty()) {
+            return defaultTarget;
+        }
+
+        // 排除女仆/玩家自己召唤的 Goety 召唤物
+        if (ModList.get().isLoaded("goety")) {
+            try {
+                if (defaultTarget.get() instanceof IOwned ownedEntity) {
+                    LivingEntity owner = ownedEntity.getTrueOwner();
+                    if (owner instanceof EntityMaid || owner instanceof Player) {
+                        return Optional.empty();
+                    }
+                }
+            } catch (NoClassDefFoundError ignored) {
+            }
+        }
+
+        return defaultTarget;
     }
 
     @Override
@@ -210,6 +204,20 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         return maid.distanceTo(target) > this.searchRadius(maid);
     }
 
+    protected static LivingEntity resolveIronsSpellbooksOwnerCastTarget(EntityMaid maid, LivingEntity fallbackTarget) {
+        if (fallbackTarget != maid.getOwner() || !IronsSpellbooksCompat.isLoaded()) {
+            return fallbackTarget;
+        }
+        LivingEntity origin = IronsSpellbooksDataBridge.getOriginTarget(maid);
+        return origin instanceof LivingEntity ? origin : fallbackTarget;
+    }
+
+    protected static boolean isIronsSpellbooksSpecialCase(EntityMaid maid) {
+        if (!IronsSpellbooksCompat.isLoaded()) {
+            return false;
+        }
+        return IronsSpellbooksDataBridge.isSpecialOwnerCastCase(maid);
+    }
 
     /**
      * 统一的法术战斗行为控制器
@@ -250,9 +258,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             this.currentSpellCaster = new SimplifiedSpellCaster(maid);
 
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            if(target == maid.getOwner() && ModList.get().isLoaded("irons_spellbooks")){
-                target = MaidIronsSpellData.getOrCreate(maid).getOriginTarget();
-            }
+            target = resolveIronsSpellbooksOwnerCastTarget(maid, target);
             if (!(target instanceof Player)) {
                 this.currentSpellCaster.setTarget(target);
             }
@@ -349,29 +355,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
          * 这种情况下女仆需要对主人施法，因此应该看向主人
          */
         private boolean isIronSpellSpecialCase(EntityMaid maid) {
-            if (!ModList.get().isLoaded("irons_spellbooks")) {
-                return false;
-            }
-
-            try {
-                // 获取女仆的铁魔法数据
-                MaidIronsSpellData data = MaidIronsSpellData.getOrCreate(maid);
-                if (data == null) {
-                    return false;
-                }
-
-                // 检查当前目标是否是原始目标切换到主人的结果
-                // 这表明女仆正在施放蓝色音符标记的法术
-                LivingEntity currentTarget = data.getTarget();
-                LivingEntity originTarget = data.getOriginTarget();
-                LivingEntity owner = maid.getOwner();
-
-                return currentTarget == owner && originTarget != null && originTarget != owner;
-
-            } catch (Exception e) {
-                // 如果出现任何异常，安全返回false
-                return false;
-            }
+            return SpellCombatMeleeTask.isIronsSpellbooksSpecialCase(maid);
         }
     }
 

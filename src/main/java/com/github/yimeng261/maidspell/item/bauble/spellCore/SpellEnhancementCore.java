@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item.bauble.spellCore;
 
+import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -32,11 +33,16 @@ public class SpellEnhancementCore extends Item {
     public void appendHoverText(ItemStack stack, @Nonnull TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
 
-        tooltip.add(Component.translatable("item.maidspell.spell_enhancement_core.desc1")
-            .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.maidspell.spell_enhancement_core.desc2")
-            .withStyle(ChatFormatting.BLUE));
-        tooltip.add(Component.translatable("item.maidspell.spell_enhancement_core.desc3")
-            .withStyle(ChatFormatting.YELLOW));
+        TooltipHelper.addShiftTooltip(tooltip,
+                List.of(
+                        Component.translatable("item.maidspell.spell_enhancement_core.desc1")
+                                .withStyle(ChatFormatting.GRAY)
+                ),
+                List.of(
+                        Component.translatable("item.maidspell.spell_enhancement_core.desc2")
+                                .withStyle(ChatFormatting.BLUE),
+                        Component.translatable("item.maidspell.spell_enhancement_core.desc3")
+                                .withStyle(ChatFormatting.YELLOW)
+                ));
     }
 }
