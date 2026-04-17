@@ -14,6 +14,7 @@ import com.github.yimeng261.maidspell.utils.DataItem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.damagesource.CombatEntry;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
@@ -22,6 +23,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.material.FluidState;
 
 import java.util.List;
 import java.util.Map;
@@ -227,6 +229,20 @@ public abstract class LivingEntityMixin {
         Global.HurtHeadContext hurtHeadContext = Global.dispatchHurtHeadHandlers(entity, damageSource, amount);
         if (hurtHeadContext.isHandled()) {
             cir.setReturnValue(hurtHeadContext.getReturnValue());
+        }
+    }
+
+    @Inject(method = "canStandOnFluid", at = @At("HEAD"), cancellable = true)
+    private void maidspell$allowWaterWalk(FluidState fluidState, CallbackInfoReturnable<Boolean> cir) {
+        if (!((Object) this instanceof EntityMaid maid) || maid.isUnderWater()) {
+            return;
+        }
+        if (fluidState.is(FluidTags.WATER) && BaubleStateManager.hasBauble(maid, MaidSpellItems.FLOATING_FOX_LEAF)) {
+            cir.setReturnValue(true);
+            return;
+        }
+        if (fluidState.is(FluidTags.LAVA) && BaubleStateManager.hasBauble(maid, MaidSpellItems.MOLTEN_FOX_LEAF)) {
+            cir.setReturnValue(true);
         }
     }
 

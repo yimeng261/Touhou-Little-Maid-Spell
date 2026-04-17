@@ -4,16 +4,20 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaid
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.mixin.accessor.JumpControlAccessor;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import javax.annotation.Nullable;
@@ -37,10 +41,33 @@ public class AbstractMaidContainerMixin {
         if(maid == null){
             return;
         }
-        if(maid.getMaidBauble().containsItem(MaidSpellItems.ENDER_POCKET.get())){
+        if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
             boolean isValid = maid.isOwnedBy(playerIn) && !maid.isSleeping() && maid.isAlive();
             cir.setReturnValue(isValid);
         }
+    }
+
+    @Inject(method = "removed", at = @At("HEAD"), remap = true)
+    private void maidspell$clearResidualMovementOnGuiClose(Player playerIn, CallbackInfo ci) {
+        if (maid == null || maid.level().isClientSide()) {
+            return;
+        }
+
+        maid.getNavigation().stop();
+        maid.getNavigationManager().resetNavigation();
+        maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+        maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+        maid.setJumping(false);
+        maid.setXxa(0.0F);
+        maid.setYya(0.0F);
+        maid.setZza(0.0F);
+        maid.setSpeed(0.0F);
+        if (maid.getJumpControl() instanceof JumpControlAccessor jumpAccessor) {
+            jumpAccessor.maidspell$setJump(false);
+        }
+        maid.getMoveControl().setWantedPosition(maid.getX(), maid.getY(), maid.getZ(), 0.0D);
+        Vec3 deltaMovement = maid.getDeltaMovement();
+        maid.setDeltaMovement(0.0D, deltaMovement.y, 0.0D);
     }
 
     /**

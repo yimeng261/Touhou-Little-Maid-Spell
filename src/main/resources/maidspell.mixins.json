@@ -9,9 +9,11 @@
   "mixins": [
     "ChunkGeneratorMixin",
     "CombatTrackerMixin",
+    "BehaviorUtilsMixin",
     "EntityMixin",
     "HairpinServerLevelMixin",
     "HairpinServerPlayerMixin",
+    "accessor.JumpControlAccessor",
     "LivingEntityInvoker",
     "LivingEntityMixin",
     "MinecraftServerMixin",
@@ -29,6 +31,8 @@
     "tlm.AbstractMaidContainerMixin",
     "tlm.AltarRecipeSerializerMixin",
     "tlm.EntityMaidMixin",
+    "tlm.MaidMoveControlMixin",
+    "tlm.MaidNodeEvaluatorMixin",
     "tlm.OpenMaidGuiMessageMixin",
     "tlm.TaskFeedOwnerMixin"
   ],

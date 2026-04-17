@@ -20,6 +20,22 @@ public final class MaidSpellBlockEntities {
                 MaidSpellBlocks.POTTED_SCARLET_ZHUHUA.get()
             ).build(null));
 
+    public static final RegistryObject<BlockEntityType<YueLinglanBlockEntity>> YUE_LINGLAN =
+        BLOCK_ENTITIES.register("yue_linglan",
+            () -> BlockEntityType.Builder.of(
+                YueLinglanBlockEntity::new,
+                MaidSpellBlocks.YUE_LINGLAN.get(),
+                MaidSpellBlocks.POTTED_YUE_LINGLAN.get()
+            ).build(null));
+
+    public static final RegistryObject<BlockEntityType<JingxuYoulanBlockEntity>> JINGXU_YOULAN =
+        BLOCK_ENTITIES.register("jingxu_youlan",
+            () -> BlockEntityType.Builder.of(
+                JingxuYoulanBlockEntity::new,
+                MaidSpellBlocks.JINGXU_YOULAN.get(),
+                MaidSpellBlocks.POTTED_JINGXU_YOULAN.get()
+            ).build(null));
+
     private MaidSpellBlockEntities() {
     }
 

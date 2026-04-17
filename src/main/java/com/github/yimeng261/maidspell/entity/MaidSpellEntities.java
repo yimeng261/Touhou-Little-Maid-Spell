@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.entity;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.entity.mob.HolyConstructEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -23,6 +24,13 @@ public class MaidSpellEntities {
                 .clientTrackingRange(4)
                 .updateInterval(10)
                 .build("wind_seeking_bell"));
+
+    public static final RegistryObject<EntityType<HolyConstructEntity>> HOLY_CONSTRUCT =
+        ENTITY_TYPES.register("holy_construct",
+            () -> EntityType.Builder.<HolyConstructEntity>of(HolyConstructEntity::new, MobCategory.MONSTER)
+                .sized(0.8F, 2.9F)
+                .clientTrackingRange(10)
+                .build("holy_construct"));
     
     /**
      * 注册实体类型

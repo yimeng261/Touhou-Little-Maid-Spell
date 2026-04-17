@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.client;
 
 import com.github.yimeng261.maidspell.client.gui.BlueNoteScreen;
+import com.github.yimeng261.maidspell.client.renderer.entity.HolyConstructRenderer;
 import com.github.yimeng261.maidspell.client.model.SharedHaloModel;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
@@ -37,6 +38,7 @@ public class MaidSpellClientMod {
     public static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(MaidSpellEntities.WIND_SEEKING_BELL.get(), WindSeekingBellRenderer::new);
         IronsSpellbooksCompat.initClient(event);
+        event.registerEntityRenderer(MaidSpellEntities.HOLY_CONSTRUCT.get(), HolyConstructRenderer::new);
     }
 
     @SubscribeEvent

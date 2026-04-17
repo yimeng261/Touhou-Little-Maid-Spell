@@ -42,6 +42,8 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.CHAOS_BOOK.get());
                 output.accept(MaidSpellItems.SOUL_BOOK.get());
                 output.accept(MaidSpellItems.ENDER_POCKET.get());
+                output.accept(MaidSpellItems.FLOATING_FOX_LEAF.get());
+                output.accept(MaidSpellItems.MOLTEN_FOX_LEAF.get());
                 output.accept(MaidSpellItems.WOUND_RIME_BLADE.get());
                 output.accept(MaidSpellItems.SLIVER_CERCIS.get());
                 output.accept(MaidSpellItems.ANCHOR_CORE.get());
@@ -50,6 +52,9 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.FRAGRANT_INGENUITY.get());
                 output.accept(MaidSpellItems.DREAM_CAT_CRYSTAL.get());
                 output.accept(MaidSpellItems.SCARLET_ZHUHUA.get());
+                output.accept(MaidSpellItems.YUE_LINGLAN.get());
+                output.accept(MaidSpellItems.JINGXU_YOULAN.get());
+                output.accept(MaidSpellItems.HOLY_CONSTRUCT_SPAWN_EGG.get());
 
                 // 管理员工具
                 output.accept(MaidSpellItems.OWNER_CLEAR_TOOL.get());

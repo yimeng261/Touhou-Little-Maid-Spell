@@ -30,7 +30,7 @@ import javax.annotation.Nullable;
 public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
     private static final int LIGHT_LEVEL = 10;
     private static final int AURA_RANGE = 3;
-    private static final int EFFECT_DURATION_TICKS = 60;
+    private static final int EFFECT_DURATION_TICKS = 100;
 
     public ScarletZhuhuaBlock() {
         super(createProperties());
