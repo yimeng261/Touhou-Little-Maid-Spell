@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.worldgen.modifier;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -9,7 +10,6 @@ import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 
 import java.util.ArrayList;
@@ -62,7 +62,7 @@ public class TemplatePoolModifier {
     @SubscribeEvent
     public static void modifyTemplatePoolBeforeServerStart(ServerAboutToStartEvent event) {
         Registry<StructureTemplatePool> templatePoolRegistry = event.getServer().registryAccess().registry(Registries.TEMPLATE_POOL).orElseThrow();
-        if (ModList.get().isLoaded("irons_spellbooks")) {
+        if (IronsSpellbooksCompat.isLoaded()) {
             // TODO 需要有一个 server 配置项，控制这些结是否要生成
             mergeBuildingPool(templatePoolRegistry, VILLAGE_DESERT_STREETS_POOL, ENCHANTRESS_FOOTSTEPS_VILLAGE_DESERT_STREETS_POOL);
             mergeBuildingPool(templatePoolRegistry, VILLAGE_PLAINS_STREETS_POOL, ENCHANTRESS_FOOTSTEPS_VILLAGE_PLAINS_STREETS_POOL);

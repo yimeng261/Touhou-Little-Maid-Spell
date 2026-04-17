@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.debug;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.event.FestivalGreetingManager;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -20,7 +21,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 
@@ -50,7 +50,7 @@ public class MaidSpellCommand {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
 
         // 仅在安装 Iron's Spellbooks 时注册施法命令，避免可选依赖缺失时加载相关类
-        if (ModList.get().isLoaded("irons_spellbooks")) {
+        if (IronsSpellbooksCompat.isLoaded()) {
             dispatcher.register(Commands.literal("maidspell")
                     .requires(source -> source.hasPermission(2))
                     .then(Commands.argument("targets", EntityArgument.entities())

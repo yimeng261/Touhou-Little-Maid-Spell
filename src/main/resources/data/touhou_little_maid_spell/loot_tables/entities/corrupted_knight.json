@@ -1,0 +1,136 @@
+{
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:claymore",
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{Damage:500,display:{Name:'{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_sword\"}'},Enchantments:[{lvl:5s,id:\"minecraft:sharpness\"},{lvl:2s,id:\"minecraft:unbreaking\"}],\"irons_spellbooks:imbued_spell\":\"irons_spellbooks:flaming_strike\",\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{level:5,index:0,id:\"irons_spellbooks:flaming_strike\"}],spellWheel:1b}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 4,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:netherite_scrap"
+        }
+      ]
+    },
+    {
+      "rolls": 10,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:emerald"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:netherite_mage_helmet",
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{Damage:300}"
+            }
+          ],
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:pyromancer_chestplate",
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{Damage:300}"
+            }
+          ],
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:cultist_leggings",
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{Damage:300}"
+            }
+          ],
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:cultist_boots",
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{Damage:300}"
+            }
+          ],
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:written_book",
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{title:\"残破的日记\",author:\"？？？\",pages:['{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_1\"}','{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_2\"}','{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_3\"}','{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_4\"}','{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_5\"}','{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_6\"}','{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_7\"}','{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_8\"}','{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_9\"}']}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

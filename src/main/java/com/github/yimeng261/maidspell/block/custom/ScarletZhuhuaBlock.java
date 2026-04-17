@@ -9,6 +9,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.trading.Merchant;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -82,6 +83,7 @@ public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
     private static boolean shouldAffect(LivingEntity living) {
         return living.isAlive() && !isIronsSpellbooksNpc(living);
     }
+
 
     private static boolean isIronsSpellbooksNpc(LivingEntity living) {
         return living instanceof Merchant

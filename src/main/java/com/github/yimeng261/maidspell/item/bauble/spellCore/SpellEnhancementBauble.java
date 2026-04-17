@@ -2,8 +2,8 @@ package com.github.yimeng261.maidspell.item.bauble.spellCore;
 
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.server.level.ServerPlayer;
@@ -12,7 +12,6 @@ import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
@@ -34,7 +33,7 @@ public class SpellEnhancementBauble implements IMaidBauble {
     private static final Logger LOGGER = LogUtils.getLogger();
     
     static {
-        if (ModList.get().isLoaded("irons_spellbooks")) {
+        if (IronsSpellbooksCompat.isLoaded()) {
             initializeAttributes();
         }
     }
