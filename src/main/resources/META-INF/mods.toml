@@ -51,9 +51,3 @@ versionRange = "[2.5.0,)"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies."${mod_id}"]]
-modId = "goety_revelation"
-mandatory = false
-versionRange = "[2.0.0,)"
-ordering = "NONE"
-side = "BOTH"

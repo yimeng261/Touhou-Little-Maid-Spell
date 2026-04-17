@@ -6,7 +6,7 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.GeoLayerRenderer;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoEntityRenderer;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.ILocationModel;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils;
-import com.github.yimeng261.maidspell.client.model.AscensionHaloModel;
+import com.github.yimeng261.maidspell.client.model.SharedHaloModel;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.transmogNecklace.TransmogHaloStyle;
 import com.github.yimeng261.maidspell.item.bauble.transmogNecklace.TransmogNecklace;
@@ -28,7 +28,7 @@ import net.minecraft.world.item.ItemStack;
 public class GeckoLayerTransmogHalo<T extends Mob, R extends IGeoEntityRenderer<T>> extends GeoLayerRenderer<T, R> {
     private static final int LIGHT_LEVEL = 0xFF00F0;
 
-    private AscensionHaloModel model;
+    private SharedHaloModel model;
 
     public GeckoLayerTransmogHalo(R entityRendererIn) {
         super(entityRendererIn);
@@ -58,8 +58,8 @@ public class GeckoLayerTransmogHalo<T extends Mob, R extends IGeoEntityRenderer<
         }
 
         if (model == null) {
-            model = new AscensionHaloModel(
-                Minecraft.getInstance().getEntityModels().bakeLayer(AscensionHaloModel.LAYER_LOCATION)
+            model = new SharedHaloModel(
+                Minecraft.getInstance().getEntityModels().bakeLayer(SharedHaloModel.LAYER_LOCATION)
             );
         }
 

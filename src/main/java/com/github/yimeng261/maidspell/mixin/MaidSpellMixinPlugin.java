@@ -19,16 +19,13 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String ISS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.iss.";
     private static final String AE2_MOD_ID = "ae2";
     private static final String GOETY_MOD_ID = "goety";
-    private static final String GOETY_REVELATION_MOD_ID = "goety_revelation";
     private static final String GOETY_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.goety.";
-    private static final String GOETY_REVELATION_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.goety.revelation.";
     private static final String ENIGMATIC_ADDONS_MOD_ID = "enigmaticaddons";
     private static final String ENIGMATIC_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.enigmatic.";
 
     private boolean isIronsSpellbooksLoaded = false;
     private boolean isTlmMagicAnimationSupported = false;
     private boolean isGoetyLoaded = false;
-    private boolean isGoetyRevelationLoaded = false;
     private boolean isEnigmaticAddonsLoaded = false;
 
     @Override
@@ -41,9 +38,8 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         } catch (ClassNotFoundException ignored) {
         }
 
-        // 检查 Goety 和 Goety Revelation 模组是否已加载
+        // 检查 Goety 模组是否已加载
         isGoetyLoaded = LoadingModList.get().getModFileById(GOETY_MOD_ID) != null;
-        isGoetyRevelationLoaded = LoadingModList.get().getModFileById(GOETY_REVELATION_MOD_ID) != null;
         isEnigmaticAddonsLoaded = LoadingModList.get().getModFileById(ENIGMATIC_ADDONS_MOD_ID) != null;
     }
 
@@ -57,11 +53,6 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         // 如果是 iss 包下的 Mixin，需要检查 Iron's Spellbooks 模组是否存在
         if (mixinClassName.startsWith(ISS_MIXIN_PACKAGE)) {
             return isIronsSpellbooksLoaded && isTlmMagicAnimationSupported;
-        }
-
-        // 先检查更具体的 goety.revelation 包（必须在 goety 包之前检查）
-        if(mixinClassName.startsWith(GOETY_REVELATION_MIXIN_PACKAGE)){
-            return isGoetyRevelationLoaded;
         }
 
         // 如果是 goety 包下的 Mixin，只需要检查 Goety 模组是否存在

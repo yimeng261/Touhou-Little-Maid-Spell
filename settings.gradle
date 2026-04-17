@@ -20,5 +20,3 @@ plugins {
 // 包含本地的 TouhouLittleMaid 项目（已禁用，改用本地 jar）
 // include 'TouhouLittleMaid'
 
-// revelationfix 使用编译好的 jar 文件（GoetyRevelation-2.3.1.jar）
-// include 'revelationfix'
