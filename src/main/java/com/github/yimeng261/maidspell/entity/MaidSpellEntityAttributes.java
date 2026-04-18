@@ -1,7 +1,6 @@
 package com.github.yimeng261.maidspell.entity;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.entity.mob.HolyConstructEntity;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -13,6 +12,5 @@ public final class MaidSpellEntityAttributes {
 
     @SubscribeEvent
     public static void onAttributeCreate(EntityAttributeCreationEvent event) {
-        event.put(MaidSpellEntities.HOLY_CONSTRUCT.get(), HolyConstructEntity.prepareAttributes().build());
     }
 }

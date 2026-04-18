@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.registry;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.CorruptedKnightEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ElfTemplarEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.HolyConstructEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ShadowAssassinEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -37,6 +38,13 @@ public final class IronsSpellbooksCompatEntities {
                             .clientTrackingRange(8)
                             .build("elf_templar"));
 
+    public static final RegistryObject<EntityType<HolyConstructEntity>> HOLY_CONSTRUCT =
+            ENTITY_TYPES.register("holy_construct",
+                    () -> EntityType.Builder.of(HolyConstructEntity::new, MobCategory.MONSTER)
+                            .sized(0.8F, 2.5F)
+                            .clientTrackingRange(10)
+                            .build("holy_construct"));
+
     private IronsSpellbooksCompatEntities() {
     }
 
@@ -49,5 +57,6 @@ public final class IronsSpellbooksCompatEntities {
         event.put(CORRUPTED_KNIGHT.get(), CorruptedKnightEntity.createAttributes().build());
         event.put(SHADOW_ASSASSIN.get(), ShadowAssassinEntity.createAttributes().build());
         event.put(ELF_TEMPLAR.get(), ElfTemplarEntity.createAttributes().build());
+        event.put(HOLY_CONSTRUCT.get(), HolyConstructEntity.prepareAttributes().build());
     }
 }

@@ -31,6 +31,7 @@
     "tlm.AbstractMaidContainerMixin",
     "tlm.AltarRecipeSerializerMixin",
     "tlm.EntityMaidMixin",
+    "tlm.MaidBackupsManagerMixin",
     "tlm.MaidMoveControlMixin",
     "tlm.MaidNodeEvaluatorMixin",
     "tlm.OpenMaidGuiMessageMixin",

@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.client;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model.GenericSpellHumanoidModel;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.HolyConstructRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.GenericSpellHumanoidRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import net.minecraft.resources.ResourceLocation;
@@ -24,5 +25,6 @@ public final class IronsSpellbooksCompatClient {
                 new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
                         new ResourceLocation(MaidSpellMod.MOD_ID, "geo/elf_templar.geo.json"),
                         new ResourceLocation(MaidSpellMod.MOD_ID, "textures/entity/elf_templar.png"))));
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.HOLY_CONSTRUCT.get(), HolyConstructRenderer::new);
     }
 }

@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.client.model;
+package com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import io.redspace.ironsspellbooks.entity.mobs.abstract_spell_casting_mob.AbstractSpellCastingMob;

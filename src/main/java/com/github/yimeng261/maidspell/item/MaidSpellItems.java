@@ -2,7 +2,6 @@ package com.github.yimeng261.maidspell.item;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
-import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChain;
@@ -33,7 +32,6 @@ import net.minecraft.Util;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.DeferredRegister;
@@ -90,8 +88,6 @@ public class MaidSpellItems {
         () -> new BlockItem(MaidSpellBlocks.YUE_LINGLAN.get(), new Item.Properties()));
     public static final RegistryObject<Item> JINGXU_YOULAN = ITEMS.register("jingxu_youlan",
         () -> new BlockItem(MaidSpellBlocks.JINGXU_YOULAN.get(), new Item.Properties()));
-    public static final RegistryObject<Item> HOLY_CONSTRUCT_SPAWN_EGG = ITEMS.register("holy_construct_spawn_egg",
-        () -> new ForgeSpawnEggItem(MaidSpellEntities.HOLY_CONSTRUCT, 0xF5EBC7, 0xFFD54F, new Item.Properties()));
     
     // 管理员工具
     public static final RegistryObject<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);

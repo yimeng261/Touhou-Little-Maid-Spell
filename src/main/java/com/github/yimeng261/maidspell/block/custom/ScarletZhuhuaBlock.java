@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.block.custom;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.block.entity.ScarletZhuhuaBlockEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -24,8 +25,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.AABB;
+import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
+import net.minecraft.util.RandomSource;
 
 public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
     private static final int LIGHT_LEVEL = 10;
@@ -82,6 +85,19 @@ public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
 
     private static boolean shouldAffect(LivingEntity living) {
         return living.isAlive() && !isIronsSpellbooksNpc(living);
+    }
+
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        if (random.nextFloat() > 0.35f) {
+            return;
+        }
+        double x = pos.getX() + 0.25 + random.nextDouble() * 0.5;
+        double y = pos.getY() + 0.45 + random.nextDouble() * 0.45;
+        double z = pos.getZ() + 0.25 + random.nextDouble() * 0.5;
+        level.addParticle(new DustParticleOptions(new Vector3f(1.0f, 0.18f, 0.35f), 0.95f),
+            x, y, z,
+            0.0, 0.01 + random.nextDouble() * 0.01, 0.0);
     }
 
 

@@ -6,37 +6,49 @@
       "entries": [
         {
           "type": "minecraft:item",
+          "name": "touhou_little_maid_spell:yue_linglan",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:air",
+          "weight": 9
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
           "name": "irons_spellbooks:claymore",
+          "weight": 3,
           "functions": [
             {
               "function": "minecraft:set_nbt",
-              "tag": "{RepairCost:1,Damage:700,\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{level:8,index:0,id:\"irons_spellbooks:gust\"}],spellWheel:1b},display:{Name:'{\"translate\":\"item.touhou_little_maid_spell.loot.elf_templar_claymore\"}'},Enchantments:[{lvl:2s,id:\"minecraft:knockback\"}]}"
+              "tag": "{RepairCost:1,Damage:700,\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{level:8,index:0,id:\"irons_spellbooks:gust\"}],spellWheel:1b},display:{Name:'{\"text\":\"精灵的风之剑\"}'},Enchantments:[{lvl:2s,id:\"minecraft:knockback\"}]}"
             }
           ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:air",
+          "weight": 7
         }
       ]
     },
     {
-      "rolls": 6,
+      "rolls": 3,
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "irons_spellbooks:nature_rune"
-        }
-      ],
-      "conditions": [
-        {
-          "condition": "minecraft:random_chance",
-          "chance": 0.5
-        }
-      ]
-    },
-    {
-      "rolls": 6,
-      "entries": [
+          "name": "irons_spellbooks:nature_rune",
+          "weight": 1
+        },
         {
           "type": "minecraft:item",
-          "name": "minecraft:glow_berries"
+          "name": "minecraft:air",
+          "weight": 1
         }
       ]
     },
@@ -45,28 +57,28 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "minecraft:emerald"
-        }
-      ],
-      "conditions": [
+          "name": "minecraft:glow_berries",
+          "weight": 1
+        },
         {
-          "condition": "minecraft:random_chance",
-          "chance": 0.5
+          "type": "minecraft:item",
+          "name": "minecraft:air",
+          "weight": 1
         }
       ]
     },
     {
-      "rolls": 10,
+      "rolls": 7,
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "touhou_little_maid:power_point"
-        }
-      ],
-      "conditions": [
+          "name": "irons_spellbooks:arcane_essence",
+          "weight": 1
+        },
         {
-          "condition": "minecraft:random_chance",
-          "chance": 0.5
+          "type": "minecraft:item",
+          "name": "minecraft:air",
+          "weight": 1
         }
       ]
     }

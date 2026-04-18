@@ -1,16 +1,23 @@
-package com.github.yimeng261.maidspell.entity.mob;
+package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
 
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.entity.mobs.goals.WizardAttackGoal;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.util.DefaultRandomPos;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
 public class HolyConstructAttackGoal extends WizardAttackGoal {
+    private static final float PREFERRED_COMBAT_RANGE = 6.0f;
+    private static final float PREFERRED_COMBAT_RANGE_SQR = PREFERRED_COMBAT_RANGE * PREFERRED_COMBAT_RANGE;
+    private static final float TOO_CLOSE_RANGE = 3.0f;
+    private static final float TOO_CLOSE_RANGE_SQR = TOO_CLOSE_RANGE * TOO_CLOSE_RANGE;
     private static final int CHARGE_REUSE_COOLDOWN_TICKS = 20 * 60;
     private static final int CHARGE_PRIORITY_BONUS = 90;
     private static final int OAKSKIN_REUSE_COOLDOWN_TICKS = 20 * 25;
@@ -98,7 +105,7 @@ public class HolyConstructAttackGoal extends WizardAttackGoal {
         ArrayList<AbstractSpell> spellList = weightedSpells.higherEntry(seed).getValue();
         lastSpellCategory = spellList;
         if (drinksPotions && spellList == supportSpells) {
-            if (supportSpells.isEmpty() || mob.getRandom().nextFloat() < .5f) {
+            if (supportSpells.isEmpty() || mob.getRandom().nextFloat() < 0.5f) {
                 spellCastingMob.startDrinkingPotion();
                 return SpellRegistry.none();
             }
@@ -135,5 +142,46 @@ public class HolyConstructAttackGoal extends WizardAttackGoal {
         if (spell == SpellRegistry.OAKSKIN_SPELL.get()) {
             lastOakskinCastTick = mob.tickCount;
         }
+    }
+
+    @Override
+    protected void doMovement(double distanceSquared) {
+        double speed = (spellCastingMob.isCasting() ? 0.75f : 1f) * movementSpeed();
+        mob.lookAt(target, 30, 30);
+
+        if (allowFleeing && distanceSquared < TOO_CLOSE_RANGE_SQR) {
+            Vec3 flee = DefaultRandomPos.getPosAway(this.mob, 16, 7, target.position());
+            if (flee != null) {
+                this.mob.getNavigation().moveTo(flee.x, flee.y, flee.z, speed * 1.25);
+            } else {
+                mob.getMoveControl().strafe(-(float) speed * getStrafeMultiplier(), (float) speed * getStrafeMultiplier());
+            }
+            return;
+        }
+
+        if (hasLineOfSight && distanceSquared <= PREFERRED_COMBAT_RANGE_SQR * 1.35f) {
+            this.mob.getNavigation().stop();
+            if (++strafeTime > 20 && mob.getRandom().nextDouble() < 0.12) {
+                strafingClockwise = !strafingClockwise;
+                strafeTime = 0;
+            }
+
+            float strafeForward = distanceSquared < PREFERRED_COMBAT_RANGE_SQR * 0.7f ? -0.12f : 0.08f;
+            int strafeDir = strafingClockwise ? 1 : -1;
+            mob.getMoveControl().strafe(strafeForward * getStrafeMultiplier(), (float) speed * 0.85f * strafeDir * getStrafeMultiplier());
+            if (mob.horizontalCollision && mob.getRandom().nextFloat() < 0.1f) {
+                tryJump();
+            }
+            return;
+        }
+
+        if (mob.tickCount % 5 == 0) {
+            this.mob.getNavigation().moveTo(this.target, speedModifier * 1.15);
+        }
+    }
+
+    @Override
+    protected double movementSpeed() {
+        return speedModifier * mob.getAttributeValue(Attributes.MOVEMENT_SPEED) * 2;
     }
 }

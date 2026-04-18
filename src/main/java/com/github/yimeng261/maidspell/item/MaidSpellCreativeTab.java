@@ -54,17 +54,18 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.SCARLET_ZHUHUA.get());
                 output.accept(MaidSpellItems.YUE_LINGLAN.get());
                 output.accept(MaidSpellItems.JINGXU_YOULAN.get());
-                output.accept(MaidSpellItems.HOLY_CONSTRUCT_SPAWN_EGG.get());
+
 
                 // 管理员工具
                 output.accept(MaidSpellItems.OWNER_CLEAR_TOOL.get());
 
                 // 怪物蛋
-                // if (IronsSpellbooksCompat.isLoaded()) {
-                //     output.accept(IronsSpellbooksCompatItems.CORRUPTED_KNIGHT_SPAWN_EGG.get());
-                //     output.accept(IronsSpellbooksCompatItems.SHADOW_ASSASSIN_SPAWN_EGG.get());
-                //     output.accept(IronsSpellbooksCompatItems.ELF_TEMPLAR_SPAWN_EGG.get());
-                // }
+                 if (IronsSpellbooksCompat.isLoaded()) {
+                     output.accept(IronsSpellbooksCompatItems.CORRUPTED_KNIGHT_SPAWN_EGG.get());
+                     output.accept(IronsSpellbooksCompatItems.SHADOW_ASSASSIN_SPAWN_EGG.get());
+                     output.accept(IronsSpellbooksCompatItems.ELF_TEMPLAR_SPAWN_EGG.get());
+                     output.accept(IronsSpellbooksCompatItems.HOLY_CONSTRUCT_SPAWN_EGG.get());
+                 }
             })
             .build());
     

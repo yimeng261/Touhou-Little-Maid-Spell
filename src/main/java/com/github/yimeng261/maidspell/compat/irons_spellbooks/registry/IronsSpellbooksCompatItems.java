@@ -33,6 +33,13 @@ public final class IronsSpellbooksCompatItems {
                             0xD9E8B5,
                             new Item.Properties()));
 
+    public static final RegistryObject<Item> HOLY_CONSTRUCT_SPAWN_EGG =
+            ITEMS.register("holy_construct_spawn_egg",
+                    () -> new ForgeSpawnEggItem(IronsSpellbooksCompatEntities.HOLY_CONSTRUCT,
+                            0xF5EBC7,
+                            0xFFD54F,
+                            new Item.Properties()));
+
     private IronsSpellbooksCompatItems() {
     }
 
