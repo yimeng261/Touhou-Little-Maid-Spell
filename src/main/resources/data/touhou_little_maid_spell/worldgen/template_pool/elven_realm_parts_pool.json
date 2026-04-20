@@ -1,0 +1,132 @@
+{
+  "name": "touhou_little_maid_spell:elven_realm_parts_pool",
+  "fallback": "minecraft:empty",
+  "elements": [
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_1",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_2",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },
+     {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_3",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    }, 
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_4",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },   
+ {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_5",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_6",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_7",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_8",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_9",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_10",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_11",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_12",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_13",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    },
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_14",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
+    }
+  ]
+}

@@ -62,7 +62,7 @@ public class RelicSanctumStructure extends Structure {
         int z = chunkPos.getMinBlockZ() + 8;
         int surfaceY = estimateSurfaceHeight(depthFn, x, z, context);
 
-        BlockPos startPos = new BlockPos(x, surfaceY - 1, z);
+        BlockPos startPos = new BlockPos(x, surfaceY + 1, z);
         return JigsawPlacement.addPieces(
                 context,
                 this.startPool,

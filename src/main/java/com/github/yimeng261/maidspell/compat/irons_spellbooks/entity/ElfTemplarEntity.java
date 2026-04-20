@@ -2,12 +2,12 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.base.AbstractSpellMeleeMob;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.entity.mobs.wizards.IMerchantWizard;
 import io.redspace.ironsspellbooks.registries.ItemRegistry;
-import io.redspace.ironsspellbooks.registries.SoundRegistry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.RandomSource;
@@ -192,17 +192,16 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
     public void notifyTradeUpdated(ItemStack stack) {
         if (!this.level().isClientSide && this.ambientSoundTime > -this.getAmbientSoundInterval() + 20) {
             this.ambientSoundTime = -this.getAmbientSoundInterval();
-            this.playSound(this.getTradeUpdatedSound(!stack.isEmpty()), this.getSoundVolume(), this.getVoicePitch());
         }
     }
 
     protected SoundEvent getTradeUpdatedSound(boolean isYesSound) {
-        return isYesSound ? SoundRegistry.TRADER_YES.get() : SoundRegistry.TRADER_NO.get();
+        return MaidSpellSounds.SILENT_MERCHANT_FEEDBACK.get();
     }
 
     @Override
     public SoundEvent getNotifyTradeSound() {
-        return SoundRegistry.TRADER_YES.get();
+        return MaidSpellSounds.SILENT_MERCHANT_FEEDBACK.get();
     }
 
     @Override

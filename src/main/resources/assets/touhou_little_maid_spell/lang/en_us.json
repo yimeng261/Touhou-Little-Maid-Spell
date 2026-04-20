@@ -74,6 +74,7 @@
   "structure.touhou_little_maid_spell.hidden_retreat": "Hidden Retreat",
   "structure.touhou_little_maid_spell.yin_yang_altar": "Yin-Yang Altar",
   "structure.touhou_little_maid_spell.fairy_maid_cafe": "Fairy Maid Cafe",
+  "structure.touhou_little_maid_spell.relic_sanctum": "Relic Chapel",
   "jei.touhou_little_maid_spell.altar_craft.item_craft.result": "Crafted Item",
   "item.touhou_little_maid_spell.chaos_book": "Chaos Book",
   "item.maidspell.chaos_book.desc1": "A tome recording chaos",
@@ -201,5 +202,6 @@
   "item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_8": "______\n\n______\n\n______\n\n______\n\n______\n\n______\n\n______",
   "item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_9": "Who am I?... Why am I here?\nI seem to have forgotten many things, but it doesn't feel important anymore. I can't quite understand the contents of this diary, but I can still write.\n______\n\nSomeone else has come.\nI cannot let them near that tree.\nI must not let anyone reach that place.\nI must not let anyone hear those voices and then... end up like me.",
   "pack.touhou_little_maid_spell.legacy_textures.title": "Touhou Little Maid: Spell Legacy Textures",
-  "pack.touhou_little_maid_spell.legacy_textures.desc": "Use legacy item textures"
+  "pack.touhou_little_maid_spell.legacy_textures.desc": "Use legacy item textures",
+  "structure.touhou_little_maid_spell.elven_realm": "Elven Realm"
 }

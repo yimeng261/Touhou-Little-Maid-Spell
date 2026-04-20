@@ -1,0 +1,89 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:nature_upgrade_orb", "weight": 7 },
+        { "type": "item", "name": "minecraft:air", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:nature_rune", "weight": 7 },
+        { "type": "item", "name": "minecraft:air", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
+        { "type": "item", "name": "minecraft:poisonous_potato", "weight": 7 },
+        { "type": "item", "name": "minecraft:air", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:poisonward_ring", "weight": 7 },
+        { "type": "item", "name": "minecraft:air", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 10,
+      "entries": [
+        { "type": "item", "name": "minecraft:glow_berries", "weight": 1 },
+        { "type": "item", "name": "minecraft:air", "weight": 1 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:scroll", "weight": 3, "functions": [ { "function": "set_nbt", "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:root\",locked:1b,level:10}],spellWheel:0b}}" } ] },
+        { "type": "item", "name": "minecraft:air", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:scroll", "weight": 3, "functions": [ { "function": "set_nbt", "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:stomp\",locked:1b,level:5}],spellWheel:0b}}" } ] },
+        { "type": "item", "name": "minecraft:air", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:scroll", "weight": 3, "functions": [ { "function": "set_nbt", "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:gluttony\",locked:1b,level:5}],spellWheel:0b}}" } ] },
+        { "type": "item", "name": "minecraft:air", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:scroll", "weight": 3, "functions": [ { "function": "set_nbt", "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:blight\",locked:1b,level:7}],spellWheel:0b}}" } ] },
+        { "type": "item", "name": "minecraft:air", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:scroll", "weight": 3, "functions": [ { "function": "set_nbt", "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:touch_dig\",locked:1b,level:3}],spellWheel:0b}}" } ] },
+        { "type": "item", "name": "minecraft:air", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:scroll", "weight": 3, "functions": [ { "function": "set_nbt", "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:earthquake\",locked:1b,level:10}],spellWheel:0b}}" } ] },
+        { "type": "item", "name": "minecraft:air", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:scroll", "weight": 3, "functions": [ { "function": "set_nbt", "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:poison_arrow\",locked:1b,level:10}],spellWheel:0b}}" } ] },
+        { "type": "item", "name": "minecraft:air", "weight": 7 }
+      ]
+    }
+  ]
+}

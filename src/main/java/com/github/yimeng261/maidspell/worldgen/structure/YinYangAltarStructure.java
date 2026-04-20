@@ -23,7 +23,7 @@ import java.util.Optional;
 public class YinYangAltarStructure extends Structure {
     public static final Codec<YinYangAltarStructure> CODEC = simpleCodec(YinYangAltarStructure::new);
     @SuppressWarnings("removal")
-    private static final ResourceLocation TEMPLATE_LOCATION = new ResourceLocation("touhou_little_maid_spell", "yin_yang_altar");
+    private static final ResourceLocation TEMPLATE_LOCATION = new ResourceLocation("touhou_little_maid_spell", "yin_yang_altar/yin_yang_altar");
 
     public YinYangAltarStructure(StructureSettings settings) {
         super(settings);

@@ -27,6 +27,21 @@
         "geckolib:animation/winefox_saint.condition.animation.json",
         "geckolib:animation/winefox_saint.iss.animation.json"
       ]
+    },
+    {
+      "name": "{model.geckolib.winefox_elf.name}",
+      "model_id": "geckolib:winefox_elf",
+      "is_gecko": true,
+      "description": [
+        "{model.geckolib.winefox_elf.desc.1}",
+        "{model.geckolib.winefox_elf.desc.2}"
+      ],
+      "render_entity_scale": 0.7,
+      "animation": [
+        "geckolib:animation/winefox_elf.main.animation.json",
+        "geckolib:animation/winefox_elf.condition.animation.json",
+        "geckolib:animation/winefox_elf.iss.animation.json"
+      ]
     }
   ]
 }

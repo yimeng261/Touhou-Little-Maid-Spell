@@ -22,7 +22,7 @@ import java.util.Optional;
 public class FairyMaidCafeStructure extends Structure {
     public static final Codec<FairyMaidCafeStructure> CODEC = simpleCodec(FairyMaidCafeStructure::new);
     @SuppressWarnings("removal")
-    private static final ResourceLocation TEMPLATE_LOCATION = new ResourceLocation("touhou_little_maid_spell", "fairy_maid_cafe");
+    private static final ResourceLocation TEMPLATE_LOCATION = new ResourceLocation("touhou_little_maid_spell", "fairy_maid_cafe/fairy_maid_cafe");
 
     public FairyMaidCafeStructure(StructureSettings settings) {
         super(settings);

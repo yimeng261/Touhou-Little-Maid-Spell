@@ -6,7 +6,7 @@
       "weight": 1,
       "element": {
         "element_type": "minecraft:single_pool_element",
-        "location": "touhou_little_maid_spell:relic_sanctum_2",
+        "location": "touhou_little_maid_spell:relic_sanctum/relic_sanctum_2",
         "processors": "minecraft:empty",
         "projection": "rigid"
       }

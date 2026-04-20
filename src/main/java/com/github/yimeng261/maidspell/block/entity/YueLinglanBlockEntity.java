@@ -13,7 +13,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
 import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
@@ -22,11 +24,13 @@ public class YueLinglanBlockEntity extends BlockEntity {
     private static final int TICK_INTERVAL = 40;
     private static final int PARTICLE_INTERVAL = 8;
     private static final int STRUCTURE_SEARCH_INTERVAL = 20 * 10;
-    private static final TagKey<Structure> FAIRY_MAID_CAFE_TAG =
-        TagKey.create(Registries.STRUCTURE, new ResourceLocation(MaidSpellMod.MOD_ID, "fairy_maid_cafe"));
-    private static final TagKey<Structure> HIDDEN_CHERRY_TREE_TAG =
-        TagKey.create(Registries.STRUCTURE, new ResourceLocation(MaidSpellMod.MOD_ID, "hidden_cherry_tree"));
+    private static final ResourceLocation ELVEN_REALM_ID = new ResourceLocation(MaidSpellMod.MOD_ID, "elven_realm");
+    private static final TagKey<Structure> ELVEN_REALM_TAG =
+        TagKey.create(Registries.STRUCTURE, ELVEN_REALM_ID);
     private static final int STRUCTURE_SEARCH_RADIUS = 2560;
+    private static final double MIN_PARTICLE_DISTANCE_TO_STRUCTURE = 16.0 * 2.0;
+    private static final double MIN_PARTICLE_DISTANCE_TO_STRUCTURE_SQR =
+        MIN_PARTICLE_DISTANCE_TO_STRUCTURE * MIN_PARTICLE_DISTANCE_TO_STRUCTURE;
     @Nullable
     private BlockPos cachedStructurePos;
     private long nextStructureSearchGameTime;
@@ -66,9 +70,17 @@ public class YueLinglanBlockEntity extends BlockEntity {
             return;
         }
 
+        if (isInsideTrackedStructure(level, pos) || isWithinSuppressionRange(level, pos)) {
+            return;
+        }
+
         double dx = cachedStructurePos.getX() + 0.5 - (pos.getX() + 0.5);
         double dz = cachedStructurePos.getZ() + 0.5 - (pos.getZ() + 0.5);
-        double horizontalLength = Math.sqrt(dx * dx + dz * dz);
+        double horizontalDistanceSqr = dx * dx + dz * dz;
+        if (horizontalDistanceSqr <= MIN_PARTICLE_DISTANCE_TO_STRUCTURE_SQR) {
+            return;
+        }
+        double horizontalLength = Math.sqrt(horizontalDistanceSqr);
         if (horizontalLength < 1.0e-4) {
             return;
         }
@@ -119,19 +131,44 @@ public class YueLinglanBlockEntity extends BlockEntity {
 
     @Nullable
     private BlockPos findNearestTrackedStructure(ServerLevel level, BlockPos origin) {
-        BlockPos fairyMaidCafe = level.findNearestMapStructure(FAIRY_MAID_CAFE_TAG, origin, STRUCTURE_SEARCH_RADIUS, false);
-        BlockPos hiddenCherryTree = level.findNearestMapStructure(HIDDEN_CHERRY_TREE_TAG, origin, STRUCTURE_SEARCH_RADIUS, false);
+        return level.findNearestMapStructure(ELVEN_REALM_TAG, origin, STRUCTURE_SEARCH_RADIUS, false);
+    }
 
-        if (fairyMaidCafe == null) {
-            return hiddenCherryTree;
-        }
-        if (hiddenCherryTree == null) {
-            return fairyMaidCafe;
+    private boolean isInsideTrackedStructure(ServerLevel level, BlockPos pos) {
+        return level.structureManager().getStructureWithPieceAt(pos, ELVEN_REALM_TAG).isValid();
+    }
+
+    private boolean isWithinSuppressionRange(ServerLevel level, BlockPos pos) {
+        StructureStart structureStart = getTrackedStructureStart(level);
+        if (!structureStart.isValid()) {
+            return false;
         }
 
-        return fairyMaidCafe.distSqr(origin) <= hiddenCherryTree.distSqr(origin)
-            ? fairyMaidCafe
-            : hiddenCherryTree;
+        BoundingBox box = structureStart.getBoundingBox();
+        int padding = (int) MIN_PARTICLE_DISTANCE_TO_STRUCTURE;
+        return pos.getX() >= box.minX() - padding
+            && pos.getX() <= box.maxX() + padding
+            && pos.getZ() >= box.minZ() - padding
+            && pos.getZ() <= box.maxZ() + padding;
+    }
+
+    private StructureStart getTrackedStructureStart(ServerLevel level) {
+        if (cachedStructurePos == null) {
+            return StructureStart.INVALID_START;
+        }
+
+        @SuppressWarnings("removal")
+        var structure = level.registryAccess().registryOrThrow(Registries.STRUCTURE).getOptional(ELVEN_REALM_ID);
+        if (structure.isEmpty()) {
+            return StructureStart.INVALID_START;
+        }
+
+        StructureStart structureStart = level.structureManager().getStructureAt(cachedStructurePos, structure.get());
+        if (structureStart.isValid()) {
+            return structureStart;
+        }
+
+        return level.structureManager().getStructureWithPieceAt(cachedStructurePos, structure.get());
     }
 
     @SuppressWarnings("unchecked")

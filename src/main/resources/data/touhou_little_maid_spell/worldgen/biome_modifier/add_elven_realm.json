@@ -1,0 +1,6 @@
+{
+  "type": "forge:add_structures",
+  "biomes": "#touhou_little_maid_spell:has_structure/elven_realm",
+  "structures": "touhou_little_maid_spell:elven_realm_set",
+  "dimensions": []
+}

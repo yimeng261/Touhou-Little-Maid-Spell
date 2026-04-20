@@ -6,7 +6,7 @@
       "weight": 1,
       "element": {
         "element_type": "minecraft:single_pool_element",
-        "location": "touhou_little_maid_spell:hidden_retreat_1",
+        "location": "touhou_little_maid_spell:hidden_retreat/hidden_retreat_1",
         "processors": "minecraft:empty",
         "projection": "rigid"
       }
@@ -15,7 +15,7 @@
       "weight": 1,
       "element": {
         "element_type": "minecraft:single_pool_element",
-        "location": "touhou_little_maid_spell:hidden_retreat_5",
+        "location": "touhou_little_maid_spell:hidden_retreat/hidden_retreat_5",
         "processors": "minecraft:empty",
         "projection": "rigid"
       }
@@ -24,7 +24,7 @@
       "weight": 1,
       "element": {
         "element_type": "minecraft:single_pool_element",
-        "location": "touhou_little_maid_spell:hidden_retreat_6",
+        "location": "touhou_little_maid_spell:hidden_retreat/hidden_retreat_6",
         "processors": "minecraft:empty",
         "projection": "rigid"
       }
@@ -33,7 +33,7 @@
       "weight": 1,
       "element": {
         "element_type": "minecraft:single_pool_element",
-        "location": "touhou_little_maid_spell:hidden_retreat_7",
+        "location": "touhou_little_maid_spell:hidden_retreat/hidden_retreat_7",
         "processors": "minecraft:empty",
         "projection": "rigid"
       }
@@ -42,7 +42,7 @@
       "weight": 1,
       "element": {
         "element_type": "minecraft:single_pool_element",
-        "location": "touhou_little_maid_spell:hidden_retreat_9",
+        "location": "touhou_little_maid_spell:hidden_retreat/hidden_retreat_9",
         "processors": "minecraft:empty",
         "projection": "rigid"
       }
@@ -51,7 +51,7 @@
       "weight": 1,
       "element": {
         "element_type": "minecraft:single_pool_element",
-        "location": "touhou_little_maid_spell:hidden_retreat_10",
+        "location": "touhou_little_maid_spell:hidden_retreat/hidden_retreat_10",
         "processors": "minecraft:empty",
         "projection": "rigid"
       }
@@ -60,7 +60,7 @@
       "weight": 1,
       "element": {
         "element_type": "minecraft:single_pool_element",
-        "location": "touhou_little_maid_spell:hidden_retreat_11",
+        "location": "touhou_little_maid_spell:hidden_retreat/hidden_retreat_11",
         "processors": "minecraft:empty",
         "projection": "rigid"
       }
@@ -69,7 +69,7 @@
       "weight": 1,
       "element": {
         "element_type": "minecraft:single_pool_element",
-        "location": "touhou_little_maid_spell:hidden_retreat_12",
+        "location": "touhou_little_maid_spell:hidden_retreat/hidden_retreat_12",
         "processors": "minecraft:empty",
         "projection": "rigid"
       }

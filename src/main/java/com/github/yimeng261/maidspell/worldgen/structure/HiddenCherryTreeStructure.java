@@ -22,7 +22,7 @@ import java.util.Optional;
 public class HiddenCherryTreeStructure extends Structure {
     public static final Codec<HiddenCherryTreeStructure> CODEC = simpleCodec(HiddenCherryTreeStructure::new);
     @SuppressWarnings("removal")
-    private static final ResourceLocation TEMPLATE_LOCATION = new ResourceLocation("touhou_little_maid_spell", "hidden_cherry_tree");
+    private static final ResourceLocation TEMPLATE_LOCATION = new ResourceLocation("touhou_little_maid_spell", "hidden_cherry_tree/hidden_cherry_tree");
 
     public HiddenCherryTreeStructure(StructureSettings settings) {
         super(settings);

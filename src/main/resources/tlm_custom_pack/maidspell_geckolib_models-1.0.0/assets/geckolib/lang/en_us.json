@@ -3,5 +3,8 @@
   "maid_pack.maidspell_geckolib.desc": "An automatic compatibility model pack for older Touhou Little Maid versions",
   "model.geckolib.winefox_saint.name": "Saint Wine Fox",
   "model.geckolib.winefox_saint.desc.1": "§7The saintess who serves the gods punishes evil spirits and offers blessings to all living beings.",
-  "model.geckolib.winefox_saint.desc.2": "§7Author: Wool_Official/ELIYA"
+  "model.geckolib.winefox_saint.desc.2": "§7Author: Wool_Official/ELIYA",
+  "model.geckolib.winefox_elf.name": "Elf Wine Fox",
+  "model.geckolib.winefox_elf.desc.1": "§7Wine Fox Fantasy Series — The fox girl, in her elven form, radiates a lush, primal essence of nature.",
+  "model.geckolib.winefox_elf.desc.2": "§7Author: ELIYA/TiKeLa"
 }

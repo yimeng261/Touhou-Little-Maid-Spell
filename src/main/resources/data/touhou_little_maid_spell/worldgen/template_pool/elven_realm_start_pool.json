@@ -1,15 +1,15 @@
 {
-  "name": "touhou_little_maid_spell:relic_sanctum_start_pool",
+  "name": "touhou_little_maid_spell:elven_realm_start_pool",
   "fallback": "minecraft:empty",
   "elements": [
     {
       "weight": 1,
       "element": {
         "element_type": "minecraft:single_pool_element",
-        "location": "touhou_little_maid_spell:relic_sanctum/relic_sanctum_1",
+        "location": "touhou_little_maid_spell:elven_realm/elven_realm_11",
         "processors": "minecraft:empty",
         "projection": "rigid"
-        }
       }
-    ]
+    }
+  ]
 }

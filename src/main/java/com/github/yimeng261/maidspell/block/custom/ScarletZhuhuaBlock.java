@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.block.custom;
 
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.CorruptedKnightEntity;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.block.entity.ScarletZhuhuaBlockEntity;
 import net.minecraft.core.BlockPos;
@@ -10,7 +11,6 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.trading.Merchant;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -77,7 +77,7 @@ public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
         for (LivingEntity living : level.getEntitiesOfClass(LivingEntity.class, area, ScarletZhuhuaBlock::shouldAffect)) {
             living.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, EFFECT_DURATION_TICKS, 1, true, false, true));
 
-            if (!(living instanceof EntityMaid)) {
+            if (!(living instanceof EntityMaid) && !(living instanceof CorruptedKnightEntity)) {
                 living.addEffect(new MobEffectInstance(MobEffects.WITHER, EFFECT_DURATION_TICKS, 0, true, false, true));
             }
         }

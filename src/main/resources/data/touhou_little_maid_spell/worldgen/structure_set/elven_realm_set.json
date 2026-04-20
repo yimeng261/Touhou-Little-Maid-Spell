@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:elven_realm",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 16,
+    "separation": 6,
+    "salt": 2063145721
+  }
+}

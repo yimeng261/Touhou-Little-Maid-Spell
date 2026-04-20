@@ -73,6 +73,7 @@
   "structure.touhou_little_maid_spell.hidden_retreat": "隐世之境",
   "structure.touhou_little_maid_spell.yin_yang_altar": "阴阳祭坛",
   "structure.touhou_little_maid_spell.fairy_maid_cafe": "妖精女仆咖啡厅",
+  "structure.touhou_little_maid_spell.relic_sanctum": "圣遗礼拜堂",
   "jei.touhou_little_maid_spell.altar_craft.item_craft.result": "合成物品",
   "item.touhou_little_maid_spell.chaos_book": "混沌之书",
   "item.maidspell.chaos_book.desc1": "记录混沌的典籍",
@@ -198,5 +199,6 @@
   "item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_8": "______\n\n______\n\n______\n\n______\n\n______\n\n______\n\n______",
   "item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_9": "我是谁？......我为什么在这里？\n我似乎忘记了很多事情，但感觉不重要了。日记里的内容我不太能理解，但我还能写。\n______\n\n又有人来了。\n我不能让他们靠近那棵树。\n不能让任何人去到那个地方。\n不能让任何人听见那些声音之后……像我一样。",
   "pack.touhou_little_maid_spell.legacy_textures.title": "万法皆通旧版材质",
-  "pack.touhou_little_maid_spell.legacy_textures.desc": "使用旧版物品材质"
+  "pack.touhou_little_maid_spell.legacy_textures.desc": "使用旧版物品材质",
+  "structure.touhou_little_maid_spell.elven_realm": "精灵秘境"
 }
