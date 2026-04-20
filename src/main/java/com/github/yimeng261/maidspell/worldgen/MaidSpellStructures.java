@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.worldgen.structure.FairyMaidCafeStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenCherryTreeStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
+import com.github.yimeng261.maidspell.worldgen.structure.RelicSanctumStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.YinYangAltarStructure;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.structure.StructureType;
@@ -35,5 +36,11 @@ public class MaidSpellStructures {
     public static final RegistryObject<StructureType<HiddenCherryTreeStructure>> HIDDEN_CHERRY_TREE = STRUCTURE_TYPES.register(
             "hidden_cherry_tree",
             () -> () -> HiddenCherryTreeStructure.CODEC
+    );
+
+    // 堕天圣堂结构（基于拼图系统）
+    public static final RegistryObject<StructureType<RelicSanctumStructure>> RELIC_SANCTUM = STRUCTURE_TYPES.register(
+            "relic_sanctum",
+            () -> () -> RelicSanctumStructure.CODEC
     );
 }

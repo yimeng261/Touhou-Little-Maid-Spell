@@ -3,6 +3,8 @@ package com.github.yimeng261.maidspell.mixin;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
+import com.github.yimeng261.maidspell.dimension.RetreatLevelData;
+import com.github.yimeng261.maidspell.dimension.RetreatLevelStateData;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
 import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
 import com.github.yimeng261.maidspell.dimension.RetreatManager;
@@ -25,7 +27,6 @@ import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.ServerLevelData;
-import net.minecraft.world.level.storage.DerivedLevelData;
 import net.minecraft.world.level.storage.WorldData;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.level.LevelEvent;
@@ -105,12 +106,12 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 return false;
             }
             
-            // 创建ServerLevel
-            // 使用 DerivedLevelData 为归隐之地创建独立的时间管理
-            // 这样每个维度都有自己的时间数据，不会与主世界冲突
+            // 创建 ServerLevel。
+            // RetreatLevelData 会为归隐之地提供独立的时间、天气和定时事件，
+            // 同时保留 DerivedLevelData 对主世界通用世界设置的委托行为。
             ServerLevelData overworldLevelData = (ServerLevelData) overworld.getLevelData();
             WorldData worldData = server.getWorldData();
-            DerivedLevelData derivedLevelData = new DerivedLevelData(worldData, overworldLevelData);
+            RetreatLevelData retreatLevelData = new RetreatLevelData(worldData, overworldLevelData);
             
             long seed = BiomeManager.obfuscateSeed((long)(0x66ccff*Math.random()));
             
@@ -133,7 +134,7 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 server,
                 executor,
                 storageSource,
-                derivedLevelData,  // 使用独立的 DerivedLevelData
+                retreatLevelData,
                 key,
                 templateStem,
                 progressListener,
@@ -143,6 +144,8 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                 true,
                 overworld.getRandomSequences()
             );
+
+            RetreatLevelStateData.get(newLevel).attach(retreatLevelData);
 
             RetreatManager.registerDimension(key, newLevel);
             Global.LOGGER.debug("Registered dimension: {}", newLevel.dimension().location());

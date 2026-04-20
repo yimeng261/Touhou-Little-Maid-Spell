@@ -5,6 +5,7 @@ import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import top.theillusivec4.curios.api.event.CurioChangeEvent;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
@@ -22,6 +23,7 @@ import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
@@ -31,6 +33,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraftforge.common.ForgeMod;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
@@ -354,6 +357,29 @@ public class MaidSpellEventHandler {
     }
 
     @SubscribeEvent
+    public static void onMobFinalizeSpawn(MobSpawnEvent.FinalizeSpawn event) {
+        if (!(event.getLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        if (!TheRetreatDimension.isRetreatDimension(level.dimension().location())) {
+            return;
+        }
+        if (!isControlledRetreatSpawnType(event.getSpawnType())) {
+            return;
+        }
+
+        LivingEntity entity = event.getEntity();
+        if (!Config.allowMobSpawnsInRetreat) {
+            event.setSpawnCancelled(true);
+            return;
+        }
+
+        if (!Config.allowHostileMobSpawnsInRetreat && entity instanceof Enemy) {
+            event.setSpawnCancelled(true);
+        }
+    }
+
+    @SubscribeEvent
     public static void onEntityHurt(LivingHurtEvent event) {
         Entity entity = event.getEntity();
         Entity source = event.getSource().getEntity();
@@ -542,6 +568,27 @@ public class MaidSpellEventHandler {
             LogUtils.getLogger().debug("Error checking hidden_retreat structure at {}: {}", pos, e.getMessage());
         }
         return false;
+    }
+
+    private static boolean isControlledRetreatSpawnType(MobSpawnType spawnType) {
+        return switch (spawnType) {
+            case NATURAL,
+                 CHUNK_GENERATION,
+                 SPAWNER,
+                 STRUCTURE,
+                 JOCKEY,
+                 EVENT,
+                 REINFORCEMENT,
+                 TRIGGERED,
+                 PATROL -> true;
+            case BREEDING,
+                 MOB_SUMMONED,
+                 CONVERSION,
+                 BUCKET,
+                 SPAWN_EGG,
+                 COMMAND,
+                 DISPENSER -> false;
+        };
     }
 
     private static void restoreRetreatLocationIfNeeded(ServerPlayer player) {

@@ -1,0 +1,54 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:mana_ring", "weight": 2 },
+        { "type": "item", "name": "minecraft:air", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:silver_ring", "weight": 2 },
+        { "type": "item", "name": "minecraft:air", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:emerald_stoneplate_ring", "weight": 2 },
+        { "type": "item", "name": "minecraft:air", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:concentration_amulet", "weight": 2 },
+        { "type": "item", "name": "minecraft:air", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "item", "name": "touhou_little_maid:projectile_protect_bauble", "weight": 2 },
+        { "type": "item", "name": "minecraft:air", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
+        { "type": "item", "name": "minecraft:emerald", "weight": 1 },
+        { "type": "item", "name": "minecraft:air", "weight": 1 }
+      ]
+    },
+    {
+      "rolls": 10,
+      "entries": [
+        { "type": "item", "name": "irons_spellbooks:arcane_essence", "weight": 1 },
+        { "type": "item", "name": "minecraft:air", "weight": 1 }
+      ]
+    }
+  ]
+}

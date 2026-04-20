@@ -1,0 +1,7 @@
+{
+  "type": "forge:add_structures",
+  "biomes": "#touhou_little_maid_spell:has_structure/relic_sanctum",
+  "structures": "touhou_little_maid_spell:relic_sanctum_set",
+  "dimensions": []
+}
+

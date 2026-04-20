@@ -592,6 +592,26 @@ public class Config {
             .define("enableSharedQuotaLimit", true);
 
     static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.BooleanValue ALLOW_MOB_SPAWNS_IN_RETREAT = BUILDER
+            .comment("是否允许生物在隐世之境生成 (默认: true)")
+            .comment("false 时会阻止隐世之境中的环境/结构/刷怪笼等自动生成")
+            .comment("Whether to allow mobs to spawn in The Retreat (default: true)")
+            .define("allowMobSpawnsInRetreat", true);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.BooleanValue ALLOW_HOSTILE_MOB_SPAWNS_IN_RETREAT = BUILDER
+            .comment("是否允许敌对生物在隐世之境生成 (默认: false)")
+            .comment("仅在 allowMobSpawnsInRetreat=true 时生效")
+            .comment("Whether to allow hostile mob spawns in The Retreat (default: false)")
+            .define("allowHostileMobSpawnsInRetreat", false);
+
+    static {
         BUILDER.pop(); // retreat_dimension
     }
 
@@ -669,6 +689,8 @@ public class Config {
     // 归隐之地维度相关
     public static boolean enablePrivateDimensions;
     public static boolean enableSharedQuotaLimit;
+    public static boolean allowMobSpawnsInRetreat;
+    public static boolean allowHostileMobSpawnsInRetreat;
 
 
     @SubscribeEvent
@@ -746,6 +768,8 @@ public class Config {
         // 归隐之地维度相关
         enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
         enableSharedQuotaLimit = ENABLE_SHARED_QUOTA_LIMIT.get();
+        allowMobSpawnsInRetreat = ALLOW_MOB_SPAWNS_IN_RETREAT.get();
+        allowHostileMobSpawnsInRetreat = ALLOW_HOSTILE_MOB_SPAWNS_IN_RETREAT.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

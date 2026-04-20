@@ -2,6 +2,8 @@ package com.github.yimeng261.maidspell.client;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
+import com.github.tartaricacid.touhoulittlemaid.client.event.ReloadResourceEvent;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraftforge.api.distmarker.Dist;
@@ -30,6 +32,9 @@ public class ClientSetup {
             ItemBlockRenderTypes.setRenderLayer(MaidSpellBlocks.MOLTEN_FOX_LEAF_TRAIL.get(), RenderType.cutout());
             ItemBlockRenderTypes.setRenderLayer(MaidSpellBlocks.MOLTEN_FOX_LEAF_TRAIL_BIG.get(), RenderType.cutout());
             ItemBlockRenderTypes.setRenderLayer(MaidSpellBlocks.MOLTEN_FOX_LEAF_TRAIL_SMALL.get(), RenderType.cutout());
+            if (TouhouLittleMaidModelPackInstaller.wasInstalledThisRun()) {
+                ReloadResourceEvent.asyncReloadAllPack();
+            }
         });
     }
 }

@@ -8,6 +8,8 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.util.FoxLeafSurfaceHelper;
 
+import net.minecraft.core.registries.Registries;
+import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.Entity;
@@ -18,6 +20,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.*;
@@ -34,7 +37,7 @@ import javax.annotation.Nullable;
  * EntityMaid的Mixin，用于:
  * 1. 替换女仆背包处理器为支持法术书变化监听的版本
  * 2. 替换女仆饰品处理器为支持女仆实体关联的版本
- * 3. 修改finalizeSpawn方法，使hidden_retreat结构中的女仆structureSpawn不为true
+ * 3. 修改finalizeSpawn方法，使特定结构中的女仆跳过随机模型选择
  */
 @Mixin(value = EntityMaid.class,remap = false)
 public class EntityMaidMixin {
@@ -50,8 +53,8 @@ public class EntityMaidMixin {
 
     
     /**
-     * 修改finalizeSpawn方法，阻止hidden_retreat结构中的女仆进行随机模型选择
-     * 在方法开头注入，如果检测到是在hidden_retreat结构中生成，则提前返回
+     * 修改finalizeSpawn方法，阻止指定结构中的女仆进行随机模型选择。
+     * 在方法开头注入，如果检测到是在目标结构中生成，则提前返回。
      */
     @Inject(method = "finalizeSpawn(Lnet/minecraft/world/level/ServerLevelAccessor;Lnet/minecraft/world/DifficultyInstance;Lnet/minecraft/world/entity/MobSpawnType;Lnet/minecraft/world/entity/SpawnGroupData;Lnet/minecraft/nbt/CompoundTag;)Lnet/minecraft/world/entity/SpawnGroupData;", 
             at = @At("HEAD"), 
@@ -65,14 +68,14 @@ public class EntityMaidMixin {
                 EntityMaid maid = (EntityMaid)(Object)this;
                 BlockPos maidPos = maid.blockPosition();
 
-                if (maidSpell$isInHiddenRetreatStructure(worldIn, maidPos)) {
+                if (maidSpell$shouldSkipRandomModel(worldIn, maidPos)) {
                     this.structureSpawn = false;
-                    Global.LOGGER.debug("Prevented finalizeSpawn processing for maid in hidden_retreat structure at {}", maidPos);
+                    Global.LOGGER.debug("Prevented finalizeSpawn processing for maid in protected structure at {}", maidPos);
                     cir.setReturnValue(spawnDataIn);
                 }
             }
         } catch (Exception e) {
-            Global.LOGGER.error("Failed to prevent finalizeSpawn processing for hidden_retreat maid", e);
+            Global.LOGGER.error("Failed to prevent finalizeSpawn processing for protected-structure maid", e);
         }
     }
 
@@ -313,26 +316,30 @@ public class EntityMaidMixin {
     }
 
     /**
-     * 检查指定位置是否在hidden_retreat结构中
+     * 检查指定位置是否在需要阻断随机模型的结构中
      * @param worldIn 世界访问器
      * @param pos 检查的位置
-     * @return 如果在hidden_retreat结构中返回true
+     * @return 如果在目标结构中返回true
      */
     @Unique
-    private boolean maidSpell$isInHiddenRetreatStructure(ServerLevelAccessor worldIn, BlockPos pos) {
-        // 检查当前位置是否在hidden_retreat结构中
-        // 使用结构管理器检查
-        var structureManager = worldIn.getLevel().structureManager();
-        @SuppressWarnings("removal")
-        var hiddenRetreatStructureSet = worldIn.registryAccess()
-            .registryOrThrow(net.minecraft.core.registries.Registries.STRUCTURE)
-            .getOptional(new ResourceLocation("touhou_little_maid_spell", "hidden_retreat"));
+    private boolean maidSpell$shouldSkipRandomModel(ServerLevelAccessor worldIn, BlockPos pos) {
+        StructureManager structureManager = worldIn.getLevel().structureManager();
+        Registry<net.minecraft.world.level.levelgen.structure.Structure> structureRegistry =
+                worldIn.registryAccess().registryOrThrow(Registries.STRUCTURE);
 
-        if (hiddenRetreatStructureSet.isPresent()) {
-            // 检查此位置是否在hidden_retreat结构的范围内
-            var structureStart = structureManager.getStructureWithPieceAt(pos, hiddenRetreatStructureSet.get());
-            return structureStart.isValid();
+        if (maidSpell$isInsideStructure(structureManager, structureRegistry, pos, "hidden_retreat")) {
+            return true;
         }
-        return false;
+        return maidSpell$isInsideStructure(structureManager, structureRegistry, pos, "relic_sanctum");
+    }
+
+    @Unique
+    private static boolean maidSpell$isInsideStructure(StructureManager structureManager,
+                                                       Registry<net.minecraft.world.level.levelgen.structure.Structure> structureRegistry,
+                                                       BlockPos pos,
+                                                       String structureId) {
+        @SuppressWarnings("removal")
+        var structure = structureRegistry.getOptional(new ResourceLocation("touhou_little_maid_spell", structureId));
+        return structure.isPresent() && structureManager.getStructureWithPieceAt(pos, structure.get()).isValid();
     }
 } 

@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.dimension;
 
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.storage.DerivedLevelData;
 import net.minecraft.world.level.storage.ServerLevelData;
 import net.minecraft.world.level.storage.WorldData;
@@ -22,18 +23,30 @@ public class RetreatLevelData extends DerivedLevelData {
     private long dayTime;
     private final TimerQueue<MinecraftServer> scheduledEvents = new TimerQueue<>(TimerCallbacks.SERVER_CALLBACKS);
 
+    // 独立的世界出生点
+    private int xSpawn;
+    private int ySpawn;
+    private int zSpawn;
+    private float spawnAngle;
+
     // 独立的天气状态
     private int clearWeatherTime;
     private boolean isRaining;
     private int rainTime;
     private boolean isThundering;
     private int thunderTime;
+    private Runnable dirtyListener = () -> {};
 
     public RetreatLevelData(WorldData worldData, ServerLevelData wrapped) {
         super(worldData, wrapped);
         // 初始化时从主世界复制当前时间
         this.gameTime = wrapped.getGameTime();
         this.dayTime = wrapped.getDayTime();
+        // 初始化出生点
+        this.xSpawn = wrapped.getXSpawn();
+        this.ySpawn = wrapped.getYSpawn();
+        this.zSpawn = wrapped.getZSpawn();
+        this.spawnAngle = wrapped.getSpawnAngle();
         // 初始化天气状态
         this.clearWeatherTime = wrapped.getClearWeatherTime();
         this.isRaining = wrapped.isRaining();
@@ -45,6 +58,59 @@ public class RetreatLevelData extends DerivedLevelData {
     // ========== 时间 ==========
 
     @Override
+    public int getXSpawn() {
+        return this.xSpawn;
+    }
+
+    @Override
+    public int getYSpawn() {
+        return this.ySpawn;
+    }
+
+    @Override
+    public int getZSpawn() {
+        return this.zSpawn;
+    }
+
+    @Override
+    public float getSpawnAngle() {
+        return this.spawnAngle;
+    }
+
+    @Override
+    public void setXSpawn(int xSpawn) {
+        this.xSpawn = xSpawn;
+        this.markDirty();
+    }
+
+    @Override
+    public void setYSpawn(int ySpawn) {
+        this.ySpawn = ySpawn;
+        this.markDirty();
+    }
+
+    @Override
+    public void setZSpawn(int zSpawn) {
+        this.zSpawn = zSpawn;
+        this.markDirty();
+    }
+
+    @Override
+    public void setSpawnAngle(float spawnAngle) {
+        this.spawnAngle = spawnAngle;
+        this.markDirty();
+    }
+
+    @Override
+    public void setSpawn(BlockPos blockPos, float angle) {
+        this.xSpawn = blockPos.getX();
+        this.ySpawn = blockPos.getY();
+        this.zSpawn = blockPos.getZ();
+        this.spawnAngle = angle;
+        this.markDirty();
+    }
+
+    @Override
     public long getGameTime() {
         return this.gameTime;
     }
@@ -52,6 +118,7 @@ public class RetreatLevelData extends DerivedLevelData {
     @Override
     public void setGameTime(long gameTime) {
         this.gameTime = gameTime;
+        this.markDirty();
     }
 
     @Override
@@ -62,6 +129,7 @@ public class RetreatLevelData extends DerivedLevelData {
     @Override
     public void setDayTime(long dayTime) {
         this.dayTime = dayTime;
+        this.markDirty();
     }
 
     // ========== 定时事件队列 ==========
@@ -81,6 +149,7 @@ public class RetreatLevelData extends DerivedLevelData {
     @Override
     public void setClearWeatherTime(int time) {
         this.clearWeatherTime = time;
+        this.markDirty();
     }
 
     @Override
@@ -91,6 +160,7 @@ public class RetreatLevelData extends DerivedLevelData {
     @Override
     public void setRaining(boolean raining) {
         this.isRaining = raining;
+        this.markDirty();
     }
 
     @Override
@@ -101,6 +171,7 @@ public class RetreatLevelData extends DerivedLevelData {
     @Override
     public void setRainTime(int time) {
         this.rainTime = time;
+        this.markDirty();
     }
 
     @Override
@@ -111,6 +182,7 @@ public class RetreatLevelData extends DerivedLevelData {
     @Override
     public void setThundering(boolean thundering) {
         this.isThundering = thundering;
+        this.markDirty();
     }
 
     @Override
@@ -121,5 +193,14 @@ public class RetreatLevelData extends DerivedLevelData {
     @Override
     public void setThunderTime(int time) {
         this.thunderTime = time;
+        this.markDirty();
+    }
+
+    public void setDirtyListener(Runnable dirtyListener) {
+        this.dirtyListener = dirtyListener != null ? dirtyListener : () -> {};
+    }
+
+    private void markDirty() {
+        this.dirtyListener.run();
     }
 }
