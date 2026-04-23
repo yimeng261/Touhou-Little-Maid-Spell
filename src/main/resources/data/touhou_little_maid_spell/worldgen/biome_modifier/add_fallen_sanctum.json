@@ -1,0 +1,6 @@
+{
+  "type": "forge:add_structures",
+  "biomes": "#touhou_little_maid_spell:has_structure/fallen_sanctum",
+  "structures": "touhou_little_maid_spell:fallen_sanctum_set",
+  "dimensions": []
+}

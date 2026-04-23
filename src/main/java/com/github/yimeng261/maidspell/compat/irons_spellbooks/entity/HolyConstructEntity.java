@@ -10,6 +10,7 @@ import io.redspace.ironsspellbooks.entity.mobs.goals.WizardRecoverGoal;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -62,7 +63,8 @@ public class HolyConstructEntity extends AbstractSpellCastingMob implements Enem
         this.goalSelector.addGoal(10, new WizardRecoverGoal(this));
 
         this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
-        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, true));
+        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, 10, true, false,
+            player -> !isPeacefulDifficulty()));
     }
 
     public static AttributeSupplier.Builder prepareAttributes() {
@@ -100,6 +102,22 @@ public class HolyConstructEntity extends AbstractSpellCastingMob implements Enem
 
     @Override
     protected boolean shouldDespawnInPeaceful() {
-        return true;
+        return false;
+    }
+
+    @Override
+    protected void customServerAiStep() {
+        super.customServerAiStep();
+        if (isPeacefulDifficulty()) {
+            if (this.getTarget() != null) {
+                this.setTarget(null);
+            }
+            this.getNavigation().stop();
+            this.cancelCast();
+        }
+    }
+
+    private boolean isPeacefulDifficulty() {
+        return this.level().getDifficulty() == Difficulty.PEACEFUL;
     }
 }

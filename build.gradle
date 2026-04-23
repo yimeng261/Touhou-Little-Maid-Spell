@@ -184,6 +184,12 @@ tasks.named('jar', Jar).configure {
     finalizedBy 'reobfJar'
 }
 
+tasks.configureEach {
+    if (name in ['addMixinsToJarJar', 'jarJar', 'reobfJarJar']) {
+        enabled = false
+    }
+}
+
 tasks.withType(JavaCompile).configureEach {
     // 强制使用 UTF-8 编码，避免中文乱码
     options.encoding = 'UTF-8'

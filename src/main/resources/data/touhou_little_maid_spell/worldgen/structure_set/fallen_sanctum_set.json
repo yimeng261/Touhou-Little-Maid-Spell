@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:fallen_sanctum",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 16,
+    "separation": 5,
+    "salt": 1735687906
+  }
+}

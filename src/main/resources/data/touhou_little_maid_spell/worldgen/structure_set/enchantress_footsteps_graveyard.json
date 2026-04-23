@@ -1,0 +1,20 @@
+{
+  "forge:conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "goety"
+    }
+  ],
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:enchantress_footsteps_graveyard",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 36,
+    "separation": 16,
+    "salt": 1248316573
+  }
+}

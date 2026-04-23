@@ -1,0 +1,11 @@
+{
+  "forge:conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
+  "type": "forge:add_structures",
+  "biomes": "#touhou_little_maid_spell:has_structure/woods_perch",
+  "structures": "touhou_little_maid_spell:woods_perch_set"
+}

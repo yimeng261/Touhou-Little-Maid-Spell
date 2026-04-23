@@ -21,6 +21,7 @@ public final class TouhouLittleMaidModelPackInstaller {
     private static final List<String> PACK_FILES = List.of(
             "assets/geckolib/maid_model.json",
             "assets/geckolib/models/entity/winefox_saint.json",
+            "assets/geckolib/models/entity/winefox_saint_black.json",
             "assets/geckolib/models/entity/winefox_elf.json",
             "assets/geckolib/animation/winefox_saint.main.animation.json",
             "assets/geckolib/animation/winefox_saint.condition.animation.json",
@@ -30,6 +31,7 @@ public final class TouhouLittleMaidModelPackInstaller {
             "assets/geckolib/animation/winefox_elf.iss.animation.json",
             "assets/geckolib/textures/entity/winefox_saint.png",
             "assets/geckolib/textures/entity/winefox_saint_1.png",
+            "assets/geckolib/textures/entity/winefox_saint_black.png",
             "assets/geckolib/textures/entity/winefox_elf.png",
             "assets/geckolib/lang/zh_cn.json",
             "assets/geckolib/lang/en_us.json"

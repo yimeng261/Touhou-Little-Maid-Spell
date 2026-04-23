@@ -333,6 +333,9 @@ public class EntityMaidMixin {
         if (maidSpell$isInsideStructure(structureManager, structureRegistry, pos, "relic_sanctum")) {
             return true;
         }
+        if (maidSpell$isInsideStructure(structureManager, structureRegistry, pos, "fallen_sanctum")) {
+            return true;
+        }
         return maidSpell$isInsideStructure(structureManager, structureRegistry, pos, "elven_realm");
     }
 
