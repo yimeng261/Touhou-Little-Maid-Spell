@@ -1,6 +1,5 @@
 package com.github.yimeng261.maidspell.item.bauble.blueNote.contianer;
 
-import com.github.yimeng261.maidspell.spell.providers.IronsSpellbooksProvider;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -8,7 +7,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.ItemStackHandler;
 import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
-import io.redspace.ironsspellbooks.api.spells.SpellData;
+import io.redspace.ironsspellbooks.api.spells.SpellSlot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -113,10 +112,9 @@ public class BlueNoteSpellManager {
             if (!stack.isEmpty() && ISpellContainer.isSpellContainer(stack)) {
                 ISpellContainer container = ISpellContainer.get(stack);
                 if (!container.isEmpty()) {
-                    List<SpellData> scrollSpells = IronsSpellbooksProvider.ApiCompatLayer.convertToSpellDataList(container.getActiveSpells());
-                    for (SpellData spellData : scrollSpells) {
-                        if (spellData != null && spellData.getSpell() != null) {
-                            spellIds.add(spellData.getSpell().getSpellId());
+                    for (SpellSlot spellSlot : container.getActiveSpells()) {
+                        if (spellSlot != null && spellSlot.spellData() != null && spellSlot.spellData().getSpell() != null) {
+                            spellIds.add(spellSlot.spellData().getSpell().getSpellId());
                         }
                     }
                 }
