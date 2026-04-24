@@ -4,6 +4,11 @@
   "biomes": "#touhou_little_maid_spell:has_structure/yin_yang_altar",
   "spawn_overrides": {},
   "step": "surface_structures",
-  "terrain_adaptation": "beard_box"
+  "terrain_adaptation": "beard_box",
+  "forge:conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "goety"
+    }
+  ]
 }
-

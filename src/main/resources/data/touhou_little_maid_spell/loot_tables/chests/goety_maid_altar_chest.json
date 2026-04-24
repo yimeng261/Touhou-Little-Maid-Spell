@@ -82,6 +82,11 @@
         }
       ]
     }
+  ],
+  "forge:conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "goety"
+    }
   ]
 }
-

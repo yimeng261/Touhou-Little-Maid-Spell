@@ -10,6 +10,11 @@
     "spacing": 40,
     "separation": 20,
     "salt": 1642892357
-  }
+  },
+  "forge:conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "goety"
+    }
+  ]
 }
-
