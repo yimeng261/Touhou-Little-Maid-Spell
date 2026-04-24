@@ -1,7 +1,7 @@
-package com.github.yimeng261.maidspell.item.bauble.blueNote;
+package com.github.yimeng261.maidspell.item.bauble.spellWhiteList;
 
-import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.BlueNoteContainerProvider;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.BlueNoteSpellManager;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.SpellWhiteListContainerProvider;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.SpellWhiteListSpellManager;
 import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -20,8 +20,8 @@ import net.minecraftforge.network.NetworkHooks;
 import javax.annotation.Nullable;
 import java.util.List;
 
-public class BlueNote extends Item {
-    public BlueNote() {
+public class SpellWhiteList extends Item {
+    public SpellWhiteList() {
         super(new Properties()
                 .stacksTo(1)
                 .rarity(Rarity.EPIC)
@@ -45,15 +45,15 @@ public class BlueNote extends Item {
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
     
-    private void openGUI(ServerPlayer player, ItemStack blueNoteStack, int slot) {
+    private void openGUI(ServerPlayer player, ItemStack spellWhiteListStack, int slot) {
         ItemStackHandler scrollHandler = new ItemStackHandler(27);
-        BlueNoteSpellManager.loadScrollsFromItem(blueNoteStack, scrollHandler);
+        SpellWhiteListSpellManager.loadScrollsFromItem(spellWhiteListStack, scrollHandler);
         
         NetworkHooks.openScreen(player, 
-            new BlueNoteContainerProvider(scrollHandler, blueNoteStack, slot),
+            new SpellWhiteListContainerProvider(scrollHandler, spellWhiteListStack, slot),
             buf -> {
                 buf.writeInt(slot);
-                buf.writeItem(blueNoteStack);
+                buf.writeItem(spellWhiteListStack);
             }
         );
     }

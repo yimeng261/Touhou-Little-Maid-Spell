@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.item.bauble.blueNote.contianer;
+package com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
@@ -13,29 +13,29 @@ import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.items.SlotItemHandler;
 import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
 
-public class BlueNoteContainer extends AbstractContainerMenu {
-    public static final MenuType<BlueNoteContainer> TYPE = IForgeMenuType.create(BlueNoteContainer::createContainerClientSide);
+public class SpellWhiteListContainer extends AbstractContainerMenu {
+    public static final MenuType<SpellWhiteListContainer> TYPE = IForgeMenuType.create(SpellWhiteListContainer::createContainerClientSide);
     
     private final ItemStackHandler spellScrolls;
-    private final ItemStack blueNoteStack;
-    private final int blueNoteSlot;
+    private final ItemStack spellWhiteListStack;
+    private final int spellWhiteListSlot;
     
     // 客户端构造函数
-    public static BlueNoteContainer createContainerClientSide(int id, Inventory playerInventory, FriendlyByteBuf data) {
+    public static SpellWhiteListContainer createContainerClientSide(int id, Inventory playerInventory, FriendlyByteBuf data) {
         int slot = data.readInt();
-        ItemStack blueNoteStack = data.readItem();
+        ItemStack spellWhiteListStack = data.readItem();
         ItemStackHandler scrollHandler = new ItemStackHandler(27);
         // 客户端从NBT加载数据
-        BlueNoteSpellManager.loadScrollsFromItem(blueNoteStack, scrollHandler);
-        return new BlueNoteContainer(id, playerInventory, scrollHandler, blueNoteStack, slot);
+        SpellWhiteListSpellManager.loadScrollsFromItem(spellWhiteListStack, scrollHandler);
+        return new SpellWhiteListContainer(id, playerInventory, scrollHandler, spellWhiteListStack, slot);
     }
     
     // 通用构造函数
-    public BlueNoteContainer(int id, Inventory playerInventory, ItemStackHandler spellScrolls, ItemStack blueNoteStack, int blueNoteSlot) {
+    public SpellWhiteListContainer(int id, Inventory playerInventory, ItemStackHandler spellScrolls, ItemStack spellWhiteListStack, int spellWhiteListSlot) {
         super(TYPE, id);
         this.spellScrolls = spellScrolls;
-        this.blueNoteStack = blueNoteStack;
-        this.blueNoteSlot = blueNoteSlot;
+        this.spellWhiteListStack = spellWhiteListStack;
+        this.spellWhiteListSlot = spellWhiteListSlot;
         
         // 添加法术卷轴槽位（3x9布局）
         for (int row = 0; row < 3; ++row) {
@@ -92,7 +92,7 @@ public class BlueNoteContainer extends AbstractContainerMenu {
         }
         
         // 禁止与蓝色音符物品本身的交互，防止刷物品bug
-        if (blueNoteSlot >= 0 && slotId == 27 + blueNoteSlot) {
+        if (spellWhiteListSlot >= 0 && slotId == 27 + spellWhiteListSlot) {
             return;
         }
         
@@ -138,9 +138,9 @@ public class BlueNoteContainer extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        if (blueNoteSlot >= 0) {
-            ItemStack stack = player.getInventory().getItem(blueNoteSlot);
-            return ItemStack.isSameItem(stack, blueNoteStack);
+        if (spellWhiteListSlot >= 0) {
+            ItemStack stack = player.getInventory().getItem(spellWhiteListSlot);
+            return ItemStack.isSameItem(stack, spellWhiteListStack);
         }
         return true;
     }
@@ -152,9 +152,9 @@ public class BlueNoteContainer extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
-        // 保存卷轴到BlueNote的NBT，包括法术列表
-        if (!blueNoteStack.isEmpty()) {
-            BlueNoteSpellManager.saveScrollsToItem(blueNoteStack, spellScrolls);
+        // 保存卷轴到spellWhiteList的NBT，包括法术列表
+        if (!spellWhiteListStack.isEmpty()) {
+            SpellWhiteListSpellManager.saveScrollsToItem(spellWhiteListStack, spellScrolls);
         }
     }
     

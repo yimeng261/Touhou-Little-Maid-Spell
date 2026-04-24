@@ -27,7 +27,7 @@ public class MaidSpellCreativeTab {
             .displayItems((parameters, output) -> {
                 if (IronsSpellbooksCompat.isLoaded()) {
                     output.accept(MaidSpellItems.SPELL_ENHANCEMENT_CORE.get());
-                    output.accept(MaidSpellItems.BLUE_NOTE.get());
+                    output.accept(MaidSpellItems.SPELL_WHITE_LIST.get());
                     output.accept(MaidSpellItems.WIND_SEEKING_BELL.get());
                 }
 

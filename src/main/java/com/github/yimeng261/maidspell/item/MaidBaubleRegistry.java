@@ -5,7 +5,7 @@ import com.github.tartaricacid.touhoulittlemaid.api.LittleMaidExtension;
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeartBauble;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNoteBauble;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.SpellWhiteListBauble;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChainBauble;
 import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.HairpinBauble;
@@ -72,8 +72,8 @@ public class MaidBaubleRegistry implements ILittleMaid {
             manager.bind(MaidSpellItems.SLIVER_CERCIS, new SilverCercisBauble());
         }
 
-        if(MaidSpellItems.BLUE_NOTE != null){
-            manager.bind(MaidSpellItems.BLUE_NOTE, new BlueNoteBauble());
+        if(MaidSpellItems.SPELL_WHITE_LIST != null){
+            manager.bind(MaidSpellItems.SPELL_WHITE_LIST, new SpellWhiteListBauble());
         }
 
         if(MaidSpellItems.HAIRPIN != null){

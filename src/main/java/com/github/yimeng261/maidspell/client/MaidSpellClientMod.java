@@ -1,12 +1,12 @@
 package com.github.yimeng261.maidspell.client;
 
-import com.github.yimeng261.maidspell.client.gui.BlueNoteScreen;
+import com.github.yimeng261.maidspell.client.gui.SpellWhiteListScreen;
 import com.github.yimeng261.maidspell.client.model.SharedHaloModel;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.server.packs.PackType;
 import net.minecraftforge.api.distmarker.Dist;
@@ -24,7 +24,7 @@ public class MaidSpellClientMod {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
-            MenuScreens.register(MaidSpellContainers.BLUE_NOTE_CONTAINER.get(), BlueNoteScreen::new);
+            MenuScreens.register(MaidSpellContainers.SPELL_WHITE_LIST_CONTAINER.get(), SpellWhiteListScreen::new);
         });
     }
 

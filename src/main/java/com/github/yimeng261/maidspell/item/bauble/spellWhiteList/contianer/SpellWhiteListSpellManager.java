@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.item.bauble.blueNote.contianer;
+package com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -13,22 +13,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * BlueNote法术管理器
+ * spellWhiteList法术管理器
  * 负责法术和卷轴物品的保存、读取和管理
  */
-public class BlueNoteSpellManager {
+public class SpellWhiteListSpellManager {
     private static final String SCROLLS_TAG = "StoredScrolls";
     private static final String SPELL_IDS_TAG = "SpellIds";
     
     /**
-     * 从BlueNote物品中加载卷轴物品
+     * 从spellWhiteList物品中加载卷轴物品
      */
-    public static void loadScrollsFromItem(ItemStack blueNoteStack, ItemStackHandler scrollHandler) {
-        if (blueNoteStack.isEmpty()) {
+    public static void loadScrollsFromItem(ItemStack spellWhiteListStack, ItemStackHandler scrollHandler) {
+        if (spellWhiteListStack.isEmpty()) {
             return;
         }
         
-        CompoundTag tag = blueNoteStack.getOrCreateTag();
+        CompoundTag tag = spellWhiteListStack.getOrCreateTag();
         if (!tag.contains(SCROLLS_TAG)) {
             return;
         }
@@ -51,14 +51,14 @@ public class BlueNoteSpellManager {
     }
     
     /**
-     * 将卷轴物品保存到BlueNote物品
+     * 将卷轴物品保存到spellWhiteList物品
      */
-    public static void saveScrollsToItem(ItemStack blueNoteStack, ItemStackHandler scrollHandler) {
-        if (blueNoteStack.isEmpty()) {
+    public static void saveScrollsToItem(ItemStack spellWhiteListStack, ItemStackHandler scrollHandler) {
+        if (spellWhiteListStack.isEmpty()) {
             return;
         }
         
-        CompoundTag tag = blueNoteStack.getOrCreateTag();
+        CompoundTag tag = spellWhiteListStack.getOrCreateTag();
         ListTag scrollsList = new ListTag();
         
         for (int i = 0; i < scrollHandler.getSlots(); i++) {
@@ -76,20 +76,20 @@ public class BlueNoteSpellManager {
         tag.put(SCROLLS_TAG, scrollsList);
         
         // 同时保存法术ID列表
-        saveSpellIdsToItem(blueNoteStack, scrollHandler);
+        saveSpellIdsToItem(spellWhiteListStack, scrollHandler);
     }
     
     /**
-     * 将法术ID列表保存到BlueNote物品
+     * 将法术ID列表保存到spellWhiteList物品
      */
-    public static void saveSpellIdsToItem(ItemStack blueNoteStack, ItemStackHandler scrollHandler) {
-        if (blueNoteStack.isEmpty()) {
+    public static void saveSpellIdsToItem(ItemStack spellWhiteListStack, ItemStackHandler scrollHandler) {
+        if (spellWhiteListStack.isEmpty()) {
             return;
         }
         
         List<String> spellIds = extractSpellIdsFromScrolls(scrollHandler);
         
-        CompoundTag tag = blueNoteStack.getOrCreateTag();
+        CompoundTag tag = spellWhiteListStack.getOrCreateTag();
         ListTag spellIdsList = new ListTag();
         
         for (String spellId : spellIds) {
@@ -127,14 +127,14 @@ public class BlueNoteSpellManager {
     /**
      * 获取存储的法术ID列表
      */
-    public static List<String> getStoredSpellIds(ItemStack blueNoteStack) {
+    public static List<String> getStoredSpellIds(ItemStack spellWhiteListStack) {
         List<String> spellIds = new ArrayList<>();
         
-        if (blueNoteStack.isEmpty()) {
+        if (spellWhiteListStack.isEmpty()) {
             return spellIds;
         }
         
-        CompoundTag tag = blueNoteStack.getTag();
+        CompoundTag tag = spellWhiteListStack.getTag();
         if (tag == null || !tag.contains(SPELL_IDS_TAG)) {
             return spellIds;
         }
@@ -154,9 +154,9 @@ public class BlueNoteSpellManager {
     /**
      * 清空存储的数据
      */
-    public static void clearStoredData(ItemStack blueNoteStack) {
-        if (!blueNoteStack.isEmpty()) {
-            CompoundTag tag = blueNoteStack.getOrCreateTag();
+    public static void clearStoredData(ItemStack spellWhiteListStack) {
+        if (!spellWhiteListStack.isEmpty()) {
+            CompoundTag tag = spellWhiteListStack.getOrCreateTag();
             tag.remove(SCROLLS_TAG);
             tag.remove(SPELL_IDS_TAG);
         }
