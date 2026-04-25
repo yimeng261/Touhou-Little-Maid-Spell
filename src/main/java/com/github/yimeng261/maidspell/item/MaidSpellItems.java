@@ -88,7 +88,9 @@ public class MaidSpellItems {
         () -> new BlockItem(MaidSpellBlocks.YUE_LINGLAN.get(), new Item.Properties()));
     public static final RegistryObject<Item> JINGXU_YOULAN = ITEMS.register("jingxu_youlan",
         () -> new BlockItem(MaidSpellBlocks.JINGXU_YOULAN.get(), new Item.Properties()));
-    
+    public static final RegistryObject<Item> SUPPRESSION_STONE = ITEMS.register("suppression_stone",
+        () -> new BlockItem(MaidSpellBlocks.SUPPRESSION_STONE.get(), new Item.Properties()));
+
     // 管理员工具
     public static final RegistryObject<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);
 

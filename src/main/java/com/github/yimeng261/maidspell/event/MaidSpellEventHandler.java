@@ -17,6 +17,7 @@ import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.block.entity.SuppressionStoneBlockEntity;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
@@ -43,6 +44,7 @@ import net.minecraftforge.event.entity.living.*;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
+import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
@@ -353,6 +355,36 @@ public class MaidSpellEventHandler {
                 LOGGER.error("Error in maid tick handler for maid {}: {}",
                     maid.getName().getString(), e.getMessage(), e);
             }
+        }
+    }
+
+    /**
+     * 镇石：阻止周围区块内的敌对生物自然生成
+     */
+    @SubscribeEvent
+    public static void onMobPositionCheck(MobSpawnEvent.PositionCheck event) {
+        // 只拦截自然生成类的生成方式
+        MobSpawnType spawnType = event.getSpawnType();
+        if (spawnType == MobSpawnType.BREEDING
+            || spawnType == MobSpawnType.MOB_SUMMONED
+            || spawnType == MobSpawnType.CONVERSION
+            || spawnType == MobSpawnType.BUCKET
+            || spawnType == MobSpawnType.SPAWN_EGG
+            || spawnType == MobSpawnType.COMMAND
+            || spawnType == MobSpawnType.DISPENSER
+            || spawnType == MobSpawnType.SPAWNER) {
+            return;
+        }
+
+        // 只阻止敌对生物
+        if (!(event.getEntity() instanceof Enemy)) {
+            return;
+        }
+
+        // 检查是否在镇石压制范围内
+        BlockPos spawnPos = new BlockPos((int) event.getX(), (int) event.getY(), (int) event.getZ());
+        if (SuppressionStoneBlockEntity.isWithinSuppressionRange(event.getLevel(), spawnPos)) {
+            event.setResult(Event.Result.DENY);
         }
     }
 

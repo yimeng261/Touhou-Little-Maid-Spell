@@ -36,6 +36,13 @@ public final class MaidSpellBlockEntities {
                 MaidSpellBlocks.POTTED_JINGXU_YOULAN.get()
             ).build(null));
 
+    public static final RegistryObject<BlockEntityType<SuppressionStoneBlockEntity>> SUPPRESSION_STONE =
+        BLOCK_ENTITIES.register("suppression_stone",
+            () -> BlockEntityType.Builder.of(
+                SuppressionStoneBlockEntity::new,
+                MaidSpellBlocks.SUPPRESSION_STONE.get()
+            ).build(null));
+
     private MaidSpellBlockEntities() {
     }
 

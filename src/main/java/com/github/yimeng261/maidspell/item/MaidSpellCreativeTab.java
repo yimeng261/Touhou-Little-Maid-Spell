@@ -54,7 +54,7 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.SCARLET_ZHUHUA.get());
                 output.accept(MaidSpellItems.YUE_LINGLAN.get());
                 output.accept(MaidSpellItems.JINGXU_YOULAN.get());
-
+                output.accept(MaidSpellItems.SUPPRESSION_STONE.get());
 
                 // 管理员工具
                 output.accept(MaidSpellItems.OWNER_CLEAR_TOOL.get());
