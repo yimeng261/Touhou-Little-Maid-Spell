@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.base.Abstra
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.registries.ItemRegistry;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntityType;
@@ -12,9 +13,11 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.ForgeMod;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.List;
 
@@ -75,5 +78,23 @@ public class CorruptedKnightEntity extends AbstractSpellMeleeMob implements Enem
         equipAndHideDrop(EquipmentSlot.LEGS, new ItemStack(ItemRegistry.CULTIST_LEGGINGS.get()));
         equipAndHideDrop(EquipmentSlot.FEET, new ItemStack(ItemRegistry.CULTIST_BOOTS.get()));
         equipAndHideDrop(EquipmentSlot.MAINHAND, new ItemStack(getClaymoreItem()));
+    }
+
+    @Override
+    protected Class<? extends LivingEntity> getPlayerTargetClass() {
+        return LivingEntity.class;
+    }
+
+    @Override
+    public boolean isHostileTowards(LivingEntity target) {
+        if (target == this || !target.isAlive()) return false;
+        if (target instanceof Player player && (player.isCreative() || player.isSpectator())) return false;
+        if (isGoetyReaper(target)) return false;
+        return true;
+    }
+
+    private static boolean isGoetyReaper(LivingEntity target) {
+        ResourceLocation key = ForgeRegistries.ENTITY_TYPES.getKey(target.getType());
+        return key != null && "goety".equals(key.getNamespace()) && key.getPath().contains("reaper");
     }
 }
