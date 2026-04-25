@@ -26,6 +26,10 @@ public class SimplifiedSpellCaster {
     @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
     private final EntityMaid maid;
+    private long lastMeleeAttemptTick = -1L;
+    private long lastFarAttemptTick = -1L;
+    private long lastMeleeExecuteTick = -1L;
+    private long lastFarExecuteTick = -1L;
 
     public static double MELEE_RANGE;
     public static double FAR_RANGE;
@@ -43,6 +47,7 @@ public class SimplifiedSpellCaster {
      */
     public void setTarget(LivingEntity target) {
         maid.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, target);
+        LOGGER.debug("[MaidSpell][Caster] setTarget maid={} tick={} target={}", maid.getId(), maid.tickCount, describeTarget(target));
         if (spellBookManager != null && target != null && !(target instanceof Player)) {
             for (ISpellBookProvider<?, ?> provider : spellBookManager.getProviders()) {
                 provider.setTarget(maid, target);
@@ -56,7 +61,17 @@ public class SimplifiedSpellCaster {
      */
     public boolean hasValidTarget() {
         LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-        return target != null && target.isAlive();
+        boolean valid = target != null && target.isAlive() && !target.isDeadOrDying() && !target.isRemoved();
+        if (!valid) {
+            if (target != null) {
+                LOGGER.debug("[MaidSpell][Caster] clearing invalid target maid={} tick={} target={}", maid.getId(), maid.tickCount, describeTarget(target));
+                maid.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
+                maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+            } else if (maid.tickCount % 20 == 0) {
+                LOGGER.debug("[MaidSpell][Caster] invalid target maid={} tick={} target=null", maid.getId(), maid.tickCount);
+            }
+        }
+        return valid;
     }
 
     /**
@@ -69,12 +84,20 @@ public class SimplifiedSpellCaster {
         }
 
         if (maid.tickCount % Config.meleeAttackInterval == 0) {
+            long delta = lastMeleeAttemptTick < 0 ? -1 : maid.tickCount - lastMeleeAttemptTick;
+            lastMeleeAttemptTick = maid.tickCount;
+            // 记录调度频率，排查任务 tick 与配置间隔是否一致。
+            LOGGER.debug("[MaidSpell][Caster] melee attempt maid={} tick={} delta={} configuredInterval={} attackSpeed={} targetBrain={} targetMob={}",
+                    maid.getId(), maid.tickCount, delta, Config.meleeAttackInterval, maid.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_SPEED),
+                    describeTarget(maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null)), describeTarget(maid.getTarget()));
             // 执行战斗逻辑
             clearLookTarget(maid);
             LivingEntity target = maid.getTarget();
             if (target != null) {
                 double distance = maid.distanceTo(target);
                 executeCombat(distance);
+            } else {
+                LOGGER.debug("[MaidSpell][Caster] melee skipped maid={} tick={} reason=no mob target", maid.getId(), maid.tickCount);
             }
         }
     }
@@ -89,6 +112,11 @@ public class SimplifiedSpellCaster {
         }
 
         if (maid.tickCount % Config.farAttackInterval == 0) {
+            long delta = lastFarAttemptTick < 0 ? -1 : maid.tickCount - lastFarAttemptTick;
+            lastFarAttemptTick = maid.tickCount;
+            LOGGER.debug("[MaidSpell][Caster] far attempt maid={} tick={} delta={} configuredInterval={} targetBrain={} targetMob={}",
+                    maid.getId(), maid.tickCount, delta, Config.farAttackInterval,
+                    describeTarget(maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null)), describeTarget(maid.getTarget()));
             clearLookTarget(maid);
             executeCombatFar();
         }
@@ -108,27 +136,40 @@ public class SimplifiedSpellCaster {
      * 执行战斗逻辑
      */
     private void executeCombat(double distance) {
+        long delta = lastMeleeExecuteTick < 0 ? -1 : maid.tickCount - lastMeleeExecuteTick;
+        lastMeleeExecuteTick = maid.tickCount;
         // 从 Brain 获取当前目标
         LivingEntity target = maid.getTarget();
         if (target == null) {
+            LOGGER.debug("[MaidSpell][Caster] melee execute skipped maid={} tick={} delta={} reason=no target", maid.getId(), maid.tickCount, delta);
             return;
         }
+        LOGGER.debug("[MaidSpell][Caster] melee execute maid={} tick={} delta={} distance={} meleeRange={} mainHand={} target={}",
+                maid.getId(), maid.tickCount, delta, distance, MELEE_RANGE, maid.getMainHandItem().getItem(), describeTarget(target));
 
         // 确保目标无敌时间为0，允许法术伤害
         target.invulnerableTime = 0;
 
         // 执行法术施放
         if (spellBookManager != null) {
+            LOGGER.debug("[MaidSpell][Caster] melee casting providers maid={} tick={}", maid.getId(), maid.tickCount);
             spellBookManager.castSpell(maid);
         }
 
-        if(hasSlashArt(maid.getMainHandItem())){
+        boolean slashArt = hasSlashArt(maid.getMainHandItem());
+        if(slashArt){
+            LOGGER.debug("[MaidSpell][Caster] vanilla melee suppressed by slash art maid={} tick={} target={}", maid.getId(), maid.tickCount, describeTarget(target));
             return;
         }
 
         if (distance <= MELEE_RANGE+1) {
-            maid.doHurtTarget(target);
+            boolean hurt = maid.doHurtTarget(target);
             maid.swing(InteractionHand.MAIN_HAND);
+            LOGGER.debug("[MaidSpell][Caster] vanilla melee executed maid={} tick={} target={} hurt={} distance={} threshold={}",
+                    maid.getId(), maid.tickCount, describeTarget(target), hurt, distance, MELEE_RANGE + 1);
+        } else {
+            LOGGER.debug("[MaidSpell][Caster] vanilla melee skipped by distance maid={} tick={} target={} distance={} threshold={}",
+                    maid.getId(), maid.tickCount, describeTarget(target), distance, MELEE_RANGE + 1);
         }
     }
 
@@ -136,11 +177,15 @@ public class SimplifiedSpellCaster {
      * 执行战斗逻辑
      */
     private void executeCombatFar() {
+        long delta = lastFarExecuteTick < 0 ? -1 : maid.tickCount - lastFarExecuteTick;
+        lastFarExecuteTick = maid.tickCount;
         // 从 Brain 获取当前目标
         LivingEntity target = maid.getTarget();
         if (target == null) {
+            LOGGER.debug("[MaidSpell][Caster] far execute skipped maid={} tick={} delta={} reason=no target", maid.getId(), maid.tickCount, delta);
             return;
         }
+        LOGGER.debug("[MaidSpell][Caster] far execute maid={} tick={} delta={} target={}", maid.getId(), maid.tickCount, delta, describeTarget(target));
 
         // 确保目标无敌时间为0，允许法术伤害
         target.invulnerableTime = 0;
@@ -149,6 +194,14 @@ public class SimplifiedSpellCaster {
         if (spellBookManager != null) {
             spellBookManager.castSpell(maid);
         }
+    }
+
+    private static String describeTarget(LivingEntity target) {
+        if (target == null) {
+            return "null";
+        }
+        return target.getType() + "#" + target.getId() + " alive=" + target.isAlive() + " dying=" + target.isDeadOrDying()
+                + " removed=" + target.isRemoved() + " hp=" + target.getHealth() + "/" + target.getMaxHealth();
     }
 
     /**
@@ -165,10 +218,7 @@ public class SimplifiedSpellCaster {
             return false;
         }
 
-        if(itemStack.getItem() instanceof ItemSlashBlade) {
-            return true;
-        }
-        
+        // 不能只凭物品类型判断：部分拔刀剑没有可释放的 SA，需要读取 BladeState。
         return itemStack.getCapability(ItemSlashBlade.BLADESTATE).map(state -> state.getSlashArtsKey() != null && !state.getSlashArtsKey().equals(SlashArtsRegistry.NONE.getId())).orElse(false);
     }
 

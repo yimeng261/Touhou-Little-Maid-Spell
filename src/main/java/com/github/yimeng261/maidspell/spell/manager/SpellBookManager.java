@@ -3,6 +3,8 @@ package com.github.yimeng261.maidspell.spell.manager;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.NotNull;
@@ -221,11 +223,33 @@ public class SpellBookManager {
 
 
     public void tick(){
+        // Clear stale attack targets before providers tick; otherwise long SlashBlade combos can keep swinging after a kill.
+        LivingEntity attackTarget = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+        if (attackTarget != null && !isValidTarget(attackTarget)) {
+            LOGGER.debug("[MaidSpell][Manager] clearing invalid attack target maid={} tick={} target={}",
+                    maid.getId(), maid.tickCount, describeTarget(attackTarget));
+            maid.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
+            maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+            stopAllCasting();
+            return;
+        }
+
         // 处理持续性施法
-        
         for (ISpellBookProvider<?, ?> provider : getProviders()) {
-            if(provider.getTarget(maid) != null){
-                provider.getTarget(maid).invulnerableTime = 0;
+            LivingEntity providerTarget = provider.getTarget(maid);
+            if(providerTarget != null){
+                if (isValidTarget(providerTarget)) {
+                    providerTarget.invulnerableTime = 0;
+                } else {
+                    LOGGER.debug("[MaidSpell][Manager] clearing provider invalid target maid={} tick={} provider={} target={} casting={}",
+                            maid.getId(), maid.tickCount, provider.getClass().getSimpleName(), describeTarget(providerTarget), provider.isCasting(maid));
+                    // 即使 provider 没在施法，也必须清理旧 target；否则每 tick 都会重复看到同一个死亡实体。
+                    provider.setTarget(maid, null);
+                    if (provider.isCasting(maid)) {
+                        provider.stopCasting(maid);
+                    }
+                    continue;
+                }
             }
             provider.processContinuousCasting(maid);
         }
@@ -234,6 +258,19 @@ public class SpellBookManager {
         if(maid.tickCount % 20 == 0){
             updateCooldown();
         }
+    }
+
+    private static boolean isValidTarget(LivingEntity target) {
+        return target != null && target.isAlive() && !target.isDeadOrDying() && !target.isRemoved();
+    }
+
+    private static String describeTarget(LivingEntity target) {
+        if (target == null) {
+            return "null";
+        }
+        return target.getType() + "#" + target.getId() + " alive=" + target.isAlive()
+                + " dying=" + target.isDeadOrDying() + " removed=" + target.isRemoved()
+                + " hp=" + target.getHealth() + "/" + target.getMaxHealth();
     }
 
     public void initSpellBooks(){
@@ -269,3 +306,4 @@ public class SpellBookManager {
     }
 
 }
+

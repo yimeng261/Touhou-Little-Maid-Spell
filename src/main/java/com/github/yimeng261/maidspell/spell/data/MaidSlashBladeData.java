@@ -4,6 +4,8 @@ import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,6 +20,15 @@ public class MaidSlashBladeData extends IMaidSpellData {
     // 施法状态
     private long saExecutionStartTime = 0;
     private ResourceLocation lastComboState = null;
+    private boolean normalComboCasting = false;
+    private int lastTargetEntityId = -1;
+    private float lastObservedTargetHealth = Float.NaN;
+    private int attackSequence = 0;
+    private final List<Integer> pendingDirectSkillEntityIds = new ArrayList<>();
+    private int pendingDirectSkillTargetId = -1;
+    private float pendingDirectSkillDamage = 0.0F;
+    private long pendingDirectSkillExpiryTime = 0L;
+    private String pendingDirectSkillName = null;
 
     private int targetUseTime = 0;
     
@@ -52,6 +63,44 @@ public class MaidSlashBladeData extends IMaidSpellData {
     
     public ResourceLocation getLastComboState() { return lastComboState; }
     public void setLastComboState(ResourceLocation lastComboState) { this.lastComboState = lastComboState; }
+    public boolean isNormalComboCasting() { return normalComboCasting; }
+    public void setNormalComboCasting(boolean normalComboCasting) { this.normalComboCasting = normalComboCasting; }
+    public int getLastTargetEntityId() { return lastTargetEntityId; }
+    public void setLastTargetEntityId(int lastTargetEntityId) { this.lastTargetEntityId = lastTargetEntityId; }
+    public float getLastObservedTargetHealth() { return lastObservedTargetHealth; }
+    public void setLastObservedTargetHealth(float lastObservedTargetHealth) { this.lastObservedTargetHealth = lastObservedTargetHealth; }
+    public int getAttackSequence() { return attackSequence; }
+    public void incrementAttackSequence() { this.attackSequence++; }
+    public void resetAttackSequence() { this.attackSequence = 0; }
+    public List<Integer> getPendingDirectSkillEntityIds() { return pendingDirectSkillEntityIds; }
+    public int getPendingDirectSkillTargetId() { return pendingDirectSkillTargetId; }
+    public float getPendingDirectSkillDamage() { return pendingDirectSkillDamage; }
+    public long getPendingDirectSkillExpiryTime() { return pendingDirectSkillExpiryTime; }
+    public String getPendingDirectSkillName() { return pendingDirectSkillName; }
+    public boolean hasPendingDirectSkillHit() { return !pendingDirectSkillEntityIds.isEmpty() && pendingDirectSkillTargetId >= 0; }
+    public void armPendingDirectSkillHit(List<Integer> entityIds, int targetId, float damage, long expiryTime, String skillName) {
+        pendingDirectSkillEntityIds.clear();
+        pendingDirectSkillEntityIds.addAll(entityIds);
+        pendingDirectSkillTargetId = targetId;
+        pendingDirectSkillDamage = damage;
+        pendingDirectSkillExpiryTime = expiryTime;
+        pendingDirectSkillName = skillName;
+    }
+    public void clearPendingDirectSkillHit() {
+        pendingDirectSkillEntityIds.clear();
+        pendingDirectSkillTargetId = -1;
+        pendingDirectSkillDamage = 0.0F;
+        pendingDirectSkillExpiryTime = 0L;
+        pendingDirectSkillName = null;
+    }
+    public void resetCastingState() {
+        this.isCasting = false;
+        this.saExecutionStartTime = 0;
+        this.targetUseTime = 0;
+        this.lastComboState = null;
+        this.normalComboCasting = false;
+        this.clearPendingDirectSkillHit();
+    }
     
     // 冲刺计数器管理
     public int getNonDashSkillCount() { return nonDashSkillCount; }
@@ -77,9 +126,9 @@ public class MaidSlashBladeData extends IMaidSpellData {
     
     public void reset() {
         this.target = null;
-        this.isCasting = false;
-        this.saExecutionStartTime = 0;
-        this.targetUseTime = 0;
-        this.lastComboState = null;
+        this.lastTargetEntityId = -1;
+        this.lastObservedTargetHealth = Float.NaN;
+        resetAttackSequence();
+        resetCastingState();
     }
 } 
