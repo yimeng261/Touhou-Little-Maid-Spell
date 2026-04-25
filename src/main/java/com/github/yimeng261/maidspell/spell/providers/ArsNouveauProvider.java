@@ -5,19 +5,17 @@ import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidArsNouveauSpellData;
 
-import com.hollingsworth.arsnouveau.common.items.SpellBook;
+import com.hollingsworth.arsnouveau.api.item.ICasterTool;
 import com.hollingsworth.arsnouveau.api.util.CasterUtil;
+import com.hollingsworth.arsnouveau.api.spell.AbstractSpellPart;
 import com.hollingsworth.arsnouveau.api.spell.ISpellCaster;
 import com.hollingsworth.arsnouveau.api.spell.Spell;
 import com.hollingsworth.arsnouveau.api.spell.SpellResolver;
 import com.hollingsworth.arsnouveau.api.spell.SpellContext;
 import com.hollingsworth.arsnouveau.api.spell.wrapped_caster.LivingCaster;
 import com.hollingsworth.arsnouveau.api.util.SpellUtil;
-import com.hollingsworth.arsnouveau.api.mana.IManaCap;
 import com.hollingsworth.arsnouveau.setup.registry.CapabilityRegistry;
 import com.hollingsworth.arsnouveau.common.spell.augment.AugmentSensitive;
-import com.hollingsworth.arsnouveau.common.spell.method.MethodProjectile;
-import com.hollingsworth.arsnouveau.common.entity.EntityProjectileSpell;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.item.ItemStack;
@@ -25,7 +23,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.sounds.SoundSource;
 
 import org.slf4j.Logger;
@@ -39,7 +36,6 @@ import java.util.ArrayList;
  * 通过 MaidArsNouveauSpellData 管理各女仆的数据
  */
 public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellData, Spell> {
-    @SuppressWarnings("unused")
     private static final Logger LOGGER = LogUtils.getLogger();
 
     /**
@@ -89,7 +85,7 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
         if (itemStack == null || itemStack.isEmpty()) {
             return false;
         }
-        return itemStack.getItem() instanceof SpellBook;
+        return itemStack.getItem() instanceof ICasterTool;
     }
 
     
@@ -99,29 +95,30 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
     @Override
     public void initiateCasting(EntityMaid maid) {
         MaidArsNouveauSpellData data = getData(maid);
+        LOGGER.debug("[MaidSpell/Ars] initiateCasting maid={} books={} target={}", maid.getUUID(), data.getSpellBooks().size(), describeEntity(data.getTarget()));
 
-        // 确保女仆有魔力能力
-        ensureManaCapability(maid);
-
-        // 选择一个法术进行施放
-        Spell spell = selectRandomSpell(maid);
-        if (spell == null) {
+        SpellSelection selection = selectRandomSpell(maid);
+        if (selection == null) {
+            LOGGER.warn("[MaidSpell/Ars] No available Ars spell for maid={} books={}", maid.getUUID(), data.getSpellBooks().size());
             return;
         }
-        
-        // 确保女仆面向目标
+
+        Spell spell = selection.spell();
+        ensureManaCapability(maid, spell);
+
         LivingEntity target = data.getTarget();
         if (target != null) {
             BehaviorUtils.lookAtEntity(maid, target);
         }
-        
-        // 开始施法
+
         data.setCasting(true);
         data.setCastingTicks(0);
-        data.setCurrentSpell(spell);
-        data.setSpellCooldown(spell.name,spell.getCost()/2,maid);
-        
-        // 播放手臂挥舞动画
+        data.setCurrentSpell(spell, selection.spellBook(), selection.slot(), selection.cooldownKey());
+        data.setSpellCooldown(selection.cooldownKey(), spell.getCost() / 2, maid);
+
+        LOGGER.debug("[MaidSpell/Ars] Selected spell maid={} spell={} book={} slot={} cost={} cooldownKey={} target={}",
+                maid.getUUID(), describeSpell(spell), describeItem(selection.spellBook()), selection.slot(), spell.getCost(), selection.cooldownKey(), describeEntity(target));
+
         maid.swing(InteractionHand.MAIN_HAND);
 
     }
@@ -133,6 +130,9 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
     public void processContinuousCasting(EntityMaid maid) {
         MaidArsNouveauSpellData data = getData(maid);
         if (data == null || !data.isCasting() || data.getCurrentSpell() == null) {
+            if (data != null && LOGGER.isDebugEnabled()) {
+                LOGGER.debug("[MaidSpell/Ars] Skip continuous cast maid={} casting={} spell={}", maid.getUUID(), data.isCasting(), describeSpell(data.getCurrentSpell()));
+            }
             return;
         }
         
@@ -146,6 +146,8 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
 
         // 等待一段时间让女仆转向目标，然后完成施法
         if (data.isCastingComplete()) {
+            LOGGER.debug("[MaidSpell/Ars] Casting complete maid={} spell={} ticks={} book={} slot={}",
+                    maid.getUUID(), describeSpell(data.getCurrentSpell()), data.getCastingTicks(), describeItem(data.getCurrentSpellBook()), data.getCurrentSpellSlot());
             completeCasting(maid);
         }
     }
@@ -169,16 +171,23 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
     /**
      * 确保女仆有魔力能力
      */
-    private void ensureManaCapability(EntityMaid maid) {
+    private void ensureManaCapability(EntityMaid maid, Spell spell) {
         if (maid != null) {
             var manaOpt = CapabilityRegistry.getMana(maid);
-            if (manaOpt.isPresent()) {
-                IManaCap manaCap = manaOpt.orElse(null);
-                // 设置女仆有足够的魔力
-                if (manaCap.getCurrentMana() < 1000) {
-                    manaCap.setMana(1000.0); // 给女仆1000点魔力
-                }
+            if (!manaOpt.isPresent()) {
+                LOGGER.debug("[MaidSpell/Ars] Maid {} has no Ars mana capability; mana checks are bypassed for maid casting spell={}", maid.getUUID(), describeSpell(spell));
+                return;
             }
+            manaOpt.ifPresent(manaCap -> {
+                double requiredMana = Math.max(1000.0, spell != null ? spell.getCost() : 0.0);
+                double before = manaCap.getCurrentMana();
+                if (before < requiredMana) {
+                    manaCap.setMana(requiredMana);
+                    LOGGER.debug("[MaidSpell/Ars] Refilled maid mana maid={} before={} after={} spell={}", maid.getUUID(), before, requiredMana, describeSpell(spell));
+                } else if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("[MaidSpell/Ars] Maid mana is enough maid={} mana={} required={} spell={}", maid.getUUID(), before, requiredMana, describeSpell(spell));
+                }
+            });
         }
     }
 
@@ -188,34 +197,84 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
      * @param maid 女仆实体
      * @return 可用的法术列表
      */
-    private List<Spell> getAvailableSpells(EntityMaid maid) {
+    private List<SpellSelection> getAvailableSpells(EntityMaid maid) {
         MaidArsNouveauSpellData data = getData(maid);
-        List<Spell> allSpells = collectSpellFromAvailableSpellBooks(maid);
-        List<Spell> availableSpells = new ArrayList<>();
-        
-        // 过滤掉冷却中的法术
-        for (Spell spell : allSpells) {
-            if (!data.isSpellOnCooldown(spell.name)) {
-                availableSpells.add(spell);
+        List<SpellSelection> availableSpells = new ArrayList<>();
+
+        if (data.getSpellBooks().isEmpty()) {
+            LOGGER.warn("[MaidSpell/Ars] Maid {} has no tracked spell books", maid.getUUID());
+        }
+
+        for (ItemStack spellBook : data.getSpellBooks()) {
+            if (spellBook == null || spellBook.isEmpty()) {
+                LOGGER.warn("[MaidSpell/Ars] Maid {} has empty/null spell book entry", maid.getUUID());
+                continue;
+            }
+            if (!isSpellBook(spellBook)) {
+                LOGGER.warn("[MaidSpell/Ars] Tracked item is not an Ars caster tool maid={} item={}", maid.getUUID(), describeItem(spellBook));
+                continue;
+            }
+            ISpellCaster caster = CasterUtil.getCaster(spellBook);
+            if (caster == null) {
+                LOGGER.warn("[MaidSpell/Ars] CasterUtil returned null maid={} item={}", maid.getUUID(), describeItem(spellBook));
+                continue;
+            }
+            LOGGER.debug("[MaidSpell/Ars] Scanning Ars book maid={} item={} slots={}", maid.getUUID(), describeItem(spellBook), caster.getMaxSlots());
+            for (int slot = 0; slot < caster.getMaxSlots(); slot++) {
+                Spell spell = caster.getSpell(slot);
+                if (spell == null) {
+                    LOGGER.debug("[MaidSpell/Ars] Slot has null spell maid={} item={} slot={}", maid.getUUID(), describeItem(spellBook), slot);
+                    continue;
+                }
+                if (!spell.isValid() || spell.isEmpty()) {
+                    LOGGER.debug("[MaidSpell/Ars] Slot spell invalid/empty maid={} item={} slot={} spell={} valid={} empty={}",
+                            maid.getUUID(), describeItem(spellBook), slot, describeSpell(spell), spell.isValid(), spell.isEmpty());
+                    continue;
+                }
+                String cooldownKey = buildCooldownKey(spellBook, slot, spell);
+                if (data.isSpellOnCooldown(cooldownKey)) {
+                    LOGGER.debug("[MaidSpell/Ars] Slot spell on cooldown maid={} item={} slot={} spell={} cooldownKey={} remaining={}",
+                            maid.getUUID(), describeItem(spellBook), slot, describeSpell(spell), cooldownKey, data.getSpellCooldown(cooldownKey));
+                    continue;
+                }
+                LOGGER.debug("[MaidSpell/Ars] Slot spell available maid={} item={} slot={} spell={} cooldownKey={}",
+                        maid.getUUID(), describeItem(spellBook), slot, describeSpell(spell), cooldownKey);
+                availableSpells.add(new SpellSelection(spell, spellBook, slot, cooldownKey));
             }
         }
-        
+
+        LOGGER.debug("[MaidSpell/Ars] Available Ars spells maid={} count={}", maid.getUUID(), availableSpells.size());
         return availableSpells;
     }
-    
+
     /**
      * 随机选择一个可用的法术
      * @param maid 女仆实体
      * @return 随机选择的法术，如果没有可用法术则返回null
      */
-    private Spell selectRandomSpell(EntityMaid maid) {
-        List<Spell> availableSpells = getAvailableSpells(maid);
+    private SpellSelection selectRandomSpell(EntityMaid maid) {
+        List<SpellSelection> availableSpells = getAvailableSpells(maid);
         if (availableSpells.isEmpty()) {
             return null;
         }
-        
+
         int randomIndex = (int) (Math.random() * availableSpells.size());
-        return availableSpells.get(randomIndex);
+        SpellSelection selection = availableSpells.get(randomIndex);
+        LOGGER.debug("[MaidSpell/Ars] Random selected index={} count={} spell={} book={} slot={}",
+                randomIndex, availableSpells.size(), describeSpell(selection.spell()), describeItem(selection.spellBook()), selection.slot());
+        return selection;
+    }
+
+    private String buildCooldownKey(ItemStack spellBook, int slot, Spell spell) {
+        StringBuilder key = new StringBuilder();
+        key.append(spellBook.getItem().builtInRegistryHolder().key().location()).append('#').append(slot).append(':');
+        for (int i = 0; i < spell.recipe.size(); i++) {
+            if (i > 0) {
+                key.append(',');
+            }
+            key.append(spell.recipe.get(i).getRegistryName());
+        }
+        return key.toString();
     }
     
     /**
@@ -225,77 +284,49 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
         MaidArsNouveauSpellData data = getData(maid);
         try {
             
-            // 确保女仆有足够的魔力
-            ensureManaCapability(maid);
-            
-            // 创建自定义的法术上下文和解析器
-            LivingCaster wrappedCaster = new LivingCaster(maid);
-            SpellContext context = new SpellContext(maid.level(), data.getCurrentSpell(), maid, wrappedCaster, data.getSpellBook());
-            
-            // 创建一个跳过魔力检查的解析器
+            ensureManaCapability(maid, data.getCurrentSpell());
+
+            ItemStack spellBook = data.getCurrentSpellBook();
+            if (spellBook.isEmpty()) {
+                LOGGER.warn("[MaidSpell/Ars] Current spell book is empty before cast maid={} spell={} slot={}",
+                        maid.getUUID(), describeSpell(data.getCurrentSpell()), data.getCurrentSpellSlot());
+            }
+            LOGGER.debug("[MaidSpell/Ars] Resolving spell maid={} spell={} book={} slot={} target={} manaCapPresent={}",
+                    maid.getUUID(), describeSpell(data.getCurrentSpell()), describeItem(spellBook), data.getCurrentSpellSlot(),
+                    describeEntity(data.getTarget()), CapabilityRegistry.getMana(maid).isPresent());
+            boolean summonSpell = containsSummonEffect(data.getCurrentSpell());
+            LivingEntity owner = maid.getOwner();
+            LivingEntity contextCaster = summonSpell && owner != null ? owner : maid;
+            LivingCaster wrappedCaster = new LivingCaster(contextCaster);
+            SpellContext context = new SpellContext(maid.level(), data.getCurrentSpell(), maid, wrappedCaster, spellBook);
+            LOGGER.debug("[MaidSpell/Ars] Context caster maid={} spell={} summonSpell={} arsCaster={}",
+                    maid.getUUID(), describeSpell(data.getCurrentSpell()), summonSpell, describeEntity(contextCaster));
             SpellResolver resolver = new SpellResolver(context) {
                 @Override
                 protected boolean enoughMana(LivingEntity entity) {
-                    // 女仆总是有足够的魔力
+                    LOGGER.debug("[MaidSpell/Ars] Bypassing Ars mana check for maid={} spell={}", maid.getUUID(), describeSpell(data.getCurrentSpell()));
                     return true;
                 }
-                
+
                 @Override
                 public void expendMana() {
-                    // 女仆不消耗魔力，或者消耗很少
-                    // 为了保持系统一致性，我们仍然可以设置一个最小消耗
+                    LOGGER.debug("[MaidSpell/Ars] Skipping Ars mana spend for maid={} spell={}", maid.getUUID(), describeSpell(data.getCurrentSpell()));
                 }
             };
-            
+
             boolean castSuccess;
             LivingEntity target = data.getTarget();
-            
+
             if (target != null) {
-                // 如果有指定目标，手动创建和发射弹射物
-                Vec3 targetPos = target.getEyePosition();
-                Vec3 maidPos = maid.getEyePosition();
-                Vec3 direction = targetPos.subtract(maidPos).normalize();
-                
-                // 计算正确的朝向角度
-                float yaw = (float) (Math.atan2(direction.x, direction.z) * 180.0 / Math.PI);
-                float pitch = (float) (Math.asin(-direction.y) * 180.0 / Math.PI);
-                
-                // 立即设置女仆的朝向
-                maid.setYRot(yaw);
-                maid.setXRot(pitch);
-                maid.yRotO = yaw;
-                maid.xRotO = pitch;
-                
-                // 如果是弹射物法术，直接创建弹射物实体
-                if (data.getCurrentSpell().getCastMethod() instanceof MethodProjectile) {
-                    try {
-                        // 手动创建弹射物
-                        EntityProjectileSpell projectile = new EntityProjectileSpell(maid.level(), resolver);
-                        projectile.setOwner(maid);
-                        
-                        // 设置弹射物位置为女仆眼部位置
-                        projectile.setPos(maidPos.x, maidPos.y - 0.1, maidPos.z);
-                        
-                        // 计算速度
-                        float velocity = Math.max(0.1f, 0.75f + resolver.getCastStats().getAccMultiplier() / 2);
-                        
-                        // 直接使用计算好的方向向量发射弹射物
-                        projectile.shoot(direction.x, direction.y, direction.z, velocity, 0.0f);
-                        
-                        // 添加到世界
-                        maid.level().addFreshEntity(projectile);
-                        
-                        castSuccess = true;
-                    } catch (Exception e) {
-                        // 回退到标准方法
-                        castSuccess = resolver.onCastOnEntity(data.getSpellBook(), target, InteractionHand.MAIN_HAND);
-                    }
+                BehaviorUtils.lookAtEntity(maid, target);
+                if (summonSpell) {
+                    resolver.onResolveEffect(maid.level(), new EntityHitResult(target, target.getEyePosition()));
+                    castSuccess = true;
+                    LOGGER.debug("[MaidSpell/Ars] Direct summon resolve on target maid={} target={}", maid.getUUID(), describeEntity(target));
                 } else {
-                    // 非弹射物法术使用标准方法
-                    resolver.hitResult = new EntityHitResult(target, targetPos);
-                    castSuccess = resolver.onCastOnEntity(data.getSpellBook(), target, InteractionHand.MAIN_HAND);
+                    castSuccess = resolver.onCastOnEntity(spellBook, target, InteractionHand.MAIN_HAND);
+                    LOGGER.debug("[MaidSpell/Ars] Resolver onCastOnEntity result maid={} target={} success={}", maid.getUUID(), describeEntity(target), castSuccess);
                 }
-                
             } else {
                 // 没有指定目标，使用射线追踪
                 boolean isSensitive = data.getCurrentSpell().getBuffsAtIndex(0, maid, AugmentSensitive.INSTANCE) > 0;
@@ -303,17 +334,22 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
                 
                 if (result instanceof EntityHitResult entityHitResult && entityHitResult.getEntity() instanceof LivingEntity) {
                     // 射线追踪到实体
-                    castSuccess = resolver.onCastOnEntity(data.getSpellBook(), entityHitResult.getEntity(), InteractionHand.MAIN_HAND);
+                    castSuccess = resolver.onCastOnEntity(spellBook, entityHitResult.getEntity(), InteractionHand.MAIN_HAND);
+                    LOGGER.debug("[MaidSpell/Ars] RayTrace entity result maid={} hit={} success={}", maid.getUUID(), describeEntity(entityHitResult.getEntity()), castSuccess);
                 } else if (result instanceof BlockHitResult blockHitResult) {
                     // 射线追踪到方块
                     castSuccess = resolver.onCastOnBlock(blockHitResult);
+                    LOGGER.debug("[MaidSpell/Ars] RayTrace block result maid={} pos={} type={} success={}", maid.getUUID(), blockHitResult.getBlockPos(), blockHitResult.getType(), castSuccess);
                 } else {
                     // 没有特定目标，直接施法
-                    castSuccess = resolver.onCast(data.getSpellBook(), maid.level());
+                    castSuccess = resolver.onCast(spellBook, maid.level());
+                    LOGGER.debug("[MaidSpell/Ars] Direct onCast result maid={} rayType={} success={}", maid.getUUID(), result.getType(), castSuccess);
                 }
             }
             
             if (castSuccess) {
+                LOGGER.debug("[MaidSpell/Ars] Spell cast succeeded maid={} spell={} book={} slot={}",
+                        maid.getUUID(), describeSpell(data.getCurrentSpell()), describeItem(spellBook), data.getCurrentSpellSlot());
                 SpringBloomReturnBauble.onSpellCast(
                     maid,
                     "ars_nouveau",
@@ -329,11 +365,73 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
                         data.getCurrentSpell().sound.volume,
                         data.getCurrentSpell().sound.pitch);
                 }
-            }   
-        } catch (Exception ignored) {
+            } else {
+                LOGGER.warn("[MaidSpell/Ars] SpellResolver returned false maid={} spell={} book={} slot={} target={}",
+                        maid.getUUID(), describeSpell(data.getCurrentSpell()), describeItem(spellBook), data.getCurrentSpellSlot(), describeEntity(target));
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Failed to cast Ars Nouveau spell for maid {}", maid.getUUID(), e);
         } finally {
             // 重置施法状态
             data.resetCastingState();
         }
     }
+
+
+
+    private boolean containsSummonEffect(Spell spell) {
+        if (spell == null || spell.recipe == null) {
+            return false;
+        }
+        for (AbstractSpellPart part : spell.recipe) {
+            String id = String.valueOf(part.getRegistryName());
+            if (id.equals("ars_nouveau:glyph_summon_wolves")
+                    || id.equals("ars_nouveau:glyph_summon_decoy")
+                    || id.equals("ars_nouveau:glyph_summon_steed")
+                    || id.equals("ars_nouveau:glyph_summon_vex")
+                    || id.equals("ars_nouveau:glyph_summon_undead")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String describeItem(ItemStack stack) {
+        if (stack == null) {
+            return "<null>";
+        }
+        if (stack.isEmpty()) {
+            return "<empty>";
+        }
+        return stack.getItem().builtInRegistryHolder().key().location().toString();
+    }
+
+    private String describeSpell(Spell spell) {
+        if (spell == null) {
+            return "<null>";
+        }
+        StringBuilder builder = new StringBuilder();
+        builder.append("name='").append(spell.name).append("' cost=").append(spell.getCost()).append(" recipe=");
+        for (int i = 0; i < spell.recipe.size(); i++) {
+            if (i > 0) {
+                builder.append(",");
+            }
+            builder.append(spell.recipe.get(i).getRegistryName());
+        }
+        return builder.toString();
+    }
+
+    private String describeEntity(Object entity) {
+        if (entity == null) {
+            return "<null>";
+        }
+        if (entity instanceof LivingEntity living) {
+            return living.getType().builtInRegistryHolder().key().location() + "@" + living.getUUID();
+        }
+        return entity.toString();
+    }
+
+    private record SpellSelection(Spell spell, ItemStack spellBook, int slot, String cooldownKey) {
+    }
+
 } 

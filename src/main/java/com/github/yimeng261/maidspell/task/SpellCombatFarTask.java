@@ -1,6 +1,5 @@
 package com.github.yimeng261.maidspell.task;
 
-import com.Polarice3.Goety.api.entities.IOwned;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -20,7 +19,6 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
-import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -74,7 +72,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
         // 使用自定义索敌方法，排除自己召唤的 Goety 召唤物
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
-        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
+        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid) || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
         BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
         BehaviorControl<EntityMaid> strafingTask = new SpellStrafingTask();
@@ -94,26 +92,9 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
     /**
      * 自定义索敌方法，排除女仆自己召唤的 Goety 召唤物
      */
-    private Optional<? extends LivingEntity> findValidAttackTarget(EntityMaid maid) {
-        // 首先使用默认方法找到目标
-        Optional<? extends LivingEntity> defaultTarget = IAttackTask.findFirstValidAttackTarget(maid);
-
-        // 如果没有找到目标，直接返回
-        if (defaultTarget.isEmpty()) {
-            return defaultTarget;
-        }
-
-        LivingEntity target = defaultTarget.get();
-
-        // 检查目标是否是 Goety 召唤物
-        if (ModList.get().isLoaded("goety") && target instanceof IOwned ownedEntity) {
-            LivingEntity owner = ownedEntity.getTrueOwner();
-            if (owner instanceof EntityMaid || owner instanceof Player) {
-                return Optional.empty();
-            }
-        }
-
-        return defaultTarget;
+    protected Optional<? extends LivingEntity> findValidAttackTarget(EntityMaid maid) {
+        return IAttackTask.findFirstValidAttackTarget(maid)
+                .filter(target -> SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target));
     }
 
     private static class FarSpellCombatBehavior extends SpellCombatBehavior {
@@ -129,7 +110,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
             target = resolveIronsSpellbooksOwnerCastTarget(maid, target);
-            if (!(target instanceof Player)) {
+            if (SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target)) {
                 currentSpellCaster.setTarget(target);
             }
         }
@@ -139,7 +120,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
             if (currentSpellCaster != null) {
                 // 确保目标同步 - 这是唯一的目标更新点
                 LivingEntity currentTarget = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-                if (!(currentTarget instanceof Player)) {
+                if (SpellCombatMeleeTask.isValidSpellCombatTarget(maid, currentTarget)) {
                     currentSpellCaster.setTarget(currentTarget);
                 }
                 currentSpellCaster.far_tick();
@@ -176,7 +157,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
             }
 
             maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
-                if(target instanceof Player) {
+                if(!SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target)) {
                     stop(worldIn, maid, gameTime);
                     return;
                 }
