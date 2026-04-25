@@ -46,8 +46,12 @@ public class MaidPsiSpellData extends IMaidSpellData {
 
     public void setCurrentSpell(Spell spell) {
         this.currentSpell = spell;
-        if(spell != null) {
-            setCurrentSpellId(spell.name);
+        if (spell != null) {
+            if (spell.uuid != null) {
+                setCurrentSpellId(spell.uuid.toString());
+            } else {
+                setCurrentSpellId(spell.name);
+            }
         }
     }
 

@@ -22,11 +22,14 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String GOETY_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.goety.";
     private static final String ENIGMATIC_ADDONS_MOD_ID = "enigmaticaddons";
     private static final String ENIGMATIC_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.enigmatic.";
+    private static final String PSI_MOD_ID = "psi";
+    private static final String PSI_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.psi.";
 
     private boolean isIronsSpellbooksLoaded = false;
     private boolean isTlmMagicAnimationSupported = false;
     private boolean isGoetyLoaded = false;
     private boolean isEnigmaticAddonsLoaded = false;
+    private boolean isPsiLoaded = false;
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -41,6 +44,7 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         // 检查 Goety 模组是否已加载
         isGoetyLoaded = LoadingModList.get().getModFileById(GOETY_MOD_ID) != null;
         isEnigmaticAddonsLoaded = LoadingModList.get().getModFileById(ENIGMATIC_ADDONS_MOD_ID) != null;
+        isPsiLoaded = LoadingModList.get().getModFileById(PSI_MOD_ID) != null;
     }
 
     @Override
@@ -62,6 +66,10 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
 
         if (mixinClassName.startsWith(ENIGMATIC_MIXIN_PACKAGE)) {
             return isEnigmaticAddonsLoaded;
+        }
+
+        if (mixinClassName.startsWith(PSI_MIXIN_PACKAGE)) {
+            return isPsiLoaded;
         }
 
         // 其他 Mixin 正常加载

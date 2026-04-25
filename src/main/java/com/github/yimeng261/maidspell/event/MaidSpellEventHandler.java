@@ -9,6 +9,7 @@ import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
+import com.github.yimeng261.maidspell.spell.providers.PsiProvider;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
@@ -27,10 +28,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.damagesource.DamageSource;
 
 import java.util.*;
 
 import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.common.util.FakePlayer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -41,6 +44,7 @@ import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.event.entity.EntityTeleportEvent;
 import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
 import net.minecraftforge.event.entity.living.*;
+import net.minecraftforge.event.level.ExplosionEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
@@ -413,6 +417,14 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent
     public static void onEntityHurt(LivingHurtEvent event) {
+        if (shouldBlockMaidPsiPlayerDamage(event.getEntity(), event.getSource())) {
+            event.setCanceled(true);
+            LOGGER.debug("[MaidSpell/Psi] blocked player hurt target={} source={} direct={} amount={}",
+                    event.getEntity().getUUID(), describeDamageEntity(event.getSource().getEntity()),
+                    describeDamageEntity(event.getSource().getDirectEntity()), event.getAmount());
+            return;
+        }
+
         Entity entity = event.getEntity();
         Entity source = event.getSource().getEntity();
         if(source instanceof EntityMaid maid){
@@ -434,6 +446,14 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent
     public static void onEntityDamage(LivingDamageEvent event) {
+        if (shouldBlockMaidPsiPlayerDamage(event.getEntity(), event.getSource())) {
+            event.setCanceled(true);
+            LOGGER.debug("[MaidSpell/Psi] blocked player damage target={} source={} direct={} amount={}",
+                    event.getEntity().getUUID(), describeDamageEntity(event.getSource().getEntity()),
+                    describeDamageEntity(event.getSource().getDirectEntity()), event.getAmount());
+            return;
+        }
+
         Entity entity = event.getEntity();
         Entity direct = event.getSource().getDirectEntity();
         Entity source = event.getSource().getEntity();
@@ -446,6 +466,67 @@ public class MaidSpellEventHandler {
 
         if(entity instanceof Player player){
             Global.playerDamageHandlers.forEach(func-> func.apply(event,player));
+        }
+    }
+
+
+    private static boolean shouldBlockMaidPsiPlayerDamage(LivingEntity target, DamageSource source) {
+        if (!(target instanceof Player)) {
+            return false;
+        }
+        Entity causing = source.getEntity();
+        Entity direct = source.getDirectEntity();
+        if (isMaidPsiFakeCaster(causing) || isMaidPsiFakeCaster(direct)) {
+            return true;
+        }
+        if (direct != null && isPsiSpellEntity(direct)) {
+            return true;
+        }
+        Vec3 sourcePos = source.getSourcePosition();
+        return sourcePos != null && isNearActiveMaidPsiSpell(target.level(), sourcePos);
+    }
+
+    private static boolean isMaidPsiFakeCaster(Entity entity) {
+        if (!(entity instanceof FakePlayer fakePlayer)) {
+            return false;
+        }
+        return PsiProvider.getMaidUuidFromCaster(fakePlayer) != null;
+    }
+
+    private static boolean isPsiSpellEntity(Entity entity) {
+        String type = entity.getType().builtInRegistryHolder().key().location().toString();
+        return type.startsWith("psi:") && type.contains("spell");
+    }
+
+    private static boolean isNearActiveMaidPsiSpell(Level level, Vec3 pos) {
+        return !level.getEntities((Entity) null, new net.minecraft.world.phys.AABB(pos, pos).inflate(3.0D),
+                entity -> isMaidPsiFakeCaster(entity) || isPsiSpellEntity(entity)).isEmpty();
+    }
+
+    private static String describeDamageEntity(Entity entity) {
+        if (entity == null) {
+            return "null";
+        }
+        return entity.getType().builtInRegistryHolder().key().location() + ":" + entity.getUUID();
+    }
+
+
+    @SubscribeEvent
+    public static void onExplosionDetonate(ExplosionEvent.Detonate event) {
+        Entity exploder = event.getExplosion().getExploder();
+        boolean maidPsiExplosion = isMaidPsiFakeCaster(exploder)
+                || isPsiSpellEntity(exploder)
+                || isMaidPsiFakeCaster(event.getExplosion().getIndirectSourceEntity());
+        if (!maidPsiExplosion) {
+            return;
+        }
+        int before = event.getAffectedEntities().size();
+        event.getAffectedEntities().removeIf(Player.class::isInstance);
+        event.getExplosion().getHitPlayers().clear();
+        int removed = before - event.getAffectedEntities().size();
+        if (removed > 0) {
+            LOGGER.debug("[MaidSpell/Psi] removed {} players from explosion knockback source={}",
+                    removed, describeDamageEntity(exploder));
         }
     }
 

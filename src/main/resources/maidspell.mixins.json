@@ -38,7 +38,9 @@
     "tlm.MaidNodeEvaluatorMixin",
     "tlm.OpenMaidGuiMessageMixin",
     "tlm.ServerMaidModelsMergeMixin",
-    "tlm.TaskFeedOwnerMixin"
+    "tlm.TaskFeedOwnerMixin",
+    "psi.PieceSelectorNearbyMixin",
+    "psi.PieceTrickAddMotionMixin"
   ],
   "client": [
     "iss.ClientMagicDataMixin",
