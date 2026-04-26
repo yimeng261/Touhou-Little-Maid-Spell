@@ -25,7 +25,8 @@ public class NetworkHandler {
     private static int id = 0;
     
     public static void registerMessages() {
-        CHANNEL.registerMessage(
+        CHANNEL
+                .registerMessage(
                 id++,
                 EnderPocketMessage.class,
                 EnderPocketMessage::encode,
