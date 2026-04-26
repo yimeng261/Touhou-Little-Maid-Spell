@@ -1,10 +1,11 @@
 package com.github.yimeng261.maidspell.block.custom;
 
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.CorruptedKnightEntity;
+import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.block.entity.ScarletZhuhuaBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -34,6 +35,8 @@ public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
     private static final int LIGHT_LEVEL = 10;
     private static final int AURA_RANGE = 3;
     private static final int EFFECT_DURATION_TICKS = 100;
+    private static final ResourceLocation CORRUPTED_KNIGHT_ID =
+        new ResourceLocation(MaidSpellMod.MOD_ID, "corrupted_knight");
 
     public ScarletZhuhuaBlock() {
         super(createProperties());
@@ -77,7 +80,7 @@ public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
         for (LivingEntity living : level.getEntitiesOfClass(LivingEntity.class, area, ScarletZhuhuaBlock::shouldAffect)) {
             living.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, EFFECT_DURATION_TICKS, 1, true, false, true));
 
-            if (!(living instanceof EntityMaid) && !(living instanceof CorruptedKnightEntity)) {
+            if (!(living instanceof EntityMaid) && !isCorruptedKnight(living)) {
                 living.addEffect(new MobEffectInstance(MobEffects.WITHER, EFFECT_DURATION_TICKS, 0, true, false, true));
             }
         }
@@ -85,6 +88,10 @@ public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
 
     private static boolean shouldAffect(LivingEntity living) {
         return living.isAlive() && !isIronsSpellbooksNpc(living);
+    }
+
+    private static boolean isCorruptedKnight(LivingEntity living) {
+        return CORRUPTED_KNIGHT_ID.equals(living.getType().builtInRegistryHolder().key().location());
     }
 
     @Override
