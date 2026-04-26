@@ -10,8 +10,7 @@ import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
-import java.util.NavigableMap;
-import java.util.TreeMap;
+import java.util.List;
 
 public class HolyConstructAttackGoal extends WizardAttackGoal {
     private static final float PREFERRED_COMBAT_RANGE = 6.0f;
@@ -22,6 +21,8 @@ public class HolyConstructAttackGoal extends WizardAttackGoal {
     private static final int CHARGE_PRIORITY_BONUS = 90;
     private static final int OAKSKIN_REUSE_COOLDOWN_TICKS = 20 * 25;
     private static final int OAKSKIN_PRIORITY_BONUS = 65;
+    private static final AbstractSpell NO_SPELL = SpellRegistry.none();
+
     private long lastChargeCastTick = Long.MIN_VALUE;
     private long lastOakskinCastTick = Long.MIN_VALUE;
 
@@ -48,86 +49,113 @@ public class HolyConstructAttackGoal extends WizardAttackGoal {
 
     @Override
     protected void doSpellAction() {
-        if (!spellCastingMob.getHasUsedSingleAttack() && singleUseSpell != SpellRegistry.none() && singleUseDelay <= 0) {
-            spellCastingMob.setHasUsedSingleAttack(true);
-            spellCastingMob.initiateCastSpell(singleUseSpell, singleUseLevel);
-            if (singleUseSpell == SpellRegistry.CHARGE_SPELL.get()) {
-                lastChargeCastTick = mob.tickCount;
-            }
-            fleeCooldown = 7 + singleUseSpell.getCastTime(singleUseLevel);
+        if (trySingleUseSpell()) {
             return;
         }
+        castSelectedSpell();
+    }
 
-        AbstractSpell spell = getNextSpellType();
-        int spellLevel = (int) (spell.getMaxLevel() * Mth.lerp(mob.getRandom().nextFloat(), minSpellQuality, maxSpellQuality));
-        spellLevel = Math.max(spellLevel, 1);
-
-        if (!spell.shouldAIStopCasting(spellLevel, mob, target)) {
-            spellCastingMob.initiateCastSpell(spell, spellLevel);
-            markSpellCast(spell);
-            fleeCooldown = 7 + spell.getCastTime(spellLevel);
-        } else {
-            spellAttackDelay = 5;
+    private boolean trySingleUseSpell() {
+        if (spellCastingMob.getHasUsedSingleAttack() || singleUseSpell == NO_SPELL || singleUseDelay > 0) {
+            return false;
         }
+        spellCastingMob.setHasUsedSingleAttack(true);
+        spellCastingMob.initiateCastSpell(singleUseSpell, singleUseLevel);
+        markSpellCast(singleUseSpell);
+        fleeCooldown = 7 + singleUseSpell.getCastTime(singleUseLevel);
+        return true;
+    }
+
+    private void castSelectedSpell() {
+        AbstractSpell spell = getNextSpellType();
+        int spellLevel = randomSpellLevel(spell);
+        if (spell.shouldAIStopCasting(spellLevel, mob, target)) {
+            spellAttackDelay = 5;
+            return;
+        }
+        spellCastingMob.initiateCastSpell(spell, spellLevel);
+        markSpellCast(spell);
+        fleeCooldown = 7 + spell.getCastTime(spellLevel);
+    }
+
+    private int randomSpellLevel(AbstractSpell spell) {
+        float quality = Mth.lerp(mob.getRandom().nextFloat(), minSpellQuality, maxSpellQuality);
+        return Math.max((int) (spell.getMaxLevel() * quality), 1);
     }
 
     @Override
     protected AbstractSpell getNextSpellType() {
-        NavigableMap<Integer, ArrayList<AbstractSpell>> weightedSpells = new TreeMap<>();
-        int attackWeight = getAttackWeight();
-        int defenseWeight = getDefenseWeight() - (lastSpellCategory == defenseSpells ? 100 : 0);
-        int movementWeight = getMovementWeight() - (lastSpellCategory == movementSpells ? 50 : 0);
-        int supportWeight = getSupportWeight() - (lastSpellCategory == supportSpells ? 100 : 0);
-        int total = 0;
-
-        if (!attackSpells.isEmpty() && attackWeight > 0) {
-            total += attackWeight;
-            weightedSpells.put(total, attackSpells);
-        }
-        if (!defenseSpells.isEmpty() && defenseWeight > 0) {
-            total += defenseWeight;
-            weightedSpells.put(total, defenseSpells);
-        }
-        if (!movementSpells.isEmpty() && movementWeight > 0) {
-            total += movementWeight;
-            weightedSpells.put(total, movementSpells);
-        }
-        if ((!supportSpells.isEmpty() || drinksPotions) && supportWeight > 0) {
-            total += supportWeight;
-            weightedSpells.put(total, supportSpells);
-        }
-
+        List<SpellBucket> buckets = new ArrayList<>(4);
+        int total = appendWeightedCategories(buckets);
         if (total <= 0) {
-            return SpellRegistry.none();
+            return NO_SPELL;
         }
 
-        int seed = mob.getRandom().nextInt(total);
-        ArrayList<AbstractSpell> spellList = weightedSpells.higherEntry(seed).getValue();
+        ArrayList<AbstractSpell> spellList = pickBucket(buckets, mob.getRandom().nextInt(total));
         lastSpellCategory = spellList;
-        if (drinksPotions && spellList == supportSpells) {
-            if (supportSpells.isEmpty() || mob.getRandom().nextFloat() < 0.5f) {
-                spellCastingMob.startDrinkingPotion();
-                return SpellRegistry.none();
-            }
+        if (shouldDrinkInsteadOfCast(spellList)) {
+            spellCastingMob.startDrinkingPotion();
+            return NO_SPELL;
         }
         return chooseSpellFromCategory(spellList);
     }
 
-    private AbstractSpell chooseSpellFromCategory(ArrayList<AbstractSpell> spellList) {
-        if (spellList == defenseSpells) {
-            AbstractSpell oakskin = SpellRegistry.OAKSKIN_SPELL.get();
-            if (isOakskinAvailable() && defenseSpells.contains(oakskin) && mob.getRandom().nextFloat() < 0.8f) {
-                return oakskin;
-            }
+    private int appendWeightedCategories(List<SpellBucket> buckets) {
+        int total = 0;
+        total = appendCategory(buckets, total, attackSpells, getAttackWeight());
+        total = appendCategory(buckets, total, defenseSpells, getDefenseWeight() - repeatPenalty(defenseSpells, 100));
+        total = appendCategory(buckets, total, movementSpells, getMovementWeight() - repeatPenalty(movementSpells, 50));
+        return appendCategory(buckets, total, supportSpells, getSupportWeight() - repeatPenalty(supportSpells, 100), drinksPotions);
+    }
 
-            ArrayList<AbstractSpell> fallback = new ArrayList<>(spellList);
-            if (!isOakskinAvailable()) {
-                fallback.remove(oakskin);
-            }
-            if (!fallback.isEmpty()) {
-                return fallback.get(mob.getRandom().nextInt(fallback.size()));
+    private int repeatPenalty(ArrayList<AbstractSpell> category, int penalty) {
+        return lastSpellCategory == category ? penalty : 0;
+    }
+
+    private int appendCategory(List<SpellBucket> buckets, int currentTotal, ArrayList<AbstractSpell> spells, int weight) {
+        return appendCategory(buckets, currentTotal, spells, weight, false);
+    }
+
+    private int appendCategory(List<SpellBucket> buckets, int currentTotal, ArrayList<AbstractSpell> spells, int weight, boolean allowEmptyCategory) {
+        if (weight <= 0 || (!allowEmptyCategory && spells.isEmpty())) {
+            return currentTotal;
+        }
+        int nextTotal = currentTotal + weight;
+        buckets.add(new SpellBucket(nextTotal, spells));
+        return nextTotal;
+    }
+
+    private ArrayList<AbstractSpell> pickBucket(List<SpellBucket> buckets, int roll) {
+        for (SpellBucket bucket : buckets) {
+            if (roll < bucket.ceiling()) {
+                return bucket.spells();
             }
         }
+        return buckets.get(buckets.size() - 1).spells();
+    }
+
+    private boolean shouldDrinkInsteadOfCast(ArrayList<AbstractSpell> spellList) {
+        return drinksPotions && spellList == supportSpells && (supportSpells.isEmpty() || mob.getRandom().nextFloat() < 0.5f);
+    }
+
+    private AbstractSpell chooseSpellFromCategory(ArrayList<AbstractSpell> spellList) {
+        if (spellList != defenseSpells) {
+            return randomSpell(spellList);
+        }
+
+        AbstractSpell oakskin = SpellRegistry.OAKSKIN_SPELL.get();
+        if (isOakskinAvailable() && defenseSpells.contains(oakskin) && mob.getRandom().nextFloat() < 0.8f) {
+            return oakskin;
+        }
+
+        ArrayList<AbstractSpell> candidates = new ArrayList<>(spellList);
+        if (!isOakskinAvailable()) {
+            candidates.remove(oakskin);
+        }
+        return candidates.isEmpty() ? randomSpell(spellList) : randomSpell(candidates);
+    }
+
+    private AbstractSpell randomSpell(ArrayList<AbstractSpell> spellList) {
         return spellList.get(mob.getRandom().nextInt(spellList.size()));
     }
 
@@ -146,35 +174,61 @@ public class HolyConstructAttackGoal extends WizardAttackGoal {
 
     @Override
     protected void doMovement(double distanceSquared) {
-        double speed = (spellCastingMob.isCasting() ? 0.75f : 1f) * movementSpeed();
+        double speed = currentMovementSpeed();
         mob.lookAt(target, 30, 30);
 
-        if (allowFleeing && distanceSquared < TOO_CLOSE_RANGE_SQR) {
-            Vec3 flee = DefaultRandomPos.getPosAway(this.mob, 16, 7, target.position());
-            if (flee != null) {
-                this.mob.getNavigation().moveTo(flee.x, flee.y, flee.z, speed * 1.25);
-            } else {
-                mob.getMoveControl().strafe(-(float) speed * getStrafeMultiplier(), (float) speed * getStrafeMultiplier());
-            }
+        if (shouldBackAway(distanceSquared)) {
+            backAway(speed);
             return;
         }
-
-        if (hasLineOfSight && distanceSquared <= PREFERRED_COMBAT_RANGE_SQR * 1.35f) {
-            this.mob.getNavigation().stop();
-            if (++strafeTime > 20 && mob.getRandom().nextDouble() < 0.12) {
-                strafingClockwise = !strafingClockwise;
-                strafeTime = 0;
-            }
-
-            float strafeForward = distanceSquared < PREFERRED_COMBAT_RANGE_SQR * 0.7f ? -0.12f : 0.08f;
-            int strafeDir = strafingClockwise ? 1 : -1;
-            mob.getMoveControl().strafe(strafeForward * getStrafeMultiplier(), (float) speed * 0.85f * strafeDir * getStrafeMultiplier());
-            if (mob.horizontalCollision && mob.getRandom().nextFloat() < 0.1f) {
-                tryJump();
-            }
+        if (shouldCircleTarget(distanceSquared)) {
+            circleTarget(distanceSquared, speed);
             return;
         }
+        approachTargetOnInterval();
+    }
 
+    private double currentMovementSpeed() {
+        return (spellCastingMob.isCasting() ? 0.75f : 1f) * movementSpeed();
+    }
+
+    private boolean shouldBackAway(double distanceSquared) {
+        return allowFleeing && distanceSquared < TOO_CLOSE_RANGE_SQR;
+    }
+
+    private void backAway(double speed) {
+        Vec3 flee = DefaultRandomPos.getPosAway(this.mob, 16, 7, target.position());
+        if (flee != null) {
+            this.mob.getNavigation().moveTo(flee.x, flee.y, flee.z, speed * 1.25);
+        } else {
+            mob.getMoveControl().strafe(-(float) speed * getStrafeMultiplier(), (float) speed * getStrafeMultiplier());
+        }
+    }
+
+    private boolean shouldCircleTarget(double distanceSquared) {
+        return hasLineOfSight && distanceSquared <= PREFERRED_COMBAT_RANGE_SQR * 1.35f;
+    }
+
+    private void circleTarget(double distanceSquared, double speed) {
+        this.mob.getNavigation().stop();
+        maybeFlipStrafeDirection();
+
+        float strafeForward = distanceSquared < PREFERRED_COMBAT_RANGE_SQR * 0.7f ? -0.12f : 0.08f;
+        int strafeDir = strafingClockwise ? 1 : -1;
+        mob.getMoveControl().strafe(strafeForward * getStrafeMultiplier(), (float) speed * 0.85f * strafeDir * getStrafeMultiplier());
+        if (mob.horizontalCollision && mob.getRandom().nextFloat() < 0.1f) {
+            tryJump();
+        }
+    }
+
+    private void maybeFlipStrafeDirection() {
+        if (++strafeTime > 20 && mob.getRandom().nextDouble() < 0.12) {
+            strafingClockwise = !strafingClockwise;
+            strafeTime = 0;
+        }
+    }
+
+    private void approachTargetOnInterval() {
         if (mob.tickCount % 5 == 0) {
             this.mob.getNavigation().moveTo(this.target, speedModifier * 1.15);
         }
@@ -183,5 +237,8 @@ public class HolyConstructAttackGoal extends WizardAttackGoal {
     @Override
     protected double movementSpeed() {
         return speedModifier * mob.getAttributeValue(Attributes.MOVEMENT_SPEED) * 2;
+    }
+
+    private record SpellBucket(int ceiling, ArrayList<AbstractSpell> spells) {
     }
 }
