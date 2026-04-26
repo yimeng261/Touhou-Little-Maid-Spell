@@ -1,5 +1,6 @@
 # eclipse
 bin
+docs
 *.launch
 .settings
 .metadata
@@ -52,8 +53,14 @@ maid-affection
 eclipse
 run
 *.md
+AGENTS.md
 # Files from Forge MDK
 forge*changelog.txt
 .claude
 .cursor
 lll
+
+# SlashBlade addon source checkouts
+bin/mod_source_research/
+slashblade-addon-sources/
+
