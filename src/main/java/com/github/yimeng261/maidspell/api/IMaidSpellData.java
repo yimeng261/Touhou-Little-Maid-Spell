@@ -133,6 +133,7 @@ public abstract class IMaidSpellData {
     public void resetCastingState() {
         this.isCasting = false;
         this.target = null;
+        this.currentSpellId = null;
     }
 
     public boolean isSpellOnCooldown(String spellId) {
