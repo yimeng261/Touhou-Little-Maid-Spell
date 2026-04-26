@@ -34,9 +34,11 @@ public class FallenSanctumStructure extends Structure {
     );
 
     private static final int MIN_AIR_CLEARANCE = 12;
-    private static final int ROOF_MARGIN = 16;
     private static final int MIN_SEARCH_OFFSET = 8;
     private static final int MAX_SEARCH_ABOVE_SEA_LEVEL = 80;
+    private static final int MAX_STRUCTURE_HEIGHT = 90;
+    private static final int NETHER_ROOF_MIN_Y = 123;
+    private static final int ROOF_PROTECTION_MARGIN = 2;
 
     private final Holder<StructureTemplatePool> startPool;
     private final int size;
@@ -79,10 +81,15 @@ public class FallenSanctumStructure extends Structure {
 
     private static OptionalInt findNetherSurfaceY(GenerationContext context, int x, int z) {
         int minY = context.heightAccessor().getMinBuildHeight() + MIN_SEARCH_OFFSET;
-        int maxY = Math.min(
-                context.heightAccessor().getMaxBuildHeight() - ROOF_MARGIN,
+        int maxStartY = NETHER_ROOF_MIN_Y - ROOF_PROTECTION_MARGIN - MAX_STRUCTURE_HEIGHT;
+        int maxSurfaceY = Math.min(
+                maxStartY - 1,
                 context.chunkGenerator().getSeaLevel() + MAX_SEARCH_ABOVE_SEA_LEVEL
         );
+        int maxY = Math.min(context.heightAccessor().getMaxBuildHeight() - 1, maxSurfaceY);
+        if (maxY < minY) {
+            return OptionalInt.empty();
+        }
         NoiseColumn column = context.chunkGenerator().getBaseColumn(x, z, context.heightAccessor(), context.randomState());
 
         int clearAbove = 0;
