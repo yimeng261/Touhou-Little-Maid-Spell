@@ -1,8 +1,11 @@
 package com.github.yimeng261.maidspell.spell.holders;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import dev.xkmc.fastprojectileapi.collision.EntityStorageHelper;
+import dev.xkmc.fastprojectileapi.entity.SimplifiedProjectile;
 import dev.xkmc.youkaishomecoming.content.entity.danmaku.ItemDanmakuEntity;
 import dev.xkmc.youkaishomecoming.content.entity.danmaku.ItemLaserEntity;
+import dev.xkmc.youkaishomecoming.content.spell.mover.AttachedMover;
 import dev.xkmc.youkaishomecoming.content.spell.shooter.ShooterData;
 import dev.xkmc.youkaishomecoming.content.spell.shooter.ShooterEntity;
 import dev.xkmc.youkaishomecoming.content.spell.spellcard.LivingCardHolder;
@@ -16,15 +19,22 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import com.mojang.logging.LogUtils;
+
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * 女仆符卡持有者
  * 实现LivingCardHolder接口，使女仆能够使用Youkai-Homecoming的符卡系统
  */
 public class MaidCardHolder implements LivingCardHolder {
+    private static final Logger LOGGER = LogUtils.getLogger();
     
     private final EntityMaid maid;
     private final LivingEntity target;
+    private final List<SimplifiedProjectile> cache;
     
     /**
      * 构造函数
@@ -32,8 +42,13 @@ public class MaidCardHolder implements LivingCardHolder {
      * @param target 目标实体（可为null）
      */
     public MaidCardHolder(EntityMaid maid, @Nullable LivingEntity target) {
+        this(maid, target, new LinkedList<>());
+    }
+
+    public MaidCardHolder(EntityMaid maid, @Nullable LivingEntity target, List<SimplifiedProjectile> cache) {
         this.maid = maid;
         this.target = target;
+        this.cache = cache;
     }
     
     @Override
@@ -109,6 +124,37 @@ public class MaidCardHolder implements LivingCardHolder {
         laser.setupLength = type.setupLength();
         return laser;
     }
+
+    @Override
+    public void shoot(Entity danmaku) {
+        if (danmaku instanceof ItemDanmakuEntity itemDanmaku && itemDanmaku.afterExpiry != null) {
+            itemDanmaku.afterExpiry.setup(this);
+        }
+        if (danmaku instanceof ItemLaserEntity laser && laser.mover instanceof AttachedMover) {
+            alignLaserToForward(laser);
+        }
+        if (danmaku instanceof SimplifiedProjectile projectile) {
+            cache.add(projectile);
+        }
+        if (maid.level() instanceof ServerLevel sl) {
+            EntityStorageHelper.fastAdd(sl, danmaku);
+        }
+    }
+    
+
+    public void updateCachedProjectiles() {
+        cache.removeIf(projectile -> projectile == null || !projectile.isValid());
+        for (SimplifiedProjectile projectile : cache) {
+            if (projectile instanceof ItemLaserEntity laser && laser.mover instanceof AttachedMover) {
+                alignLaserToForward(laser);
+            }
+        }
+    }
+
+    private void alignLaserToForward(ItemLaserEntity laser) {
+        laser.setup(laser.damage, 1, laser.length, true, forward());
+        laser.setupTime(20, 1, 1, 1);
+    }
     
     @Override
     public ShooterEntity prepareShooter(ShooterData data, SpellCard spell) {
@@ -117,11 +163,5 @@ public class MaidCardHolder implements LivingCardHolder {
         return shooter;
     }
     
-    @Override
-    public void shoot(Entity danmaku) {
-        if (maid.level() instanceof ServerLevel sl) {
-            sl.addFreshEntity(danmaku);
-        }
-    }
 }
 

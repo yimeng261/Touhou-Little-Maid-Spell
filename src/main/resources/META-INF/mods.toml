@@ -51,3 +51,10 @@ versionRange = "[2.5.0,)"
 ordering = "NONE"
 side = "BOTH"
 
+
+[[dependencies."${mod_id}"]]
+modId = "youkaishomecoming"
+mandatory = false
+versionRange = "[2.6.1,)"
+ordering = "NONE"
+side = "BOTH"

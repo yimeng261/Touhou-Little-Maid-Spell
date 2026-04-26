@@ -14,8 +14,11 @@ import dev.xkmc.youkaishomecoming.content.spell.spellcard.SpellCardWrapper;
 import dev.xkmc.youkaishomecoming.init.registrate.YHEntities;
 import dev.xkmc.l2library.util.raytrace.RayTraceUtil;
 
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.server.level.ServerLevel;
 
@@ -40,7 +43,6 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
     // 符卡配置
     private static final double SPELL_CARD_ACTIVATION_CHANCE = 0.5;
 
-    private static final HashSet<Class<?>> DANMAKU_CLASSES = new HashSet<>(Arrays.asList(DanmakuItem.class,LaserItem.class));
     
     /**
      * 构造函数，绑定 MaidYHSpellData 数据类型和 ItemStack 法术类型
@@ -73,7 +75,10 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
         if (itemStack == null || itemStack.isEmpty()) {
             return false;
         }
-        return DANMAKU_CLASSES.contains(itemStack.getItem().getClass()) || SpellCardHelper.isSpellCardItem(itemStack);
+        Item item = itemStack.getItem();
+        return item instanceof DanmakuItem
+                || item instanceof LaserItem
+                || SpellCardHelper.isSpellCardItem(itemStack);
     }
 
     
@@ -85,7 +90,6 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
         MaidYHSpellData data = getData(maid);
 
         Set<ItemStack> allDanmakuItems = data.getSpellBooks();
-        //LOGGER.debug("Initiating casting for {} items", allDanmakuItems.size());
         if (allDanmakuItems.isEmpty()) {
             return;
         }
@@ -116,8 +120,8 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
         data.updateCasting();
         // 处理符卡逻辑
         if (data.hasActiveSpellCard()) {
-            //LOGGER.debug("Active spell card: {}", data.getSpellBooks());
             tickSpellCard(maid, data);
+            data.cleanupActiveProjectiles();
         }
         
         // 检查是否完成施法
@@ -133,6 +137,8 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
     public void stopCasting(EntityMaid maid) {
         MaidYHSpellData data = getData(maid);
         if (data != null && data.isCasting()) {
+            LOGGER.debug("[MaidSpell/YH] stop casting maid={} tick={} activeCard={} target={}",
+                    maid.getId(), maid.tickCount, getActiveSpellCardId(data), describeTarget(data.getTarget()));
             data.resetCastingState();
             data.deactivateSpellCard();
         }
@@ -166,7 +172,6 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
         availableItem.removeIf(SpellCardHelper::isSpellCardItem);
 
         if(availableItem.isEmpty()) {
-            LOGGER.debug("No danmaku available");
             return;
         }
 
@@ -293,6 +298,8 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
 
         // 符卡自然结束时触发冷却
         if (data.getActiveSpellCard() != null) {
+            LOGGER.debug("[MaidSpell/YH] complete spell card maid={} tick={} card={}",
+                    maid.getId(), maid.tickCount, getActiveSpellCardId(data));
             data.setSpellCooldown(data.getActiveSpellCard().modelId,1200,maid);
             data.deactivateSpellCard();
         }
@@ -301,6 +308,25 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
         data.resetCastingState();
     }
     
+    private static String getActiveSpellCardId(MaidYHSpellData data) {
+        return data != null && data.getActiveSpellCard() != null ? data.getActiveSpellCard().modelId : "null";
+    }
+
+
+    private static String describeItem(ItemStack stack) {
+        ResourceLocation key = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        return key == null ? stack.getItem().getDescriptionId() : key.toString();
+    }
+
+    private static String describeTarget(LivingEntity target) {
+        if (target == null) {
+            return "null";
+        }
+        return target.getType() + "#" + target.getId() + " alive=" + target.isAlive()
+                + " dying=" + target.isDeadOrDying() + " removed=" + target.isRemoved()
+                + " hp=" + target.getHealth() + "/" + target.getMaxHealth();
+    }
+
     // === 符卡系统方法 ===
     
     /**
@@ -320,17 +346,18 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
             return;
         }
         
-        // 随机选择一个符卡物品
-        ItemStack selectedItem = spellCardItems.get(maid.getRandom().nextInt(spellCardItems.size()));
-        
-        // 从物品创建符卡包装器
-        SpellCardWrapper wrapper = SpellCardHelper.createSpellCardFromItem(selectedItem);
-        if (wrapper == null || data.isSpellOnCooldown(wrapper.modelId)) {
-            //LOGGER.debug("Failed to create spell card from item: {},cooldown: {}", selectedItem, data.getSpellCooldown(wrapper.modelId));
+        Collections.shuffle(spellCardItems, new Random(maid.getRandom().nextLong()));
+        for (ItemStack selectedItem : spellCardItems) {
+            String selectedItemId = describeItem(selectedItem);
+            SpellCardWrapper wrapper = SpellCardHelper.createSpellCardFromItem(selectedItem);
+            if (wrapper == null || data.isSpellOnCooldown(wrapper.modelId)) {
+                continue;
+            }
+            data.activateSpellCard(wrapper);
+            LOGGER.debug("[MaidSpell/YH] activate spell card maid={} tick={} item={} card={} target={}",
+                    maid.getId(), maid.tickCount, selectedItemId, wrapper.modelId, describeTarget(data.getTarget()));
             return;
         }
-        // 激活符卡
-        data.activateSpellCard(wrapper);
     }
     
     /**
@@ -338,12 +365,13 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
      */
     private void tickSpellCard(EntityMaid maid, MaidYHSpellData data) {
         SpellCardWrapper spellCard = data.getActiveSpellCard();
-        if (spellCard == null || spellCard.card == null || data.getTarget() == null) {
+        if (spellCard == null || spellCard.card == null) {
             return;
         }
         
-        // 创建CardHolder
-        MaidCardHolder holder = new MaidCardHolder(maid, data.getTarget());
+        // 创建CardHolder；无目标符卡会回退到女仆朝向。
+        MaidCardHolder holder = new MaidCardHolder(maid, data.getTarget(), data.getActiveProjectiles());
+        holder.updateCachedProjectiles();
         spellCard.tick(holder);
     }
 }

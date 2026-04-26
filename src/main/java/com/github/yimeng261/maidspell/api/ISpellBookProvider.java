@@ -147,6 +147,13 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
         return data != null ? data.getTarget() : null;
     }
 
+    /**
+     * 目标失效时是否应立即停止施法；持续型特殊法术可覆写为 false。
+     */
+    public boolean shouldStopWhenTargetInvalid(EntityMaid maid) {
+        return true;
+    }
+
     
     /**
      * 检查是否正在施法

@@ -226,8 +226,6 @@ public class SpellBookManager {
         // Clear stale attack targets before providers tick; otherwise long SlashBlade combos can keep swinging after a kill.
         LivingEntity attackTarget = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
         if (attackTarget != null && !isValidTarget(attackTarget)) {
-            LOGGER.debug("[MaidSpell][Manager] clearing invalid attack target maid={} tick={} target={}",
-                    maid.getId(), maid.tickCount, describeTarget(attackTarget));
             maid.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
             maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
             stopAllCasting();
@@ -241,14 +239,18 @@ public class SpellBookManager {
                 if (isValidTarget(providerTarget)) {
                     providerTarget.invulnerableTime = 0;
                 } else {
-                    LOGGER.debug("[MaidSpell][Manager] clearing provider invalid target maid={} tick={} provider={} target={} casting={}",
-                            maid.getId(), maid.tickCount, provider.getClass().getSimpleName(), describeTarget(providerTarget), provider.isCasting(maid));
                     // 即使 provider 没在施法，也必须清理旧 target；否则每 tick 都会重复看到同一个死亡实体。
                     provider.setTarget(maid, null);
                     if (provider.isCasting(maid)) {
-                        provider.stopCasting(maid);
+                        if (provider.shouldStopWhenTargetInvalid(maid)) {
+                            LOGGER.debug("[MaidSpell][Manager] stopping provider after target invalid maid={} tick={} provider={}",
+                                    maid.getId(), maid.tickCount, provider.getClass().getSimpleName());
+                            provider.stopCasting(maid);
+                            continue;
+                        }
+                    } else {
+                        continue;
                     }
-                    continue;
                 }
             }
             provider.processContinuousCasting(maid);

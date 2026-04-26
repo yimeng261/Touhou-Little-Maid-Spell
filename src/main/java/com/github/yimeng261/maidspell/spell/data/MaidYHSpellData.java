@@ -1,11 +1,14 @@
 package com.github.yimeng261.maidspell.spell.data;
 
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
+import dev.xkmc.fastprojectileapi.entity.SimplifiedProjectile;
 import dev.xkmc.youkaishomecoming.content.spell.spellcard.SpellCardWrapper;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -21,6 +24,7 @@ public class MaidYHSpellData extends IMaidSpellData {
     private int castingTime = 0;
     private final int maxCastingTime = 400;
     private SpellCardWrapper activeSpellCard = null;
+    private final List<SimplifiedProjectile> activeProjectiles = new LinkedList<>();
     
     /**
      * 私有构造函数
@@ -99,6 +103,8 @@ public class MaidYHSpellData extends IMaidSpellData {
      */
     public void activateSpellCard(SpellCardWrapper spellCard) {
         this.isCasting = true;
+        this.castingTime = 0;
+        this.activeProjectiles.clear();
         this.activeSpellCard = spellCard;
         
         // 重置符卡状态
@@ -125,10 +131,19 @@ public class MaidYHSpellData extends IMaidSpellData {
     /**
      * 停用符卡
      */
+    public List<SimplifiedProjectile> getActiveProjectiles() {
+        return activeProjectiles;
+    }
+
+    public void cleanupActiveProjectiles() {
+        activeProjectiles.removeIf(projectile -> projectile == null || !projectile.isValid());
+    }
+
     public void deactivateSpellCard() {
         if (activeSpellCard != null && activeSpellCard.card != null) {
             activeSpellCard.card.reset();
         }
+        activeProjectiles.clear();
         activeSpellCard = null;
     }
 }
