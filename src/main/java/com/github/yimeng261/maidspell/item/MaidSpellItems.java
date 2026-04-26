@@ -3,6 +3,9 @@ package com.github.yimeng261.maidspell.item;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
+import com.github.yimeng261.maidspell.item.block.JingxuYoulanItem;
+import com.github.yimeng261.maidspell.item.block.ScarletZhuhuaItem;
+import com.github.yimeng261.maidspell.item.block.YueLinglanItem;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.SpellWhiteList;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChain;
 import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCore;
@@ -83,11 +86,11 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
 
     public static final RegistryObject<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
-        () -> new BlockItem(MaidSpellBlocks.SCARLET_ZHUHUA.get(), new Item.Properties()));
+        () -> new ScarletZhuhuaItem(MaidSpellBlocks.SCARLET_ZHUHUA.get()));
     public static final RegistryObject<Item> YUE_LINGLAN = ITEMS.register("yue_linglan",
-        () -> new BlockItem(MaidSpellBlocks.YUE_LINGLAN.get(), new Item.Properties()));
+        () -> new YueLinglanItem(MaidSpellBlocks.YUE_LINGLAN.get()));
     public static final RegistryObject<Item> JINGXU_YOULAN = ITEMS.register("jingxu_youlan",
-        () -> new BlockItem(MaidSpellBlocks.JINGXU_YOULAN.get(), new Item.Properties()));
+        () -> new JingxuYoulanItem(MaidSpellBlocks.JINGXU_YOULAN.get()));
     public static final RegistryObject<Item> SUPPRESSION_STONE = ITEMS.register("suppression_stone",
         () -> new BlockItem(MaidSpellBlocks.SUPPRESSION_STONE.get(), new Item.Properties()));
 
