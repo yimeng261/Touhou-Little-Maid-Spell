@@ -11,10 +11,14 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.LivingEntity;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.slf4j.Logger;
 
@@ -26,6 +30,8 @@ public class TrueDamageUtil {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final float HEALTH_TOLERANCE = 0.01f;
     private static final float FAILED_ATTEMPT_GAP = Float.POSITIVE_INFINITY;
+    private static final Queue<TrueDamageRequest> TRUE_DAMAGE_QUEUE = new ConcurrentLinkedQueue<>();
+    private static final int MAX_QUEUED_DAMAGE_PER_TICK = 2048;
     
     private static final Map<String, List<Integer>> healthIdMap = new HashMap<>();
 
@@ -38,11 +44,85 @@ public class TrueDamageUtil {
      * @return 是否成功
      */
     public static boolean dealTrueDamage(LivingEntity target, float damage, LivingEntity attacker) {
-        if(canNotBeApllied(target)){
+        if (canNotBeApllied(target) || damage <= 0.0f || target.level().isClientSide()) {
             return false;
         }
-        float newHealth = Math.max(0.0f, target.getHealth() - damage);
-        return setNewHealth(target, newHealth, attacker);
+        TRUE_DAMAGE_QUEUE.offer(new TrueDamageRequest(target, damage, attacker));
+        return true;
+    }
+
+    /**
+     * Process queued true damage on the server tick. Requests for the same target are merged before one health write,
+     * avoiding repeated EntityData/NBT writes that can restore older health snapshots inside the same tick.
+     */
+    public static void processQueuedTrueDamage() {
+        Map<Integer, AggregatedTrueDamage> aggregated = new LinkedHashMap<>();
+        int drained = 0;
+        TrueDamageRequest request;
+        while (drained++ < MAX_QUEUED_DAMAGE_PER_TICK && (request = TRUE_DAMAGE_QUEUE.poll()) != null) {
+            LivingEntity target = request.target.get();
+            if (canNotBeApllied(target) || !target.isAlive() || target.isRemoved()) {
+                continue;
+            }
+            LivingEntity attacker = request.attacker.get();
+            aggregated.computeIfAbsent(target.getId(), ignored -> new AggregatedTrueDamage(target)).add(request.damage, attacker);
+        }
+        if (drained > MAX_QUEUED_DAMAGE_PER_TICK) {
+            LOGGER.warn("[TrueDamage] queued true damage processing hit per-tick cap: remaining={}", TRUE_DAMAGE_QUEUE.size());
+        }
+
+        aggregated.values().forEach(damage -> {
+            LivingEntity target = damage.target.get();
+            if (canNotBeApllied(target) || !target.isAlive() || target.isRemoved()) {
+                return;
+            }
+            float currentHealth = target.getHealth();
+            float newHealth = Math.max(0.0f, currentHealth - damage.amount);
+            LOGGER.info("[TrueDamage] queued apply merged target={} requests={} damage={} healthBefore={} healthAfter={}",
+                    describeTarget(target), damage.requests, damage.amount, currentHealth, newHealth);
+            setNewHealth(target, newHealth, damage.attacker);
+        });
+    }
+
+
+    public static void clearQueuedTrueDamage() {
+        TRUE_DAMAGE_QUEUE.clear();
+    }
+
+
+
+    private static final class AggregatedTrueDamage {
+        private final WeakReference<LivingEntity> target;
+        private float amount;
+        private int requests;
+        private LivingEntity attacker;
+
+        private AggregatedTrueDamage(LivingEntity target) {
+            this.target = new WeakReference<>(target);
+        }
+
+        private void add(float damage, LivingEntity attacker) {
+            this.amount += damage;
+            this.requests++;
+            if (this.attacker == null && attacker != null) {
+                this.attacker = attacker;
+            }
+        }
+    }
+
+    private record TrueDamageRequest(WeakReference<LivingEntity> target, float damage, WeakReference<LivingEntity> attacker) {
+        private TrueDamageRequest(LivingEntity target, float damage, LivingEntity attacker) {
+            this(new WeakReference<>(target), damage, new WeakReference<>(attacker));
+        }
+    }
+
+    private static String describeTarget(LivingEntity target) {
+        if (target == null) {
+            return "null";
+        }
+        return target.getType() + "#" + target.getId() + " alive=" + target.isAlive()
+                + " dying=" + target.isDeadOrDying() + " removed=" + target.isRemoved()
+                + " hp=" + target.getHealth() + "/" + target.getMaxHealth();
     }
 
     private static boolean canNotBeApllied(LivingEntity target){

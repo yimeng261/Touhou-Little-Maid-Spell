@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.tags.DamageTypeTags;
@@ -115,17 +116,20 @@ public class DreamCrystalMaidEvents {
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase == TickEvent.Phase.END) {
+            TrueDamageUtil.processQueuedTrueDamage();
             DreamCatCrystalBauble.processScheduledEffects(event.getServer());
         }
     }
 
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+        TrueDamageUtil.clearQueuedTrueDamage();
         DreamCatCrystalBauble.clearScheduledEffects();
     }
 
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
+        TrueDamageUtil.clearQueuedTrueDamage();
         DreamCatCrystalBauble.clearScheduledEffects();
     }
 
