@@ -11,6 +11,7 @@ import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeB
 import com.github.yimeng261.maidspell.coremod.HurtHeadCoremodHooks;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.DataItem;
+import com.github.yimeng261.maidspell.utils.FoxLeafOwnerEffectHelper;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
@@ -232,9 +233,16 @@ public abstract class LivingEntityMixin {
         }
     }
 
-    @Inject(method = "canStandOnFluid", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "canStandOnFluid(Lnet/minecraft/world/level/material/FluidState;)Z", at = @At("HEAD"), cancellable = true)
     private void maidspell$allowWaterWalk(FluidState fluidState, CallbackInfoReturnable<Boolean> cir) {
-        if (!((Object) this instanceof EntityMaid maid) || maid.isUnderWater()) {
+        Object self = this;
+        if (self instanceof Player player) {
+            if (FoxLeafOwnerEffectHelper.canOwnerStandOnFluid(player, fluidState)) {
+                cir.setReturnValue(true);
+            }
+            return;
+        }
+        if (!(self instanceof EntityMaid maid) || maid.isUnderWater()) {
             return;
         }
         if (fluidState.is(FluidTags.WATER) && BaubleStateManager.hasBauble(maid, MaidSpellItems.FLOATING_FOX_LEAF)) {

@@ -92,10 +92,12 @@
   "item.maidspell.floating_fox_leaf.desc1": "一片荷叶，驮着灵狐踏过粼粼波光。",
   "item.maidspell.floating_fox_leaf.desc2": "让女仆能够踏水而行，并显著抑制水面下沉",
   "item.maidspell.floating_fox_leaf.desc3": "女仆完全没入水中后会恢复正常游泳",
+  "item.maidspell.floating_fox_leaf.desc4": "主人在范围内也可共享踏水；按住潜行或完全下潜时不触发",
   "item.touhou_little_maid_spell.molten_fox_leaf": "熔岩狐叶",
   "item.maidspell.molten_fox_leaf.desc1": "一片熔叶驮着狐影，踏过炽热岩浆。",
   "item.maidspell.molten_fox_leaf.desc2": "让女仆能够踏熔岩而行，并稳定停留在岩浆表面",
   "item.maidspell.molten_fox_leaf.desc3": "免疫火焰、燃烧、灼热地面与熔岩伤害",
+  "item.maidspell.molten_fox_leaf.desc4": "主人在范围内也可共享踏熔岩与火焰保护；按住潜行或完全没入岩浆时不触发",
   "item.touhou_little_maid_spell.ender_pocket": "末影腰包",
   "item.maidspell.ender_pocket.desc1": "连接末影空间的神秘腰包",
   "item.maidspell.ender_pocket.desc2": "允许远程访问女仆背包",
@@ -205,5 +207,14 @@
   "item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_9": "我是谁？......我为什么在这里？\n我似乎忘记了很多事情，但感觉不重要了。日记里的内容我不太能理解，但我还能写。\n______\n\n又有人来了。\n我不能让他们靠近那棵树。\n不能让任何人去到那个地方。\n不能让任何人听见那些声音之后……像我一样。",
   "pack.touhou_little_maid_spell.legacy_textures.title": "万法皆通旧版材质",
   "pack.touhou_little_maid_spell.legacy_textures.desc": "使用旧版物品材质",
-  "structure.touhou_little_maid_spell.elven_realm": "精灵秘境"
+  "structure.touhou_little_maid_spell.elven_realm": "精灵秘境",
+  "item.maidspell.scarlet_zhuhua.desc1": "猩红之花，绽放于绯红菌岩之上",
+  "item.maidspell.scarlet_zhuhua.desc2": "每隔一段时间，为周围3格内生物施加力量效果",
+  "item.maidspell.scarlet_zhuhua.desc3": "对非女仆/入魔骑士生物额外施加凋零",
+  "item.maidspell.yue_linglan.desc1": "铃兰摇曳，追寻精灵的踪迹",
+  "item.maidspell.yue_linglan.desc2": "每隔一段时间，为周围3格内女仆施加生命恢复与抗性",
+  "item.maidspell.yue_linglan.desc3": "散发指向精灵秘境的指引光尘",
+  "item.maidspell.jingxu_youlan.desc1": "幽兰净墟，涤荡一切杂尘",
+  "item.maidspell.jingxu_youlan.desc2": "每隔一段时间，移除周围3格内女仆的负面效果",
+  "item.maidspell.jingxu_youlan.desc3": "清除周围3格内其他生物的全部药水效果"
 }

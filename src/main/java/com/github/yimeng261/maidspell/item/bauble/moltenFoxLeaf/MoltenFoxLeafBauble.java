@@ -2,10 +2,13 @@ package com.github.yimeng261.maidspell.item.bauble.moltenFoxLeaf;
 
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
-import com.github.yimeng261.maidspell.util.FoxLeafSurfaceHelper;
+import com.github.yimeng261.maidspell.utils.FoxLeafOwnerEffectHelper;
+import com.github.yimeng261.maidspell.utils.FoxLeafSurfaceHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.FluidState;
@@ -13,15 +16,16 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * 为岩浆行走提供稳定支撑，同时持续清理燃烧状态。
+ * 同时也让附近的主人获得岩浆行走能力。
  */
 public class MoltenFoxLeafBauble implements IMaidBauble {
     private static final double MAX_SINK_SPEED = -0.05D;
     private static final double SURFACE_FLOAT_SPEED = 0.08D;
     private static final double MIN_HORIZONTAL_SPEED_SQR = 0.0025D;
-    // Keep the maid just above the lava surface so ground pathing can stay smooth
-    // instead of falling back to lava-swimming movement.
     private static final double SURFACE_Y_OFFSET = 1.0D;
     private static final int IDLE_TRAIL_INTERVAL = 12;
+
+    private static final double SURFACE_Y_OFFSET_OWNER = 1.0D;
 
     @Override
     public void onTick(EntityMaid maid, ItemStack baubleItem) {
@@ -37,6 +41,7 @@ public class MoltenFoxLeafBauble implements IMaidBauble {
         FluidState feetFluid = maid.level().getFluidState(blockPos);
         FluidState belowFluid = maid.level().getFluidState(blockPos.below());
         if (!feetFluid.is(FluidTags.LAVA) && !belowFluid.is(FluidTags.LAVA)) {
+            applyToOwnerIfNearby(maid);
             return;
         }
 
@@ -51,13 +56,75 @@ public class MoltenFoxLeafBauble implements IMaidBauble {
             && maid.getRandom().nextFloat() < 0.55F) {
             spawnMoltenLeafTrail(maid);
         }
+
+        applyToOwnerIfNearby(maid);
     }
 
     private static void keepMaidAtLavaSurface(EntityMaid maid, BlockPos blockPos, FluidState feetFluid,
                                               FluidState belowFluid, Vec3 deltaMovement) {
-        FoxLeafSurfaceHelper.keepMaidAtFluidSurface(
+        FoxLeafSurfaceHelper.keepEntityAtFluidSurface(
             maid, blockPos, feetFluid, belowFluid, deltaMovement, FluidTags.LAVA,
             MAX_SINK_SPEED, SURFACE_FLOAT_SPEED, SURFACE_Y_OFFSET
+        );
+    }
+
+    /**
+     * 如果主人附近且站在岩浆上，赋予主人岩浆行走能力并清除火焰。
+     */
+    private static void applyToOwnerIfNearby(EntityMaid maid) {
+        if (!(maid.getOwner() instanceof Player owner)
+            || owner.level() != maid.level()
+            || owner.isSpectator()
+            || owner.isPassenger()) {
+            return;
+        }
+
+        double range = Config.moltenFoxLeafOwnerRange;
+        if (!FoxLeafOwnerEffectHelper.isValidSupportingMaid(owner, maid, FluidTags.LAVA, range)) {
+            return;
+        }
+
+        if (!FoxLeafOwnerEffectHelper.canApplyOwnerSurfaceMotion(owner, FluidTags.LAVA)) {
+            return;
+        }
+
+        BlockPos ownerPos = owner.blockPosition();
+        FluidState feetFluid = owner.level().getFluidState(ownerPos);
+        FluidState belowFluid = owner.level().getFluidState(ownerPos.below());
+
+        if (!feetFluid.is(FluidTags.LAVA) && !belowFluid.is(FluidTags.LAVA)) {
+            return;
+        }
+
+        if (owner.isOnFire()) {
+            owner.clearFire();
+        }
+
+        owner.fallDistance = 0.0F;
+        FoxLeafSurfaceHelper.keepEntityAtFluidSurface(
+            owner, ownerPos, feetFluid, belowFluid,
+            owner.getDeltaMovement(), FluidTags.LAVA,
+            MAX_SINK_SPEED, SURFACE_FLOAT_SPEED, SURFACE_Y_OFFSET_OWNER
+        );
+
+        ensureTrailUnderOwner(owner);
+    }
+
+    @Override
+    public boolean syncClient(EntityMaid maid, ItemStack baubleItem) {
+        return true;
+    }
+
+    private static void ensureTrailUnderOwner(Player owner) {
+        Level level = owner.level();
+        BlockPos fluidPos = FoxLeafSurfaceHelper.findSurfaceFluidPos(level, owner.blockPosition(), FluidTags.LAVA);
+        if (fluidPos == null) {
+            return;
+        }
+        FoxLeafSurfaceHelper.tryPlaceTrail(
+            level, fluidPos.above(), false, FluidTags.LAVA,
+            MaidSpellBlocks::isMoltenFoxLeafTrail,
+            () -> MaidSpellBlocks.getRandomMoltenFoxLeafTrail(level.random)
         );
     }
 

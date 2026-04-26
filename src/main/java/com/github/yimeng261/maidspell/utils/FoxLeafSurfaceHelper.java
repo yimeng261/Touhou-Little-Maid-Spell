@@ -1,9 +1,9 @@
-package com.github.yimeng261.maidspell.util;
+package com.github.yimeng261.maidspell.utils;
 
-import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.block.custom.TransientFoxLeafTrailBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.LiquidBlock;
@@ -21,34 +21,41 @@ public final class FoxLeafSurfaceHelper {
     private FoxLeafSurfaceHelper() {
     }
 
-    public static void keepMaidAtFluidSurface(EntityMaid maid, BlockPos blockPos, FluidState feetFluid,
-                                              FluidState belowFluid, Vec3 deltaMovement, TagKey<Fluid> fluidTag,
-                                              double maxSinkSpeed, double surfaceFloatSpeed,
-                                              double surfaceYOffset) {
-        Level level = maid.level();
+    public static void keepEntityAtFluidSurface(LivingEntity entity, BlockPos blockPos, FluidState feetFluid,
+                                                FluidState belowFluid, Vec3 deltaMovement, TagKey<Fluid> fluidTag,
+                                                double maxSinkSpeed, double surfaceFloatSpeed,
+                                                double surfaceYOffset) {
+        Level level = entity.level();
         BlockPos fluidPos = resolveSurfaceFluidPos(blockPos, feetFluid, belowFluid, fluidTag);
         if (fluidPos == null) {
             if (deltaMovement.y < maxSinkSpeed) {
-                maid.setDeltaMovement(deltaMovement.x, maxSinkSpeed, deltaMovement.z);
+                entity.setDeltaMovement(deltaMovement.x, maxSinkSpeed, deltaMovement.z);
             }
             return;
         }
 
-        CollisionContext collisionContext = CollisionContext.of(maid);
-        if (collisionContext.isAbove(LiquidBlock.STABLE_SHAPE, fluidPos, true)) {
-            maid.setOnGround(true);
+        // 向上搜索真正的流体表面（流体上方为空气的位置）
+        // 修复深水中玩家被卡在水下的问题
+        BlockPos trueSurface = fluidPos;
+        while (level.getFluidState(trueSurface.above()).is(fluidTag)) {
+            trueSurface = trueSurface.above();
         }
 
-        double surfaceY = fluidPos.getY() + surfaceYOffset;
-        if (Math.abs(maid.getY() - surfaceY) > 0.02D) {
-            maid.setPos(maid.getX(), surfaceY, maid.getZ());
-            maid.setOnGround(true);
-            maid.setDeltaMovement(deltaMovement.x, Math.max(deltaMovement.y, 0.0D), deltaMovement.z);
+        CollisionContext collisionContext = CollisionContext.of(entity);
+        if (collisionContext.isAbove(LiquidBlock.STABLE_SHAPE, trueSurface, true)) {
+            entity.setOnGround(true);
+        }
+
+        double surfaceY = trueSurface.getY() + surfaceYOffset;
+        if (Math.abs(entity.getY() - surfaceY) > 0.02D) {
+            entity.setPos(entity.getX(), surfaceY, entity.getZ());
+            entity.setOnGround(true);
+            entity.setDeltaMovement(deltaMovement.x, Math.max(deltaMovement.y, 0.0D), deltaMovement.z);
             return;
         }
 
         if (deltaMovement.y < 0.0D) {
-            maid.setDeltaMovement(deltaMovement.x, Math.max(deltaMovement.y, surfaceFloatSpeed), deltaMovement.z);
+            entity.setDeltaMovement(deltaMovement.x, Math.max(deltaMovement.y, surfaceFloatSpeed), deltaMovement.z);
         }
     }
 

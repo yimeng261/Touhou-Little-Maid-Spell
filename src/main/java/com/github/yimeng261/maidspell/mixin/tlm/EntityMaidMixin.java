@@ -6,7 +6,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.mixin.accessor.JumpControlAccessor;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
-import com.github.yimeng261.maidspell.util.FoxLeafSurfaceHelper;
+import com.github.yimeng261.maidspell.utils.FoxLeafSurfaceHelper;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.Registry;

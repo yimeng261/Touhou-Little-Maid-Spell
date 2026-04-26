@@ -561,6 +561,31 @@ public class Config {
 
     static {
         BUILDER.pop(); // special
+    }
+
+    // 移动类饰品
+    static {
+        BUILDER.comment("移动相关饰品配置")
+               .comment("Movement-related bauble configurations")
+               .push("movement");
+    }
+
+    private static final ForgeConfigSpec.DoubleValue FLOATING_FOX_LEAF_OWNER_RANGE = BUILDER
+            .comment("浮波狐叶主人水面行走有效范围（格） (默认: 16.0)")
+            .comment("Floating Fox Leaf owner water walking range (blocks)")
+            .defineInRange("floatingFoxLeafOwnerRange", 16.0, 4.0, 64.0);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.DoubleValue MOLTEN_FOX_LEAF_OWNER_RANGE = BUILDER
+            .comment("熔岩狐叶主人岩浆行走有效范围（格） (默认: 16.0)")
+            .comment("Molten Fox Leaf owner lava walking range (blocks)")
+            .defineInRange("moltenFoxLeafOwnerRange", 16.0, 4.0, 64.0);
+
+    static {
+        BUILDER.pop(); // movement
         BUILDER.pop(); // baubles
     }
 
@@ -679,6 +704,10 @@ public class Config {
     public static double soulBookDamageThresholdPercent;
     public static int soulBookDamageIntervalThreshold;
 
+    // 移动类饰品
+    public static double floatingFoxLeafOwnerRange;
+    public static double moltenFoxLeafOwnerRange;
+
     // 梦云水晶
     public static List<String> dreamCrystalEffectBlacklist;
     public static boolean dreamCrystalUseEffectWhitelist;
@@ -756,6 +785,10 @@ public class Config {
         chaosBookMinSplitDamage = CHAOS_BOOK_MIN_SPLIT_DAMAGE.get();
         soulBookDamageThresholdPercent = SOUL_BOOK_DAMAGE_THRESHOLD_PERCENT.get();
         soulBookDamageIntervalThreshold = SOUL_BOOK_DAMAGE_INTERVAL_THRESHOLD.get();
+
+        // 移动类饰品
+        floatingFoxLeafOwnerRange = FLOATING_FOX_LEAF_OWNER_RANGE.get();
+        moltenFoxLeafOwnerRange = MOLTEN_FOX_LEAF_OWNER_RANGE.get();
 
         // 梦云水晶
         dreamCrystalEffectBlacklist = new java.util.ArrayList<>(DREAM_CRYSTAL_EFFECT_BLACKLIST.get());

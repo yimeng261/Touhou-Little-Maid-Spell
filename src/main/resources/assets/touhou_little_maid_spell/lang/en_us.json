@@ -92,10 +92,12 @@
   "item.maidspell.floating_fox_leaf.desc1": "A lotus leaf bearing a little fox over the ripples.",
   "item.maidspell.floating_fox_leaf.desc2": "Lets the maid walk on water and greatly reduces sinking on the surface",
   "item.maidspell.floating_fox_leaf.desc3": "Falls back to normal swimming once the maid is fully underwater",
+  "item.maidspell.floating_fox_leaf.desc4": "The owner also shares water walking within range; sneak or fully submerge to disable it",
   "item.touhou_little_maid_spell.molten_fox_leaf": "Molten Fox Leaf",
   "item.maidspell.molten_fox_leaf.desc1": "A molten leaf bearing a fox spirit through blazing lava.",
   "item.maidspell.molten_fox_leaf.desc2": "Lets the maid walk on lava and stay balanced on the surface",
   "item.maidspell.molten_fox_leaf.desc3": "Grants immunity to fire, burning, hot floor, and lava damage",
+  "item.maidspell.molten_fox_leaf.desc4": "The owner also shares lava walking and fire protection within range; sneak or fully submerge to disable it",
   "item.touhou_little_maid_spell.ender_pocket": "Ender Pocket",
   "item.maidspell.ender_pocket.desc1": "A mysterious pouch connecting to ender space",
   "item.maidspell.ender_pocket.desc2": "Allows remote access to maid backpacks",
@@ -208,5 +210,14 @@
   "item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_9": "Who am I?... Why am I here?\nI seem to have forgotten many things, but it doesn't feel important anymore. I can't quite understand the contents of this diary, but I can still write.\n______\n\nSomeone else has come.\nI cannot let them near that tree.\nI must not let anyone reach that place.\nI must not let anyone hear those voices and then... end up like me.",
   "pack.touhou_little_maid_spell.legacy_textures.title": "Touhou Little Maid: Spell Legacy Textures",
   "pack.touhou_little_maid_spell.legacy_textures.desc": "Use legacy item textures",
-  "structure.touhou_little_maid_spell.elven_realm": "Elven Realm"
+  "structure.touhou_little_maid_spell.elven_realm": "Elven Realm",
+  "item.maidspell.scarlet_zhuhua.desc1": "A scarlet flower that blooms on crimson nylium",
+  "item.maidspell.scarlet_zhuhua.desc2": "Periodically grants Strength to nearby living beings within 3 blocks",
+  "item.maidspell.scarlet_zhuhua.desc3": "Inflicts Wither on non-maid, non-corrupted-knight entities",
+  "item.maidspell.yue_linglan.desc1": "Lily bells sway, seeking traces of the elves",
+  "item.maidspell.yue_linglan.desc2": "Periodically grants Regeneration and Resistance to maids within 3 blocks",
+  "item.maidspell.yue_linglan.desc3": "Emits guiding dust towards the Elven Realm",
+  "item.maidspell.jingxu_youlan.desc1": "An orchid of the pure ruins, cleansing all impurities",
+  "item.maidspell.jingxu_youlan.desc2": "Periodically removes harmful effects from maids within 3 blocks",
+  "item.maidspell.jingxu_youlan.desc3": "Removes all potion effects from other living beings within 3 blocks"
 }

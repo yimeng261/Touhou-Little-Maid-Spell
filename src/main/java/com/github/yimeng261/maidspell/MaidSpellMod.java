@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
 import com.github.yimeng261.maidspell.crafting.OptionalModIngredientSerializer;
+import com.github.yimeng261.maidspell.event.FoxLeafOwnerWaterWalking;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -52,6 +53,7 @@ public class MaidSpellMod {
         
         // 手动注册事件处理器，确保事件能被正确监听
         forgeBus.register(MaidSpellEventHandler.class);
+        forgeBus.register(FoxLeafOwnerWaterWalking.class);
         MaidSpellBlocks.register(modBus);
         MaidSpellBlockEntities.register(modBus);
         MaidSpellItems.register(modBus);
