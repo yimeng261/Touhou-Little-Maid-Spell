@@ -1,3 +1,6 @@
 {
-  "parent": "touhou_little_maid_spell:block/jingxu_youlan"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "touhou_little_maid_spell:block/jingxu_youlan"
+  }
 }

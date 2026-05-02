@@ -4,7 +4,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.block.entity.JingxuYoulanBlockEntity;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -23,6 +25,7 @@ import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
 import java.util.List;
 
@@ -85,5 +88,18 @@ public class JingxuYoulanBlock extends BushBlock implements EntityBlock {
                 .filter(effect -> effect.value().getCategory() == MobEffectCategory.HARMFUL)
                 .toList();
         harmfulEffects.forEach(maid::removeEffect);
+    }
+
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        if (random.nextFloat() > 0.32f) {
+            return;
+        }
+        double x = pos.getX() + 0.25 + random.nextDouble() * 0.5;
+        double y = pos.getY() + 0.45 + random.nextDouble() * 0.45;
+        double z = pos.getZ() + 0.25 + random.nextDouble() * 0.5;
+        level.addParticle(new DustParticleOptions(new Vector3f(0.82f, 0.88f, 1.0f), 0.88f),
+            x, y, z,
+            0.0, 0.008 + random.nextDouble() * 0.01, 0.0);
     }
 }

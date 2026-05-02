@@ -4,7 +4,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.block.entity.YueLinglanBlockEntity;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
@@ -21,6 +23,7 @@ import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
 public class YueLinglanBlock extends BushBlock implements EntityBlock {
     public static final MapCodec<YueLinglanBlock> CODEC = simpleCodec(YueLinglanBlock::new);
@@ -71,5 +74,18 @@ public class YueLinglanBlock extends BushBlock implements EntityBlock {
             maid.addEffect(new MobEffectInstance(MobEffects.REGENERATION, EFFECT_DURATION_TICKS, 0, false, false, true));
             maid.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, EFFECT_DURATION_TICKS, 0, false, false, true));
         }
+    }
+
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        if (random.nextFloat() > 0.3f) {
+            return;
+        }
+        double x = pos.getX() + 0.25 + random.nextDouble() * 0.5;
+        double y = pos.getY() + 0.5 + random.nextDouble() * 0.4;
+        double z = pos.getZ() + 0.25 + random.nextDouble() * 0.5;
+        level.addParticle(new DustParticleOptions(new Vector3f(0.72f, 1.0f, 0.94f), 0.9f),
+            x, y, z,
+            0.0, 0.008 + random.nextDouble() * 0.01, 0.0);
     }
 }
