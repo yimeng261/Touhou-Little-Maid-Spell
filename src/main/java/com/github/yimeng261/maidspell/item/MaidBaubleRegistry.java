@@ -10,9 +10,11 @@ import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChainBauble;
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
+import com.github.yimeng261.maidspell.item.bauble.floatingFoxLeaf.FloatingFoxLeafBauble;
 import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.HairpinBauble;
+import com.github.yimeng261.maidspell.item.bauble.moltenFoxLeaf.MoltenFoxLeafBauble;
 import com.github.yimeng261.maidspell.item.bauble.quickChantRing.QuickChantBauble;
 import com.github.yimeng261.maidspell.item.bauble.rockCrystal.RockCrystalBauble;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
@@ -91,6 +93,14 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         if(MaidSpellItems.ENDER_POCKET != null){
             manager.bind(MaidSpellItems.ENDER_POCKET, new EnderPocketBauble());
+        }
+
+        if(MaidSpellItems.FLOATING_FOX_LEAF != null){
+            manager.bind(MaidSpellItems.FLOATING_FOX_LEAF, new FloatingFoxLeafBauble());
+        }
+
+        if(MaidSpellItems.MOLTEN_FOX_LEAF != null){
+            manager.bind(MaidSpellItems.MOLTEN_FOX_LEAF, new MoltenFoxLeafBauble());
         }
 
         if(MaidSpellItems.WOUND_RIME_BLADE != null){

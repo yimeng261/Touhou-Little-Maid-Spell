@@ -30,7 +30,7 @@ public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
     public static final MapCodec<ScarletZhuhuaBlock> CODEC = simpleCodec(ScarletZhuhuaBlock::new);
     private static final int LIGHT_LEVEL = 10;
     private static final int AURA_RANGE = 3;
-    private static final int EFFECT_DURATION_TICKS = 60;
+    private static final int EFFECT_DURATION_TICKS = 100;
 
     public ScarletZhuhuaBlock(BlockBehaviour.Properties properties) {
         super(properties);

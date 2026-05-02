@@ -9,9 +9,11 @@ import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBook;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChain;
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystal;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocket;
+import com.github.yimeng261.maidspell.item.bauble.floatingFoxLeaf.FloatingFoxLeaf;
 import com.github.yimeng261.maidspell.item.bauble.flowCore.FlowCore;
 import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuity;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.Hairpin;
+import com.github.yimeng261.maidspell.item.bauble.moltenFoxLeaf.MoltenFoxLeaf;
 import com.github.yimeng261.maidspell.item.bauble.quickChantRing.QuickChantRing;
 import com.github.yimeng261.maidspell.item.bauble.rockCrystal.RockCrystal;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercis;
@@ -56,6 +58,8 @@ public class MaidSpellItems {
     public static final DeferredItem<Item> CHAOS_BOOK = ITEMS.register("chaos_book", ChaosBook::new);
     public static final DeferredItem<Item> SOUL_BOOK = ITEMS.register("soul_book", SoulBook::new);
     public static final DeferredItem<Item> ENDER_POCKET = ITEMS.register("ender_pocket", EnderPocket::new);
+    public static final DeferredItem<Item> FLOATING_FOX_LEAF = ITEMS.register("floating_fox_leaf", FloatingFoxLeaf::new);
+    public static final DeferredItem<Item> MOLTEN_FOX_LEAF = ITEMS.register("molten_fox_leaf", MoltenFoxLeaf::new);
     public static final DeferredItem<Item> WOUND_RIME_BLADE = ITEMS.register("wound_rime_blade", WoundRimeBlade::new);
     public static final DeferredItem<Item> ANCHOR_CORE = ITEMS.register("anchor_core", AnchorCore::new);
     public static final DeferredItem<Item> SPELL_OVERLIMIT_CORE = ITEMS.register("spell_overlimit_core", SpellOverlimitCore::new);
@@ -70,6 +74,10 @@ public class MaidSpellItems {
 
     public static final DeferredItem<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
         () -> new BlockItem(MaidSpellBlocks.SCARLET_ZHUHUA.get(), new Item.Properties()));
+    public static final DeferredItem<Item> YUE_LINGLAN = ITEMS.register("yue_linglan",
+        () -> new BlockItem(MaidSpellBlocks.YUE_LINGLAN.get(), new Item.Properties()));
+    public static final DeferredItem<Item> JINGXU_YOULAN = ITEMS.register("jingxu_youlan",
+        () -> new BlockItem(MaidSpellBlocks.JINGXU_YOULAN.get(), new Item.Properties()));
 
     // 管理员工具
     public static final DeferredItem<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);

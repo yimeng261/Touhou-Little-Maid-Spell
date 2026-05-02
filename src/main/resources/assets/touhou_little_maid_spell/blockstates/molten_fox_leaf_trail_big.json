@@ -1,0 +1,21 @@
+{
+  "variants": {
+    "": [
+      {
+        "model": "touhou_little_maid_spell:block/molten_fox_leaf_trail_big"
+      },
+      {
+        "model": "touhou_little_maid_spell:block/molten_fox_leaf_trail_big",
+        "y": 90
+      },
+      {
+        "model": "touhou_little_maid_spell:block/molten_fox_leaf_trail_big",
+        "y": 180
+      },
+      {
+        "model": "touhou_little_maid_spell:block/molten_fox_leaf_trail_big",
+        "y": 270
+      }
+    ]
+  }
+}

@@ -7,11 +7,13 @@
   "refmap": "maidspell.refmap.json",
   "plugin": "com.github.yimeng261.maidspell.mixin.MaidSpellMixinPlugin",
   "mixins": [
+    "BehaviorUtilsMixin",
     "ChunkGeneratorMixin",
     "EntityMixin",
     "HairpinServerLevelMixin",
     "HairpinServerPlayerMixin",
     "JigsawPlacerMixin",
+    "accessor.JumpControlAccessor",
     "LivingEntityAccessor",
     "LivingEntityInvoker",
     "LivingEntityMixin",
@@ -29,6 +31,8 @@
     "tlm.AbstractMaidContainerMixin",
     "tlm.AltarRecipeSerializerMixin",
     "tlm.EntityMaidMixin",
+    "tlm.MaidMoveControlMixin",
+    "tlm.MaidNodeEvaluatorMixin",
     "tlm.OpenMaidGuiPackageMixin",
     "tlm.TaskFeedOwnerMixin"
   ],

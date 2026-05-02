@@ -24,5 +24,9 @@ public final class IronsSpellbooksCompatClient {
                 new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
                         ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "geo/elf_templar.geo.json"),
                         ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "textures/entity/elf_templar.png"))));
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.HOLY_CONSTRUCT.get(), context ->
+                new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
+                        ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "geo/holy_construct.geo.json"),
+                        ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "textures/entity/holy_construct.png"))));
     }
 }
