@@ -6,7 +6,23 @@
       "entries": [
         {
           "type": "minecraft:item",
+          "name": "touhou_little_maid_spell:yue_linglan",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:air",
+          "weight": 9
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
           "name": "irons_spellbooks:claymore",
+          "weight": 3,
           "functions": [
             {
               "function": "minecraft:set_components",
@@ -28,60 +44,56 @@
               }
             }
           ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:air",
+          "weight": 7
         }
       ]
     },
     {
-      "rolls": 6,
+      "rolls": 3,
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "irons_spellbooks:nature_rune"
-        }
-      ],
-      "conditions": [
+          "name": "irons_spellbooks:nature_rune",
+          "weight": 1
+        },
         {
-          "condition": "minecraft:random_chance",
-          "chance": 0.5
+          "type": "minecraft:item",
+          "name": "minecraft:air",
+          "weight": 1
         }
       ]
     },
     {
-      "rolls": 6,
+      "rolls": 1,
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "minecraft:glow_berries"
+          "name": "minecraft:glow_berries",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:air",
+          "weight": 1
         }
       ]
     },
     {
-      "rolls": 5,
+      "rolls": 7,
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "minecraft:emerald"
-        }
-      ],
-      "conditions": [
-        {
-          "condition": "minecraft:random_chance",
-          "chance": 0.5
-        }
-      ]
-    },
-    {
-      "rolls": 10,
-      "entries": [
+          "name": "irons_spellbooks:arcane_essence",
+          "weight": 1
+        },
         {
           "type": "minecraft:item",
-          "name": "touhou_little_maid:power_point"
-        }
-      ],
-      "conditions": [
-        {
-          "condition": "minecraft:random_chance",
-          "chance": 0.5
+          "name": "minecraft:air",
+          "weight": 1
         }
       ]
     }
