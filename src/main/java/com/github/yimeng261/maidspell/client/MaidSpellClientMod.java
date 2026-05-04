@@ -1,11 +1,13 @@
 package com.github.yimeng261.maidspell.client;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.tartaricacid.touhoulittlemaid.client.event.ReloadResourceEvent;
 import com.github.yimeng261.maidspell.client.gui.BlueNoteScreen;
 import com.github.yimeng261.maidspell.client.model.AscensionHaloModel;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
 import net.neoforged.api.distmarker.Dist;
@@ -15,6 +17,7 @@ import net.minecraft.server.packs.PackType;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.event.AddPackFindersEvent;
 import com.github.yimeng261.maidspell.client.resource.LegacyPackRepositorySource;
 
@@ -48,5 +51,14 @@ public class MaidSpellClientMod {
         if (event.getPackType() == PackType.CLIENT_RESOURCES) {
             event.addRepositorySource(new LegacyPackRepositorySource());
         }
+    }
+
+    @SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(() -> {
+            if (TouhouLittleMaidModelPackInstaller.wasInstalledThisRun()) {
+                ReloadResourceEvent.asyncReloadAllPack();
+            }
+        });
     }
 }

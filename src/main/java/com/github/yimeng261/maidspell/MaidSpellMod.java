@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
 import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
@@ -82,6 +83,9 @@ public class MaidSpellMod {
     private void setup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             MaidSpellBlocks.registerPottedPlants();
+            if (TouhouLittleMaidModelPackInstaller.installIfNeeded()) {
+                TouhouLittleMaidModelPackInstaller.reloadServerPacksIfNeeded();
+            }
             if (checkDependencies()) {
                 LOGGER.info("Dependencies verified - initialization complete");
             }

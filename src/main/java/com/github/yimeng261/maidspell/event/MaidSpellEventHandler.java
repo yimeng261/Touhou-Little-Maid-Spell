@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBackpackChangeEven
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
@@ -33,8 +34,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
@@ -352,6 +355,29 @@ public class MaidSpellEventHandler {
     }
 
     @SubscribeEvent
+    public static void onMobFinalizeSpawn(FinalizeSpawnEvent event) {
+        if (!(event.getLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        if (!TheRetreatDimension.isRetreatDimension(level.dimension().location())) {
+            return;
+        }
+        if (!isControlledRetreatSpawnType(event.getSpawnType())) {
+            return;
+        }
+
+        LivingEntity entity = event.getEntity();
+        if (!Config.allowMobSpawnsInRetreat) {
+            event.setSpawnCancelled(true);
+            return;
+        }
+
+        if (!Config.allowHostileMobSpawnsInRetreat && entity instanceof Enemy) {
+            event.setSpawnCancelled(true);
+        }
+    }
+
+    @SubscribeEvent
     public static void onEntityHurt(LivingIncomingDamageEvent event) {
         Entity entity = event.getEntity();
         Entity source = event.getSource().getEntity();
@@ -577,6 +603,28 @@ public class MaidSpellEventHandler {
         } catch (Exception e) {
             LOGGER.error("为玩家 {} 恢复女仆区块加载时发生严重错误", player.getName().getString(), e);
         }
+    }
+
+    private static boolean isControlledRetreatSpawnType(MobSpawnType spawnType) {
+        return switch (spawnType) {
+            case NATURAL,
+                 CHUNK_GENERATION,
+                 SPAWNER,
+                 TRIAL_SPAWNER,
+                 STRUCTURE,
+                 JOCKEY,
+                 EVENT,
+                 REINFORCEMENT,
+                 TRIGGERED,
+                 PATROL -> true;
+            case BREEDING,
+                 MOB_SUMMONED,
+                 CONVERSION,
+                 BUCKET,
+                 SPAWN_EGG,
+                 COMMAND,
+                 DISPENSER -> false;
+        };
     }
 
     /**

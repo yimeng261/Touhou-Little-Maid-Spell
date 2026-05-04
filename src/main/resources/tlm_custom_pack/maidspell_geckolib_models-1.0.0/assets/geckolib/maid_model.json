@@ -1,0 +1,32 @@
+{
+  "pack_name": "{maid_pack.maidspell_geckolib.name}",
+  "version": "1.0.0",
+  "author": [
+    "Touhou Little Maid Art Team",
+    "Touhou Little Maid: Spell"
+  ],
+  "description": [
+    "{maid_pack.maidspell_geckolib.desc}"
+  ],
+  "date": "2026-04-20",
+  "model_list": [
+    {
+      "name": "{model.geckolib.winefox_saint.name}",
+      "model_id": "geckolib:winefox_saint",
+      "is_gecko": true,
+      "description": [
+        "{model.geckolib.winefox_saint.desc.1}",
+        "{model.geckolib.winefox_saint.desc.2}"
+      ],
+      "extra_textures": [
+        "geckolib:textures/entity/winefox_saint_1.png"
+      ],
+      "render_entity_scale": 0.7,
+      "animation": [
+        "geckolib:animation/winefox_saint.main.animation.json",
+        "geckolib:animation/winefox_saint.condition.animation.json",
+        "geckolib:animation/winefox_saint.iss.animation.json"
+      ]
+    }
+  ]
+}
