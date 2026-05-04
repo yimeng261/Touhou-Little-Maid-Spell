@@ -3,5 +3,8 @@
   "maid_pack.maidspell_geckolib.desc": "为旧版东方女仆自动补充的 Gecko 模型包",
   "model.geckolib.winefox_saint.name": "圣女酒狐",
   "model.geckolib.winefox_saint.desc.1": "§7酒狐幻想系列——为你而生的圣女，对邪祟降下神罚，为众生献上祝福。",
-  "model.geckolib.winefox_saint.desc.2": "§7作者：羊毛 Official/星海境"
+  "model.geckolib.winefox_saint.desc.2": "§7作者：羊毛 Official/星海境",
+  "model.geckolib.winefox_elf.name": "精灵酒狐",
+  "model.geckolib.winefox_elf.desc.1": "§7酒狐幻想系列——幻化为精灵的狐娘，散发着浓郁的自然灵气。",
+  "model.geckolib.winefox_elf.desc.2": "§7作者：星海境/缇可拉"
 }

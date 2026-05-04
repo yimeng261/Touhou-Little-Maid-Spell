@@ -3,7 +3,7 @@
     {
       "element": {
         "element_type": "minecraft:single_pool_element",
-        "location": "touhou_little_maid_spell:yin_yang_altar",
+        "location": "touhou_little_maid_spell:yin_yang_altar/yin_yang_altar",
         "processors": [
           {
             "processor_type": "minecraft:block_ignore",

@@ -9,5 +9,14 @@
         "pitch": 1.0
       }
     ]
+  },
+  "silent_merchant_feedback": {
+    "category": "neutral",
+    "sounds": [
+      {
+        "name": "minecraft:intentionally_empty",
+        "type": "event"
+      }
+    ]
   }
 }

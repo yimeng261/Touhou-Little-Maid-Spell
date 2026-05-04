@@ -63,7 +63,8 @@ public abstract class EntityMaidMixin extends TamableAnimal implements AnchoredE
     private static final Set<ResourceLocation> maidspell$deniedStructures = Set.of(
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "fairy_maid_cafe"),
-            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "relic_sanctum")
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "relic_sanctum"),
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "elven_realm")
     );
 
 
