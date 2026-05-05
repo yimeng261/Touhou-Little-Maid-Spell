@@ -64,6 +64,7 @@ public abstract class EntityMaidMixin extends TamableAnimal implements AnchoredE
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "fairy_maid_cafe"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "relic_sanctum"),
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "fallen_sanctum"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "elven_realm")
     );
 

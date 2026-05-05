@@ -1,0 +1,11 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "goety"
+    }
+  ],
+  "type": "neoforge:add_structures",
+  "biomes": "#touhou_little_maid_spell:has_structure/enchantress_footsteps_graveyard",
+  "structures": "touhou_little_maid_spell:enchantress_footsteps_graveyard_set"
+}
