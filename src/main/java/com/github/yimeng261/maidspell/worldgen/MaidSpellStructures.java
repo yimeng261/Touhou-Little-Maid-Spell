@@ -21,7 +21,7 @@ public class MaidSpellStructures {
     public static final DeferredHolder<StructureType<?>, StructureType<LandJigsawStructure>> LAND_JIGSAW
             = STRUCTURE_TYPES.register("land_jigsaw", () -> () -> LandJigsawStructure.CODEC);
 
-    // 堕天圣堂结构（基于拼图系统，带地形平整度检测）
+    // 圣遗礼拜堂结构（基于拼图系统，带地形平整度检测）
     public static final DeferredHolder<StructureType<?>, StructureType<RelicSanctumStructure>> RELIC_SANCTUM
             = STRUCTURE_TYPES.register("relic_sanctum", () -> () -> RelicSanctumStructure.CODEC);
 }

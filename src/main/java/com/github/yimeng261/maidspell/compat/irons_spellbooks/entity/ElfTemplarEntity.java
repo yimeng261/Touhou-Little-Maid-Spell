@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchantWizard {
+    private static final int DAILY_TRADE_MAX_USES = 5;
     @Nullable
     private Player tradingPlayer;
     @Nullable
@@ -144,7 +145,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(MaidSpellItems.YUE_LINGLAN.get()),
                 0,
-                12,
+                DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -153,7 +154,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(ItemRegistry.NATURE_RUNE.get()),
                 0,
-                12,
+                DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -162,7 +163,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(Items.HONEY_BOTTLE),
                 0,
-                16,
+                DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -171,7 +172,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(Items.POISONOUS_POTATO, 3),
                 0,
-                12,
+                DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -216,6 +217,13 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
     public void readAdditionalSaveData(CompoundTag compound) {
         super.readAdditionalSaveData(compound);
         deserializeMerchant(compound, c -> this.offers = c);
+        if (this.offers != null) {
+            MerchantOffers normalizedOffers = new MerchantOffers();
+            for (MerchantOffer offer : this.offers) {
+                normalizedOffers.add(copyOfferWithDailyUseLimit(offer));
+            }
+            this.offers = normalizedOffers;
+        }
     }
 
     @Override
@@ -261,5 +269,18 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
     @Override
     public Player getTradingPlayer() {
         return tradingPlayer;
+    }
+
+    private MerchantOffer copyOfferWithDailyUseLimit(MerchantOffer offer) {
+        return new MerchantOffer(
+            offer.getItemCostA(),
+            offer.getItemCostB(),
+            offer.getResult().copy(),
+            Math.min(offer.getUses(), DAILY_TRADE_MAX_USES),
+            DAILY_TRADE_MAX_USES,
+            offer.getXp(),
+            offer.getPriceMultiplier(),
+            offer.getDemand()
+        );
     }
 }

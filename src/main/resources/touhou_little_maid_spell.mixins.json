@@ -30,11 +30,14 @@
     "iss.UtilsMixin",
     "tlm.AbstractMaidContainerMixin",
     "tlm.AltarRecipeSerializerMixin",
+    "tlm.CustomModelPackAccessor",
     "tlm.EntityMaidMixin",
+    "tlm.MaidModelsMergeMixin",
     "tlm.MaidBackupsManagerMixin",
     "tlm.MaidMoveControlMixin",
     "tlm.MaidNodeEvaluatorMixin",
     "tlm.OpenMaidGuiPackageMixin",
+    "tlm.ServerMaidModelsMergeMixin",
     "tlm.TaskFeedOwnerMixin"
   ],
   "client": [
