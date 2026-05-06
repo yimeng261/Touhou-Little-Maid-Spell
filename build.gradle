@@ -1,9 +1,9 @@
 plugins {
     id 'eclipse'
     id 'idea'
-    id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
-    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
-    id 'org.spongepowered.mixin' version '0.7.+'
+    id 'net.minecraftforge.gradle' version '6.0.53'
+    id 'org.parchmentmc.librarian.forgegradle' version '1.2.0'
+    id 'org.spongepowered.mixin' version '0.7.38'
 }
 
 version = mod_version
@@ -140,7 +140,7 @@ dependencies {
     implementation fg.deobf("maven.modrinth:curios:5.14.1+1.20.1-forge")
 
     // ElectroblobsWizardryRedux
-    implementation fg.deobf("curse.maven:electroblobs-wizardry-redux-1405790:7683201")
+    implementation fg.deobf("curse.maven:electroblobs-wizardry-redux-1405790:7942282")
     
     runtimeOnly fg.deobf("curse.maven:jei-238222:7037120")
     runtimeOnly fg.deobf("curse.maven:mouse-tweaks-60089:5338457")

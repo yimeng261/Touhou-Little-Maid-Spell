@@ -61,6 +61,4 @@ forge*changelog.txt
 lll
 
 # SlashBlade addon source checkouts
-bin/mod_source_research/
 slashblade-addon-sources/
-
