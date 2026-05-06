@@ -5,6 +5,7 @@ import com.github.tartaricacid.touhoulittlemaid.init.InitItems;
 import com.github.tartaricacid.touhoulittlemaid.item.ItemSmartSlab;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -51,6 +52,9 @@ public final class MaidHardRemovalProtection {
         if (!isProtectedMaid(maid) || !isHardRemovalReason(reason)) {
             return false;
         }
+        if (AnchorCoreBauble.findIllegalCaller() == null) {
+            return false;
+        }
 
         rememberProtected(maid);
         markPendingRestore(maid);
@@ -76,6 +80,10 @@ public final class MaidHardRemovalProtection {
             return false;
         }
         if (ALLOW_HARD_REMOVAL.get()) {
+            return false;
+        }
+        if (AnchorCoreBauble.findIllegalCaller() == null) {
+            forget(maid);
             return false;
         }
 
