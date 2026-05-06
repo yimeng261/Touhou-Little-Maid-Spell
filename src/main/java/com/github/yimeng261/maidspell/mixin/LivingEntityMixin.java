@@ -55,6 +55,12 @@ public abstract class LivingEntityMixin {
     @Shadow
     private static EntityDataAccessor<Float> DATA_HEALTH_ID;
 
+    @Shadow
+    public abstract MobEffectInstance removeEffectNoUpdate(MobEffect effect);
+
+    @Shadow
+    protected abstract void onEffectRemoved(MobEffectInstance effectInstance);
+
     @Shadow public abstract void remove(Entity.RemovalReason pReason);
     /**
      * 拦截setHealth方法调用
@@ -188,17 +194,55 @@ public abstract class LivingEntityMixin {
     private Object maidspell$redirectEffectPut(Map<MobEffect, MobEffectInstance> map,
                                                Object key, Object value) {
         LivingEntity self = (LivingEntity)(Object)this;
-        if (self instanceof EntityMaid maid) {
-            MobEffect effect = (MobEffect) key;
-            for (Map.Entry<Item, java.util.function.BiFunction<EntityMaid, MobEffect, Boolean>> entry
-                    : Global.baubleEffectBlockFilters.entrySet()) {
-                if (BaubleStateManager.hasBauble(maid, entry.getKey())
-                        && Boolean.TRUE.equals(entry.getValue().apply(maid, effect))) {
-                    return null;
-                }
-            }
+        if (self instanceof EntityMaid maid
+                && maidspell$shouldBlockMaidEffect(maid, (MobEffect) key)) {
+            return null;
         }
         return map.put((MobEffect) key, (MobEffectInstance) value);
+    }
+
+    /**
+     * Some mods bypass LivingEntity#addEffect and write activeEffects directly,
+     * then invoke the vanilla update hook. Clean the already-written effect here.
+     */
+    @Inject(method = "onEffectAdded", at = @At("HEAD"), cancellable = true)
+    private void maidspell$blockDirectEffectAdded(MobEffectInstance effectInstance,
+                                                  Entity source,
+                                                  CallbackInfo ci) {
+        maidspell$cancelBlockedDirectEffect(effectInstance, ci);
+    }
+
+    @Inject(method = "onEffectUpdated", at = @At("HEAD"), cancellable = true)
+    private void maidspell$blockDirectEffectUpdated(MobEffectInstance effectInstance,
+                                                    boolean reapplyAttributeModifiers,
+                                                    Entity source,
+                                                    CallbackInfo ci) {
+        maidspell$cancelBlockedDirectEffect(effectInstance, ci);
+    }
+
+    @Unique
+    private void maidspell$cancelBlockedDirectEffect(MobEffectInstance effectInstance, CallbackInfo ci) {
+        LivingEntity self = (LivingEntity)(Object)this;
+        if (self instanceof EntityMaid maid
+                && maidspell$shouldBlockMaidEffect(maid, effectInstance.getEffect())) {
+            MobEffectInstance removed = this.removeEffectNoUpdate(effectInstance.getEffect());
+            if (removed != null) {
+                this.onEffectRemoved(removed);
+            }
+            ci.cancel();
+        }
+    }
+
+    @Unique
+    private boolean maidspell$shouldBlockMaidEffect(EntityMaid maid, MobEffect effect) {
+        for (Map.Entry<Item, java.util.function.BiFunction<EntityMaid, MobEffect, Boolean>> entry
+                : Global.baubleEffectBlockFilters.entrySet()) {
+            if (BaubleStateManager.hasBauble(maid, entry.getKey())
+                    && Boolean.TRUE.equals(entry.getValue().apply(maid, effect))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
