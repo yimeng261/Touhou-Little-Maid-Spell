@@ -1,27 +1,45 @@
 package com.github.yimeng261.maidspell.spell.providers;
 
+import com.binaris.wizardry.api.content.data.ConjureData;
+import com.binaris.wizardry.api.content.event.SpellCastEvent;
 import com.binaris.wizardry.api.content.spell.Spell;
 import com.binaris.wizardry.api.content.spell.internal.EntityCastContext;
+import com.binaris.wizardry.api.content.spell.internal.LocationCastContext;
 import com.binaris.wizardry.api.content.spell.internal.SpellModifiers;
-import com.binaris.wizardry.api.content.util.SpellUtil;
-import com.binaris.wizardry.api.content.util.WandHelper;
+import com.binaris.wizardry.api.content.util.CastItemDataHelper;
+import com.binaris.wizardry.api.content.util.CastItemUtils;
+import com.binaris.wizardry.api.content.util.RegistryUtils;
 import com.binaris.wizardry.content.item.SpellBookItem;
 import com.binaris.wizardry.content.item.WandItem;
+import com.binaris.wizardry.content.spell.DefaultProperties;
+import com.binaris.wizardry.content.spell.abstr.ConjureItemSpell;
+import com.binaris.wizardry.content.spell.sorcery.ConjureArmor;
+import com.binaris.wizardry.core.event.WizardryEventBus;
+import com.binaris.wizardry.core.networking.s2c.NPCSpellCastS2C;
+import com.binaris.wizardry.core.platform.Services;
+import com.binaris.wizardry.setup.registries.EBItems;
 import com.binaris.wizardry.setup.registries.Spells;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidWizardrySpellData;
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.items.ItemHandlerHelper;
 import org.slf4j.Logger;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * ElectroblobsWizardryRedux 模组法术提供者
@@ -31,6 +49,14 @@ import java.util.List;
 public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, Spell> {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final int CONTINUOUS_CAST_DURATION = 200;
+    private static final Optional<Field> CONJURE_ITEM_FIELD = findConjureItemField();
+    private static final List<MaidWizardrySpellAdapter> SPELL_ADAPTERS = List.of(
+            new ConjureArmorAdapter(),
+            new ConjureItemAdapter(),
+            new EntityCastAdapter(),
+            new LocationCastAdapter()
+    );
 
     /**
      * 构造函数，绑定 MaidWizardrySpellData 数据类型
@@ -43,20 +69,12 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
     protected List<Spell> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
         List<Spell> spells = new ArrayList<>();
         MaidWizardrySpellData data = getData(maid);
-
-        // 处理魔杖 - 可能包含多个法术
-        if (spellBook.getItem() instanceof WandItem) {
-            List<Spell> wandSpells = WandHelper.getSpells(spellBook);
-            for (Spell spell : wandSpells) {
-                if (spell != null && spell != Spells.NONE && !data.isSpellOnCooldown(spell.getLocation().toString())) {
-                    spells.add(spell);
-                }
-            }
+        if (data == null || spellBook == null || spellBook.isEmpty()) {
+            return spells;
         }
-        // 处理法术书 - 单个法术
-        else if (spellBook.getItem() instanceof SpellBookItem) {
-            Spell spell = SpellUtil.getSpell(spellBook);
-            if (spell != Spells.NONE && !data.isSpellOnCooldown(spell.getLocation().toString())) {
+
+        for (Spell spell : getSpells(spellBook)) {
+            if (isMaidCombatSpell(spell) && !data.isSpellOnCooldown(spell.getLocation().toString())) {
                 spells.add(spell);
             }
         }
@@ -69,8 +87,8 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
      */
     @Override
     public boolean isSpellBook(ItemStack itemStack) {
-        return itemStack != null && !itemStack.isEmpty() &&
-               (itemStack.getItem() instanceof WandItem || itemStack.getItem() instanceof SpellBookItem);
+        return itemStack != null && !itemStack.isEmpty()
+                && (itemStack.getItem() instanceof WandItem || itemStack.getItem() instanceof SpellBookItem);
     }
 
     /**
@@ -79,6 +97,9 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
     @Override
     public void initiateCasting(EntityMaid maid) {
         MaidWizardrySpellData data = getData(maid);
+        if (data == null) {
+            return;
+        }
 
         // 检查目标
         LivingEntity target = data.getTarget();
@@ -154,15 +175,7 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
             return;
         }
 
-        // 调用法术结束逻辑
-        if (maid.level() instanceof ServerLevel) {
-            EntityCastContext ctx = createContext(maid, data);
-            data.getCurrentSpell().endCast(ctx);
-        }
-
-        // 设置冷却
-        setCooldown(maid, data.getCurrentSpell());
-        resetCastingState(maid, data);
+        finishCasting(maid, data, true);
     }
 
     /**
@@ -176,7 +189,7 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
         }
 
         // 随机选择一个可用的法术
-        int randomIndex = (int) (Math.random() * availableSpells.size());
+        int randomIndex = ThreadLocalRandom.current().nextInt(availableSpells.size());
         return availableSpells.get(randomIndex);
     }
 
@@ -185,6 +198,9 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
      */
     private void startSpellCasting(EntityMaid maid, Spell spell) {
         MaidWizardrySpellData data = getData(maid);
+        if (data == null) {
+            return;
+        }
 
         // 获取法术项（魔杖或法术书）
         ItemStack spellItem = findSpellItem(maid, spell);
@@ -192,14 +208,19 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
             return;
         }
 
+        SpellModifiers modifiers = createModifiers();
+        if (WizardryEventBus.getInstance().fire(new SpellCastEvent.Pre(SpellCastEvent.Source.NPC, spell, maid, modifiers))) {
+            LOGGER.debug("法术 {} 的预施法事件被取消", spell.getLocation());
+            return;
+        }
+
         // 计算蓄力时间
-        int chargeupTime = spell.getCharge();
+        int chargeupTime = CastItemUtils.calcCharge(spell, modifiers);
 
         // 计算最大施法时间（对于持续性法术）
         int maxCastingTime = chargeupTime;
         if (!spell.isInstantCast()) {
-            // 持续性法术最多持续10秒
-            maxCastingTime += 200;
+            maxCastingTime += CONTINUOUS_CAST_DURATION;
         }
 
         // 初始化施法状态
@@ -217,26 +238,45 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
             return;
         }
 
+        Spell spell = data.getCurrentSpell();
         EntityCastContext ctx = createContext(maid, data);
+        SpellModifiers modifiers = ctx.modifiers();
 
         try {
-            // 调用法术的施放方法
-            boolean success = data.getCurrentSpell().cast(ctx);
+            if (!spell.isInstantCast() && WizardryEventBus.getInstance().fire(
+                    new SpellCastEvent.Tick(SpellCastEvent.Source.NPC, spell, maid, modifiers, ctx.castingTicks()))) {
+                LOGGER.debug("法术 {} 的持续施法事件被取消", spell.getLocation());
+                finishCasting(maid, data, false);
+                return;
+            }
+
+            // 调用法术的施放方法，部分 EBWR 法术需要女仆专用上下文或物品处理。
+            boolean success = castMaidAwareSpell(maid, data, ctx);
             if (!success) {
-                LOGGER.debug("法术 {} 施放失败", data.getCurrentSpell().getLocation());
-                completeCasting(maid);
-            } else {
-                SpringBloomReturnBauble.onSpellCast(
+                LOGGER.debug("法术 {} 施放失败", spell.getLocation());
+                finishCasting(maid, data, false);
+                return;
+            }
+
+            if (spell.isInstantCast() || ctx.castingTicks() == 1) {
+                WizardryEventBus.getInstance().fire(new SpellCastEvent.Post(SpellCastEvent.Source.NPC, spell, maid, modifiers));
+                sendSpellCastPacket(maid, data, modifiers);
+            }
+
+            SpringBloomReturnBauble.onSpellCast(
                     maid,
                     "ebwizardry",
-                    data.getCurrentSpell().getLocation().toString(),
+                    spell.getLocation().toString(),
                     data.getTarget()
-                );
+            );
+
+            if (spell.isInstantCast()) {
+                finishCasting(maid, data, false);
             }
         } catch (Exception e) {
             LOGGER.error("女仆 {} 施放法术 {} 时出错: {}",
-                    maid.getName().getString(), data.getCurrentSpell().getLocation(), e.getMessage());
-            completeCasting(maid);
+                    maid.getName().getString(), spell.getLocation(), e.getMessage());
+            finishCasting(maid, data, false);
         }
     }
 
@@ -249,15 +289,7 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
             return;
         }
 
-        // 调用法术结束逻辑
-        if (maid.level() instanceof ServerLevel) {
-            EntityCastContext ctx = createContext(maid, data);
-            data.getCurrentSpell().endCast(ctx);
-        }
-
-        // 设置冷却
-        setCooldown(maid, data.getCurrentSpell());
-        resetCastingState(maid, data);
+        finishCasting(maid, data, false);
     }
 
     /**
@@ -274,12 +306,6 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
      * 创建实体施法上下文
      */
     private EntityCastContext createContext(EntityMaid maid, MaidWizardrySpellData data) {
-        SpellModifiers modifiers = new SpellModifiers();
-        // 设置默认修饰器
-        modifiers.set(SpellModifiers.POTENCY, 1.0f, false);
-        modifiers.set(SpellModifiers.COST, 0.0f, false); // 女仆施法不消耗魔力
-        modifiers.set(SpellModifiers.CHARGEUP, 1.0f, false);
-
         int castingTicks = Math.max(0, data.getCastingTime() - data.getChargeupTime());
 
         return new EntityCastContext(
@@ -288,8 +314,17 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
                 InteractionHand.MAIN_HAND,
                 castingTicks,
                 data.getTarget(),
-                modifiers
+                createModifiers()
         );
+    }
+
+    private SpellModifiers createModifiers() {
+        SpellModifiers modifiers = new SpellModifiers();
+        modifiers.set(SpellModifiers.POTENCY, 1.0f);
+        modifiers.set(SpellModifiers.COST, 1.0f);
+        modifiers.set(SpellModifiers.CHARGEUP, 1.0f);
+        modifiers.set(SpellModifiers.COOLDOWN, 1.0f);
+        return modifiers;
     }
 
     /**
@@ -297,25 +332,261 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
      */
     private ItemStack findSpellItem(EntityMaid maid, Spell spell) {
         MaidWizardrySpellData data = getData(maid);
+        if (data == null) {
+            return ItemStack.EMPTY;
+        }
 
         for (ItemStack spellBook : data.getSpellBooks()) {
-            // 检查魔杖
-            if (spellBook.getItem() instanceof WandItem) {
-                List<Spell> wandSpells = WandHelper.getSpells(spellBook);
-                if (wandSpells.contains(spell)) {
-                    return spellBook;
-                }
-            }
-            // 检查法术书
-            else if (spellBook.getItem() instanceof SpellBookItem) {
-                Spell bookSpell = SpellUtil.getSpell(spellBook);
-                if (bookSpell == spell) {
-                    return spellBook;
-                }
+            if (containsSpell(spellBook, spell)) {
+                return spellBook;
             }
         }
 
         return ItemStack.EMPTY;
+    }
+
+    private List<Spell> getSpells(ItemStack spellBook) {
+        if (spellBook.getItem() instanceof WandItem) {
+            return CastItemDataHelper.getSpells(spellBook);
+        }
+        if (spellBook.getItem() instanceof SpellBookItem) {
+            return List.of(RegistryUtils.getSpell(spellBook));
+        }
+        return List.of();
+    }
+
+    private boolean containsSpell(ItemStack spellBook, Spell spell) {
+        for (Spell containedSpell : getSpells(spellBook)) {
+            if (isAvailableSpell(containedSpell) && containedSpell.equals(spell)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isAvailableSpell(Spell spell) {
+        return spell != null && spell != Spells.NONE;
+    }
+
+    private boolean isMaidCombatSpell(Spell spell) {
+        return isAvailableSpell(spell);
+    }
+
+    private boolean castMaidAwareSpell(EntityMaid maid, MaidWizardrySpellData data, EntityCastContext ctx) {
+        Spell spell = data.getCurrentSpell();
+        if (spell == null) {
+            return false;
+        }
+        MaidWizardryCastRequest request = new MaidWizardryCastRequest(this, maid, data, ctx);
+        for (MaidWizardrySpellAdapter adapter : SPELL_ADAPTERS) {
+            if (adapter.supports(spell) && adapter.cast(request)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private LocationCastContext createTargetLocationContext(MaidWizardrySpellData data, SpellModifiers modifiers, int castingTicks) {
+        LivingEntity target = data.getTarget();
+        if (target == null) {
+            return null;
+        }
+        return new LocationCastContext(
+                target.level(),
+                target.getX(),
+                target.getY(),
+                target.getZ(),
+                Direction.UP,
+                castingTicks,
+                CONTINUOUS_CAST_DURATION,
+                modifiers
+        );
+    }
+
+    private static class MaidWizardryCastRequest {
+        private final WizardryProvider provider;
+        private final EntityMaid maid;
+        private final MaidWizardrySpellData data;
+        private final EntityCastContext entityContext;
+
+        private MaidWizardryCastRequest(WizardryProvider provider, EntityMaid maid, MaidWizardrySpellData data,
+                                        EntityCastContext entityContext) {
+            this.provider = provider;
+            this.maid = maid;
+            this.data = data;
+            this.entityContext = entityContext;
+        }
+
+        private Spell spell() {
+            return data.getCurrentSpell();
+        }
+    }
+
+    private interface MaidWizardrySpellAdapter {
+        boolean supports(Spell spell);
+
+        boolean cast(MaidWizardryCastRequest request);
+    }
+
+    private static class ConjureArmorAdapter implements MaidWizardrySpellAdapter {
+        @Override
+        public boolean supports(Spell spell) {
+            return spell instanceof ConjureArmor;
+        }
+
+        @Override
+        public boolean cast(MaidWizardryCastRequest request) {
+            int duration = request.provider.getConjureDuration(request.spell(), request.entityContext.modifiers());
+            long expireTime = request.maid.level().getGameTime() + duration;
+            boolean equippedAny = false;
+            equippedAny |= request.provider.equipConjuredItem(request.maid, EquipmentSlot.HEAD,
+                    new ItemStack(EBItems.SPECTRAL_HELMET.get()), duration, expireTime);
+            equippedAny |= request.provider.equipConjuredItem(request.maid, EquipmentSlot.CHEST,
+                    new ItemStack(EBItems.SPECTRAL_CHESTPLATE.get()), duration, expireTime);
+            equippedAny |= request.provider.equipConjuredItem(request.maid, EquipmentSlot.LEGS,
+                    new ItemStack(EBItems.SPECTRAL_LEGGINGS.get()), duration, expireTime);
+            equippedAny |= request.provider.equipConjuredItem(request.maid, EquipmentSlot.FEET,
+                    new ItemStack(EBItems.SPECTRAL_BOOTS.get()), duration, expireTime);
+            return equippedAny;
+        }
+    }
+
+    private static class ConjureItemAdapter implements MaidWizardrySpellAdapter {
+        @Override
+        public boolean supports(Spell spell) {
+            return spell instanceof ConjureItemSpell;
+        }
+
+        @Override
+        public boolean cast(MaidWizardryCastRequest request) {
+            ItemStack stack = request.provider.createConjuredStack(request.spell());
+            if (stack.isEmpty()) {
+                return false;
+            }
+            int duration = request.provider.getConjureDuration(request.spell(), request.entityContext.modifiers());
+            long expireTime = request.maid.level().getGameTime() + duration;
+            request.provider.markConjured(stack, duration, expireTime);
+            ItemStack remainder = ItemHandlerHelper.insertItemStacked(request.maid.getAvailableInv(false), stack, false);
+            if (!remainder.isEmpty()) {
+                request.maid.spawnAtLocation(remainder);
+            }
+            return true;
+        }
+    }
+
+    private static class EntityCastAdapter implements MaidWizardrySpellAdapter {
+        @Override
+        public boolean supports(Spell spell) {
+            return spell.canCastByEntity();
+        }
+
+        @Override
+        public boolean cast(MaidWizardryCastRequest request) {
+            return request.spell().cast(request.entityContext);
+        }
+    }
+
+    private static class LocationCastAdapter implements MaidWizardrySpellAdapter {
+        @Override
+        public boolean supports(Spell spell) {
+            return spell.canCastByLocation();
+        }
+
+        @Override
+        public boolean cast(MaidWizardryCastRequest request) {
+            LocationCastContext locationCtx = request.provider.createTargetLocationContext(
+                    request.data, request.entityContext.modifiers(), request.entityContext.castingTicks());
+            return locationCtx != null && request.spell().cast(locationCtx);
+        }
+    }
+
+    private int getConjureDuration(Spell spell, SpellModifiers modifiers) {
+        return Math.max(1, (int) (spell.property(DefaultProperties.ITEM_LIFETIME) * modifiers.get(SpellModifiers.DURATION)));
+    }
+
+    private ItemStack createConjuredStack(Spell spell) {
+        if (!(spell instanceof ConjureItemSpell conjureItemSpell)) {
+            return ItemStack.EMPTY;
+        }
+        return getConjureItem(conjureItemSpell)
+                .map(ItemStack::new)
+                .orElse(ItemStack.EMPTY);
+    }
+
+    private static Optional<Field> findConjureItemField() {
+        try {
+            Field field = ConjureItemSpell.class.getDeclaredField("item");
+            field.setAccessible(true);
+            return Optional.of(field);
+        } catch (ReflectiveOperationException e) {
+            LOGGER.warn("Unable to access EBWR ConjureItemSpell item field; maid conjure item adapter will be limited", e);
+            return Optional.empty();
+        }
+    }
+
+    private static Optional<Item> getConjureItem(ConjureItemSpell spell) {
+        if (CONJURE_ITEM_FIELD.isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            Object value = CONJURE_ITEM_FIELD.get().get(spell);
+            return value instanceof Item item ? Optional.of(item) : Optional.empty();
+        } catch (IllegalAccessException e) {
+            LOGGER.warn("Failed to read EBWR conjured item from {}", spell.getLocation(), e);
+            return Optional.empty();
+        }
+    }
+
+    private boolean equipConjuredItem(EntityMaid maid, EquipmentSlot slot, ItemStack stack, int duration, long expireTime) {
+        if (!maid.getItemBySlot(slot).isEmpty()) {
+            return false;
+        }
+        markConjured(stack, duration, expireTime);
+        maid.setItemSlot(slot, stack);
+        return true;
+    }
+
+    private void markConjured(ItemStack stack, int duration, long expireTime) {
+        ConjureData conjureData = Services.OBJECT_DATA.getConjureData(stack);
+        conjureData.setDuration(duration);
+        conjureData.setExpireTime(expireTime);
+        conjureData.setSummoned(true);
+    }
+
+    private void sendSpellCastPacket(EntityMaid maid, MaidWizardrySpellData data, SpellModifiers modifiers) {
+        Spell spell = data.getCurrentSpell();
+        if (!(maid.level() instanceof ServerLevel) || spell == null || !spell.requiresPacket()) {
+            return;
+        }
+
+        LivingEntity target = data.getTarget();
+        int targetId = target == null ? -1 : target.getId();
+        NPCSpellCastS2C msg = new NPCSpellCastS2C(maid.getId(), targetId, InteractionHand.MAIN_HAND, spell, modifiers);
+        Services.NETWORK_HELPER.sendToTracking(maid, msg);
+    }
+
+    private void finishCasting(EntityMaid maid, MaidWizardrySpellData data, boolean callEndCast) {
+        Spell spell = data.getCurrentSpell();
+        if (spell == null) {
+            data.resetCastingState();
+            return;
+        }
+
+        EntityCastContext ctx = null;
+        if (callEndCast && maid.level() instanceof ServerLevel) {
+            ctx = createContext(maid, data);
+            spell.endCast(ctx);
+        }
+
+        if (!spell.isInstantCast() && maid.level() instanceof ServerLevel) {
+            SpellModifiers modifiers = ctx == null ? createModifiers() : ctx.modifiers();
+            WizardryEventBus.getInstance().fire(new SpellCastEvent.Finish(
+                    SpellCastEvent.Source.NPC, spell, maid, modifiers,
+                    Math.max(0, data.getCastingTime() - data.getChargeupTime())));
+        }
+
+        setCooldown(maid, spell);
+        resetCastingState(maid, data);
     }
 
     /**
@@ -324,9 +595,9 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
     private void setCooldown(EntityMaid maid, Spell spell) {
         MaidWizardrySpellData data = getData(maid);
         if (data != null && spell != null) {
+            SpellModifiers modifiers = createModifiers();
             String spellId = spell.getLocation().toString();
-            //int cooldown = spell.getCooldown();
-            int cooldown = 20;
+            int cooldown = Math.max(1, CastItemUtils.calcCastCooldown(spell, modifiers));
             data.setSpellCooldown(spellId, cooldown, maid);
             LOGGER.debug("为女仆 {} 的法术 {} 设置冷却: {} ticks",
                     maid.getName().getString(), spellId, cooldown);
@@ -340,3 +611,5 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
         data.resetCastingState();
     }
 }
+
+

@@ -1,13 +1,12 @@
 package com.github.yimeng261.maidspell.task;
 
-import com.Polarice3.Goety.api.entities.IOwned;
-import com.hollingsworth.arsnouveau.api.entity.ISummon;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitSounds;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
+import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksDataBridge;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -30,7 +29,6 @@ import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
@@ -120,30 +118,10 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     protected static boolean isValidSpellCombatTarget(EntityMaid maid, LivingEntity target) {
-        if (target == null || target instanceof Player) {
+        if (maid == null || target == null || target instanceof Player) {
             return false;
         }
-        if (isFriendlySummonOrOwnedEntity(maid, target)) {
-            return false;
-        }
-        return true;
-    }
-
-    protected static boolean isFriendlySummonOrOwnedEntity(EntityMaid maid, LivingEntity target) {
-        if (maid == null || target == null) {
-            return false;
-        }
-        LivingEntity maidOwner = maid.getOwner();
-        if (ModList.get().isLoaded("ars_nouveau") && target instanceof ISummon summon) {
-            return summon.getOwnerUUID() != null
-                    && (summon.getOwnerUUID().equals(maid.getUUID())
-                    || (maidOwner != null && summon.getOwnerUUID().equals(maidOwner.getUUID())));
-        }
-        if (ModList.get().isLoaded("goety") && target instanceof IOwned ownedEntity) {
-            LivingEntity owner = ownedEntity.getTrueOwner();
-            return owner instanceof EntityMaid || owner instanceof Player;
-        }
-        return false;
+        return !MaidSpellAllyResolver.areFriendly(maid, target);
     }
 
     @Override
@@ -153,7 +131,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public boolean canSee(EntityMaid maid, @NotNull LivingEntity target) {
-        return maid.distanceTo(target) <= SPELL_RANGE * 1.2 && Math.abs(maid.getY() - target.getY()) < 5 && !(target instanceof Player);
+        return isValidSpellCombatTarget(maid, target) && maid.distanceTo(target) <= SPELL_RANGE * 1.2 && Math.abs(maid.getY() - target.getY()) < 5;
     }
 
     @Override
@@ -171,7 +149,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public boolean hasExtraAttack(@NotNull EntityMaid maid, @NotNull Entity target) {
-        return hasSpellBook(maid) && target instanceof LivingEntity && maid.distanceTo(target) <= SPELL_RANGE && !(target instanceof Player);
+        return hasSpellBook(maid) && target instanceof LivingEntity livingTarget && isValidSpellCombatTarget(maid, livingTarget) && maid.distanceTo(target) <= SPELL_RANGE;
     }
 
     @Override
