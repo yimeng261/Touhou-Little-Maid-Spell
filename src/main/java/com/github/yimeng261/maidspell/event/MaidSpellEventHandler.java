@@ -20,6 +20,7 @@ import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.block.entity.SuppressionStoneBlockEntity;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
+import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.server.MinecraftServer;
@@ -45,6 +46,7 @@ import net.minecraftforge.event.entity.EntityTeleportEvent;
 import net.minecraftforge.event.entity.EntityTravelToDimensionEvent;
 import net.minecraftforge.event.entity.living.*;
 import net.minecraftforge.event.level.ExplosionEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
@@ -224,6 +226,11 @@ public class MaidSpellEventHandler {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.stopAllCasting();
 
+            if (MaidHardRemovalProtection.handleMaidLeaveLevel(maid)) {
+                Global.updateMaidInfo(maid,true);
+                return;
+            }
+
             // 从全局女仆列表中移除，避免内存泄漏
             Global.updateMaidInfo(maid,false);
         }
@@ -332,6 +339,7 @@ public class MaidSpellEventHandler {
         if (!maid.level().isClientSide()) {
             if(maid.tickCount%2==0){
                 if(BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                    MaidHardRemovalProtection.rememberProtected(maid);
                     ChunkLoadingManager.enableChunkLoading(maid);
                 }
             }
@@ -654,6 +662,14 @@ public class MaidSpellEventHandler {
     public static void onServerStart(ServerAboutToStartEvent event) {
         Global.activeMaids.clear();
         Global.ownerMaidRegistry.clear();
+        MaidHardRemovalProtection.clear();
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) {
+            MaidHardRemovalProtection.tick(event.getServer());
+        }
     }
 
     /**
