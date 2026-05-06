@@ -82,6 +82,15 @@
         "processors": "minecraft:empty",
         "projection": "rigid"
       }
+    },
+    {
+      "weight": 1,
+      "element": {
+        "element_type": "minecraft:single_pool_element",
+        "location": "touhou_little_maid_spell:fallen_sanctum/fallen_sanctum_11",
+        "processors": "minecraft:empty",
+        "projection": "rigid"
+      }
     }
   ]
 }

@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.worldgen.structure;
 
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
+import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
@@ -10,6 +11,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 import net.minecraft.world.level.levelgen.structure.pools.JigsawPlacement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import org.jetbrains.annotations.NotNull;
@@ -62,7 +64,7 @@ public class FallenSanctumStructure extends Structure {
         }
 
         BlockPos startPos = new BlockPos(x, surfaceY.getAsInt() + 1, z);
-        return JigsawPlacement.addPieces(
+        Optional<GenerationStub> stub = JigsawPlacement.addPieces(
                 context,
                 this.startPool,
                 Optional.empty(),
@@ -72,6 +74,8 @@ public class FallenSanctumStructure extends Structure {
                 Optional.empty(),
                 this.maxDistanceFromCenter
         );
+
+        return stub.map(generationStub -> sinkBelowNetherRoof(generationStub, startPos));
     }
 
     @Override
@@ -81,15 +85,10 @@ public class FallenSanctumStructure extends Structure {
 
     private static OptionalInt findNetherSurfaceY(GenerationContext context, int x, int z) {
         int minY = context.heightAccessor().getMinBuildHeight() + MIN_SEARCH_OFFSET;
-        int maxStartY = NETHER_ROOF_MIN_Y - ROOF_PROTECTION_MARGIN - MAX_STRUCTURE_HEIGHT;
-        int maxSurfaceY = Math.min(
-                maxStartY - 1,
+        int maxY = Math.min(
+                context.heightAccessor().getMaxBuildHeight() - 1,
                 context.chunkGenerator().getSeaLevel() + MAX_SEARCH_ABOVE_SEA_LEVEL
         );
-        int maxY = Math.min(context.heightAccessor().getMaxBuildHeight() - 1, maxSurfaceY);
-        if (maxY < minY) {
-            return OptionalInt.empty();
-        }
         NoiseColumn column = context.chunkGenerator().getBaseColumn(x, z, context.heightAccessor(), context.randomState());
 
         int clearAbove = 0;
@@ -108,6 +107,19 @@ public class FallenSanctumStructure extends Structure {
         }
 
         return OptionalInt.empty();
+    }
+
+
+    private static GenerationStub sinkBelowNetherRoof(GenerationStub stub, BlockPos startPos) {
+        int maxAllowedStartY = NETHER_ROOF_MIN_Y - ROOF_PROTECTION_MARGIN - MAX_STRUCTURE_HEIGHT + 1;
+        int offsetY = Math.min(0, maxAllowedStartY - startPos.getY());
+        if (offsetY == 0) {
+            return stub;
+        }
+
+        StructurePiecesBuilder builder = stub.getPiecesBuilder();
+        builder.offsetPiecesVertically(offsetY);
+        return new GenerationStub(startPos.offset(0, offsetY, 0), Either.right(builder));
     }
 
     private static boolean isOpenSpace(BlockState state) {

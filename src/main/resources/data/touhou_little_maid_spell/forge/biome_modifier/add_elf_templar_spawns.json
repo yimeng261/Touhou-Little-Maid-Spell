@@ -12,8 +12,9 @@
   ],
   "spawners": {
     "type": "touhou_little_maid_spell:elf_templar",
-    "weight": 8,
+    "weight": 30,
     "minCount": 1,
     "maxCount": 2
   }
 }
+
