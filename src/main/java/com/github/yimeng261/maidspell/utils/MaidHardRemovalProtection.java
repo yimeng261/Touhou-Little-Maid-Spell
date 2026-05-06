@@ -37,6 +37,7 @@ public final class MaidHardRemovalProtection {
     private static final Map<UUID, Long> LAST_WARN_TICK = new ConcurrentHashMap<>();
     private static final Map<UUID, Boolean> RECOVERED_MAIDS = new ConcurrentHashMap<>();
     private static final ThreadLocal<Boolean> ALLOW_HARD_REMOVAL = ThreadLocal.withInitial(() -> false);
+    private static final ThreadLocal<Boolean> FORCE_PROTECTION_CHECK = ThreadLocal.withInitial(() -> false);
     private static int serverTickCounter;
 
     private MaidHardRemovalProtection() {
@@ -137,6 +138,19 @@ public final class MaidHardRemovalProtection {
         } finally {
             ALLOW_HARD_REMOVAL.remove();
         }
+    }
+
+    public static void runAsUntrustedHardRemoval(Runnable action) {
+        FORCE_PROTECTION_CHECK.set(true);
+        try {
+            action.run();
+        } finally {
+            FORCE_PROTECTION_CHECK.remove();
+        }
+    }
+
+    public static boolean isForcingProtectionCheck() {
+        return FORCE_PROTECTION_CHECK.get();
     }
 
     private static boolean isProtectedMaid(EntityMaid maid) {

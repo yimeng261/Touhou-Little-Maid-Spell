@@ -502,6 +502,9 @@ public class MaidSpellEventHandler {
     }
 
     private static boolean isPsiSpellEntity(Entity entity) {
+        if (entity == null) {
+            return false;
+        }
         String type = entity.getType().builtInRegistryHolder().key().location().toString();
         return type.startsWith("psi:") && type.contains("spell");
     }
