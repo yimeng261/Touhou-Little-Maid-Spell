@@ -6,11 +6,10 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.mixin.accessor.JumpControlAccessor;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.MaidMovementHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -52,22 +51,7 @@ public class AbstractMaidContainerMixin {
         if (maid == null || maid.level().isClientSide()) {
             return;
         }
-
-        maid.getNavigation().stop();
-        maid.getNavigationManager().resetNavigation();
-        maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-        maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
-        maid.setJumping(false);
-        maid.setXxa(0.0F);
-        maid.setYya(0.0F);
-        maid.setZza(0.0F);
-        maid.setSpeed(0.0F);
-        if (maid.getJumpControl() instanceof JumpControlAccessor jumpAccessor) {
-            jumpAccessor.maidspell$setJump(false);
-        }
-        maid.getMoveControl().setWantedPosition(maid.getX(), maid.getY(), maid.getZ(), 0.0D);
-        Vec3 deltaMovement = maid.getDeltaMovement();
-        maid.setDeltaMovement(0.0D, deltaMovement.y, 0.0D);
+        MaidMovementHelper.stopAllMovement(maid);
     }
 
     /**
@@ -85,32 +69,17 @@ public class AbstractMaidContainerMixin {
     )
     @Nullable
     private Entity redirectGetEntity(Level level, int entityId) {
-        // 首先尝试常规方式获取实体
         Entity entity = level.getEntity(entityId);
-        
-        // 如果获取成功，直接返回
         if (entity instanceof EntityMaid) {
             return entity;
         }
-        
-        // 如果常规方式失败，尝试从Global缓存中查找
-        // 这种情况通常发生在女仆距离玩家很远，但区块已被加载的情况
         try {
-            for(EntityMaid maid : Global.activeMaids){
-                if (maid.getId() == entityId) {
-                    if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
-                        Global.LOGGER.debug("从Global缓存中找到远距离女仆: {} (ID: {})",
-                                maid.getName().getString(), entityId);
-                        entity = maid;
-                        break;
-                    }
-                }
-            }
+            return Global.activeMaids.stream()
+                    .filter(m -> m.getId() == entityId && BaubleStateManager.hasBauble(m, MaidSpellItems.ENDER_POCKET))
+                    .findFirst().orElse(null);
         } catch (Exception e) {
-            Global.LOGGER.error("从Global缓存中查找女仆时发生错误", e);
+            Global.LOGGER.error("Failed to find maid in Global cache", e);
+            return entity;
         }
-        
-        // 如果都失败了，返回null（保持原有行为）
-        return entity;
     }
 }

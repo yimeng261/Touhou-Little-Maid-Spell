@@ -4,9 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.world.backups.MaidBackupsManager
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.LevelResource;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -82,12 +80,6 @@ public class MaidBackupsManagerMixin {
         if (server == null) {
             return null;
         }
-
-        ServerLevel overworld = server.getLevel(Level.OVERWORLD);
-        if (overworld == null) {
-            return null;
-        }
-
         return server.getWorldPath(LevelResource.ROOT)
                 .resolve("data")
                 .resolve(MAIDSPELL$BACKUPS_FOLDER_NAME)

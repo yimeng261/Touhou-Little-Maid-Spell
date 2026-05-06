@@ -3,20 +3,22 @@ package com.github.yimeng261.maidspell.mixin.tlm;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.mixin.accessor.JumpControlAccessor;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.utils.FoxLeafSurfaceHelper;
 import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
+import com.github.yimeng261.maidspell.utils.MaidMovementHelper;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.SpawnGroupData;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.DifficultyInstance;
@@ -30,6 +32,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.List;
 
 
 import javax.annotation.Nullable;
@@ -89,18 +93,16 @@ public class EntityMaidMixin {
             cancellable = true, remap = true)
     public void onAddAdditionalSaveData(CompoundTag compound, CallbackInfo ci) {
         try {
-            if ((Object) this instanceof EntityMaid maid) {
-                if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
-                    return;
-                }
-
-                String illegalCaller = maidSpell$findIllegalSerializationCaller();
-                if (illegalCaller != null) {
-                    maidSpell$clearCompound(compound);
-                    Global.LOGGER.warn("[MaidSpell] Illegal addAdditionalSaveData called for {} by {} (anchor_core protection)",
-                            maid.getUUID(), illegalCaller);
-                    ci.cancel();
-                }
+            EntityMaid maid = (EntityMaid)(Object)this;
+            if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                return;
+            }
+            String illegalCaller = AnchorCoreBauble.findIllegalCaller();
+            if (illegalCaller != null) {
+                AnchorCoreBauble.clearCompound(compound);
+                Global.LOGGER.warn("[MaidSpell] Illegal addAdditionalSaveData called for {} by {} (anchor_core protection)",
+                        maid.getUUID(), illegalCaller);
+                ci.cancel();
             }
         } catch (Exception e) {
             Global.LOGGER.error("Failed to check maid addAdditionalSaveData source", e);
@@ -115,30 +117,47 @@ public class EntityMaidMixin {
             cancellable = true, remap = true)
     public void onRemove(Entity.RemovalReason reason, CallbackInfo ci) {
         try {
-            if((Object)this instanceof EntityMaid maid) {
-
-                // 检查女仆是否装备了锚定核心饰品
-                if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
-                    Global.LOGGER.debug("Maid {} does not have anchor_core, allowing removal", maid.getUUID());
-                    return;
-                }
-
-                // 如果女仆血量为0，允许正常移除
-                Global.LOGGER.debug("remove called for {}", maid);
-                if (maid.getHealth() <= 0.0f) {
-                    return;
-                }
-
-                // 检查调用栈，判断是否来自touhou-little-maid模组
-                if (!maidSpell$isCallValid(reason)) {
-                    Global.LOGGER.debug("Prevented non-TLM removal of maid {} with health {} (anchor_core protection)",
-                            maid.getUUID(), maid.getHealth());
-                    ci.cancel();
-                }
+            EntityMaid maid = (EntityMaid)(Object)this;
+            if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                Global.LOGGER.debug("Maid {} does not have anchor_core, allowing removal", maid.getUUID());
+                return;
             }
-
+            Global.LOGGER.debug("remove called for {}", maid);
+            if (maid.getHealth() <= 0.0f) {
+                return;
+            }
+            if (!maidSpell$isCallValid(reason)) {
+                Global.LOGGER.debug("Prevented non-TLM removal of maid {} with health {} (anchor_core protection)",
+                        maid.getUUID(), maid.getHealth());
+                ci.cancel();
+            }
         } catch (Exception e) {
             Global.LOGGER.error("Failed to check maid removal source", e);
+        }
+    }
+
+    /**
+     * TLM's remove(KILLED) path can call dropEquipment after a bauble already
+     * revived the maid. In that state the entity is alive, so no tombstone/film
+     * should be generated or inventory extracted.
+     */
+    @Inject(method = "dropEquipment()V",
+            at = @At("HEAD"),
+            cancellable = true, remap = true)
+    private void maidspell$preventAliveAnchoredMaidTombstone(CallbackInfo ci) {
+        try {
+            EntityMaid maid = (EntityMaid) (Object) this;
+            if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                return;
+            }
+
+            if (maid.getHealth() > 0.0f) {
+                Global.LOGGER.debug("Prevented alive maid {} from generating tombstone with health {} (anchor_core protection)",
+                        maid.getUUID(), maid.getHealth());
+                ci.cancel();
+            }
+        } catch (Exception e) {
+            Global.LOGGER.error("Failed to check maid tombstone generation", e);
         }
     }
 
@@ -148,25 +167,7 @@ public class EntityMaidMixin {
             return;
         }
 
-        EntityMaid maid = (EntityMaid) (Object) this;
-        maid.getNavigation().stop();
-        maid.getNavigationManager().resetNavigation();
-        maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-        maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
-        maid.setJumping(false);
-        maid.setXxa(0.0F);
-        maid.setYya(0.0F);
-        maid.setZza(0.0F);
-        maid.setSpeed(0.0F);
-        // brain 停掉后，上一 tick 留下的水平动量仍会在 travel() 中继续滑行。
-        // 这里只消掉 X/Z 惯性，Y 交给水面行走逻辑继续维持。
-        Vec3 deltaMovement = maid.getDeltaMovement();
-        maid.setDeltaMovement(0.0D, deltaMovement.y, 0.0D);
-
-        if (maid.getJumpControl() instanceof JumpControlAccessor jumpAccessor) {
-            jumpAccessor.maidspell$setJump(false);
-        }
-        maid.getMoveControl().setWantedPosition(maid.getX(), maid.getY(), maid.getZ(), 0.0D);
+        MaidMovementHelper.stopAllMovement((EntityMaid) (Object) this);
     }
 
     @Redirect(
@@ -237,86 +238,20 @@ public class EntityMaidMixin {
         }
     }
 
-    /**
-     * 检查 addAdditionalSaveData 的调用栈，找到第一个不可信的调用方。
-     */
-    @Unique
-    @Nullable
-    private static String maidSpell$findIllegalSerializationCaller() {
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        for (StackTraceElement stackTraceElement : stackTrace) {
-            String className = stackTraceElement.getClassName();
-            if (className.endsWith("EntityMaid")) {
-                continue;
-            }
-            if (!maidSpell$isSerializationCallerAllowed(className)) {
-                return className;
-            }
-        }
-        return null;
-    }
-
-    @Unique
-    private static void maidSpell$clearCompound(CompoundTag compound) {
-        for (String key : new java.util.ArrayList<>(compound.getAllKeys())) {
-            compound.remove(key);
-        }
-    }
-
-    /**
-     * addAdditionalSaveData 允许的调用方白名单。
-     */
-    @Unique
-    private static boolean maidSpell$isSerializationCallerAllowed(String className) {
-        return className.startsWith("net.minecraft") ||
-                className.startsWith("net.minecraftforge") ||
-                className.startsWith("java") ||
-                className.startsWith("it.unimi.dsi") ||
-                className.startsWith("com.github.tartaricacid") ||
-                className.startsWith("com.github.yimeng261") ||
-                className.startsWith("com.google") ||
-                className.startsWith("com.mojang") ||
-                className.startsWith("io.redspace.ironsspellbooks") ||
-                className.startsWith("whocraft.tardis_refined") ||
-                className.startsWith("top.theillusivec4.curios") ||
-                className.contains("backup") ||
-                className.contains("maid") ||
-                className.contains("c2me");
-    }
-
-    /**
-     * 检查调用栈是否来自touhou-little-maid模组或其他可信任的模组
-     * @return 如果调用来自可信任模组返回true
-     */
     @Unique
     private boolean maidSpell$isCallValid(Entity.RemovalReason reason) {
         if (MaidHardRemovalProtection.isForcingProtectionCheck()) {
             return false;
         }
         StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        boolean callFromTouhouLittleMaidMod = false;
-        for(int i=stackTrace.length-10; i>=0; i--) {
-            StackTraceElement stackTraceElement = stackTrace[i];
-            String className = stackTraceElement.getClassName();
-            //Global.LOGGER.debug("className {}", className);
-            if(className.endsWith("EntityMaid")) {
-                continue;
-            }
-            if (className.toLowerCase().contains("tlm") || 
-                className.toLowerCase().contains("maid") ||
-                className.contains("ironsspellbooks") ||
-                className.contains("curios")) {
-                callFromTouhouLittleMaidMod = true;
-                break;
-            }
+        for (int i = stackTrace.length - 10; i >= 0; i--) {
+            String className = stackTrace[i].getClassName();
+            if (className.endsWith("EntityMaid")) continue;
+            if (AnchorCoreBauble.isCallerAllowed(className)) return true;
             if (reason == Entity.RemovalReason.CHANGED_DIMENSION
-                    && className.startsWith("whocraft.tardis_refined")) {
-                callFromTouhouLittleMaidMod = true;
-                break;
-            }
+                    && className.startsWith("whocraft.tardis_refined")) return true;
         }
-
-        return callFromTouhouLittleMaidMod;
+        return false;
     }
 
     /**
@@ -325,22 +260,16 @@ public class EntityMaidMixin {
      * @param pos 检查的位置
      * @return 如果在目标结构中返回true
      */
+    private static final List<String> PROTECTED_STRUCTURES =
+            List.of("hidden_retreat", "relic_sanctum", "fallen_sanctum", "elven_realm");
+
     @Unique
     private boolean maidSpell$shouldSkipRandomModel(ServerLevelAccessor worldIn, BlockPos pos) {
         StructureManager structureManager = worldIn.getLevel().structureManager();
         Registry<net.minecraft.world.level.levelgen.structure.Structure> structureRegistry =
                 worldIn.registryAccess().registryOrThrow(Registries.STRUCTURE);
-
-        if (maidSpell$isInsideStructure(structureManager, structureRegistry, pos, "hidden_retreat")) {
-            return true;
-        }
-        if (maidSpell$isInsideStructure(structureManager, structureRegistry, pos, "relic_sanctum")) {
-            return true;
-        }
-        if (maidSpell$isInsideStructure(structureManager, structureRegistry, pos, "fallen_sanctum")) {
-            return true;
-        }
-        return maidSpell$isInsideStructure(structureManager, structureRegistry, pos, "elven_realm");
+        return PROTECTED_STRUCTURES.stream().anyMatch(id ->
+                maidSpell$isInsideStructure(structureManager, structureRegistry, pos, id));
     }
 
     @Unique
