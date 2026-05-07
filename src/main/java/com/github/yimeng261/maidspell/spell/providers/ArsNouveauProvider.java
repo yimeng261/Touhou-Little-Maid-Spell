@@ -130,8 +130,8 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
     public void processContinuousCasting(EntityMaid maid) {
         MaidArsNouveauSpellData data = getData(maid);
         if (data == null || !data.isCasting() || data.getCurrentSpell() == null) {
-            if (data != null && LOGGER.isDebugEnabled()) {
-                LOGGER.debug("[MaidSpell/Ars] Skip continuous cast maid={} casting={} spell={}", maid.getUUID(), data.isCasting(), describeSpell(data.getCurrentSpell()));
+            if (data != null && LOGGER.isTraceEnabled()) {
+                LOGGER.trace("[MaidSpell/Ars] Skip continuous cast maid={} casting={} spell={}", maid.getUUID(), data.isCasting(), describeSpell(data.getCurrentSpell()));
             }
             return;
         }

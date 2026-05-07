@@ -1,8 +1,6 @@
 package com.github.yimeng261.maidspell.mixin.goety;
 
-import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.AnchorCoreProtection;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -18,7 +16,7 @@ public class EsotericTesseractMixin {
     @Inject(method = "onLeftClickEntity", at = @At("HEAD"), cancellable = true, remap = false)
     private void maidspell$blockAnchoredMaidCapture(ItemStack stack, Player player, Entity target,
                                                     CallbackInfoReturnable<Boolean> cir) {
-        if (target instanceof EntityMaid maid && BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+        if (AnchorCoreProtection.shouldBlockCapture(target)) {
             cir.setReturnValue(true);
         }
     }

@@ -5,11 +5,15 @@ import com.github.tartaricacid.touhoulittlemaid.api.event.MaidAfterEatEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil;
 import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -48,6 +52,38 @@ public class FragrantIngenuityBauble implements IMaidBauble {
 
     public FragrantIngenuityBauble() {
         MinecraftForge.EVENT_BUS.register(this);
+    }
+
+    public static void applyOwnerFeedBuff(EntityMaid maid, Player owner) {
+        if (maid == null || owner == null || owner.level().isClientSide()) {
+            return;
+        }
+        if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.FRAGRANT_INGENUITY)) {
+            return;
+        }
+        if (POSITIVE_EFFECTS.isEmpty()) {
+            LOGGER.warn("[FragrantIngenuity] No positive effects available!");
+            return;
+        }
+
+        boolean hasDreamCrystal = BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL);
+        if (hasDreamCrystal) {
+            List<MobEffect> pool = new ArrayList<>(POSITIVE_EFFECTS);
+            int effectCount = Math.min(2, pool.size());
+            for (int i = 0; i < effectCount; i++) {
+                int selectedIndex = owner.getRandom().nextInt(pool.size());
+                MobEffect effect = pool.remove(selectedIndex);
+                int dreamDuration = 2400 + owner.getRandom().nextInt(2401);
+                int amplifier = 1 + owner.getRandom().nextInt(9);
+                owner.addEffect(new MobEffectInstance(effect, dreamDuration, amplifier));
+            }
+            return;
+        }
+
+        MobEffect randomEffect = POSITIVE_EFFECTS.get(owner.getRandom().nextInt(POSITIVE_EFFECTS.size()));
+        if (randomEffect != null) {
+            owner.addEffect(new MobEffectInstance(randomEffect, Config.fragrantIngenuityBuffDuration, 0));
+        }
     }
 
     /**

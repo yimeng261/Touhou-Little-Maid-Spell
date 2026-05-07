@@ -2,6 +2,8 @@ package com.github.yimeng261.maidspell.network;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
+import com.github.yimeng261.maidspell.network.message.MaidClientRemovalGuardMessage;
+import com.github.yimeng261.maidspell.network.message.MaidEntityRestoreMessage;
 import com.github.yimeng261.maidspell.network.message.SpellSyncMessage;
 import com.github.yimeng261.maidspell.network.message.TransmogNecklaceMessage;
 import net.minecraft.resources.ResourceLocation;
@@ -48,6 +50,22 @@ public class NetworkHandler {
                 TransmogNecklaceMessage::encode,
                 TransmogNecklaceMessage::decode,
                 TransmogNecklaceMessage::handle
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                MaidEntityRestoreMessage.class,
+                MaidEntityRestoreMessage::encode,
+                MaidEntityRestoreMessage::decode,
+                MaidEntityRestoreMessage::handle
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                MaidClientRemovalGuardMessage.class,
+                MaidClientRemovalGuardMessage::encode,
+                MaidClientRemovalGuardMessage::decode,
+                MaidClientRemovalGuardMessage::handle
         );
 
     }

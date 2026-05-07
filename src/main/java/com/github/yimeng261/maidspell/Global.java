@@ -101,9 +101,8 @@ public class Global {
      *   <li>避免 `InfoDamageSource` 一类二次伤害在后续链路中重复展开。</li>
      * </ul>
      *
-     * <p>注意：这里的“最高优先级”仅指本模组内部在 `LivingEntityMixin#onHurt`
-     * 中最先执行；若其他模组也对 `LivingEntity#hurt` 注入 Mixin，最终顺序仍受 Mixin
-     * `priority` 影响。
+     * <p>注意：这里的“最高优先级”仅指本模组内部通过 hurt coremod
+     * 在目标方法头部执行；若其他模组也修改 `LivingEntity#hurt`，最终顺序仍受对应注入机制影响。
      */
     public static class HurtHeadContext {
         private final @NotNull LivingEntity entity;

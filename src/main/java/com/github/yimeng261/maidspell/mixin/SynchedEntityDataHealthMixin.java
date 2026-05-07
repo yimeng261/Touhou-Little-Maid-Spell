@@ -1,7 +1,7 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.utils.DataItem;
+import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityHealthAccessor;
 import com.github.yimeng261.maidspell.utils.MaidDamageProcessor;
 import com.github.yimeng261.maidspell.utils.MaidHealthWriteGuard;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -41,22 +41,11 @@ public abstract class SynchedEntityDataHealthMixin {
             return;
         }
 
-        if (!MaidDamageProcessor.isCommonHurt(requestedHealth, maid)) {
-            ci.cancel();
-            return;
-        }
-
-        DataItem dataItem = new DataItem(maid, currentHealth - requestedHealth);
-        MaidDamageProcessor.processSoulBook(dataItem);
-        MaidDamageProcessor.applyBaubleHandlers(dataItem, maid);
-
-        if (dataItem.isCanceled()) {
-            dataItem.setAmount(0.0f);
-        }
-
-        float finalHealth = Math.max(0.0f, currentHealth - dataItem.getAmount());
+        MaidDamageProcessor.MaidHealthChange healthChange = MaidDamageProcessor.processMaidHealthDecrease(maid, requestedHealth);
         ci.cancel();
-        MaidHealthWriteGuard.runBypassing(() -> maid.getEntityData().set(maidspell$healthAccessor(), finalHealth, force));
+        if (healthChange.writeHealth()) {
+            MaidHealthWriteGuard.runBypassing(() -> maid.getEntityData().set(maidspell$healthAccessor(), healthChange.health(), force));
+        }
     }
 
     @Unique

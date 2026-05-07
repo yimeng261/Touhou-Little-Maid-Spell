@@ -1,8 +1,8 @@
 package com.github.yimeng261.maidspell.utils;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.mixin.LivingEntityInvoker;
-import com.github.yimeng261.maidspell.mixin.SynchedEntityDataMixin;
+import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityInvoker;
+import com.github.yimeng261.maidspell.mixin.accessor.SynchedEntityDataMixin;
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.minecraft.nbt.CompoundTag;

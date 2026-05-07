@@ -17,7 +17,7 @@ import java.util.IdentityHashMap;
  * <p>职责：
  * 1. 将现有 HurtHead 逻辑前移到子类 hurt 开头；
  * 2. 用线程内重入计数避免 child.hurt -> super.hurt 重复触发；
- * 3. 保持与 LivingEntityMixin.onHurt 现有行为一致。
+ * 3. 作为 HurtHead 处理的唯一 hurt 头部入口。
  */
 public final class HurtHeadCoremodHooks {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -95,10 +95,4 @@ public final class HurtHeadCoremodHooks {
         }
     }
 
-    /**
-     * 供 LivingEntityMixin 判断本次 hurt 是否已经由 coremod 处理过。
-     */
-    public static boolean maidspell$isInsideInstrumentedHurt(LivingEntity entity) {
-        return entity != null && ACTIVE_HURT_CALLS.get().containsKey(entity);
-    }
 }

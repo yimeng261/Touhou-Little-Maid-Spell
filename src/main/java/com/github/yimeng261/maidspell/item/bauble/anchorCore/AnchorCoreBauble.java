@@ -21,6 +21,8 @@ public class AnchorCoreBauble implements IMaidBauble {
         return className.startsWith("net.minecraft") ||
                 className.startsWith("net.minecraftforge") ||
                 className.startsWith("java") ||
+                className.startsWith("jdk.") ||
+                className.startsWith("sun.reflect") ||
                 className.startsWith("it.unimi.dsi") ||
                 className.startsWith("com.github.tartaricacid") ||
                 className.startsWith("com.github.yimeng261") ||

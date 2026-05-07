@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.mixin;
+package com.github.yimeng261.maidspell.mixin.accessor;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.minecraft.network.syncher.SynchedEntityData;
