@@ -166,7 +166,13 @@ public abstract class IMaidSpellData {
         if (refundRatio <= 0) {
             return;
         }
-        spellCooldowns.replaceAll((spellId, cooldown) -> Math.max(0, (int) Math.floor(cooldown * (1.0 - refundRatio))));
+        spellCooldowns.replaceAll((spellId, cooldown) -> {
+            if (cooldown <= 0) {
+                return 0;
+            }
+            int refund = Math.max(1, (int) Math.ceil(cooldown * refundRatio));
+            return Math.max(0, cooldown - refund);
+        });
         spellCooldowns.entrySet().removeIf(entry -> entry.getValue() <= 0);
     }
 
