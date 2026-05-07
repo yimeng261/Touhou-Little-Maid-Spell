@@ -11,11 +11,9 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.BushBlock;
-import net.minecraft.world.level.block.EntityBlock;
-import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -24,6 +22,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
@@ -31,6 +32,7 @@ import java.util.List;
 
 public class JingxuYoulanBlock extends BushBlock implements EntityBlock {
     public static final MapCodec<JingxuYoulanBlock> CODEC = simpleCodec(JingxuYoulanBlock::new);
+    private static final VoxelShape SHAPE = Block.box(2.0, 0.0, 2.0, 13.0, 13.0, 13.0);
     private static final int LIGHT_LEVEL = 10;
     private static final int AURA_RANGE = 3;
 
@@ -41,6 +43,12 @@ public class JingxuYoulanBlock extends BushBlock implements EntityBlock {
     @Override
     public MapCodec<JingxuYoulanBlock> codec() {
         return CODEC;
+    }
+
+    @Override
+    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        Vec3 offset = state.getOffset(level, pos);
+        return SHAPE.move(offset.x, offset.y, offset.z);
     }
 
     public static BlockBehaviour.Properties createProperties() {
