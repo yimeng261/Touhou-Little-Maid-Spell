@@ -229,10 +229,10 @@ public abstract class LivingEntityMixin {
             return;
         }
 
-        if(damageSource instanceof InfoDamageSource){
-            if (entity instanceof EntityMaid || entity instanceof Player) {
+        if(damageSource instanceof InfoDamageSource infoDamageSource){
+            if ((entity instanceof EntityMaid || entity instanceof Player)
+                && !infoDamageSource.canHurtProtectedEntity()) {
                 cir.setReturnValue(false);
-                return;
             }
             return;
         }
