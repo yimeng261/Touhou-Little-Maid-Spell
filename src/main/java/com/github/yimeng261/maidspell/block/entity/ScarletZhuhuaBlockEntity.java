@@ -22,7 +22,7 @@ public class ScarletZhuhuaBlockEntity extends BlockEntity {
         }
 
         long gameTime = serverLevel.getGameTime();
-        int offset = Math.floorMod(pos.hashCode(), TICK_INTERVAL);
+        int offset = Math.floorMod(pos.asLong(), TICK_INTERVAL);
         if ((gameTime + offset) % TICK_INTERVAL != 0) {
             return;
         }
