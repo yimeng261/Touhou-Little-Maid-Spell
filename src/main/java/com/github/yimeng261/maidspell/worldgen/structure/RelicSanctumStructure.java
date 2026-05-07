@@ -162,6 +162,6 @@ public class RelicSanctumStructure extends Structure {
             }
         }
 
-        return lo;
+        return hi;
     }
 }
