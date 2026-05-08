@@ -39,7 +39,9 @@ public class MoltenFoxLeaf extends Item {
                         Component.translatable("item.maidspell.molten_fox_leaf.desc2")
                                 .withStyle(ChatFormatting.GOLD),
                         Component.translatable("item.maidspell.molten_fox_leaf.desc3")
-                                .withStyle(ChatFormatting.RED)
+                                .withStyle(ChatFormatting.RED),
+                        Component.translatable("item.maidspell.molten_fox_leaf.desc4")
+                                .withStyle(ChatFormatting.YELLOW)
                 ));
     }
 }

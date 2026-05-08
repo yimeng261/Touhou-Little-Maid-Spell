@@ -39,7 +39,9 @@ public class FloatingFoxLeaf extends Item {
                         Component.translatable("item.maidspell.floating_fox_leaf.desc2")
                                 .withStyle(ChatFormatting.AQUA),
                         Component.translatable("item.maidspell.floating_fox_leaf.desc3")
-                                .withStyle(ChatFormatting.GREEN)
+                                .withStyle(ChatFormatting.GREEN),
+                        Component.translatable("item.maidspell.floating_fox_leaf.desc4")
+                                .withStyle(ChatFormatting.YELLOW)
                 ));
     }
 }

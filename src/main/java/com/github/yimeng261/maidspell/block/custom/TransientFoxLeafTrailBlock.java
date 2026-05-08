@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -58,7 +59,7 @@ public class TransientFoxLeafTrailBlock extends WaterlilyBlock {
 
     @Override
     protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        if (maidStandingOnLeaf(level, pos)) {
+        if (entityStandingOnLeaf(level, pos)) {
             level.scheduleTick(pos, this, getLifetime(random));
             return;
         }
@@ -92,8 +93,11 @@ public class TransientFoxLeafTrailBlock extends WaterlilyBlock {
         }
     }
 
-    private static boolean maidStandingOnLeaf(Level level, BlockPos pos) {
+    private static boolean entityStandingOnLeaf(Level level, BlockPos pos) {
         AABB area = new AABB(pos).inflate(0.35D, 1.2D, 0.35D).move(0.0D, 1.0D, 0.0D);
-        return !level.getEntitiesOfClass(EntityMaid.class, area, maid -> maid.isAlive() && !maid.isPassenger()).isEmpty();
+        if (!level.getEntitiesOfClass(EntityMaid.class, area, maid -> maid.isAlive() && !maid.isPassenger()).isEmpty()) {
+            return true;
+        }
+        return !level.getEntitiesOfClass(Player.class, area, player -> player.isAlive() && !player.isPassenger()).isEmpty();
     }
 }
