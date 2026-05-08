@@ -5,16 +5,32 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = Entity.class,remap = false)
 public class EntityMixin {
+
+    @Inject(method = "setRemoved(Lnet/minecraft/world/entity/Entity$RemovalReason;)V",
+            at = @At("HEAD"),
+            cancellable = true, remap = true)
+    private void maidspell$blockAnchoredMaidHardRemoval(Entity.RemovalReason reason, CallbackInfo ci) {
+        try {
+            Entity entity = (Entity) (Object) this;
+            if (MaidHardRemovalProtection.shouldBlockSetRemoved(entity, reason)) {
+                ci.cancel();
+            }
+        } catch (Exception e) {
+            Global.LOGGER.error("[MaidSpell] Failed to check entity hard-removal protection", e);
+        }
+    }
 
     /**
      * 拦截女仆的 saveAsPassenger 方法，防止第三方在写入 id 后继续序列化出半成品副本数据。

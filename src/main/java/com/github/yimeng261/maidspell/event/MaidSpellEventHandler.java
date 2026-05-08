@@ -13,6 +13,7 @@ import com.github.yimeng261.maidspell.block.entity.SuppressionStoneBlockEntity;
 import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
@@ -22,6 +23,7 @@ import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.spell.providers.PsiProvider;
+import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
 import com.mojang.logging.LogUtils;
 import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.ChatFormatting;
@@ -59,6 +61,7 @@ import net.neoforged.neoforge.event.entity.living.*;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 import top.theillusivec4.curios.api.event.CurioChangeEvent;
 
@@ -209,6 +212,11 @@ public class MaidSpellEventHandler {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.stopAllCasting();
 
+            if (MaidHardRemovalProtection.handleMaidLeaveLevel(maid)) {
+                Global.updateMaidInfo(maid,true);
+                return;
+            }
+
             // 从全局女仆列表中移除，避免内存泄漏
             Global.updateMaidInfo(maid,false);
         }
@@ -342,6 +350,11 @@ public class MaidSpellEventHandler {
             try {
                 SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
                 manager.tick();
+                if (maid.tickCount % 2 == 0) {
+                    if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                        MaidHardRemovalProtection.rememberProtected(maid);
+                    }
+                }
                 // 每20个tick更新一次结盟状态
                 if(maid.tickCount%20 == 0){
                     if(maid.isNoAi() && maid.getTask().getUid().toString().startsWith("maidspell")){
@@ -651,6 +664,12 @@ public class MaidSpellEventHandler {
     public static void onServerStart(ServerAboutToStartEvent event) {
         Global.activeMaids.clear();
         Global.ownerMaidRegistry.clear();
+        MaidHardRemovalProtection.clear();
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(ServerTickEvent.Post event) {
+        MaidHardRemovalProtection.tick(event.getServer());
     }
 
     /**
