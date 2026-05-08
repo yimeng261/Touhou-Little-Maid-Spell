@@ -1,5 +1,34 @@
 # Changelog / 变更日志
 
+## 1.7.3-neoforge
+
+### 新增功能 / New Features
+
+- 新增饰品：梦云水晶，包含合成表、效果黑白名单、负面效果免疫和真伤开关 / Added new bauble: Dreamcloud Crystal, with recipe, effect blacklist/whitelist, negative-effect immunity and true damage toggle
+- 补充晋升光环的冰雹云转换效果 / Added hailstorm cloud conversion effect for Ascension Halo
+- 新增「万法皆通」成就 / Added "Master of All Spells" advancement
+- 旧版材质作为可选资源包提供 / Legacy textures provided as optional resource pack
+- 新增 /hurt 调试命令和重置隐世之境额度命令 / Added /hurt debug command and Hidden Retreat quota reset command
+
+### 修复 / Bug Fixes
+
+- 修复女仆无法受到任何伤害的问题 (#46) / Fixed maid being unable to take any damage (#46)
+- 修复女仆攻击目标不识别召唤物的问题 (#42) / Fixed maid attack target not recognizing summoned mobs (#42)
+- 修复未安装铁魔法时无法启动的问题 / Fixed unable to launch without Iron's Spellbooks
+- 修复归隐之地相关问题：错误调度主世界函数 (#41)、私人模式下无法限制隐世之境生成、与机械动力和瓦尔基里的兼容性 / Fixed multiple The Retreat issues: incorrect overworld function scheduling (#41), Hidden Retreat structure generation not restricted in private mode, compatibility with Create and Valkyrien Skies
+- 修复发簪、双心之链、混沌之书等饰品在真伤场景下的兼容问题 / Fixed compatibility issues for Hairpin, Double Heart Chain, Chaos Book and other baubles under true damage
+- 修复部分数据包、翻译键缺失和材质动画问题 / Fixed various datapack, missing translation key and texture animation issues
+
+### 优化 / Improvements
+
+- 同步 1.20 分支的饰品内容与兼容性改动 / Synced bauble content and compatibility changes from 1.20 branch
+- 归隐之地传送逻辑优化，不再将玩家重生点设置到该维度 / The Retreat teleportation logic optimized, no longer sets player respawn point to this dimension
+- 梦云水晶仇恨、tooltip 与状态追踪优化 / Dreamcloud Crystal aggro, tooltip and state tracking improvements
+- 真伤实现调整并迁移至 coremod / True damage implementation refined and moved to coremod
+- 一些性能优化和逻辑修复 / Various performance optimizations and logic fixes
+
+---
+
 ## 1.7.0-neoforge
 
 ### 新增功能 / New Features
