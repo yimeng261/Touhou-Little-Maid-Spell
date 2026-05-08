@@ -5,7 +5,9 @@ import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.event.FestivalGreetingManager;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
+import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -97,6 +99,52 @@ public class MaidSpellCommand {
         );
 
         dispatcher.register(root);
+
+        dispatcher.register(Commands.literal("maidspell_debug")
+                .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("hard_remove")
+                        .then(Commands.argument("targets", EntityArgument.entities())
+                                .then(Commands.argument("bypass_protection", BoolArgumentType.bool())
+                                        .executes(MaidSpellCommand::executeHardRemove)
+                                )
+                        )
+                )
+        );
+    }
+
+    private static int executeHardRemove(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        Collection<? extends Entity> targets = EntityArgument.getEntities(context, "targets");
+        boolean bypassProtection = BoolArgumentType.getBool(context, "bypass_protection");
+        int removedCount = 0;
+
+        for (Entity entity : targets) {
+            Entity.RemovalReason previousReason = entity.getRemovalReason();
+            if (bypassProtection) {
+                MaidHardRemovalProtection.runAllowingHardRemoval(() -> entity.remove(Entity.RemovalReason.DISCARDED));
+            } else {
+                entity.remove(Entity.RemovalReason.DISCARDED);
+            }
+            if (!entity.isRemoved() || entity.getRemovalReason() == previousReason) {
+                continue;
+            }
+            LOGGER.warn("Debug hard-remove request entity={} type={} pos={} bypassProtection={}",
+                    entity.getUUID(), entity.getType().builtInRegistryHolder().key().location(),
+                    entity.blockPosition(), bypassProtection);
+            removedCount++;
+        }
+
+        if (removedCount > 0) {
+            final int success = removedCount;
+            context.getSource().sendSuccess(() -> Component.literal(
+                    String.format("调试硬移除 %d 个实体，bypass_protection=%s", success, bypassProtection)
+            ), true);
+        } else {
+            context.getSource().sendFailure(Component.literal(
+                    String.format("没有实体被硬移除，bypass_protection=%s；目标可能已被保护逻辑拦截", bypassProtection)
+            ));
+        }
+
+        return removedCount;
     }
 
     /**

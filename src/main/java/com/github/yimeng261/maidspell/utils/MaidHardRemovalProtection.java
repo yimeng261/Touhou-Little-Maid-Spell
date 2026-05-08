@@ -122,6 +122,15 @@ public final class MaidHardRemovalProtection {
         serverTickCounter = 0;
     }
 
+    public static void runAllowingHardRemoval(Runnable action) {
+        ALLOW_HARD_REMOVAL.set(true);
+        try {
+            action.run();
+        } finally {
+            ALLOW_HARD_REMOVAL.remove();
+        }
+    }
+
     private static boolean isProtectedMaid(EntityMaid maid) {
         try {
             if (maid == null || maid.level().isClientSide()) {
@@ -208,12 +217,7 @@ public final class MaidHardRemovalProtection {
     }
 
     private static void discardRecoveredMaid(EntityMaid maid) {
-        ALLOW_HARD_REMOVAL.set(true);
-        try {
-            maid.discard();
-        } finally {
-            ALLOW_HARD_REMOVAL.remove();
-        }
+        runAllowingHardRemoval(maid::discard);
     }
 
     private static ItemStack createSoulSpell(EntityMaid maid) {
