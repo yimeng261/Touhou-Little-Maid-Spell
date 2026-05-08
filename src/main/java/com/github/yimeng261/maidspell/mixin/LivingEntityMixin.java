@@ -12,12 +12,13 @@ import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeB
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.github.yimeng261.maidspell.utils.FoxLeafOwnerEffectHelper;
+import com.github.yimeng261.maidspell.utils.MaidDamageProcessor;
+import com.github.yimeng261.maidspell.utils.MaidHealthWriteGuard;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Holder;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
-import net.minecraft.world.damagesource.CombatEntry;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -36,9 +37,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import oshi.util.tuples.Pair;
 
-import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
@@ -111,7 +110,7 @@ public abstract class LivingEntityMixin {
                 return;
             }
 
-            if(!maidspell$isCommonHurt(health, entity)){
+            if(!MaidDamageProcessor.isCommonHurt(health, entity)){
                 ci.cancel();
                 return;
             }
@@ -125,52 +124,25 @@ public abstract class LivingEntityMixin {
         float currentHealth = maid.getHealth();
         DataItem dataItem = new DataItem(maid, currentHealth - health);
 
-        SliverCercisBauble_process(dataItem); //处理紫荆(计算减伤之前)
+        maidspell$processSilverCercis(dataItem); //处理紫荆(计算减伤之前)
 
-        if (!maidspell$isCommonHurt(health, entity)){
+        if (!MaidDamageProcessor.isCommonHurt(health, entity)){
             ci.cancel();
             return;
         }
 
-        SoulBookBauble_process(dataItem); //处理魂之书(最先计算是否取消)
+        MaidDamageProcessor.processSoulBook(dataItem); //处理魂之书(最先计算是否取消)
 
-        Global.baubleSetHealthHandlers.forEach((item, func) -> {
-            if(BaubleStateManager.hasBauble(maid, item)){
-                func.apply(dataItem);
-            }
-        });
-
-        Global.baubleSetHealthFinalHandlers.forEach((item, func) -> {
-            if(BaubleStateManager.hasBauble(maid, item)){
-                func.apply(dataItem);
-            }
-        });
+        MaidDamageProcessor.applyBaubleHandlers(dataItem, maid);
 
         if(dataItem.isCanceled()){
             dataItem.setAmount(0);
         }
 
         float finalHealth = Math.max(0.0f, currentHealth - dataItem.getAmount());
-        maid.getEntityData().set(DATA_HEALTH_ID, finalHealth);
+        MaidHealthWriteGuard.runBypassing(() -> maid.getEntityData().set(DATA_HEALTH_ID, finalHealth));
 
         ci.cancel();
-    }
-
-    @Unique
-    private boolean maidspell$isCommonHurt(float health, LivingEntity entity) {
-        float nowHealth = entity.getHealth();
-        List<CombatEntry> entries = entity.getCombatTracker().entries;
-
-        if(entries.isEmpty()){
-            maidspell$LOGGER.debug("[MaidSpell] no combat entries found");
-            return false;
-        }
-        maidspell$LOGGER.debug("[MaidSpell] nowHealth: {}, health: {}, last damage: {}", nowHealth, health, entries.get(entries.size()-1).damage());
-        if(Math.abs(entries.get(entries.size()-1).damage()-(nowHealth-health))>0.1) {
-            maidspell$LOGGER.debug("[MaidSpell] illegal damage!");
-            return false;
-        }
-        return true;
     }
 
     /**
@@ -300,24 +272,7 @@ public abstract class LivingEntityMixin {
     }
 
     @Unique
-    private void SoulBookBauble_process(DataItem dataItem) {
-        EntityMaid maid = dataItem.getMaid();
-        if(!BaubleStateManager.hasBauble(maid, MaidSpellItems.SOUL_BOOK)){
-            return;
-        }
-        float damage = dataItem.getAmount();
-        Pair<Boolean, Float> result = SoulBookBauble.damageCalc(maid, damage);
-        if (!result.getA()) {
-            maidspell$LOGGER.debug("[SoulBookBauble] Damage cancelled for maid {} due to insufficient interval", maid.getUUID());
-            dataItem.setCanceled(true);
-            return;
-        }
-        dataItem.setAmount(result.getB());
-        SoulBookBauble.lastHurtTimeMap.put(maid.getUUID(), maid.tickCount);
-    }
-
-    @Unique
-    private void SliverCercisBauble_process(DataItem dataItem) {
+    private void maidspell$processSilverCercis(DataItem dataItem) {
         EntityMaid maid = dataItem.getMaid();
         if(!BaubleStateManager.hasBauble(maid, MaidSpellItems.SLIVER_CERCIS)){
             return;
