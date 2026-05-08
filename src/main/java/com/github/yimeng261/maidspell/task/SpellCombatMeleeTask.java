@@ -9,6 +9,7 @@ import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksDataBridge;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
+import com.hollingsworth.arsnouveau.api.entity.ISummon;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
@@ -90,7 +91,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
-        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
+        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid) || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
         BehaviorControl<EntityMaid> spellCastingTask = new SpellCombatBehavior();
         BehaviorControl<EntityMaid> strafingTask = new SpellStrafingTask();
@@ -110,7 +111,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     @Override
     public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(EntityMaid maid) {
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
-        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
+        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid) || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target));
         BehaviorControl<EntityMaid> spellCastingTask = new SpellCombatBehavior();
         // 添加高优先级的视线控制任务，阻止女仆看向玩家
         BehaviorControl<EntityMaid> lookControlTask = new CombatLookControlTask();
@@ -128,25 +129,35 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
      * 子类可覆写此方法添加更多过滤逻辑
      */
     protected Optional<? extends LivingEntity> findValidAttackTarget(EntityMaid maid) {
-        Optional<? extends LivingEntity> defaultTarget = IAttackTask.findFirstValidAttackTarget(maid);
-        if (defaultTarget.isEmpty()) {
-            return defaultTarget;
-        }
+        return IAttackTask.findFirstValidAttackTarget(maid)
+                .filter(target -> isValidSpellCombatTarget(maid, target));
+    }
 
-        // 排除女仆/玩家自己召唤的 Goety 召唤物
-        if (ModList.get().isLoaded("goety")) {
-            try {
-                if (defaultTarget.get() instanceof IOwned ownedEntity) {
-                    LivingEntity owner = ownedEntity.getTrueOwner();
-                    if (owner instanceof EntityMaid || owner instanceof Player) {
-                        return Optional.empty();
-                    }
-                }
-            } catch (NoClassDefFoundError ignored) {
-            }
+    protected static boolean isValidSpellCombatTarget(EntityMaid maid, LivingEntity target) {
+        if (target == null || target instanceof Player) {
+            return false;
         }
+        if (isFriendlySummonOrOwnedEntity(maid, target)) {
+            return false;
+        }
+        return true;
+    }
 
-        return defaultTarget;
+    protected static boolean isFriendlySummonOrOwnedEntity(EntityMaid maid, LivingEntity target) {
+        if (maid == null || target == null) {
+            return false;
+        }
+        LivingEntity maidOwner = maid.getOwner();
+        if (ModList.get().isLoaded("ars_nouveau") && target instanceof ISummon summon) {
+            return summon.getOwnerUUID() != null
+                    && (summon.getOwnerUUID().equals(maid.getUUID())
+                    || (maidOwner != null && summon.getOwnerUUID().equals(maidOwner.getUUID())));
+        }
+        if (ModList.get().isLoaded("goety") && target instanceof IOwned ownedEntity) {
+            LivingEntity owner = ownedEntity.getTrueOwner();
+            return owner instanceof EntityMaid || owner instanceof Player;
+        }
+        return false;
     }
 
     @Override
@@ -236,7 +247,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         @Override
         protected boolean checkExtraStartConditions(@NotNull ServerLevel level, EntityMaid maid) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            if (target == null || !target.isAlive() || target instanceof Player) {
+            if (target == null || !target.isAlive() || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target)) {
                 return false;
             }
 
@@ -309,7 +320,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             if (target instanceof Player && isIronSpellSpecialCase(maid)) {
                 return true;
             }
-            return target != null && target.isAlive() && !(target instanceof Player);
+            return target != null && target.isAlive() && SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target);
         }
 
         @Override
@@ -379,7 +390,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         @Override
         protected boolean checkExtraStartConditions(@NotNull ServerLevel worldIn, EntityMaid maid) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            return target != null && target.isAlive() && !(target instanceof Player);
+            return target != null && target.isAlive() && SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target);
         }
 
         @Override
@@ -390,7 +401,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             }
 
             maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
-                if(target instanceof Player) {
+                if(!SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target)) {
                     stop(worldIn, maid, gameTime);
                     return;
                 }
