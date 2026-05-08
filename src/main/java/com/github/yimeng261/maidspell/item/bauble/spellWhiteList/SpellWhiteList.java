@@ -1,8 +1,8 @@
-package com.github.yimeng261.maidspell.item.bauble.blueNote;
+package com.github.yimeng261.maidspell.item.bauble.spellWhiteList;
 
 import com.github.yimeng261.maidspell.utils.TooltipHelper;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.BlueNoteContainerProvider;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.BlueNoteSpellManager;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.SpellWhiteListContainerProvider;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.SpellWhiteListSpellManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,8 +18,8 @@ import net.neoforged.neoforge.items.ItemStackHandler;
 
 import java.util.List;
 
-public class BlueNote extends Item {
-    public BlueNote() {
+public class SpellWhiteList extends Item {
+    public SpellWhiteList() {
         super(new Properties()
                 .stacksTo(1)
                 .rarity(Rarity.EPIC)
@@ -43,14 +43,14 @@ public class BlueNote extends Item {
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
 
-    private void openGUI(ServerPlayer player, ItemStack blueNoteStack, int slot) {
+    private void openGUI(ServerPlayer player, ItemStack spellWhiteListStack, int slot) {
         ItemStackHandler scrollHandler = new ItemStackHandler(27);
-        BlueNoteSpellManager.loadScrollsFromItem(blueNoteStack, scrollHandler, player.level().registryAccess());
+        SpellWhiteListSpellManager.loadScrollsFromItem(spellWhiteListStack, scrollHandler, player.level().registryAccess());
 
-        player.openMenu(new BlueNoteContainerProvider(scrollHandler, blueNoteStack, slot),
+        player.openMenu(new SpellWhiteListContainerProvider(scrollHandler, spellWhiteListStack, slot),
                 buf -> {
                     buf.writeInt(slot);
-                    ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, blueNoteStack);
+                    ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, spellWhiteListStack);
                 });
     }
 

@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.item.bauble.blueNote.contianer;
+package com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.MenuProvider;
@@ -10,15 +10,15 @@ import net.neoforged.neoforge.items.ItemStackHandler;
 
 import javax.annotation.Nullable;
 
-public class BlueNoteContainerProvider implements MenuProvider {
+public class SpellWhiteListContainerProvider implements MenuProvider {
     private final ItemStackHandler scrollHandler;
-    private final ItemStack blueNoteStack;
-    private final int blueNoteSlot;
+    private final ItemStack spellWhiteListStack;
+    private final int spellWhiteListSlot;
 
-    public BlueNoteContainerProvider(ItemStackHandler scrollHandler, ItemStack blueNoteStack, int blueNoteSlot) {
+    public SpellWhiteListContainerProvider(ItemStackHandler scrollHandler, ItemStack spellWhiteListStack, int spellWhiteListSlot) {
         this.scrollHandler = scrollHandler;
-        this.blueNoteStack = blueNoteStack;
-        this.blueNoteSlot = blueNoteSlot;
+        this.spellWhiteListStack = spellWhiteListStack;
+        this.spellWhiteListSlot = spellWhiteListSlot;
     }
 
     @Override
@@ -29,6 +29,6 @@ public class BlueNoteContainerProvider implements MenuProvider {
     @Nullable
     @Override
     public AbstractContainerMenu createMenu(int id, Inventory playerInventory, Player player) {
-        return new BlueNoteContainer(id, playerInventory, scrollHandler, blueNoteStack, blueNoteSlot);
+        return new SpellWhiteListContainer(id, playerInventory, scrollHandler, spellWhiteListStack, spellWhiteListSlot);
     }
 }

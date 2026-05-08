@@ -2,14 +2,14 @@ package com.github.yimeng261.maidspell.client;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.tartaricacid.touhoulittlemaid.client.event.ReloadResourceEvent;
-import com.github.yimeng261.maidspell.client.gui.BlueNoteScreen;
+import com.github.yimeng261.maidspell.client.gui.SpellWhiteListScreen;
 import com.github.yimeng261.maidspell.client.model.AscensionHaloModel;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -26,7 +26,7 @@ public class MaidSpellClientMod {
 
     @SubscribeEvent
     public static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
-        event.register(MaidSpellContainers.BLUE_NOTE_CONTAINER.get(), BlueNoteScreen::new);
+        event.register(MaidSpellContainers.SPELL_WHITE_LIST_CONTAINER.get(), SpellWhiteListScreen::new);
     }
 
     @SubscribeEvent

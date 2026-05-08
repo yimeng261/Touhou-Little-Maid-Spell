@@ -31,7 +31,7 @@ public class MaidIronsSpellData extends IMaidSpellData {
     private CastSource cachedCastSource = null;
     private String playerTargetWhitelistSpellId = null;
     private boolean currentSpellCanTargetPlayer = false;
-    private int cachedBlueNoteSlot = -1;
+    private int cachedSpellWhiteListSlot = -1;
 
     // === 构造函数 ===
     private MaidIronsSpellData() {
@@ -107,16 +107,16 @@ public class MaidIronsSpellData extends IMaidSpellData {
         this.currentSpellCanTargetPlayer = false;
     }
 
-    public int getCachedBlueNoteSlot() {
-        return cachedBlueNoteSlot;
+    public int getCachedSpellWhiteListSlot() {
+        return cachedSpellWhiteListSlot;
     }
 
-    public void setCachedBlueNoteSlot(int slot) {
-        this.cachedBlueNoteSlot = slot;
+    public void setCachedSpellWhiteListSlot(int slot) {
+        this.cachedSpellWhiteListSlot = slot;
     }
 
-    public void clearCachedBlueNoteSlot() {
-        this.cachedBlueNoteSlot = -1;
+    public void clearCachedSpellWhiteListSlot() {
+        this.cachedSpellWhiteListSlot = -1;
     }
 
     // === CastSource 缓存管理 ===

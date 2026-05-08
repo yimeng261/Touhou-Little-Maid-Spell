@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.item.bauble.blueNote.contianer;
+package com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer;
 
 import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -13,29 +13,29 @@ import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.items.SlotItemHandler;
 
-public class BlueNoteContainer extends AbstractContainerMenu {
-    public static final MenuType<BlueNoteContainer> TYPE = IMenuTypeExtension.create(BlueNoteContainer::createContainerClientSide);
+public class SpellWhiteListContainer extends AbstractContainerMenu {
+    public static final MenuType<SpellWhiteListContainer> TYPE = IMenuTypeExtension.create(SpellWhiteListContainer::createContainerClientSide);
 
     private final ItemStackHandler spellScrolls;
-    private final ItemStack blueNoteStack;
-    private final int blueNoteSlot;
+    private final ItemStack spellWhiteListStack;
+    private final int spellWhiteListSlot;
 
     // 客户端构造函数
-    public static BlueNoteContainer createContainerClientSide(int id, Inventory playerInventory, RegistryFriendlyByteBuf data) {
+    public static SpellWhiteListContainer createContainerClientSide(int id, Inventory playerInventory, RegistryFriendlyByteBuf data) {
         int slot = data.readInt();
-        ItemStack blueNoteStack = ItemStack.OPTIONAL_STREAM_CODEC.decode(data);
+        ItemStack spellWhiteListStack = ItemStack.OPTIONAL_STREAM_CODEC.decode(data);
         ItemStackHandler scrollHandler = new ItemStackHandler(27);
         // 客户端从NBT加载数据
-        BlueNoteSpellManager.loadScrollsFromItem(blueNoteStack, scrollHandler, data.registryAccess());
-        return new BlueNoteContainer(id, playerInventory, scrollHandler, blueNoteStack, slot);
+        SpellWhiteListSpellManager.loadScrollsFromItem(spellWhiteListStack, scrollHandler, data.registryAccess());
+        return new SpellWhiteListContainer(id, playerInventory, scrollHandler, spellWhiteListStack, slot);
     }
 
     // 通用构造函数
-    public BlueNoteContainer(int id, Inventory playerInventory, ItemStackHandler spellScrolls, ItemStack blueNoteStack, int blueNoteSlot) {
+    public SpellWhiteListContainer(int id, Inventory playerInventory, ItemStackHandler spellScrolls, ItemStack spellWhiteListStack, int spellWhiteListSlot) {
         super(TYPE, id);
         this.spellScrolls = spellScrolls;
-        this.blueNoteStack = blueNoteStack;
-        this.blueNoteSlot = blueNoteSlot;
+        this.spellWhiteListStack = spellWhiteListStack;
+        this.spellWhiteListSlot = spellWhiteListSlot;
 
         // 添加法术卷轴槽位（3x9布局）
         for (int row = 0; row < 3; ++row) {
@@ -92,7 +92,7 @@ public class BlueNoteContainer extends AbstractContainerMenu {
         }
 
         // 禁止与蓝色音符物品本身的交互，防止刷物品bug
-        if (blueNoteSlot >= 0 && slotId == 27 + blueNoteSlot) {
+        if (spellWhiteListSlot >= 0 && slotId == 27 + spellWhiteListSlot) {
             return;
         }
 
@@ -138,9 +138,9 @@ public class BlueNoteContainer extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        if (blueNoteSlot >= 0) {
-            ItemStack stack = player.getInventory().getItem(blueNoteSlot);
-            return ItemStack.isSameItem(stack, blueNoteStack);
+        if (spellWhiteListSlot >= 0) {
+            ItemStack stack = player.getInventory().getItem(spellWhiteListSlot);
+            return ItemStack.isSameItem(stack, spellWhiteListStack);
         }
         return true;
     }
@@ -152,9 +152,9 @@ public class BlueNoteContainer extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
-        // 保存卷轴到BlueNote的NBT，包括法术列表
-        if (!blueNoteStack.isEmpty()) {
-            BlueNoteSpellManager.saveScrollsToItem(blueNoteStack, spellScrolls, player.level().registryAccess());
+        // 保存卷轴到 spellWhiteList 的 NBT，包括法术列表
+        if (!spellWhiteListStack.isEmpty()) {
+            SpellWhiteListSpellManager.saveScrollsToItem(spellWhiteListStack, spellScrolls, player.level().registryAccess());
         }
     }
 

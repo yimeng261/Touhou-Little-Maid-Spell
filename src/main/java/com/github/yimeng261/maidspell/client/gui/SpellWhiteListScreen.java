@@ -1,6 +1,6 @@
 package com.github.yimeng261.maidspell.client.gui;
 
-import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.BlueNoteContainer;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.SpellWhiteListContainer;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -8,10 +8,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 
-public class BlueNoteScreen extends AbstractContainerScreen<BlueNoteContainer> {
+public class SpellWhiteListScreen extends AbstractContainerScreen<SpellWhiteListContainer> {
     private static final ResourceLocation TEXTURE = new ResourceLocation("touhou_little_maid_spell", "textures/gui/blue_note.png");
 
-    public BlueNoteScreen(BlueNoteContainer container, Inventory playerInventory, Component title) {
+    public SpellWhiteListScreen(SpellWhiteListContainer container, Inventory playerInventory, Component title) {
         super(container, playerInventory, title);
         this.imageHeight = 166;
         this.imageWidth = 176;

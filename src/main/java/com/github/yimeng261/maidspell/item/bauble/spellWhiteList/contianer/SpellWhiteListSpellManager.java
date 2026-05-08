@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.item.bauble.blueNote.contianer;
+package com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer;
 
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import net.minecraft.core.HolderLookup;
@@ -16,30 +16,30 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * BlueNote法术管理器
+ * SpellWhiteList 法术管理器
  * 负责法术和卷轴物品的保存、读取和管理
  * 兼容 1.20 旧 NBT 存档并迁移到 1.21 数据组件
  */
-public class BlueNoteSpellManager {
+public class SpellWhiteListSpellManager {
     private static final String LEGACY_SCROLLS_TAG = "StoredScrolls";
     private static final String LEGACY_SPELL_IDS_TAG = "SpellIds";
 
     /**
-     * 从BlueNote物品中加载卷轴物品
+     * 从 SpellWhiteList 物品中加载卷轴物品
      */
-    public static void loadScrollsFromItem(ItemStack blueNoteStack, ItemStackHandler scrollHandler) {
-        loadScrollsFromItem(blueNoteStack, scrollHandler, null);
+    public static void loadScrollsFromItem(ItemStack spellWhiteListStack, ItemStackHandler scrollHandler) {
+        loadScrollsFromItem(spellWhiteListStack, scrollHandler, null);
     }
 
-    public static void loadScrollsFromItem(ItemStack blueNoteStack, ItemStackHandler scrollHandler, HolderLookup.Provider provider) {
-        if (blueNoteStack.isEmpty()) {
+    public static void loadScrollsFromItem(ItemStack spellWhiteListStack, ItemStackHandler scrollHandler, HolderLookup.Provider provider) {
+        if (spellWhiteListStack.isEmpty()) {
             return;
         }
 
-        List<ItemStack> scrollsList = blueNoteStack.get(MaidSpellDataComponents.BLUE_NOTE_SCROLLS_TAG);
+        List<ItemStack> scrollsList = spellWhiteListStack.get(MaidSpellDataComponents.SPELL_WHITE_LIST_SCROLLS_TAG);
         boolean migratedLegacyData = false;
         if (scrollsList == null && provider != null) {
-            scrollsList = readLegacyScrolls(blueNoteStack, provider);
+            scrollsList = readLegacyScrolls(spellWhiteListStack, provider);
             migratedLegacyData = scrollsList != null;
         }
         if (scrollsList == null) {
@@ -60,19 +60,19 @@ public class BlueNoteSpellManager {
         }
 
         if (migratedLegacyData) {
-            saveScrollsToItem(blueNoteStack, scrollHandler, provider);
+            saveScrollsToItem(spellWhiteListStack, scrollHandler, provider);
         }
     }
 
     /**
-     * 将卷轴物品保存到BlueNote物品
+     * 将卷轴物品保存到 SpellWhiteList 物品
      */
-    public static void saveScrollsToItem(ItemStack blueNoteStack, ItemStackHandler scrollHandler) {
-        saveScrollsToItem(blueNoteStack, scrollHandler, null);
+    public static void saveScrollsToItem(ItemStack spellWhiteListStack, ItemStackHandler scrollHandler) {
+        saveScrollsToItem(spellWhiteListStack, scrollHandler, null);
     }
 
-    public static void saveScrollsToItem(ItemStack blueNoteStack, ItemStackHandler scrollHandler, HolderLookup.Provider provider) {
-        if (blueNoteStack.isEmpty()) {
+    public static void saveScrollsToItem(ItemStack spellWhiteListStack, ItemStackHandler scrollHandler, HolderLookup.Provider provider) {
+        if (spellWhiteListStack.isEmpty()) {
             return;
         }
 
@@ -88,24 +88,24 @@ public class BlueNoteSpellManager {
             }
         }
 
-        blueNoteStack.set(MaidSpellDataComponents.BLUE_NOTE_SCROLLS_TAG, scrollsList);
-        clearLegacyData(blueNoteStack);
+        spellWhiteListStack.set(MaidSpellDataComponents.SPELL_WHITE_LIST_SCROLLS_TAG, scrollsList);
+        clearLegacyData(spellWhiteListStack);
 
         // 同时保存法术ID列表
-        saveSpellIdsToItem(blueNoteStack, scrollHandler);
+        saveSpellIdsToItem(spellWhiteListStack, scrollHandler);
     }
 
     /**
-     * 将法术ID列表保存到BlueNote物品
+     * 将法术ID列表保存到 SpellWhiteList 物品
      */
-    public static void saveSpellIdsToItem(ItemStack blueNoteStack, ItemStackHandler scrollHandler) {
-        if (blueNoteStack.isEmpty()) {
+    public static void saveSpellIdsToItem(ItemStack spellWhiteListStack, ItemStackHandler scrollHandler) {
+        if (spellWhiteListStack.isEmpty()) {
             return;
         }
 
         List<String> spellIds = extractSpellIdsFromScrolls(scrollHandler);
-        blueNoteStack.set(MaidSpellDataComponents.BLUE_NOTE_SPELL_IDS_TAG, spellIds);
-        clearLegacyData(blueNoteStack);
+        spellWhiteListStack.set(MaidSpellDataComponents.SPELL_WHITE_LIST_SPELL_IDS_TAG, spellIds);
+        clearLegacyData(spellWhiteListStack);
     }
 
     /**
@@ -135,24 +135,24 @@ public class BlueNoteSpellManager {
     /**
      * 获取存储的法术ID列表
      */
-    public static List<String> getStoredSpellIds(ItemStack blueNoteStack) {
-        return getStoredSpellIds(blueNoteStack, null);
+    public static List<String> getStoredSpellIds(ItemStack spellWhiteListStack) {
+        return getStoredSpellIds(spellWhiteListStack, null);
     }
 
-    public static List<String> getStoredSpellIds(ItemStack blueNoteStack, HolderLookup.Provider provider) {
+    public static List<String> getStoredSpellIds(ItemStack spellWhiteListStack, HolderLookup.Provider provider) {
         List<String> spellIds = new ArrayList<>();
-        if (blueNoteStack.isEmpty()) {
+        if (spellWhiteListStack.isEmpty()) {
             return spellIds;
         }
 
-        List<String> storedSpellIds = blueNoteStack.get(MaidSpellDataComponents.BLUE_NOTE_SPELL_IDS_TAG);
+        List<String> storedSpellIds = spellWhiteListStack.get(MaidSpellDataComponents.SPELL_WHITE_LIST_SPELL_IDS_TAG);
         if (storedSpellIds != null) {
             return new ArrayList<>(storedSpellIds);
         }
 
-        spellIds = readLegacySpellIds(blueNoteStack);
+        spellIds = readLegacySpellIds(spellWhiteListStack);
         if (!spellIds.isEmpty()) {
-            blueNoteStack.set(MaidSpellDataComponents.BLUE_NOTE_SPELL_IDS_TAG, List.copyOf(spellIds));
+            spellWhiteListStack.set(MaidSpellDataComponents.SPELL_WHITE_LIST_SPELL_IDS_TAG, List.copyOf(spellIds));
         }
         return spellIds;
     }
@@ -160,16 +160,16 @@ public class BlueNoteSpellManager {
     /**
      * 清空存储的数据
      */
-    public static void clearStoredData(ItemStack blueNoteStack) {
-        if (!blueNoteStack.isEmpty()) {
-            blueNoteStack.remove(MaidSpellDataComponents.BLUE_NOTE_SCROLLS_TAG);
-            blueNoteStack.remove(MaidSpellDataComponents.BLUE_NOTE_SPELL_IDS_TAG);
-            clearLegacyData(blueNoteStack);
+    public static void clearStoredData(ItemStack spellWhiteListStack) {
+        if (!spellWhiteListStack.isEmpty()) {
+            spellWhiteListStack.remove(MaidSpellDataComponents.SPELL_WHITE_LIST_SCROLLS_TAG);
+            spellWhiteListStack.remove(MaidSpellDataComponents.SPELL_WHITE_LIST_SPELL_IDS_TAG);
+            clearLegacyData(spellWhiteListStack);
         }
     }
 
-    private static List<ItemStack> readLegacyScrolls(ItemStack blueNoteStack, HolderLookup.Provider provider) {
-        CompoundTag customTag = getLegacyDataRoot(blueNoteStack);
+    private static List<ItemStack> readLegacyScrolls(ItemStack spellWhiteListStack, HolderLookup.Provider provider) {
+        CompoundTag customTag = getLegacyDataRoot(spellWhiteListStack);
         if (customTag == null || !customTag.contains(LEGACY_SCROLLS_TAG, Tag.TAG_LIST)) {
             return null;
         }
@@ -183,9 +183,9 @@ public class BlueNoteSpellManager {
         return result;
     }
 
-    private static List<String> readLegacySpellIds(ItemStack blueNoteStack) {
+    private static List<String> readLegacySpellIds(ItemStack spellWhiteListStack) {
         List<String> spellIds = new ArrayList<>();
-        CompoundTag customTag = getLegacyDataRoot(blueNoteStack);
+        CompoundTag customTag = getLegacyDataRoot(spellWhiteListStack);
         if (customTag == null || !customTag.contains(LEGACY_SPELL_IDS_TAG, Tag.TAG_LIST)) {
             return spellIds;
         }
@@ -200,16 +200,16 @@ public class BlueNoteSpellManager {
         return spellIds;
     }
 
-    private static CompoundTag getLegacyDataRoot(ItemStack blueNoteStack) {
-        CustomData customData = blueNoteStack.get(DataComponents.CUSTOM_DATA);
+    private static CompoundTag getLegacyDataRoot(ItemStack spellWhiteListStack) {
+        CustomData customData = spellWhiteListStack.get(DataComponents.CUSTOM_DATA);
         if (customData == null || customData.isEmpty()) {
             return null;
         }
         return customData.copyTag();
     }
 
-    private static void clearLegacyData(ItemStack blueNoteStack) {
-        CustomData.update(DataComponents.CUSTOM_DATA, blueNoteStack, tag -> {
+    private static void clearLegacyData(ItemStack spellWhiteListStack) {
+        CustomData.update(DataComponents.CUSTOM_DATA, spellWhiteListStack, tag -> {
             tag.remove(LEGACY_SCROLLS_TAG);
             tag.remove(LEGACY_SPELL_IDS_TAG);
         });

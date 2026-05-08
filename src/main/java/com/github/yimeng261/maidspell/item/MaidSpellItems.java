@@ -4,7 +4,7 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.SpellWhiteList;
 import com.github.yimeng261.maidspell.item.bauble.chaosBook.ChaosBook;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChain;
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystal;
@@ -47,7 +47,7 @@ public class MaidSpellItems {
     public static final DeferredItem<Item> FLOW_CORE = ITEMS.register("flow_core", FlowCore::new);
     public static final DeferredItem<Item> QUICK_CHANT_RING = ITEMS.register("quick_chant_ring", QuickChantRing::new);
     public static final DeferredItem<Item> SPRING_RING = ITEMS.register("spring_ring", SpringRing::new);
-    public static final DeferredItem<Item> BLUE_NOTE = ITEMS.register("blue_note", BlueNote::new);
+    public static final DeferredItem<Item> SPELL_WHITE_LIST = ITEMS.register("blue_note", SpellWhiteList::new);
 
     // 新增饰品
     public static final DeferredItem<Item> DOUBLE_HEART_CHAIN = ITEMS.register("double_heart_chain", DoubleHeartChain::new);

@@ -5,8 +5,8 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHand
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.BlueNoteSpellManager;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.SpellWhiteList;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.SpellWhiteListSpellManager;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -154,44 +154,44 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
         SpellSlot spellData = availableSpells.get(index);
         //LOGGER.debug("Spell {} selected", spellData.getSpell().getSpellId());
         String selectedSpellId = spellData.getSpell().getSpellId();
-        ItemStack blueNote = findBlueNoteWithCache(maid, data);
-        boolean blueNoteWhitelisted = !blueNote.isEmpty() && BlueNoteSpellManager.getStoredSpellIds(blueNote, maid.level().registryAccess()).contains(selectedSpellId);
-        if (blueNoteWhitelisted) {
+        ItemStack spellWhiteList = findSpellWhiteListWithCache(maid, data);
+        boolean spellWhiteListWhitelisted = !spellWhiteList.isEmpty() && SpellWhiteListSpellManager.getStoredSpellIds(spellWhiteList, maid.level().registryAccess()).contains(selectedSpellId);
+        if (spellWhiteListWhitelisted) {
             LOGGER.debug("should cast to owner : {}", selectedSpellId);
             data.switchTargetToOwner(maid);
         }
-        data.setCurrentSpellCanTargetPlayer(selectedSpellId, blueNoteWhitelisted);
+        data.setCurrentSpellCanTargetPlayer(selectedSpellId, spellWhiteListWhitelisted);
 
         actualCasting(maid, spellData);
     }
 
-    private ItemStack findBlueNoteWithCache(EntityMaid maid, MaidIronsSpellData data) {
+    private ItemStack findSpellWhiteListWithCache(EntityMaid maid, MaidIronsSpellData data) {
         BaubleItemHandler baubleItemHandler = maid.getMaidBauble();
-        int cachedSlot = data.getCachedBlueNoteSlot();
-        if (isValidBlueNoteSlot(baubleItemHandler, cachedSlot)) {
+        int cachedSlot = data.getCachedSpellWhiteListSlot();
+        if (isValidSpellWhiteListSlot(baubleItemHandler, cachedSlot)) {
             return baubleItemHandler.getStackInSlot(cachedSlot);
         }
 
-        data.clearCachedBlueNoteSlot();
-        if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.BLUE_NOTE)) {
+        data.clearCachedSpellWhiteListSlot();
+        if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.SPELL_WHITE_LIST)) {
             return ItemStack.EMPTY;
         }
 
         for (int i = 0; i < baubleItemHandler.getSlots(); i++) {
-            if (isValidBlueNoteSlot(baubleItemHandler, i)) {
-                data.setCachedBlueNoteSlot(i);
+            if (isValidSpellWhiteListSlot(baubleItemHandler, i)) {
+                data.setCachedSpellWhiteListSlot(i);
                 return baubleItemHandler.getStackInSlot(i);
             }
         }
         return ItemStack.EMPTY;
     }
 
-    private boolean isValidBlueNoteSlot(BaubleItemHandler baubleItemHandler, int slot) {
+    private boolean isValidSpellWhiteListSlot(BaubleItemHandler baubleItemHandler, int slot) {
         if (slot < 0 || slot >= baubleItemHandler.getSlots()) {
             return false;
         }
         ItemStack bauble = baubleItemHandler.getStackInSlot(slot);
-        return !bauble.isEmpty() && bauble.getItem() instanceof BlueNote;
+        return !bauble.isEmpty() && bauble.getItem() instanceof SpellWhiteList;
     }
 
     /**
