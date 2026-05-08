@@ -218,9 +218,13 @@ public class SpellBookManager {
                     // 即使 provider 没在施法，也必须清理旧 target；否则每 tick 都会重复看到同一个死亡实体。
                     provider.setTarget(maid, null);
                     if (provider.isCasting(maid)) {
-                        provider.stopCasting(maid);
+                        if (provider.shouldStopWhenTargetInvalid(maid)) {
+                            provider.stopCasting(maid);
+                            continue;
+                        }
+                    } else {
+                        continue;
                     }
-                    continue;
                 }
             }
             provider.processContinuousCasting(maid);
