@@ -1,7 +1,9 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
 
+import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
+import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.entity.mobs.abstract_spell_casting_mob.AbstractSpellCastingMob;
 import io.redspace.ironsspellbooks.entity.mobs.goals.GustDefenseGoal;
 import io.redspace.ironsspellbooks.entity.mobs.goals.PatrolNearLocationGoal;
@@ -10,8 +12,8 @@ import io.redspace.ironsspellbooks.entity.mobs.goals.WizardRecoverGoal;
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.Difficulty;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -36,7 +38,7 @@ public class HolyConstructEntity extends AbstractSpellCastingMob implements Enem
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        this.goalSelector.addGoal(1, new GustDefenseGoal(this));
+        this.goalSelector.addGoal(1, new ChargeDefenseGoal(this));
         this.goalSelector.addGoal(2, new SpellBarrageGoal(this, SpellRegistry.ELDRITCH_BLAST_SPELL.get(), 3, 5, 80, 180, 4));
         this.goalSelector.addGoal(3, new HolyConstructAttackGoal(this, 1.25f, 20, 40)
                 .setSpells(
@@ -121,5 +123,19 @@ public class HolyConstructEntity extends AbstractSpellCastingMob implements Enem
 
     private boolean isPeacefulDifficulty() {
         return this.level().getDifficulty() == Difficulty.PEACEFUL;
+    }
+
+    private static class ChargeDefenseGoal extends GustDefenseGoal {
+        public ChargeDefenseGoal(IMagicEntity spellCastingMob) {
+            super(spellCastingMob);
+        }
+
+        @Override
+        public void start() {
+            this.attackCooldown = 40 + this.mob.getRandom().nextInt(30);
+            AbstractSpell spell = SpellRegistry.CHARGE_SPELL.get();
+            int spellLevel = Math.max(1, (int) (spell.getMaxLevel() * 0.5f));
+            this.spellCastingMob.initiateCastSpell(spell, spellLevel);
+        }
     }
 }
