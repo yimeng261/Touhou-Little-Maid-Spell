@@ -4,13 +4,11 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.mixin.accessor.JumpControlAccessor;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.MaidMovementHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -52,22 +50,7 @@ public class AbstractMaidContainerMixin {
         if (maid == null || maid.level().isClientSide()) {
             return;
         }
-
-        maid.getNavigation().stop();
-        maid.getNavigationManager().resetNavigation();
-        maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-        maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
-        maid.setJumping(false);
-        maid.setXxa(0.0F);
-        maid.setYya(0.0F);
-        maid.setZza(0.0F);
-        maid.setSpeed(0.0F);
-        if (maid.getJumpControl() instanceof JumpControlAccessor jumpAccessor) {
-            jumpAccessor.maidspell$setJump(false);
-        }
-        maid.getMoveControl().setWantedPosition(maid.getX(), maid.getY(), maid.getZ(), 0.0D);
-        Vec3 deltaMovement = maid.getDeltaMovement();
-        maid.setDeltaMovement(0.0D, deltaMovement.y, 0.0D);
+        MaidMovementHelper.stopAllMovement(maid);
     }
 
     @Redirect(
@@ -85,19 +68,13 @@ public class AbstractMaidContainerMixin {
         if (entity instanceof EntityMaid) {
             return entity;
         }
-
         try {
-            for (EntityMaid activeMaid : Global.activeMaids) {
-                if (activeMaid.getId() == entityId && BaubleStateManager.hasBauble(activeMaid, MaidSpellItems.ENDER_POCKET)) {
-                    Global.LOGGER.debug("从 Global 缓存中找到远距离女仆: {} (ID: {})",
-                            activeMaid.getName().getString(), entityId);
-                    return activeMaid;
-                }
-            }
+            return Global.activeMaids.stream()
+                    .filter(m -> m.getId() == entityId && BaubleStateManager.hasBauble(m, MaidSpellItems.ENDER_POCKET))
+                    .findFirst().orElse(null);
         } catch (Exception e) {
-            Global.LOGGER.error("从 Global 缓存中查找末影腰包女仆时发生错误", e);
+            Global.LOGGER.error("Failed to find maid in Global cache", e);
+            return entity;
         }
-
-        return entity;
     }
 }

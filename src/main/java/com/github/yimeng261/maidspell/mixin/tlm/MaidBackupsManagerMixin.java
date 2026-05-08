@@ -5,9 +5,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.LevelResource;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -87,12 +85,6 @@ public class MaidBackupsManagerMixin {
         if (server == null) {
             return null;
         }
-
-        ServerLevel overworld = server.getLevel(Level.OVERWORLD);
-        if (overworld == null) {
-            return null;
-        }
-
         // 主世界的 dataFolder 即 <world>/data；这里用公共 API 取同一路径，避免访问私有字段。
         return server.getWorldPath(LevelResource.ROOT)
                 .resolve("data")

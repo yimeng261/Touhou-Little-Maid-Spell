@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import it.unimi.dsi.fastutil.Pair;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
@@ -106,6 +107,12 @@ public class AnchorCoreBauble implements IMaidBauble {
                 className.contains("backup") ||
                 className.contains("maid") ||
                 className.contains("c2me");
+    }
+
+    public static void clearCompound(CompoundTag compound) {
+        for (String key : new java.util.ArrayList<>(compound.getAllKeys())) {
+            compound.remove(key);
+        }
     }
 
     /**
