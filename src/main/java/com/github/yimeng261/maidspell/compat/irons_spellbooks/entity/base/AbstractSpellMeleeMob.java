@@ -81,6 +81,14 @@ public abstract class AbstractSpellMeleeMob extends NeutralWizard implements IAn
         return true;
     }
 
+    /**
+     * 返回主动索敌的目标类型，默认仅针对玩家。
+     * 子类可重写以攻击更广泛的目标（如所有 LivingEntity）
+     */
+    protected Class<? extends LivingEntity> getPlayerTargetClass() {
+        return Player.class;
+    }
+
     protected boolean isDefaultPlayerTargetHostile(LivingEntity target) {
         return this.isHostileTowards(target);
     }
@@ -204,7 +212,7 @@ public abstract class AbstractSpellMeleeMob extends NeutralWizard implements IAn
         this.goalSelector.addGoal(10, new WizardRecoverGoal(this));
         this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
         if (addDefaultPlayerTargetGoal()) {
-            this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Player.class, 10, true, false, this::isDefaultPlayerTargetHostile));
+            this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, getPlayerTargetClass(), 10, true, false, this::isDefaultPlayerTargetHostile));
             this.targetSelector.addGoal(5, new ResetUniversalAngerTargetGoal<>(this, false));
         }
         registerAdditionalGoals();
