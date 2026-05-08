@@ -50,7 +50,7 @@ public final class IronsSpellbooksCompatEntities {
     public static final DeferredHolder<EntityType<?>, EntityType<HolyConstructEntity>> HOLY_CONSTRUCT =
             ENTITY_TYPES.register("holy_construct",
                     () -> EntityType.Builder.of(HolyConstructEntity::new, MobCategory.MONSTER)
-                            .sized(0.8F, 2.9F)
+                            .sized(0.8F, 2.5F)
                             .clientTrackingRange(10)
                             .build("holy_construct"));
 
