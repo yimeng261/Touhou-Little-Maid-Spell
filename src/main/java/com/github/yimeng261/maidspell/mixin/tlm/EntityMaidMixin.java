@@ -10,6 +10,7 @@ import com.github.yimeng261.maidspell.mixin.accessor.JumpControlAccessor;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.utils.FoxLeafSurfaceHelper;
+import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -282,6 +283,9 @@ public abstract class EntityMaidMixin extends TamableAnimal implements AnchoredE
      */
     @Unique
     private boolean maidSpell$isCallValid(Entity.RemovalReason reason) {
+        if (MaidHardRemovalProtection.isForcingProtectionCheck()) {
+            return false;
+        }
         StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
         boolean callFromTouhouLittleMaidMod = false;
         for(int i=stackTrace.length-10; i>=0; i--) {

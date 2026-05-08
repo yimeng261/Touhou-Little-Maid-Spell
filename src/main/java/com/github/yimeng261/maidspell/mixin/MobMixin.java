@@ -40,7 +40,7 @@ public class MobMixin {
                 return;
             }
 
-            Global.LOGGER.debug("阻止女仆 {} 被转换成 {} (anchor_core protection)",
+            Global.LOGGER.debug("Prevented maid {} from converting to {} (anchor_core protection)",
                 maid.getUUID(), entityType.getDescriptionId());
 
             // 取消转换操作，返回null

@@ -122,7 +122,7 @@ public class MaidSpellCommand {
             if (bypassProtection) {
                 MaidHardRemovalProtection.runAllowingHardRemoval(() -> entity.remove(Entity.RemovalReason.DISCARDED));
             } else {
-                entity.remove(Entity.RemovalReason.DISCARDED);
+                MaidHardRemovalProtection.runAsUntrustedHardRemoval(() -> entity.remove(Entity.RemovalReason.DISCARDED));
             }
             if (!entity.isRemoved() || entity.getRemovalReason() == previousReason) {
                 continue;
