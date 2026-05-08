@@ -9,6 +9,7 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
+import com.github.yimeng261.maidspell.block.entity.SuppressionStoneBlockEntity;
 import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
@@ -351,6 +352,36 @@ public class MaidSpellEventHandler {
                 LOGGER.error("Error in maid tick handler for maid {}: {}",
                     maid.getName().getString(), e.getMessage(), e);
             }
+        }
+    }
+
+    /**
+     * 镇石：阻止周围区块内的敌对生物自然生成
+     */
+    @SubscribeEvent
+    public static void onMobPositionCheck(MobSpawnEvent.PositionCheck event) {
+        // 只拦截自然生成类的生成方式
+        MobSpawnType spawnType = event.getSpawnType();
+        if (spawnType == MobSpawnType.BREEDING
+            || spawnType == MobSpawnType.MOB_SUMMONED
+            || spawnType == MobSpawnType.CONVERSION
+            || spawnType == MobSpawnType.BUCKET
+            || spawnType == MobSpawnType.SPAWN_EGG
+            || spawnType == MobSpawnType.COMMAND
+            || spawnType == MobSpawnType.DISPENSER
+            || spawnType == MobSpawnType.SPAWNER) {
+            return;
+        }
+
+        // 只阻止敌对生物
+        if (!(event.getEntity() instanceof Enemy)) {
+            return;
+        }
+
+        // 检查是否在镇石压制范围内
+        BlockPos spawnPos = BlockPos.containing(event.getX(), event.getY(), event.getZ());
+        if (SuppressionStoneBlockEntity.isWithinSuppressionRange(event.getLevel(), spawnPos)) {
+            event.setResult(MobSpawnEvent.PositionCheck.Result.FAIL);
         }
     }
 

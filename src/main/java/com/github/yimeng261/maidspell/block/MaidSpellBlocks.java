@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.block.custom.PottedJingxuYoulanBlock;
 import com.github.yimeng261.maidspell.block.custom.PottedScarletZhuhuaBlock;
 import com.github.yimeng261.maidspell.block.custom.PottedYueLinglanBlock;
 import com.github.yimeng261.maidspell.block.custom.ScarletZhuhuaBlock;
+import com.github.yimeng261.maidspell.block.custom.SuppressionStoneBlock;
 import com.github.yimeng261.maidspell.block.custom.TransientFoxLeafTrailBlock;
 import com.github.yimeng261.maidspell.block.custom.YueLinglanBlock;
 import net.minecraft.util.RandomSource;
@@ -69,6 +70,9 @@ public final class MaidSpellBlocks {
             BLOCKS.registerBlock("molten_fox_leaf_trail_small",
                     props -> new TransientFoxLeafTrailBlock(8, 16, props),
                     TransientFoxLeafTrailBlock.createProperties());
+
+    public static final DeferredBlock<SuppressionStoneBlock> SUPPRESSION_STONE =
+            BLOCKS.registerBlock("suppression_stone", SuppressionStoneBlock::new, SuppressionStoneBlock.createProperties());
 
     private static final List<DeferredBlock<TransientFoxLeafTrailBlock>> FLOATING_FOX_LEAF_TRAILS = List.of(
             FLOATING_FOX_LEAF_TRAIL,
