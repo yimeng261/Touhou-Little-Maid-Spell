@@ -28,6 +28,8 @@
     "goety.WandUtilMixin",
     "iss.SyncedSpellDataMixin",
     "iss.UtilsMixin",
+    "psi.PieceSelectorNearbyMixin",
+    "psi.PieceTrickAddMotionMixin",
     "tlm.AbstractMaidContainerMixin",
     "tlm.AltarRecipeSerializerMixin",
     "tlm.CustomModelPackAccessor",
