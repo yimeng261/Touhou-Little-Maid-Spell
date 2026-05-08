@@ -4,7 +4,9 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.spells.CastSource;
+import io.redspace.ironsspellbooks.api.spells.ICastDataSerializable;
 import io.redspace.ironsspellbooks.api.spells.SpellSlot;
+import io.redspace.ironsspellbooks.capabilities.magic.RecastInstance;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.Map;
@@ -32,10 +34,12 @@ public class MaidIronsSpellData extends IMaidSpellData {
     private String playerTargetWhitelistSpellId = null;
     private boolean currentSpellCanTargetPlayer = false;
     private int cachedSpellWhiteListSlot = -1;
+    private MaidRecastSession recastSession = null;
 
     // === 构造函数 ===
     private MaidIronsSpellData() {
-        this.magicData = new MagicData(true); // true表示这是mob
+        // 使用玩家风格的数据但不绑定 ServerPlayer，使女仆的 Iron's recast 查询保持持久。
+        this.magicData = new MagicData(false);
     }
 
     // === 静态工厂方法 ===
@@ -148,6 +152,25 @@ public class MaidIronsSpellData extends IMaidSpellData {
         return magicData;
     }
 
+    public MaidRecastSession getRecastSession() {
+        return recastSession;
+    }
+
+    public boolean hasRecastSession() {
+        return recastSession != null && !recastSession.isFinished();
+    }
+
+    public void startRecastSession(SpellSlot spell, CastSource castSource, RecastInstance recastInstance, int intervalTicks) {
+        this.recastSession = new MaidRecastSession(spell, castSource, recastInstance, intervalTicks);
+        setCurrentCastingSpell(spell);
+        setCachedCastSource(castSource);
+        setCasting(true);
+    }
+
+    public void clearRecastSession() {
+        this.recastSession = null;
+    }
+
     // === 冷却管理 ===
 
     /**
@@ -159,7 +182,76 @@ public class MaidIronsSpellData extends IMaidSpellData {
         currentCastingSpell = null;
         clearCurrentSpellPlayerTargetState();
         clearCachedCastSource();
+        clearRecastSession();
         magicData.resetCastingState();
+    }
+
+    public static class MaidRecastSession {
+        private final SpellSlot spell;
+        private final CastSource castSource;
+        private final RecastInstance recastInstance;
+        private final int intervalTicks;
+        private int ticksUntilNextRecast;
+        private int remainingRecasts;
+        private boolean finished;
+
+        private MaidRecastSession(SpellSlot spell, CastSource castSource, RecastInstance recastInstance, int intervalTicks) {
+            this.spell = spell;
+            this.castSource = castSource;
+            this.recastInstance = recastInstance;
+            this.intervalTicks = Math.max(1, intervalTicks);
+            this.ticksUntilNextRecast = this.intervalTicks;
+            this.remainingRecasts = recastInstance == null ? 0 : Math.max(0, recastInstance.getRemainingRecasts());
+        }
+
+        public SpellSlot getSpell() {
+            return spell;
+        }
+
+        public CastSource getCastSource() {
+            return castSource;
+        }
+
+        public RecastInstance getRecastInstance() {
+            return recastInstance;
+        }
+
+        public ICastDataSerializable getCastData() {
+            return recastInstance == null ? null : recastInstance.getCastData();
+        }
+
+        public boolean isFinished() {
+            return finished;
+        }
+
+        public void markFinished() {
+            this.finished = true;
+        }
+
+        public int getRemainingRecasts() {
+            return remainingRecasts;
+        }
+
+        public int consumeRecast() {
+            if (remainingRecasts > 0) {
+                remainingRecasts--;
+            }
+            return remainingRecasts;
+        }
+
+        public boolean tickReady() {
+            if (finished) {
+                return false;
+            }
+            if (ticksUntilNextRecast > 0) {
+                ticksUntilNextRecast--;
+            }
+            if (ticksUntilNextRecast <= 0) {
+                ticksUntilNextRecast = intervalTicks;
+                return true;
+            }
+            return false;
+        }
     }
 
 }
