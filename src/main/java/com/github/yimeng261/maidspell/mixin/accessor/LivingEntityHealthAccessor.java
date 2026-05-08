@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.mixin;
+package com.github.yimeng261.maidspell.mixin.accessor;
 
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.world.entity.LivingEntity;

@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityHealthAccessor;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.github.yimeng261.maidspell.utils.MaidDamageProcessor;
 import com.github.yimeng261.maidspell.utils.MaidHealthWriteGuard;

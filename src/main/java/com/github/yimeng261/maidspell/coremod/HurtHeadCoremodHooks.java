@@ -95,7 +95,4 @@ public final class HurtHeadCoremodHooks {
         }
     }
 
-    public static boolean maidspell$isInsideInstrumentedHurt(LivingEntity entity) {
-        return entity != null && ACTIVE_HURT_CALLS.get().containsKey(entity);
-    }
 }

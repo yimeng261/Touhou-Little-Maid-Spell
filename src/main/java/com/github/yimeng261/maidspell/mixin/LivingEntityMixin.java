@@ -2,24 +2,18 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.coremod.HurtHeadCoremodHooks;
-import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.HairpinBauble;
-import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
-import com.github.yimeng261.maidspell.utils.DataItem;
 import com.github.yimeng261.maidspell.utils.FoxLeafOwnerEffectHelper;
 import com.github.yimeng261.maidspell.utils.MaidDamageProcessor;
 import com.github.yimeng261.maidspell.utils.MaidHealthWriteGuard;
-import com.mojang.logging.LogUtils;
 import net.minecraft.core.Holder;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
@@ -27,7 +21,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.FluidState;
-import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -47,9 +40,6 @@ import java.util.function.BiFunction;
  */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin {
-    @Unique
-    private static final Logger maidspell$LOGGER = LogUtils.getLogger();
-
     @Final
     @Shadow
     private static EntityDataAccessor<Float> DATA_HEALTH_ID;
@@ -121,26 +111,10 @@ public abstract class LivingEntityMixin {
             return;
         }
 
-        float currentHealth = maid.getHealth();
-        DataItem dataItem = new DataItem(maid, currentHealth - health);
-
-        maidspell$processSilverCercis(dataItem); //处理紫荆(计算减伤之前)
-
-        if (!MaidDamageProcessor.isCommonHurt(health, entity)){
-            ci.cancel();
-            return;
+        MaidDamageProcessor.MaidHealthChange healthChange = MaidDamageProcessor.processMaidHealthDecrease(maid, health);
+        if (healthChange.writeHealth()) {
+            MaidHealthWriteGuard.runBypassing(() -> maid.getEntityData().set(DATA_HEALTH_ID, healthChange.health()));
         }
-
-        MaidDamageProcessor.processSoulBook(dataItem); //处理魂之书(最先计算是否取消)
-
-        MaidDamageProcessor.applyBaubleHandlers(dataItem, maid);
-
-        if(dataItem.isCanceled()){
-            dataItem.setAmount(0);
-        }
-
-        float finalHealth = Math.max(0.0f, currentHealth - dataItem.getAmount());
-        MaidHealthWriteGuard.runBypassing(() -> maid.getEntityData().set(DATA_HEALTH_ID, finalHealth));
 
         ci.cancel();
     }
@@ -239,51 +213,4 @@ public abstract class LivingEntityMixin {
         }
     }
 
-    @Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
-    private void onHurt(DamageSource damageSource, float amount, CallbackInfoReturnable<Boolean> cir) {
-        LivingEntity entity = (LivingEntity) (Object) this;
-
-        if (HurtHeadCoremodHooks.maidspell$isInsideInstrumentedHurt(entity)) {
-            return;
-        }
-
-        // 安全检查：确保伤害源不为空
-        if (damageSource == null) {
-            maidspell$LOGGER.warn("[MaidSpell] Received null damage source for entity {}", entity.getUUID());
-            return;
-        }
-
-        if(damageSource instanceof InfoDamageSource infoDamageSource){
-            if ((entity instanceof EntityMaid || entity instanceof Player)
-                && !infoDamageSource.canHurtProtectedEntity()) {
-                cir.setReturnValue(false);
-            }
-            return;
-        }
-
-        if(entity instanceof Player || entity instanceof EntityMaid){
-            return;
-        }
-
-        Global.HurtHeadContext hurtHeadContext = Global.dispatchHurtHeadHandlers(entity, damageSource, amount);
-        if (hurtHeadContext.isHandled()) {
-            cir.setReturnValue(hurtHeadContext.getReturnValue());
-        }
-    }
-
-    @Unique
-    private void maidspell$processSilverCercis(DataItem dataItem) {
-        EntityMaid maid = dataItem.getMaid();
-        if(!BaubleStateManager.hasBauble(maid, MaidSpellItems.SLIVER_CERCIS)){
-            return;
-        }
-        LivingEntity target = maid.getLastAttacker();
-        if(target == null){
-            return;
-        }
-        if(!target.isAlive()){
-            target = maid.getTarget();
-        }
-        SilverCercisBauble.handleSilverCercis(maid,target,dataItem);
-    }
 }
