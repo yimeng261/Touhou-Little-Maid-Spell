@@ -260,6 +260,9 @@
   "touhou_little_maid_spell.configuration.allowedStructures": "Whitelist of structures allowed in retreat dimensions (effective when allowAllStructures is false)",
   "touhou_little_maid_spell.configuration.dream_crystal": "Dream Crystal configurations",
   "touhou_little_maid_spell.configuration.dreamCrystalEffectBlacklist": "Dream Crystal random beneficial effect blacklist",
+  "touhou_little_maid_spell.configuration.movement": "Movement-related bauble configurations",
+  "touhou_little_maid_spell.configuration.floatingFoxLeafOwnerRange": "Floating Fox Leaf owner water walking range (blocks) (default: 16.0)",
+  "touhou_little_maid_spell.configuration.moltenFoxLeafOwnerRange": "Molten Fox Leaf owner lava walking range (blocks) (default: 16.0)",
   "item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared": "First time entering The Retreat, your exclusive Hidden Retreat has been assigned",
   "item.touhou_little_maid_spell.wind_seeking_bell.no_quota": "You can only seek it once!"
 }
