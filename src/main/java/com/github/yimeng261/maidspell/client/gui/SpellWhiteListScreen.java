@@ -9,7 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 
 public class SpellWhiteListScreen extends AbstractContainerScreen<SpellWhiteListContainer> {
-    private static final ResourceLocation TEXTURE = new ResourceLocation("touhou_little_maid_spell", "textures/gui/blue_note.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("touhou_little_maid_spell", "textures/gui/blue_note.png");
 
     public SpellWhiteListScreen(SpellWhiteListContainer container, Inventory playerInventory, Component title) {
         super(container, playerInventory, title);

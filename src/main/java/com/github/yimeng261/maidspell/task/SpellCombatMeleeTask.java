@@ -46,7 +46,7 @@ import java.util.function.Predicate;
  */
 public class SpellCombatMeleeTask implements IRangedAttackTask {
     private static final Logger LOGGER = LogUtils.getLogger();
-    public static final ResourceLocation UID = new ResourceLocation("maidspell", "spell_combat_melee");
+    public static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath("maidspell", "spell_combat_melee");
     private static final MutableComponent NAME = Component.translatable("task.maidspell.spell_combat");
     private static float SPELL_RANGE;
 

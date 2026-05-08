@@ -37,7 +37,7 @@ import java.util.List;
  */
 public class SpellCombatFarTask extends SpellCombatMeleeTask {
     private static final Logger LOGGER = LogUtils.getLogger();
-    public static final ResourceLocation UID = new ResourceLocation("maidspell", "spell_combat_far");
+    public static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath("maidspell", "spell_combat_far");
     private static final MutableComponent NAME = Component.translatable("task.maidspell.spell_combat_far");
     private static float SPELL_RANGE;
 

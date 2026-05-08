@@ -62,6 +62,6 @@ public class WindSeekingBellRenderer extends EntityRenderer<WindSeekingBellEntit
     @Override
     public ResourceLocation getTextureLocation(WindSeekingBellEntity entity) {
         // 不需要单独的纹理，因为我们直接渲染物品
-        return new ResourceLocation("minecraft", "textures/misc/white.png");
+        return ResourceLocation.fromNamespaceAndPath("minecraft", "textures/misc/white.png");
     }
 }

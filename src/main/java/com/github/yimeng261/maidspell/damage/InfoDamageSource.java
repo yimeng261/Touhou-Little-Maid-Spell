@@ -22,7 +22,7 @@ public class InfoDamageSource extends DamageSource {
     // 定义自定义伤害类型的ResourceKey
     public static final ResourceKey<DamageType> INFO_DAMAGE = ResourceKey.create(
         Registries.DAMAGE_TYPE,
-        new ResourceLocation(MaidSpellMod.MOD_ID, "info_damage")
+        ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "info_damage")
     );
 
     public void setSourceEntity(LivingEntity sourceEntity) {

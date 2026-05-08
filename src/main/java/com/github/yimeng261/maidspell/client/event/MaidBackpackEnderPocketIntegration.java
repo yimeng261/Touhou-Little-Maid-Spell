@@ -39,9 +39,8 @@ import java.util.List;
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID, value = Dist.CLIENT)
 public class MaidBackpackEnderPocketIntegration {
 
-    @SuppressWarnings("removal")
     private static final ResourceLocation ENDER_POCKET_TEXTURE =
-            new ResourceLocation("touhou_little_maid_spell", "textures/gui/ender_pocket.png");
+            ResourceLocation.fromNamespaceAndPath("touhou_little_maid_spell", "textures/gui/ender_pocket.png");
 
     // 末影腰包面板的尺寸
     private static final int PANEL_WIDTH = 90;

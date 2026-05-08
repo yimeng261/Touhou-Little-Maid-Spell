@@ -24,7 +24,7 @@ public class YueLinglanBlockEntity extends BlockEntity {
     private static final int TICK_INTERVAL = 40;
     private static final int PARTICLE_INTERVAL = 8;
     private static final int STRUCTURE_SEARCH_INTERVAL = 20 * 10;
-    private static final ResourceLocation ELVEN_REALM_ID = new ResourceLocation(MaidSpellMod.MOD_ID, "elven_realm");
+    private static final ResourceLocation ELVEN_REALM_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "elven_realm");
     private static final TagKey<Structure> ELVEN_REALM_TAG =
         TagKey.create(Registries.STRUCTURE, ELVEN_REALM_ID);
     private static final int STRUCTURE_SEARCH_RADIUS = 2560;
