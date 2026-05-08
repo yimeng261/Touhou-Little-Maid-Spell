@@ -167,6 +167,8 @@ dependencies {
     }
     // Iron 的法术与魔导书
     implementation("io.redspace:irons_spellbooks:${minecraft_version}-${irons_spells_version}")
+    // Iron's Lib
+    implementation("maven.modrinth:irons-lib:${minecraft_version}-${irons_lib_version}")
     // 新生魔艺
     implementation("com.hollingsworth.ars_nouveau:ars_nouveau-${minecraft_version}:${ars_nouveau_version}")
     // PSI
