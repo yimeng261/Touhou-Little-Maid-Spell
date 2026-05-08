@@ -55,6 +55,12 @@ public abstract class LivingEntityMixin {
     @Shadow
     private static EntityDataAccessor<Float> DATA_HEALTH_ID;
 
+    @Shadow
+    public abstract MobEffectInstance removeEffectNoUpdate(Holder<MobEffect> effect);
+
+    @Shadow
+    protected abstract void onEffectRemoved(MobEffectInstance effectInstance);
+
     @Shadow public abstract void remove(Entity.RemovalReason pReason);
 
     /**
@@ -188,18 +194,56 @@ public abstract class LivingEntityMixin {
     private Object maidspell$redirectEffectPut(Map<Holder<MobEffect>, MobEffectInstance> map,
                                                Object key, Object value) {
         LivingEntity self = (LivingEntity) (Object) this;
-        if (self instanceof EntityMaid maid) {
-            Holder<MobEffect> effect = (Holder<MobEffect>) key;
-            for (Map.Entry<Item, BiFunction<EntityMaid, Holder<MobEffect>, Boolean>> entry
-                    : Global.baubleEffectBlockFilters.entrySet()) {
-                if (BaubleStateManager.hasBauble(maid, entry.getKey())
-                        && Boolean.TRUE.equals(entry.getValue().apply(maid, effect))) {
-                    Global.effectBlockFlag.set(Boolean.TRUE);
-                    return null;
-                }
-            }
+        if (self instanceof EntityMaid maid
+                && maidspell$shouldBlockMaidEffect(maid, (Holder<MobEffect>) key)) {
+            Global.effectBlockFlag.set(Boolean.TRUE);
+            return null;
         }
         return map.put((Holder<MobEffect>) key, (MobEffectInstance) value);
+    }
+
+    /**
+     * 部分模组绕过 LivingEntity#addEffect，直接写入 activeEffects，
+     * 然后调用 vanilla 的更新钩子。在此清理已经写入的效果。
+     */
+    @Inject(method = "onEffectAdded", at = @At("HEAD"), cancellable = true)
+    private void maidspell$blockDirectEffectAdded(MobEffectInstance effectInstance,
+                                                  Entity source,
+                                                  CallbackInfo ci) {
+        maidspell$cancelBlockedDirectEffect(effectInstance, ci);
+    }
+
+    @Inject(method = "onEffectUpdated", at = @At("HEAD"), cancellable = true)
+    private void maidspell$blockDirectEffectUpdated(MobEffectInstance effectInstance,
+                                                    boolean reapplyAttributeModifiers,
+                                                    Entity source,
+                                                    CallbackInfo ci) {
+        maidspell$cancelBlockedDirectEffect(effectInstance, ci);
+    }
+
+    @Unique
+    private void maidspell$cancelBlockedDirectEffect(MobEffectInstance effectInstance, CallbackInfo ci) {
+        LivingEntity self = (LivingEntity) (Object) this;
+        if (self instanceof EntityMaid maid
+                && maidspell$shouldBlockMaidEffect(maid, effectInstance.getEffect())) {
+            MobEffectInstance removed = this.removeEffectNoUpdate(effectInstance.getEffect());
+            if (removed != null) {
+                this.onEffectRemoved(removed);
+            }
+            ci.cancel();
+        }
+    }
+
+    @Unique
+    private boolean maidspell$shouldBlockMaidEffect(EntityMaid maid, Holder<MobEffect> effect) {
+        for (Map.Entry<Item, BiFunction<EntityMaid, Holder<MobEffect>, Boolean>> entry
+                : Global.baubleEffectBlockFilters.entrySet()) {
+            if (BaubleStateManager.hasBauble(maid, entry.getKey())
+                    && Boolean.TRUE.equals(entry.getValue().apply(maid, effect))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Inject(method = "canStandOnFluid(Lnet/minecraft/world/level/material/FluidState;)Z", at = @At("HEAD"), cancellable = true)
