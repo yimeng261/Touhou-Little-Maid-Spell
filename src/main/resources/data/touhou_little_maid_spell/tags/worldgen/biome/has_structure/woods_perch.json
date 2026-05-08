@@ -2,7 +2,6 @@
   "replace": false,
   "values": [
     "minecraft:forest",
-    "minecraft:flower_forest",
-    "minecraft:windswept_forest"
+    "minecraft:flower_forest"
   ]
 }
