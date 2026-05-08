@@ -1,12 +1,14 @@
 package com.github.yimeng261.maidspell.mixin.iss;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.util.Utils;
 import io.redspace.ironsspellbooks.capabilities.magic.TargetEntityCastData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
@@ -24,17 +26,47 @@ public class UtilsMixin {
     @Inject(method = "preCastTargetHelper(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/LivingEntity;Lio/redspace/ironsspellbooks/api/magic/MagicData;Lio/redspace/ironsspellbooks/api/spells/AbstractSpell;IFZLjava/util/function/Predicate;)Z", at = @At("HEAD"), cancellable = true)
     private static void beforePreCastTargetHelper(Level level, LivingEntity caster, MagicData playerMagicData, AbstractSpell spell, int range, float aimAssist, boolean sendFailureMessage, Predicate<LivingEntity> filter, CallbackInfoReturnable<Boolean> cir) {
         // 只处理女仆的目标实体
-        if (!(caster instanceof EntityMaid))
+        if (!(caster instanceof EntityMaid maid))
             return;
         // 如果没有指定目标实体则还是使用默认的射线检测
         if (!(playerMagicData.getAdditionalCastData() instanceof TargetEntityCastData targetEntityCastData))
             return;
 
-        LivingEntity targetEntity = targetEntityCastData.getTarget((ServerLevel) caster.level());
+        if (!(caster.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        LivingEntity targetEntity = targetEntityCastData.getTarget(serverLevel);
+        if (!isValidPresetTarget(maid, targetEntity, range, filter, spell)) {
+            return;
+        }
+
         // 如果目标实体是玩家则发送提示
         if (targetEntity instanceof ServerPlayer targetPlayerEntity) {
             Utils.sendTargetedNotification(targetPlayerEntity, caster, spell);
         }
         cir.setReturnValue(true);
+    }
+
+    private static boolean canCurrentSpellTargetPlayer(EntityMaid maid, AbstractSpell spell) {
+        String spellId = spell == null ? null : spell.getSpellId();
+        MaidIronsSpellData data = MaidIronsSpellData.get(maid.getUUID());
+        return data != null && data.canCurrentSpellTargetPlayer(spellId);
+    }
+
+    private static boolean isValidPresetTarget(EntityMaid maid, LivingEntity targetEntity, int range, Predicate<LivingEntity> filter, AbstractSpell spell) {
+        if (targetEntity == null || targetEntity == maid || !targetEntity.isAlive()) {
+            return false;
+        }
+        if (targetEntity.level() != maid.level() || !EntitySelector.NO_SPECTATORS.test(targetEntity)) {
+            return false;
+        }
+        if (maid.distanceToSqr(targetEntity) > (double) range * range) {
+            return false;
+        }
+        if (targetEntity instanceof ServerPlayer && !canCurrentSpellTargetPlayer(maid, spell)) {
+            return false;
+        }
+        return filter == null || filter.test(targetEntity);
     }
 }

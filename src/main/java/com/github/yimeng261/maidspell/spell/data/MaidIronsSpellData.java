@@ -29,6 +29,9 @@ public class MaidIronsSpellData extends IMaidSpellData {
 
     // === CastSource 缓存（避免每次施法时重复扫描容器）===
     private CastSource cachedCastSource = null;
+    private String playerTargetWhitelistSpellId = null;
+    private boolean currentSpellCanTargetPlayer = false;
+    private int cachedBlueNoteSlot = -1;
 
     // === 构造函数 ===
     private MaidIronsSpellData() {
@@ -90,6 +93,32 @@ public class MaidIronsSpellData extends IMaidSpellData {
         this.currentCastingSpell = spell;
     }
 
+    public void setCurrentSpellCanTargetPlayer(String spellId, boolean canTargetPlayer) {
+        this.playerTargetWhitelistSpellId = spellId;
+        this.currentSpellCanTargetPlayer = canTargetPlayer;
+    }
+
+    public boolean canCurrentSpellTargetPlayer(String spellId) {
+        return currentSpellCanTargetPlayer && spellId != null && spellId.equals(playerTargetWhitelistSpellId);
+    }
+
+    public void clearCurrentSpellPlayerTargetState() {
+        this.playerTargetWhitelistSpellId = null;
+        this.currentSpellCanTargetPlayer = false;
+    }
+
+    public int getCachedBlueNoteSlot() {
+        return cachedBlueNoteSlot;
+    }
+
+    public void setCachedBlueNoteSlot(int slot) {
+        this.cachedBlueNoteSlot = slot;
+    }
+
+    public void clearCachedBlueNoteSlot() {
+        this.cachedBlueNoteSlot = -1;
+    }
+
     // === CastSource 缓存管理 ===
 
     /**
@@ -128,6 +157,7 @@ public class MaidIronsSpellData extends IMaidSpellData {
     public void resetCastingState() {
         setCasting(false);
         currentCastingSpell = null;
+        clearCurrentSpellPlayerTargetState();
         clearCachedCastSource();
         magicData.resetCastingState();
     }

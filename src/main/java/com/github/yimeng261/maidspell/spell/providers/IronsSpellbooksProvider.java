@@ -19,6 +19,7 @@ import io.redspace.ironsspellbooks.api.util.Utils;
 import io.redspace.ironsspellbooks.capabilities.magic.TargetEntityCastData;
 import io.redspace.ironsspellbooks.entity.spells.target_area.TargetedAreaEntity;
 import io.redspace.ironsspellbooks.spells.TargetAreaCastData;
+import io.redspace.ironsspellbooks.spells.ender.StarfallSpell;
 import io.redspace.ironsspellbooks.spells.ender.TeleportSpell;
 import net.minecraft.commands.arguments.EntityAnchorArgument.Anchor;
 import net.minecraft.util.Mth;
@@ -152,22 +153,45 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
         int index = (int) (Math.random() * availableSpells.size());
         SpellSlot spellData = availableSpells.get(index);
         //LOGGER.debug("Spell {} selected", spellData.getSpell().getSpellId());
-        if(BaubleStateManager.hasBauble(maid,MaidSpellItems.BLUE_NOTE)){
-            ItemStack bauble = null;
-            BaubleItemHandler baubleItemHandler = maid.getMaidBauble();
-            for(int i=0; i<baubleItemHandler.getSlots(); i++){
-                bauble = baubleItemHandler.getStackInSlot(i);
-                if(bauble.getItem() instanceof BlueNote){
-                    break;
-                }
-            }
-            if (bauble != null && BlueNoteSpellManager.getStoredSpellIds(bauble, maid.level().registryAccess()).contains(spellData.getSpell().getSpellId())) {
-                LOGGER.debug("should cast to owner : {}", spellData.getSpell().getSpellId());
-                data.switchTargetToOwner(maid);
-            }
+        String selectedSpellId = spellData.getSpell().getSpellId();
+        ItemStack blueNote = findBlueNoteWithCache(maid, data);
+        boolean blueNoteWhitelisted = !blueNote.isEmpty() && BlueNoteSpellManager.getStoredSpellIds(blueNote, maid.level().registryAccess()).contains(selectedSpellId);
+        if (blueNoteWhitelisted) {
+            LOGGER.debug("should cast to owner : {}", selectedSpellId);
+            data.switchTargetToOwner(maid);
         }
+        data.setCurrentSpellCanTargetPlayer(selectedSpellId, blueNoteWhitelisted);
 
         actualCasting(maid, spellData);
+    }
+
+    private ItemStack findBlueNoteWithCache(EntityMaid maid, MaidIronsSpellData data) {
+        BaubleItemHandler baubleItemHandler = maid.getMaidBauble();
+        int cachedSlot = data.getCachedBlueNoteSlot();
+        if (isValidBlueNoteSlot(baubleItemHandler, cachedSlot)) {
+            return baubleItemHandler.getStackInSlot(cachedSlot);
+        }
+
+        data.clearCachedBlueNoteSlot();
+        if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.BLUE_NOTE)) {
+            return ItemStack.EMPTY;
+        }
+
+        for (int i = 0; i < baubleItemHandler.getSlots(); i++) {
+            if (isValidBlueNoteSlot(baubleItemHandler, i)) {
+                data.setCachedBlueNoteSlot(i);
+                return baubleItemHandler.getStackInSlot(i);
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private boolean isValidBlueNoteSlot(BaubleItemHandler baubleItemHandler, int slot) {
+        if (slot < 0 || slot >= baubleItemHandler.getSlots()) {
+            return false;
+        }
+        ItemStack bauble = baubleItemHandler.getStackInSlot(slot);
+        return !bauble.isEmpty() && bauble.getItem() instanceof BlueNote;
     }
 
     /**
@@ -429,9 +453,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             if (spellId.equals("irons_spellbooks:starfall")) {
                 // Starfall需要地面目标区域
                 targetPosition = Utils.moveToRelativeGroundLevel(maid.level(), targetPosition, 12);
-                TargetedAreaEntity area = TargetedAreaEntity.createTargetAreaEntity(
-                    maid.level(), targetPosition, 6.0f, 0x60008c);
-                magicData.setAdditionalCastData(new TargetAreaCastData(targetPosition, area));
+                magicData.setAdditionalCastData(new StarfallSpell.StarfallCastData(targetPosition));
             } else if (spellId.equals("irons_spellbooks:scorch")) {
                 // Scorch需要目标区域
                 float radius = 2.5f;
