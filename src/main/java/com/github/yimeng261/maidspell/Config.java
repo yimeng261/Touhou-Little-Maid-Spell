@@ -512,6 +512,31 @@ public class Config {
 
     static {
         BUILDER.pop(); // dream_crystal
+    }
+
+    // 移动类饰品
+    static {
+        BUILDER.comment("移动相关饰品配置")
+               .comment("Movement-related bauble configurations")
+               .push("movement");
+    }
+
+    private static final ModConfigSpec.DoubleValue FLOATING_FOX_LEAF_OWNER_RANGE = BUILDER
+            .comment("浮波狐叶主人水面行走有效范围（格） (默认: 16.0)")
+            .comment("Floating Fox Leaf owner water walking range (blocks)")
+            .defineInRange("floatingFoxLeafOwnerRange", 16.0, 4.0, 64.0);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.DoubleValue MOLTEN_FOX_LEAF_OWNER_RANGE = BUILDER
+            .comment("熔岩狐叶主人岩浆行走有效范围（格） (默认: 16.0)")
+            .comment("Molten Fox Leaf owner lava walking range (blocks)")
+            .defineInRange("moltenFoxLeafOwnerRange", 16.0, 4.0, 64.0);
+
+    static {
+        BUILDER.pop(); // movement
         BUILDER.pop(); // baubles
     }
 
@@ -591,6 +616,26 @@ public class Config {
             );
 
     static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue ALLOW_MOB_SPAWNS_IN_RETREAT = BUILDER
+            .comment("是否允许生物在隐世之境生成 (默认: true)")
+            .comment("false 时会阻止隐世之境中的环境/结构/刷怪笼等自动生成")
+            .comment("Whether to allow mobs to spawn in The Retreat (default: true)")
+            .define("allowMobSpawnsInRetreat", true);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue ALLOW_HOSTILE_MOB_SPAWNS_IN_RETREAT = BUILDER
+            .comment("是否允许敌对生物在隐世之境生成 (默认: false)")
+            .comment("仅在 allowMobSpawnsInRetreat=true 时生效")
+            .comment("Whether to allow hostile mob spawns in The Retreat (default: false)")
+            .define("allowHostileMobSpawnsInRetreat", false);
+
+    static {
         BUILDER.pop(); // retreat_dimension
     }
 
@@ -657,6 +702,10 @@ public class Config {
     public static double soulBookDamageThresholdPercent;
     public static int soulBookDamageIntervalThreshold;
 
+    // 移动类饰品
+    public static double floatingFoxLeafOwnerRange;
+    public static double moltenFoxLeafOwnerRange;
+
     // 梦云水晶
     public static List<String> dreamCrystalEffectBlacklist;
     public static boolean dreamCrystalUseEffectWhitelist;
@@ -670,6 +719,8 @@ public class Config {
     public static boolean disableHostileMobSpawning;
     public static boolean allowAllStructures;
     public static Set<ResourceLocation> allowedStructures;
+    public static boolean allowMobSpawnsInRetreat;
+    public static boolean allowHostileMobSpawnsInRetreat;
 
 
     @SubscribeEvent
@@ -749,6 +800,10 @@ public class Config {
         soulBookDamageThresholdPercent = SOUL_BOOK_DAMAGE_THRESHOLD_PERCENT.get();
         soulBookDamageIntervalThreshold = SOUL_BOOK_DAMAGE_INTERVAL_THRESHOLD.get();
 
+        // 移动类饰品
+        floatingFoxLeafOwnerRange = FLOATING_FOX_LEAF_OWNER_RANGE.get();
+        moltenFoxLeafOwnerRange = MOLTEN_FOX_LEAF_OWNER_RANGE.get();
+
         // 梦云水晶
         dreamCrystalEffectBlacklist = new ArrayList<>(DREAM_CRYSTAL_EFFECT_BLACKLIST.get());
         dreamCrystalUseEffectWhitelist = DREAM_CRYSTAL_USE_EFFECT_WHITELIST.get();
@@ -770,6 +825,8 @@ public class Config {
             }
         }
         allowedStructures = structureSet;
+        allowMobSpawnsInRetreat = ALLOW_MOB_SPAWNS_IN_RETREAT.get();
+        allowHostileMobSpawnsInRetreat = ALLOW_HOSTILE_MOB_SPAWNS_IN_RETREAT.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "touhou_little_maid_spell:block/suppression_stone"
+  }
+}

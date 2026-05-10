@@ -5,6 +5,7 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaid
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.MaidMovementHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -14,6 +15,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import javax.annotation.Nullable;
@@ -37,10 +39,18 @@ public class AbstractMaidContainerMixin {
         if (maid == null) {
             return;
         }
-        if (maid.getMaidBauble().containsItem(MaidSpellItems.ENDER_POCKET.get())) {
+        if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
             boolean isValid = maid.isOwnedBy(playerIn) && !maid.isSleeping() && maid.isAlive();
             cir.setReturnValue(isValid);
         }
+    }
+
+    @Inject(method = "removed", at = @At("HEAD"), remap = true)
+    private void maidspell$clearResidualMovementOnGuiClose(Player playerIn, CallbackInfo ci) {
+        if (maid == null || maid.level().isClientSide()) {
+            return;
+        }
+        MaidMovementHelper.stopAllMovement(maid);
     }
 
     @Redirect(
@@ -58,19 +68,13 @@ public class AbstractMaidContainerMixin {
         if (entity instanceof EntityMaid) {
             return entity;
         }
-
         try {
-            for (EntityMaid activeMaid : Global.activeMaids) {
-                if (activeMaid.getId() == entityId && BaubleStateManager.hasBauble(activeMaid, MaidSpellItems.ENDER_POCKET)) {
-                    Global.LOGGER.debug("从 Global 缓存中找到远距离女仆: {} (ID: {})",
-                            activeMaid.getName().getString(), entityId);
-                    return activeMaid;
-                }
-            }
+            return Global.activeMaids.stream()
+                    .filter(m -> m.getId() == entityId && BaubleStateManager.hasBauble(m, MaidSpellItems.ENDER_POCKET))
+                    .findFirst().orElse(null);
         } catch (Exception e) {
-            Global.LOGGER.error("从 Global 缓存中查找末影腰包女仆时发生错误", e);
+            Global.LOGGER.error("Failed to find maid in Global cache", e);
+            return entity;
         }
-
-        return entity;
     }
 }

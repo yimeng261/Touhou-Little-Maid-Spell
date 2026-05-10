@@ -15,7 +15,9 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class ShadowAssassinEntity extends AbstractSpellMeleeMob implements Enemy {
     public ShadowAssassinEntity(EntityType<? extends ShadowAssassinEntity> entityType, Level level) {
@@ -54,11 +56,32 @@ public class ShadowAssassinEntity extends AbstractSpellMeleeMob implements Enemy
 
     @Override
     protected List<AbstractSpell> getAttackSpells() {
-        return List.of(
-                SpellRegistry.TELEKINESIS_SPELL.get(),
-                SpellRegistry.MAGIC_MISSILE_SPELL.get(),
-                SpellRegistry.MAGIC_ARROW_SPELL.get(),
-                SpellRegistry.ELDRITCH_BLAST_SPELL.get());
+        List<AbstractSpell> spells = new ArrayList<>();
+        addResolvedSpell(spells, "THROW_SPELL", "TELEKINESIS_SPELL");
+        spells.add(SpellRegistry.MAGIC_MISSILE_SPELL.get());
+        spells.add(SpellRegistry.MAGIC_ARROW_SPELL.get());
+        addResolvedSpell(spells, "SHADOW_SLASH", "SHADOW_SLASH_SPELL", "ELDRITCH_BLAST_SPELL");
+        return spells;
+    }
+
+    private static void addResolvedSpell(List<AbstractSpell> spells, String... fieldNames) {
+        AbstractSpell spell = resolveSpell(fieldNames);
+        if (spell != null && spell != SpellRegistry.none()) {
+            spells.add(spell);
+        }
+    }
+
+    private static AbstractSpell resolveSpell(String... fieldNames) {
+        for (String fieldName : fieldNames) {
+            try {
+                Object value = SpellRegistry.class.getField(fieldName).get(null);
+                if (value instanceof Supplier<?> supplier && supplier.get() instanceof AbstractSpell spell) {
+                    return spell;
+                }
+            } catch (NoSuchFieldException | IllegalAccessException ignored) {
+            }
+        }
+        return null;
     }
 
     @Override

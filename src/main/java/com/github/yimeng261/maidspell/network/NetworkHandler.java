@@ -2,6 +2,8 @@ package com.github.yimeng261.maidspell.network;
 
 import com.github.yimeng261.maidspell.network.message.C2SEnderPocketMaidList;
 import com.github.yimeng261.maidspell.network.message.C2SEnderPocketOpenInventory;
+import com.github.yimeng261.maidspell.network.message.MaidClientRemovalGuardMessage;
+import com.github.yimeng261.maidspell.network.message.MaidEntityRestoreMessage;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketMaidList;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.network.message.TransmogNecklaceMessage;
@@ -23,6 +25,8 @@ public class NetworkHandler {
         registrar.playToServer(TransmogNecklaceMessage.TYPE, TransmogNecklaceMessage.STREAM_CODEC, NetworkHandler::handleTransmogNecklaceMessage);
         registrar.playToClient(S2CEnderPocketMaidList.TYPE, S2CEnderPocketMaidList.STREAM_CODEC, NetworkHandler::handleEnderPocketResponseMaidList);
         registrar.playToClient(S2CEnderPocketPushUpdate.TYPE, S2CEnderPocketPushUpdate.STREAM_CODEC, NetworkHandler::handleEnderPocketPushUpdate);
+        registrar.playToClient(MaidClientRemovalGuardMessage.TYPE, MaidClientRemovalGuardMessage.STREAM_CODEC, NetworkHandler::handleMaidClientRemovalGuard);
+        registrar.playToClient(MaidEntityRestoreMessage.TYPE, MaidEntityRestoreMessage.STREAM_CODEC, NetworkHandler::handleMaidEntityRestore);
     }
 
     public static void handleEnderPocketRequestMaidList(C2SEnderPocketMaidList packet, IPayloadContext context) {
@@ -52,5 +56,13 @@ public class NetworkHandler {
 
     public static void handleEnderPocketPushUpdate(S2CEnderPocketPushUpdate packet, IPayloadContext context) {
         packet.handle();
+    }
+
+    public static void handleMaidClientRemovalGuard(MaidClientRemovalGuardMessage packet, IPayloadContext context) {
+        packet.handle();
+    }
+
+    public static void handleMaidEntityRestore(MaidEntityRestoreMessage packet, IPayloadContext context) {
+        com.github.yimeng261.maidspell.network.message.MaidEntityRestoreClientHandler.handlePayload(packet);
     }
 }

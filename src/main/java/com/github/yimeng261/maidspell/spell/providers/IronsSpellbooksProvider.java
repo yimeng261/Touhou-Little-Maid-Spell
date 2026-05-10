@@ -5,8 +5,8 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHand
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.BlueNote;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.BlueNoteSpellManager;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.SpellWhiteList;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.SpellWhiteListSpellManager;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -16,21 +16,34 @@ import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.api.spells.*;
 import io.redspace.ironsspellbooks.api.util.Utils;
+import io.redspace.ironsspellbooks.capabilities.magic.MultiTargetEntityCastData;
+import io.redspace.ironsspellbooks.capabilities.magic.PlayerRecasts;
+import io.redspace.ironsspellbooks.capabilities.magic.RecastInstance;
 import io.redspace.ironsspellbooks.capabilities.magic.TargetEntityCastData;
+import io.redspace.ironsspellbooks.damage.DamageSources;
 import io.redspace.ironsspellbooks.entity.spells.target_area.TargetedAreaEntity;
+import io.redspace.ironsspellbooks.entity.spells.wall_of_fire.WallOfFireEntity;
 import io.redspace.ironsspellbooks.spells.TargetAreaCastData;
+import io.redspace.ironsspellbooks.spells.ender.StarfallSpell;
 import io.redspace.ironsspellbooks.spells.ender.TeleportSpell;
+import io.redspace.ironsspellbooks.spells.fire.WallOfFireSpell;
 import net.minecraft.commands.arguments.EntityAnchorArgument.Anchor;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 铁魔法模组的法术书提供者
@@ -44,6 +57,19 @@ import java.util.List;
  */
 public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellData, SpellSlot> {
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final int MAID_RECAST_INTERVAL_TICKS = 10;
+    /**
+     * 这些法术的 recast 语义不是“继续攻击”，而是提前结束召唤/传送门等玩家态功能。
+     * 女仆没有 ServerPlayer，上游 onRecastFinished 不能安全复用，所以只保留首段效果。
+     */
+    private static final Set<String> MAID_RECAST_FIRST_CAST_ONLY = Set.of(
+        "irons_spellbooks:raise_dead",
+        "irons_spellbooks:summon_swords",
+        "irons_spellbooks:summon_horse",
+        "irons_spellbooks:summon_vex",
+        "irons_spellbooks:summon_polar_bear",
+        "irons_spellbooks:portal"
+    );
 
     /**
      * 构造函数，绑定 MaidIronsSpellData 数据类型和 SpellData 法术类型
@@ -152,22 +178,45 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
         int index = (int) (Math.random() * availableSpells.size());
         SpellSlot spellData = availableSpells.get(index);
         //LOGGER.debug("Spell {} selected", spellData.getSpell().getSpellId());
-        if(BaubleStateManager.hasBauble(maid,MaidSpellItems.BLUE_NOTE)){
-            ItemStack bauble = null;
-            BaubleItemHandler baubleItemHandler = maid.getMaidBauble();
-            for(int i=0; i<baubleItemHandler.getSlots(); i++){
-                bauble = baubleItemHandler.getStackInSlot(i);
-                if(bauble.getItem() instanceof BlueNote){
-                    break;
-                }
-            }
-            if (bauble != null && BlueNoteSpellManager.getStoredSpellIds(bauble, maid.level().registryAccess()).contains(spellData.getSpell().getSpellId())) {
-                LOGGER.debug("should cast to owner : {}", spellData.getSpell().getSpellId());
-                data.switchTargetToOwner(maid);
-            }
+        String selectedSpellId = spellData.getSpell().getSpellId();
+        ItemStack spellWhiteList = findSpellWhiteListWithCache(maid, data);
+        boolean spellWhiteListWhitelisted = !spellWhiteList.isEmpty() && SpellWhiteListSpellManager.getStoredSpellIds(spellWhiteList, maid.level().registryAccess()).contains(selectedSpellId);
+        if (spellWhiteListWhitelisted) {
+            LOGGER.debug("should cast to owner : {}", selectedSpellId);
+            data.switchTargetToOwner(maid);
         }
+        data.setCurrentSpellCanTargetPlayer(selectedSpellId, spellWhiteListWhitelisted);
 
         actualCasting(maid, spellData);
+    }
+
+    private ItemStack findSpellWhiteListWithCache(EntityMaid maid, MaidIronsSpellData data) {
+        BaubleItemHandler baubleItemHandler = maid.getMaidBauble();
+        int cachedSlot = data.getCachedSpellWhiteListSlot();
+        if (isValidSpellWhiteListSlot(baubleItemHandler, cachedSlot)) {
+            return baubleItemHandler.getStackInSlot(cachedSlot);
+        }
+
+        data.clearCachedSpellWhiteListSlot();
+        if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.SPELL_WHITE_LIST)) {
+            return ItemStack.EMPTY;
+        }
+
+        for (int i = 0; i < baubleItemHandler.getSlots(); i++) {
+            if (isValidSpellWhiteListSlot(baubleItemHandler, i)) {
+                data.setCachedSpellWhiteListSlot(i);
+                return baubleItemHandler.getStackInSlot(i);
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private boolean isValidSpellWhiteListSlot(BaubleItemHandler baubleItemHandler, int slot) {
+        if (slot < 0 || slot >= baubleItemHandler.getSlots()) {
+            return false;
+        }
+        ItemStack bauble = baubleItemHandler.getStackInSlot(slot);
+        return !bauble.isEmpty() && bauble.getItem() instanceof SpellWhiteList;
     }
 
     /**
@@ -224,6 +273,11 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             return;
         }
 
+        if (data.hasRecastSession()) {
+            processMaidRecastSession(maid, data);
+            return;
+        }
+
         AbstractSpell spell = data.getCurrentCastingSpell().getSpell();
         MagicData magicData = data.getMagicData();
 
@@ -253,13 +307,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
                     if (castSource == null) {
                         castSource = getCastSource(data, data.getCurrentCastingSpell());
                     }
-                    spell.onCast(maid.level(), data.getCurrentCastingSpell().getLevel(), maid, castSource, magicData);
-                    SpringBloomReturnBauble.onSpellCast(
-                            maid,
-                            "irons_spellbooks",
-                            spell.getSpellId(),
-                            data.getTarget()
-                    );
+                    invokeSpellOnCast(maid, data, data.getCurrentCastingSpell(), castSource);
                 }
             }
         }
@@ -289,6 +337,12 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
 
         // 强制完成施法（当施法被外部中断时）
         forceCompleteCasting(maid);
+    }
+
+    @Override
+    public boolean shouldStopWhenTargetInvalid(EntityMaid maid) {
+        MaidIronsSpellData data = getData(maid);
+        return data == null || !data.hasRecastSession();
     }
 
     // === 私有辅助方法 ===
@@ -352,6 +406,168 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
 
     }
 
+    private void invokeSpellOnCast(EntityMaid maid, MaidIronsSpellData data, SpellSlot spellData, CastSource castSource) {
+        AbstractSpell spell = spellData.getSpell();
+        setupSpellTargetData(maid, spell);
+        spell.onCast(maid.level(), spellData.getLevel(), maid, castSource, data.getMagicData());
+        SpringBloomReturnBauble.onSpellCast(
+            maid,
+            "irons_spellbooks",
+            spell.getSpellId(),
+            data.getTarget()
+        );
+    }
+
+    private boolean shouldStartMaidRecastSession(AbstractSpell spell) {
+        return spell != null && !MAID_RECAST_FIRST_CAST_ONLY.contains(spell.getSpellId());
+    }
+
+    private boolean tryStartMaidRecastSession(EntityMaid maid, MaidIronsSpellData data, SpellSlot spellData, CastSource castSource) {
+        AbstractSpell spell = spellData.getSpell();
+        if (!shouldStartMaidRecastSession(spell)) {
+            clearMaidRecast(data, spell.getSpellId());
+            return false;
+        }
+
+        PlayerRecasts recasts = data.getMagicData().getPlayerRecasts();
+        RecastInstance recastInstance = recasts.getRecastInstance(spell.getSpellId());
+        if (recastInstance == null || !recasts.hasRecastForSpell(spell.getSpellId())) {
+            return false;
+        }
+
+        data.startRecastSession(spellData, castSource, recastInstance, MAID_RECAST_INTERVAL_TICKS);
+        return true;
+    }
+
+    private void processMaidRecastSession(EntityMaid maid, MaidIronsSpellData data) {
+        MaidIronsSpellData.MaidRecastSession session = data.getRecastSession();
+        if (session == null || session.isFinished()) {
+            finishMaidRecastSession(maid, data, false);
+            return;
+        }
+
+        SpellSlot spellData = session.getSpell();
+        if (spellData == null || spellData.getSpell() == null) {
+            finishMaidRecastSession(maid, data, true);
+            return;
+        }
+
+        forceLookAtTarget(maid, data);
+        if (!session.tickReady()) {
+            return;
+        }
+
+        AbstractSpell spell = spellData.getSpell();
+        try {
+            invokeSpellOnCast(maid, data, spellData, session.getCastSource());
+            int remaining = session.consumeRecast();
+            if (remaining <= 0 || !data.getMagicData().getPlayerRecasts().hasRecastForSpell(spell.getSpellId())) {
+                finishMaidRecastSession(maid, data, false);
+            }
+        } catch (Exception e) {
+            LOGGER.debug("[MaidSpell][Irons] maid recast failed spell={} maid={}: {}",
+                spell.getSpellId(), maid.getUUID(), e.getMessage());
+            finishMaidRecastSession(maid, data, true);
+        }
+    }
+
+    private void finishMaidRecastSession(EntityMaid maid, MaidIronsSpellData data, boolean interrupted) {
+        MaidIronsSpellData.MaidRecastSession session = data.getRecastSession();
+        AbstractSpell spell = data.getCurrentCastingSpell() == null ? null : data.getCurrentCastingSpell().getSpell();
+        String spellId = spell == null ? null : spell.getSpellId();
+
+        if (session != null) {
+            spellId = session.getRecastInstance() == null ? spellId : session.getRecastInstance().getSpellId();
+            finishMaidRecastAdapter(maid, data, session, interrupted);
+            session.markFinished();
+        }
+
+        if (spellId != null) {
+            clearMaidRecast(data, spellId);
+        }
+        if (spell != null) {
+            setCooldown(maid, spell);
+        }
+        data.resetCastingState();
+    }
+
+    private void clearMaidRecast(MaidIronsSpellData data, String spellId) {
+        if (spellId == null) {
+            return;
+        }
+        data.getMagicData().getPlayerRecasts().removeRecast(spellId);
+    }
+
+    private void finishMaidRecastAdapter(EntityMaid maid, MaidIronsSpellData data, MaidIronsSpellData.MaidRecastSession session, boolean interrupted) {
+        if (interrupted) {
+            return;
+        }
+        AbstractSpell spell = session.getSpell().getSpell();
+        if ("irons_spellbooks:wall_of_fire".equals(spell.getSpellId()) && spell instanceof WallOfFireSpell) {
+            finishMaidWallOfFire(maid, spell, session);
+        } else if ("irons_spellbooks:thunder_step".equals(spell.getSpellId())) {
+            finishMaidThunderStep(maid, spell, session);
+        }
+    }
+
+    private void finishMaidWallOfFire(EntityMaid maid, AbstractSpell spell, MaidIronsSpellData.MaidRecastSession session) {
+        if (!(session.getCastData() instanceof WallOfFireSpell.FireWallData fireWallData) || fireWallData.anchorPoints.isEmpty()) {
+            return;
+        }
+        Level level = maid.level();
+        if (fireWallData.anchorPoints.size() == 1 && spell instanceof WallOfFireSpell wallOfFireSpell) {
+            wallOfFireSpell.addAnchor(fireWallData, level, maid, session.getRecastInstance());
+        }
+
+        WallOfFireEntity fireWall = new WallOfFireEntity(level, maid, fireWallData.anchorPoints, spell.getSpellPower(session.getSpell().getLevel(), maid));
+        Vec3 origin = Vec3.ZERO;
+        for (Vec3 anchor : fireWallData.anchorPoints) {
+            origin = origin.add(anchor);
+        }
+        origin = origin.scale(1.0 / fireWallData.anchorPoints.size());
+        fireWall.setPos(origin);
+        level.addFreshEntity(fireWall);
+    }
+
+    private void finishMaidThunderStep(EntityMaid maid, AbstractSpell spell, MaidIronsSpellData.MaidRecastSession session) {
+        if (!(maid.level() instanceof ServerLevel serverLevel)
+            || !(session.getCastData() instanceof MultiTargetEntityCastData targetData)
+            || targetData.getTargets().isEmpty()) {
+            return;
+        }
+
+        Entity orb = serverLevel.getEntity(targetData.getTargets().get(0));
+        if (orb == null) {
+            return;
+        }
+
+        Vec3 dest = TeleportSpell.solveTeleportDestination(serverLevel, maid, orb.blockPosition(), orb.position());
+        Vec3 travel = dest.subtract(maid.position());
+        if (travel.lengthSqr() < 32 * 32) {
+            zapEntitiesBetween(maid, spell, session.getSpell().getLevel(), dest);
+        }
+        if (maid.isPassenger()) {
+            maid.stopRiding();
+        }
+        Utils.handleSpellTeleport(spell, maid, dest);
+        maid.resetFallDistance();
+        orb.discard();
+    }
+
+    private void zapEntitiesBetween(LivingEntity caster, AbstractSpell spell, int spellLevel, Vec3 blockEnd) {
+        Vec3 start = caster.getEyePosition();
+        Vec3 end = blockEnd.add(0, caster.getEyeHeight(), 0);
+        AABB range = caster.getBoundingBox().expandTowards(end.subtract(start));
+        List<? extends Entity> entities = caster.level().getEntities(caster, range);
+        for (Entity target : entities) {
+            Vec3 height = new Vec3(0, caster.getEyeHeight(), 0);
+            if (Utils.checkEntityIntersecting(target, start, end, 1f).getType() != HitResult.Type.MISS
+                || Utils.checkEntityIntersecting(target, start.subtract(height), end.subtract(height), 1f).getType() != HitResult.Type.MISS) {
+                DamageSources.applyDamage(target, spell.getSpellPower(spellLevel, caster), spell.getDamageSource(caster));
+            }
+        }
+    }
+
     /**
      * 强制完成施法（当施法被外部中断时）
      */
@@ -359,7 +575,13 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
         MaidIronsSpellData data = getData(maid);
         if (data == null || data.getCurrentCastingSpell() == null) return;
 
+        if (data.hasRecastSession()) {
+            finishMaidRecastSession(maid, data, true);
+            return;
+        }
+
         AbstractSpell spell = data.getCurrentCastingSpell().getSpell();
+        clearMaidRecast(data, spell.getSpellId());
         setCooldown(maid, spell);
 
 
@@ -376,22 +598,22 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
 
         AbstractSpell spell = data.getCurrentCastingSpell().getSpell();
         MagicData magicData = data.getMagicData();
+        SpellSlot currentSpell = data.getCurrentCastingSpell();
 
         // 根据法术类型调用相应的onCast
         if (spell.getCastType() == CastType.LONG || spell.getCastType() == CastType.INSTANT) {
             // LONG和INSTANT类型在施法完成时调用onCast
-            CastSource castSource = getCastSource(data, data.getCurrentCastingSpell());
-            spell.onCast(maid.level(), data.getCurrentCastingSpell().getLevel(), maid, castSource, magicData);
-            SpringBloomReturnBauble.onSpellCast(
-                    maid,
-                    "irons_spellbooks",
-                    spell.getSpellId(),
-                    data.getTarget()
-            );
+            CastSource castSource = getCastSource(data, currentSpell);
+            invokeSpellOnCast(maid, data, currentSpell, castSource);
+            if (tryStartMaidRecastSession(maid, data, currentSpell, castSource)) {
+                spell.onServerCastComplete(maid.level(), currentSpell.getLevel(), maid, magicData, false);
+                return;
+            }
         }
         // CONTINUOUS类型的法术在施法过程中已经多次调用onCast，这里不需要再调用
 
-        spell.onServerCastComplete(maid.level(), data.getCurrentCastingSpell().getLevel(), maid, magicData, false);
+        clearMaidRecast(data, spell.getSpellId());
+        spell.onServerCastComplete(maid.level(), currentSpell.getLevel(), maid, magicData, false);
 
         setCooldown(maid, spell);
 
@@ -429,9 +651,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             if (spellId.equals("irons_spellbooks:starfall")) {
                 // Starfall需要地面目标区域
                 targetPosition = Utils.moveToRelativeGroundLevel(maid.level(), targetPosition, 12);
-                TargetedAreaEntity area = TargetedAreaEntity.createTargetAreaEntity(
-                    maid.level(), targetPosition, 6.0f, 0x60008c);
-                magicData.setAdditionalCastData(new TargetAreaCastData(targetPosition, area));
+                magicData.setAdditionalCastData(new StarfallSpell.StarfallCastData(targetPosition));
             } else if (spellId.equals("irons_spellbooks:scorch")) {
                 // Scorch需要目标区域
                 float radius = 2.5f;

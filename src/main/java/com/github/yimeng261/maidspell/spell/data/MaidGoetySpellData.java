@@ -23,7 +23,6 @@ public class MaidGoetySpellData extends IMaidSpellData {
     private int castingTime = 0;
     private int maxCastingTime = 0;
     private ISpell currentSpell = null;
-    private boolean spellUsed = false;
     private ItemStack currentFocus = null;
 
     // === 蓄力法术状态 ===
@@ -55,14 +54,6 @@ public class MaidGoetySpellData extends IMaidSpellData {
      */
     public static MaidGoetySpellData get(UUID maidUuid) {
         return MAID_DATA_MAP.get(maidUuid);
-    }
-
-    public boolean spellUsed() {
-        return spellUsed;
-    }
-
-    public void setSpellUsed(boolean spellUsed) {
-        this.spellUsed = spellUsed;
     }
 
     /**
@@ -141,7 +132,8 @@ public class MaidGoetySpellData extends IMaidSpellData {
         this.currentSpell = null;
         this.coolCounter = 0;
         this.shotsFired = 0;
-        this.spellUsed = false;
+        // 清理旧聚晶，避免异常中断后下一次 stopSpell 拿到过期 focus。
+        this.currentFocus = null;
     }
 
     /**
@@ -160,6 +152,7 @@ public class MaidGoetySpellData extends IMaidSpellData {
         setCurrentSpell(spell);
         this.castingTime = 0;
         this.maxCastingTime = duration;
+        this.resetChargingCounters();
         this.setCasting(true);
     }
 

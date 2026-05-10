@@ -1,0 +1,222 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "minecraft:item", "name": "irons_spellbooks:nature_upgrade_orb", "weight": 7 },
+        { "type": "minecraft:empty", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
+        { "type": "minecraft:item", "name": "irons_spellbooks:nature_rune", "weight": 7 },
+        { "type": "minecraft:empty", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
+        { "type": "minecraft:item", "name": "minecraft:poisonous_potato", "weight": 7 },
+        { "type": "minecraft:empty", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "minecraft:item", "name": "irons_spellbooks:poisonward_ring", "weight": 7 },
+        { "type": "minecraft:empty", "weight": 3 }
+      ]
+    },
+    {
+      "rolls": 10,
+      "entries": [
+        { "type": "minecraft:item", "name": "minecraft:glow_berries", "weight": 1 },
+        { "type": "minecraft:empty", "weight": 1 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:root", "locked": true, "level": 10}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        { "type": "minecraft:empty", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:stomp", "locked": true, "level": 5}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        { "type": "minecraft:empty", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:gluttony", "locked": true, "level": 5}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        { "type": "minecraft:empty", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:blight", "locked": true, "level": 7}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        { "type": "minecraft:empty", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:touch_dig", "locked": true, "level": 3}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        { "type": "minecraft:empty", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:earthquake", "locked": true, "level": 10}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        { "type": "minecraft:empty", "weight": 7 }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:poison_arrow", "locked": true, "level": 10}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        { "type": "minecraft:empty", "weight": 7 }
+      ]
+    }
+  ]
+}

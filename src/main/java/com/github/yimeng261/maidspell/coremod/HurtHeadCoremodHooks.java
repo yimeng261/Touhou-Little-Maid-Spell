@@ -53,8 +53,9 @@ public final class HurtHeadCoremodHooks {
             return null;
         }
 
-        if (damageSource instanceof InfoDamageSource) {
-            if (entity instanceof EntityMaid || entity instanceof Player) {
+        if (damageSource instanceof InfoDamageSource infoDamageSource) {
+            if ((entity instanceof EntityMaid || entity instanceof Player)
+                && !infoDamageSource.canHurtProtectedEntity()) {
                 return Boolean.FALSE;
             }
             return null;
@@ -94,7 +95,4 @@ public final class HurtHeadCoremodHooks {
         }
     }
 
-    public static boolean maidspell$isInsideInstrumentedHurt(LivingEntity entity) {
-        return entity != null && ACTIVE_HURT_CALLS.get().containsKey(entity);
-    }
 }

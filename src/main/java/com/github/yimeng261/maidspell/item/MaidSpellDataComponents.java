@@ -19,11 +19,11 @@ import java.util.List;
 public class MaidSpellDataComponents {
     public static final DeferredRegister.DataComponents DATA_COMPONENTS = DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, MaidSpellMod.MOD_ID);
 
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<List<ItemStack>>> BLUE_NOTE_SCROLLS_TAG = DATA_COMPONENTS.register("stored_scrolls", key -> DataComponentType.<List<ItemStack>>builder()
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<List<ItemStack>>> SPELL_WHITE_LIST_SCROLLS_TAG = DATA_COMPONENTS.register("stored_scrolls", key -> DataComponentType.<List<ItemStack>>builder()
         .persistent(ItemStack.OPTIONAL_CODEC.listOf())
         .build());
 
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<List<String>>> BLUE_NOTE_SPELL_IDS_TAG = DATA_COMPONENTS.register("spell_ids", key -> DataComponentType.<List<String>>builder()
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<List<String>>> SPELL_WHITE_LIST_SPELL_IDS_TAG = DATA_COMPONENTS.register("spell_ids", key -> DataComponentType.<List<String>>builder()
         .persistent(Codec.STRING.listOf())
         .build());
 

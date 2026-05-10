@@ -10,7 +10,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class ScarletZhuhuaBlockEntity extends BlockEntity {
-    private static final int TICK_INTERVAL = 20;
+    private static final int TICK_INTERVAL = 40;
 
     public ScarletZhuhuaBlockEntity(BlockPos pos, BlockState state) {
         super(MaidSpellBlockEntities.SCARLET_ZHUHUA.get(), pos, state);
@@ -22,7 +22,7 @@ public class ScarletZhuhuaBlockEntity extends BlockEntity {
         }
 
         long gameTime = serverLevel.getGameTime();
-        int offset = Math.floorMod(pos.hashCode(), TICK_INTERVAL);
+        int offset = Math.floorMod(pos.asLong(), TICK_INTERVAL);
         if ((gameTime + offset) % TICK_INTERVAL != 0) {
             return;
         }

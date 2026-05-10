@@ -1,8 +1,10 @@
 package com.github.yimeng261.maidspell.worldgen;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.worldgen.structure.FallenSanctumStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.LandJigsawStructure;
+import com.github.yimeng261.maidspell.worldgen.structure.RelicSanctumStructure;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -19,4 +21,12 @@ public class MaidSpellStructures {
     // 通用 Jigsaw 结构，支持 avoid_water 字段
     public static final DeferredHolder<StructureType<?>, StructureType<LandJigsawStructure>> LAND_JIGSAW
             = STRUCTURE_TYPES.register("land_jigsaw", () -> () -> LandJigsawStructure.CODEC);
+
+    // 圣遗礼拜堂结构（基于拼图系统，带地形平整度检测）
+    public static final DeferredHolder<StructureType<?>, StructureType<RelicSanctumStructure>> RELIC_SANCTUM
+            = STRUCTURE_TYPES.register("relic_sanctum", () -> () -> RelicSanctumStructure.CODEC);
+
+    // 堕天圣堂结构（基于拼图系统，下界绯红森林地表生成）
+    public static final DeferredHolder<StructureType<?>, StructureType<FallenSanctumStructure>> FALLEN_SANCTUM
+            = STRUCTURE_TYPES.register("fallen_sanctum", () -> () -> FallenSanctumStructure.CODEC);
 }

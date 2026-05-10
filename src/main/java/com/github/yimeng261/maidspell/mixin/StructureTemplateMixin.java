@@ -52,17 +52,12 @@ public abstract class StructureTemplateMixin {
             var structureManager = worldIn.getLevel().structureManager();
             var enchantressFootstepsOutpostStructureSet = worldIn.registryAccess()
                     .registryOrThrow(Registries.STRUCTURE)
-                    .getOptional(new ResourceLocation(MaidSpellMod.MOD_ID, "enchantress_footsteps_outpost"));
-
-            if (enchantressFootstepsOutpostStructureSet.isPresent()) {
-                // 仅在真实服务端世界中查询结构，避免 Create Ponder 的客户端假世界崩溃
-                var structureStart = structureManager.getStructureWithPieceAt(pos, enchantressFootstepsOutpostStructureSet.get());
-                return structureStart.isValid();
-            }
+                    .getOptional(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "enchantress_footsteps_outpost"));
+            return enchantressFootstepsOutpostStructureSet.isPresent() &&
+                    structureManager.getStructureWithPieceAt(pos, enchantressFootstepsOutpostStructureSet.get()).isValid();
         } catch (IllegalStateException | UnsupportedOperationException e) {
             return false;
         }
-        return false;
     }
 
     @Unique

@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatLevelData;
+import com.github.yimeng261.maidspell.dimension.RetreatLevelStateData;
 import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
 import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
@@ -147,6 +148,8 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
                     true,  // tickTime = true: RetreatLevelData 拥有独立的时间和 TimerQueue，可安全启用
                     overworld.getRandomSequences()
             );
+
+            RetreatLevelStateData.get(newLevel).attach(retreatLevelData);
 
             RetreatManager.registerDimension(key, newLevel);
             Global.LOGGER.debug("Registered dimension: {}", newLevel.dimension().location());

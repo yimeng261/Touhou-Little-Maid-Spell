@@ -1,11 +1,19 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.base.AbstractSpellMeleeMob;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
+import io.redspace.ironsspellbooks.entity.mobs.wizards.IMerchantWizard;
+import io.redspace.ironsspellbooks.registries.ItemRegistry;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -15,11 +23,25 @@ import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.ResetUniversalAngerTargetGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.trading.ItemCost;
+import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Optional;
 
-public class ElfTemplarEntity extends AbstractSpellMeleeMob {
+public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchantWizard {
+    private static final int DAILY_TRADE_MAX_USES = 5;
+    @Nullable
+    private Player tradingPlayer;
+    @Nullable
+    private MerchantOffers offers;
+    private long lastRestockGameTime;
+    private int numberOfRestocksToday;
+    private long lastRestockCheckDayTime;
 
     public ElfTemplarEntity(EntityType<? extends ElfTemplarEntity> entityType, Level level) {
         super(entityType, level);
@@ -95,5 +117,170 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob {
     @Override
     protected void populateDefaultEquipmentSlots(RandomSource random, DifficultyInstance difficulty) {
         equipAndHideDrop(EquipmentSlot.MAINHAND, new ItemStack(getClaymoreItem()));
+    }
+
+    @Override
+    protected InteractionResult mobInteract(Player player, InteractionHand hand) {
+        boolean preventTrade = isAggressive() || this.getTarget() != null || (!this.level().isClientSide && this.getOffers().isEmpty());
+        if (!preventTrade) {
+            Level level = this.level();
+            if (!level.isClientSide && !this.getOffers().isEmpty()) {
+                if (shouldRestock()) {
+                    restock();
+                }
+                this.setTradingPlayer(player);
+                this.openTradingScreen(player, this.getDisplayName(), 0);
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
+        return super.mobInteract(player, hand);
+    }
+
+    @Override
+    public MerchantOffers getOffers() {
+        if (this.offers == null) {
+            this.offers = new MerchantOffers();
+            this.offers.add(new MerchantOffer(
+                new ItemCost(Items.EMERALD, 10),
+                Optional.empty(),
+                new ItemStack(MaidSpellItems.YUE_LINGLAN.get()),
+                0,
+                DAILY_TRADE_MAX_USES,
+                1,
+                0.05f
+            ));
+            this.offers.add(new MerchantOffer(
+                new ItemCost(Items.EMERALD, 5),
+                Optional.empty(),
+                new ItemStack(ItemRegistry.NATURE_RUNE.get()),
+                0,
+                DAILY_TRADE_MAX_USES,
+                1,
+                0.05f
+            ));
+            this.offers.add(new MerchantOffer(
+                new ItemCost(Items.EMERALD, 2),
+                Optional.empty(),
+                new ItemStack(Items.HONEY_BOTTLE),
+                0,
+                DAILY_TRADE_MAX_USES,
+                1,
+                0.05f
+            ));
+            this.offers.add(new MerchantOffer(
+                new ItemCost(Items.EMERALD, 5),
+                Optional.empty(),
+                new ItemStack(Items.POISONOUS_POTATO, 3),
+                0,
+                DAILY_TRADE_MAX_USES,
+                1,
+                0.05f
+            ));
+            this.setLastRestockGameTime(level().getGameTime());
+        }
+        return this.offers;
+    }
+
+    @Override
+    public void overrideOffers(MerchantOffers offers) {
+    }
+
+    @Override
+    public void notifyTrade(MerchantOffer offer) {
+        offer.increaseUses();
+        this.ambientSoundTime = -this.getAmbientSoundInterval();
+    }
+
+    @Override
+    public void notifyTradeUpdated(ItemStack stack) {
+        if (!this.level().isClientSide && this.ambientSoundTime > -this.getAmbientSoundInterval() + 20) {
+            this.ambientSoundTime = -this.getAmbientSoundInterval();
+        }
+    }
+
+    protected SoundEvent getTradeUpdatedSound(boolean isYesSound) {
+        return MaidSpellSounds.SILENT_MERCHANT_FEEDBACK.get();
+    }
+
+    @Override
+    public SoundEvent getNotifyTradeSound() {
+        return MaidSpellSounds.SILENT_MERCHANT_FEEDBACK.get();
+    }
+
+    @Override
+    public void addAdditionalSaveData(CompoundTag compound) {
+        super.addAdditionalSaveData(compound);
+        serializeMerchant(compound, this.offers, this.lastRestockGameTime, this.numberOfRestocksToday);
+    }
+
+    @Override
+    public void readAdditionalSaveData(CompoundTag compound) {
+        super.readAdditionalSaveData(compound);
+        deserializeMerchant(compound, c -> this.offers = c);
+        if (this.offers != null) {
+            MerchantOffers normalizedOffers = new MerchantOffers();
+            for (MerchantOffer offer : this.offers) {
+                normalizedOffers.add(copyOfferWithDailyUseLimit(offer));
+            }
+            this.offers = normalizedOffers;
+        }
+    }
+
+    @Override
+    public int getRestocksToday() {
+        return numberOfRestocksToday;
+    }
+
+    @Override
+    public void setRestocksToday(int restocks) {
+        this.numberOfRestocksToday = restocks;
+    }
+
+    @Override
+    public long getLastRestockGameTime() {
+        return lastRestockGameTime;
+    }
+
+    @Override
+    public void setLastRestockGameTime(long time) {
+        this.lastRestockGameTime = time;
+    }
+
+    @Override
+    public long getLastRestockCheckDayTime() {
+        return lastRestockCheckDayTime;
+    }
+
+    @Override
+    public void setLastRestockCheckDayTime(long time) {
+        this.lastRestockCheckDayTime = time;
+    }
+
+    @Override
+    public Level level() {
+        return super.level();
+    }
+
+    @Override
+    public void setTradingPlayer(@Nullable Player tradingPlayer) {
+        this.tradingPlayer = tradingPlayer;
+    }
+
+    @Override
+    public Player getTradingPlayer() {
+        return tradingPlayer;
+    }
+
+    private MerchantOffer copyOfferWithDailyUseLimit(MerchantOffer offer) {
+        return new MerchantOffer(
+            offer.getItemCostA(),
+            offer.getItemCostB(),
+            offer.getResult().copy(),
+            Math.min(offer.getUses(), DAILY_TRADE_MAX_USES),
+            DAILY_TRADE_MAX_USES,
+            offer.getXp(),
+            offer.getPriceMultiplier(),
+            offer.getDemand()
+        );
     }
 }

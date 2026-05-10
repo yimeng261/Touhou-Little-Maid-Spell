@@ -27,7 +27,7 @@ public class MaidSpellCreativeTab {
             .displayItems((parameters, output) -> {
                 if (IronsSpellbooksCompat.isLoaded()) {
                     output.accept(MaidSpellItems.SPELL_ENHANCEMENT_CORE.get());
-                    output.accept(MaidSpellItems.BLUE_NOTE.get());
+                    output.accept(MaidSpellItems.SPELL_WHITE_LIST.get());
                     output.accept(MaidSpellItems.WIND_SEEKING_BELL.get());
                 }
 
@@ -42,6 +42,8 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.CHAOS_BOOK.get());
                 output.accept(MaidSpellItems.SOUL_BOOK.get());
                 output.accept(MaidSpellItems.ENDER_POCKET.get());
+                output.accept(MaidSpellItems.FLOATING_FOX_LEAF.get());
+                output.accept(MaidSpellItems.MOLTEN_FOX_LEAF.get());
                 output.accept(MaidSpellItems.WOUND_RIME_BLADE.get());
                 output.accept(MaidSpellItems.SLIVER_CERCIS.get());
                 output.accept(MaidSpellItems.ANCHOR_CORE.get());
@@ -50,16 +52,20 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.FRAGRANT_INGENUITY.get());
                 output.accept(MaidSpellItems.DREAM_CAT_CRYSTAL.get());
                 output.accept(MaidSpellItems.SCARLET_ZHUHUA.get());
+                output.accept(MaidSpellItems.YUE_LINGLAN.get());
+                output.accept(MaidSpellItems.JINGXU_YOULAN.get());
+                output.accept(MaidSpellItems.SUPPRESSION_STONE.get());
 
                 // 管理员工具
                 output.accept(MaidSpellItems.OWNER_CLEAR_TOOL.get());
 
                 // 怪物蛋
-                // if (IronsSpellbooksCompat.isLoaded()) {
-                //     output.accept(IronsSpellbooksCompatItems.CORRUPTED_KNIGHT_SPAWN_EGG.get());
-                //     output.accept(IronsSpellbooksCompatItems.SHADOW_ASSASSIN_SPAWN_EGG.get());
-                //     output.accept(IronsSpellbooksCompatItems.ELF_TEMPLAR_SPAWN_EGG.get());
-                // }
+                if (IronsSpellbooksCompat.isLoaded()) {
+                    output.accept(IronsSpellbooksCompatItems.CORRUPTED_KNIGHT_SPAWN_EGG.get());
+                    output.accept(IronsSpellbooksCompatItems.SHADOW_ASSASSIN_SPAWN_EGG.get());
+                    output.accept(IronsSpellbooksCompatItems.ELF_TEMPLAR_SPAWN_EGG.get());
+                    output.accept(IronsSpellbooksCompatItems.HOLY_CONSTRUCT_SPAWN_EGG.get());
+                }
             })
             .build());
 

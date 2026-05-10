@@ -18,7 +18,6 @@ import net.minecraft.world.entity.ai.behavior.BehaviorControl;
 import net.minecraft.world.entity.ai.behavior.StartAttacking;
 import net.minecraft.world.entity.ai.behavior.StopAttackingIfTargetInvalid;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -37,7 +36,7 @@ import java.util.List;
  */
 public class SpellCombatFarTask extends SpellCombatMeleeTask {
     private static final Logger LOGGER = LogUtils.getLogger();
-    public static final ResourceLocation UID = new ResourceLocation("maidspell", "spell_combat_far");
+    public static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath("maidspell", "spell_combat_far");
     private static final MutableComponent NAME = Component.translatable("task.maidspell.spell_combat_far");
     private static float SPELL_RANGE;
 
@@ -69,7 +68,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
     @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createBrainTasks(@NotNull EntityMaid maid) {
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
-        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
+        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid) || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
         BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
         BehaviorControl<EntityMaid> strafingTask = new SpellStrafingTask();
@@ -89,7 +88,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
     @Override
     public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(EntityMaid maid) {
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
-        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid));
+        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid) || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target));
         BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
         // 添加高优先级的视线控制任务，阻止女仆看向玩家
         BehaviorControl<EntityMaid> lookControlTask = new CombatLookControlTask();
@@ -115,7 +114,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
 
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
             target = resolveIronsSpellbooksOwnerCastTarget(maid, target);
-            if (!(target instanceof Player)) {
+            if (SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target)) {
                 currentSpellCaster.setTarget(target);
             }
         }
@@ -125,7 +124,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
             if (currentSpellCaster != null) {
                 // 确保目标同步 - 这是唯一的目标更新点
                 LivingEntity currentTarget = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-                if (!(currentTarget instanceof Player)) {
+                if (SpellCombatMeleeTask.isValidSpellCombatTarget(maid, currentTarget)) {
                     currentSpellCaster.setTarget(currentTarget);
                 }
                 currentSpellCaster.far_tick();
@@ -162,7 +161,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
             }
 
             maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).ifPresent((target) -> {
-                if(target instanceof Player) {
+                if(!SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target)) {
                     stop(worldIn, maid, gameTime);
                     return;
                 }

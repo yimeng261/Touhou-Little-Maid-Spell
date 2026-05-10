@@ -4,13 +4,16 @@ import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBackpackChangeEven
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
+import com.github.yimeng261.maidspell.block.entity.SuppressionStoneBlockEntity;
 import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
@@ -19,6 +22,8 @@ import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
+import com.github.yimeng261.maidspell.spell.providers.PsiProvider;
+import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
 import com.mojang.logging.LogUtils;
 import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.ChatFormatting;
@@ -33,21 +38,30 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.entity.EntityTeleportEvent;
 import net.neoforged.neoforge.event.entity.EntityTravelToDimensionEvent;
 import net.neoforged.neoforge.event.entity.living.*;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 import top.theillusivec4.curios.api.event.CurioChangeEvent;
 
@@ -198,6 +212,11 @@ public class MaidSpellEventHandler {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.stopAllCasting();
 
+            if (MaidHardRemovalProtection.handleMaidLeaveLevel(maid)) {
+                Global.updateMaidInfo(maid,true);
+                return;
+            }
+
             // 从全局女仆列表中移除，避免内存泄漏
             Global.updateMaidInfo(maid,false);
         }
@@ -331,6 +350,11 @@ public class MaidSpellEventHandler {
             try {
                 SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
                 manager.tick();
+                if (maid.tickCount % 2 == 0) {
+                    if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+                        MaidHardRemovalProtection.rememberProtected(maid);
+                    }
+                }
                 // 每20个tick更新一次结盟状态
                 if(maid.tickCount%20 == 0){
                     if(maid.isNoAi() && maid.getTask().getUid().toString().startsWith("maidspell")){
@@ -351,8 +375,69 @@ public class MaidSpellEventHandler {
         }
     }
 
+    /**
+     * 镇石：阻止周围区块内的敌对生物自然生成
+     */
+    @SubscribeEvent
+    public static void onMobPositionCheck(MobSpawnEvent.PositionCheck event) {
+        // 只拦截自然生成类的生成方式
+        MobSpawnType spawnType = event.getSpawnType();
+        if (spawnType == MobSpawnType.BREEDING
+            || spawnType == MobSpawnType.MOB_SUMMONED
+            || spawnType == MobSpawnType.CONVERSION
+            || spawnType == MobSpawnType.BUCKET
+            || spawnType == MobSpawnType.SPAWN_EGG
+            || spawnType == MobSpawnType.COMMAND
+            || spawnType == MobSpawnType.DISPENSER
+            || spawnType == MobSpawnType.SPAWNER) {
+            return;
+        }
+
+        // 只阻止敌对生物
+        if (!(event.getEntity() instanceof Enemy)) {
+            return;
+        }
+
+        // 检查是否在镇石压制范围内
+        BlockPos spawnPos = BlockPos.containing(event.getX(), event.getY(), event.getZ());
+        if (SuppressionStoneBlockEntity.isWithinSuppressionRange(event.getLevel(), spawnPos)) {
+            event.setResult(MobSpawnEvent.PositionCheck.Result.FAIL);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onMobFinalizeSpawn(FinalizeSpawnEvent event) {
+        if (!(event.getLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        if (!TheRetreatDimension.isRetreatDimension(level.dimension().location())) {
+            return;
+        }
+        if (!isControlledRetreatSpawnType(event.getSpawnType())) {
+            return;
+        }
+
+        LivingEntity entity = event.getEntity();
+        if (!Config.allowMobSpawnsInRetreat) {
+            event.setSpawnCancelled(true);
+            return;
+        }
+
+        if (!Config.allowHostileMobSpawnsInRetreat && entity instanceof Enemy) {
+            event.setSpawnCancelled(true);
+        }
+    }
+
     @SubscribeEvent
     public static void onEntityHurt(LivingIncomingDamageEvent event) {
+        if (shouldBlockMaidPsiPlayerDamage(event.getEntity(), event.getSource())) {
+            event.setCanceled(true);
+            LOGGER.debug("[MaidSpell/Psi] blocked player hurt target={} source={} direct={} amount={}",
+                    event.getEntity().getUUID(), describeDamageEntity(event.getSource().getEntity()),
+                    describeDamageEntity(event.getSource().getDirectEntity()), event.getAmount());
+            return;
+        }
+
         Entity entity = event.getEntity();
         Entity source = event.getSource().getEntity();
         if(source instanceof EntityMaid maid){
@@ -383,6 +468,71 @@ public class MaidSpellEventHandler {
             processorAft(event, maid);
         }else if(direct instanceof EntityMaid maid){
             processorAft(event, maid);
+        }
+    }
+
+    /**
+     * 阻止由女仆 Psi 假玩家或 Psi 法术实体造成的玩家伤害
+     */
+    private static boolean shouldBlockMaidPsiPlayerDamage(LivingEntity target, DamageSource source) {
+        if (!(target instanceof Player)) {
+            return false;
+        }
+        Entity causing = source.getEntity();
+        Entity direct = source.getDirectEntity();
+        if (isMaidPsiFakeCaster(causing) || isMaidPsiFakeCaster(direct)) {
+            return true;
+        }
+        if (direct != null && isPsiSpellEntity(direct)) {
+            return true;
+        }
+        Vec3 sourcePos = source.getSourcePosition();
+        return sourcePos != null && isNearActiveMaidPsiSpell(target.level(), sourcePos);
+    }
+
+    private static boolean isMaidPsiFakeCaster(Entity entity) {
+        if (!(entity instanceof FakePlayer fakePlayer)) {
+            return false;
+        }
+        return PsiProvider.getMaidUuidFromCaster(fakePlayer) != null;
+    }
+
+    private static boolean isPsiSpellEntity(Entity entity) {
+        if (entity == null) {
+            return false;
+        }
+        String type = entity.getType().builtInRegistryHolder().key().location().toString();
+        return type.startsWith("psi:") && type.contains("spell");
+    }
+
+    private static boolean isNearActiveMaidPsiSpell(Level level, Vec3 pos) {
+        return !level.getEntities((Entity) null, new AABB(pos, pos).inflate(3.0D),
+                entity -> isMaidPsiFakeCaster(entity) || isPsiSpellEntity(entity)).isEmpty();
+    }
+
+    private static String describeDamageEntity(Entity entity) {
+        if (entity == null) {
+            return "null";
+        }
+        return entity.getType().builtInRegistryHolder().key().location() + ":" + entity.getUUID();
+    }
+
+    @SubscribeEvent
+    public static void onExplosionDetonate(ExplosionEvent.Detonate event) {
+        Entity exploder = event.getExplosion().getDirectSourceEntity();
+        boolean maidPsiExplosion = isMaidPsiFakeCaster(exploder)
+                || isPsiSpellEntity(exploder)
+                || isMaidPsiFakeCaster(event.getExplosion().getIndirectSourceEntity());
+        if (!maidPsiExplosion) {
+            return;
+        }
+        int before = event.getAffectedEntities().size();
+        event.getAffectedEntities().removeIf(Player.class::isInstance);
+        event.getExplosion().getHitPlayers().clear();
+        int removed = before - event.getAffectedEntities().size();
+        if (removed > 0) {
+            LOGGER.debug("[MaidSpell/Psi] removed {} players from explosion knockback source={}",
+                    removed, describeDamageEntity(exploder));
         }
     }
 
@@ -514,6 +664,12 @@ public class MaidSpellEventHandler {
     public static void onServerStart(ServerAboutToStartEvent event) {
         Global.activeMaids.clear();
         Global.ownerMaidRegistry.clear();
+        MaidHardRemovalProtection.clear();
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(ServerTickEvent.Post event) {
+        MaidHardRemovalProtection.tick(event.getServer());
     }
 
     /**
@@ -577,6 +733,28 @@ public class MaidSpellEventHandler {
         } catch (Exception e) {
             LOGGER.error("为玩家 {} 恢复女仆区块加载时发生严重错误", player.getName().getString(), e);
         }
+    }
+
+    private static boolean isControlledRetreatSpawnType(MobSpawnType spawnType) {
+        return switch (spawnType) {
+            case NATURAL,
+                 CHUNK_GENERATION,
+                 SPAWNER,
+                 TRIAL_SPAWNER,
+                 STRUCTURE,
+                 JOCKEY,
+                 EVENT,
+                 REINFORCEMENT,
+                 TRIGGERED,
+                 PATROL -> true;
+            case BREEDING,
+                 MOB_SUMMONED,
+                 CONVERSION,
+                 BUCKET,
+                 SPAWN_EGG,
+                 COMMAND,
+                 DISPENSER -> false;
+        };
     }
 
     /**

@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import it.unimi.dsi.fastutil.Pair;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
@@ -87,6 +88,43 @@ public class AnchorCoreBauble implements IMaidBauble {
                 iterator.remove();
             }
         }
+    }
+
+    public static boolean isCallerAllowed(String className) {
+        return className.startsWith("net.minecraft") ||
+                className.startsWith("net.neoforged") ||
+                className.startsWith("java") ||
+                className.startsWith("jdk.") ||
+                className.startsWith("sun.reflect") ||
+                className.startsWith("it.unimi.dsi") ||
+                className.startsWith("com.github.tartaricacid") ||
+                className.startsWith("com.github.yimeng261") ||
+                className.startsWith("com.google") ||
+                className.startsWith("com.mojang") ||
+                className.startsWith("io.redspace.ironsspellbooks") ||
+                className.startsWith("whocraft.tardis_refined") ||
+                className.startsWith("top.theillusivec4.curios") ||
+                className.contains("backup") ||
+                className.contains("maid") ||
+                className.contains("c2me");
+    }
+
+    public static void clearCompound(CompoundTag compound) {
+        for (String key : new java.util.ArrayList<>(compound.getAllKeys())) {
+            compound.remove(key);
+        }
+    }
+
+    /**
+     * 检查调用栈，返回第一个不在白名单中的类名，若全部合法则返回 null。
+     */
+    public static String findIllegalCaller() {
+        for (StackTraceElement e : Thread.currentThread().getStackTrace()) {
+            if (!isCallerAllowed(e.getClassName())) {
+                return e.getClassName();
+            }
+        }
+        return null;
     }
 
 }

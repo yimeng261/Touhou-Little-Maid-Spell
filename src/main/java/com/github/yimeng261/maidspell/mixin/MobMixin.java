@@ -2,8 +2,7 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.AnchorCoreProtection;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
@@ -35,12 +34,12 @@ public class MobMixin {
         // 检查当前实体是否为女仆
         if ((Object) this instanceof EntityMaid maid) {
             // 检查女仆是否装备了锚定核心饰品
-            if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+            if (!AnchorCoreProtection.shouldBlockConversion(maid)) {
                 Global.LOGGER.debug("Maid {} does not have anchor_core, allowing conversion", maid.getUUID());
                 return;
             }
 
-            Global.LOGGER.debug("阻止女仆 {} 被转换成 {} (anchor_core protection)",
+            Global.LOGGER.debug("Prevented maid {} from converting to {} (anchor_core protection)",
                 maid.getUUID(), entityType.getDescriptionId());
 
             // 取消转换操作，返回null
@@ -60,12 +59,12 @@ public class MobMixin {
             cancellable = true)
     protected void preventMaidLootDrop(ServerLevel level, DamageSource damageSource, boolean recentlyHit, CallbackInfo ci) {
         if ((Object) this instanceof EntityMaid maid) {
-            if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
+            if (!AnchorCoreProtection.hasAnchorCore(maid)) {
                 Global.LOGGER.debug("Maid {} does not have anchor_core, allowing loot drop", maid.getUUID());
                 return;
             }
 
-            if (maid.getHealth() > 0.0f) {
+            if (AnchorCoreProtection.shouldBlockAliveAnchoredDrop(maid)) {
                 Global.LOGGER.debug("阻止血量大于0的女仆 {} 掉落战利品 (anchor_core protection)", maid.getUUID());
                 ci.cancel();
             }

@@ -1,10 +1,14 @@
 package com.github.yimeng261.maidspell.block.custom;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.entity.ScarletZhuhuaBlockEntity;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
@@ -12,10 +16,7 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.item.trading.Merchant;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.BushBlock;
-import net.minecraft.world.level.block.EntityBlock;
-import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -24,13 +25,20 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
 public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
     public static final MapCodec<ScarletZhuhuaBlock> CODEC = simpleCodec(ScarletZhuhuaBlock::new);
+    private static final VoxelShape SHAPE = Block.box(2.0, 0.0, 2.0, 15.0, 15.0, 15.0);
     private static final int LIGHT_LEVEL = 10;
     private static final int AURA_RANGE = 3;
-    private static final int EFFECT_DURATION_TICKS = 60;
+    private static final int EFFECT_DURATION_TICKS = 100;
+    private static final ResourceLocation CORRUPTED_KNIGHT_ID =
+        ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "corrupted_knight");
 
     public ScarletZhuhuaBlock(BlockBehaviour.Properties properties) {
         super(properties);
@@ -39,6 +47,12 @@ public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
     @Override
     public MapCodec<ScarletZhuhuaBlock> codec() {
         return CODEC;
+    }
+
+    @Override
+    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        Vec3 offset = state.getOffset(level, pos);
+        return SHAPE.move(offset.x, offset.y, offset.z);
     }
 
     public static BlockBehaviour.Properties createProperties() {
@@ -78,7 +92,7 @@ public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
         AABB area = new AABB(pos).inflate(AURA_RANGE);
         for (LivingEntity living : level.getEntitiesOfClass(LivingEntity.class, area, ScarletZhuhuaBlock::shouldAffect)) {
             living.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, EFFECT_DURATION_TICKS, 1, true, false, true));
-            if (!(living instanceof EntityMaid)) {
+            if (!(living instanceof EntityMaid) && !isCorruptedKnight(living)) {
                 living.addEffect(new MobEffectInstance(MobEffects.WITHER, EFFECT_DURATION_TICKS, 0, true, false, true));
             }
         }
@@ -88,9 +102,26 @@ public class ScarletZhuhuaBlock extends BushBlock implements EntityBlock {
         return living.isAlive() && !isIronsSpellbooksNpc(living);
     }
 
+    private static boolean isCorruptedKnight(LivingEntity living) {
+        return CORRUPTED_KNIGHT_ID.equals(living.getType().builtInRegistryHolder().key().location());
+    }
+
     private static boolean isIronsSpellbooksNpc(LivingEntity living) {
         return living instanceof Merchant
                 && !(living instanceof Enemy)
                 && "irons_spellbooks".equals(living.getType().builtInRegistryHolder().key().location().getNamespace());
+    }
+
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        if (random.nextFloat() > 0.35f) {
+            return;
+        }
+        double x = pos.getX() + 0.25 + random.nextDouble() * 0.5;
+        double y = pos.getY() + 0.45 + random.nextDouble() * 0.45;
+        double z = pos.getZ() + 0.25 + random.nextDouble() * 0.5;
+        level.addParticle(new DustParticleOptions(new Vector3f(1.0f, 0.18f, 0.35f), 0.95f),
+            x, y, z,
+            0.0, 0.01 + random.nextDouble() * 0.01, 0.0);
     }
 }

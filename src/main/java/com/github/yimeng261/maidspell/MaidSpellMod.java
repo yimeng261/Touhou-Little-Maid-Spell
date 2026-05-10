@@ -3,13 +3,15 @@ package com.github.yimeng261.maidspell;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
 import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
+import com.github.yimeng261.maidspell.event.FoxLeafOwnerWaterWalking;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.item.bauble.blueNote.contianer.MaidSpellContainers;
+import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
 import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
@@ -53,6 +55,7 @@ public class MaidSpellMod {
 
         // 手动注册事件处理器，确保事件能被正确监听
         NeoForge.EVENT_BUS.register(MaidSpellEventHandler.class);
+        NeoForge.EVENT_BUS.register(FoxLeafOwnerWaterWalking.class);
         MaidSpellBlocks.register(modEventBus);
         MaidSpellBlockEntities.register(modEventBus);
         MaidSpellItems.register(modEventBus);
@@ -82,6 +85,9 @@ public class MaidSpellMod {
     private void setup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             MaidSpellBlocks.registerPottedPlants();
+            if (TouhouLittleMaidModelPackInstaller.installIfNeeded()) {
+                TouhouLittleMaidModelPackInstaller.reloadServerPacksIfNeeded();
+            }
             if (checkDependencies()) {
                 LOGGER.info("Dependencies verified - initialization complete");
             }

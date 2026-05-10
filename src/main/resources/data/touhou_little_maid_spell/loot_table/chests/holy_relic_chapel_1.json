@@ -1,0 +1,262 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 1,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:angel_wing", "locked": true, "level": 1}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 9
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:guiding_bolt", "locked": true, "level": 6}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 7
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:sunbeam", "locked": true, "level": 5}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 7
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:wisp", "locked": true, "level": 6}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 7
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:fortify", "locked": true, "level": 6}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 7
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "spellWheel": false,
+                  "data": [
+                    {"index": 0, "id": "irons_spellbooks:heal", "locked": true, "level": 5}
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 7
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:ancient_knowledge_fragment",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:rare_ink",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:uncommon_ink",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:common_ink",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "min": 1,
+                "max": 2
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 6,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:paper",
+          "weight": 7,
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "min": 2,
+                "max": 5
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 3
+        }
+      ]
+    }
+  ]
+}

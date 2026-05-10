@@ -5,112 +5,56 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.AnchorCoreProtection;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = Entity.class,remap = false)
 public class EntityMixin {
 
-    /**
-     * 拦截女仆的 saveAsPassenger 方法，防止第三方在写入 id 后继续序列化出半成品副本数据。
-     */
+    @Inject(method = "setRemoved(Lnet/minecraft/world/entity/Entity$RemovalReason;)V",
+            at = @At("HEAD"),
+            cancellable = true, remap = true)
+    private void maidspell$blockAnchoredMaidHardRemoval(Entity.RemovalReason reason, CallbackInfo ci) {
+        try {
+            Entity entity = (Entity) (Object) this;
+            if (AnchorCoreProtection.shouldBlockSetRemoved(entity, reason)) {
+                ci.cancel();
+            }
+        } catch (Exception e) {
+            Global.LOGGER.error("[MaidSpell] Failed to check entity hard-removal protection", e);
+        }
+    }
+
     @Inject(method = "saveAsPassenger(Lnet/minecraft/nbt/CompoundTag;)Z",
             at = @At("HEAD"),
             cancellable = true, remap = true)
     public void onSaveAsPassenger(CompoundTag pCompound, CallbackInfoReturnable<Boolean> cir) {
-        try {
-            if ((Object) this instanceof EntityMaid maid) {
-                if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
-                    return;
-                }
-
-                StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-                for (StackTraceElement stackTraceElement : stackTrace) {
-                    String className = stackTraceElement.getClassName();
-                    if (!maidSpell$classValid(className)) {
-                        maidSpell$clearCompound(pCompound);
-                        cir.setReturnValue(false);
-                        Global.LOGGER.warn("[MaidSpell] Illegal saveAsPassenger called for {} by {} (anchor_core protection)",
-                                maid.getUUID(), className);
-                        return;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Global.LOGGER.error("Failed to check maid saveAsPassenger source", e);
+        if (maidspell$checkAndBlockSerialization(pCompound, "saveAsPassenger")) {
+            cir.setReturnValue(false);
         }
     }
 
-    /**
-     * 拦截女仆的save方法，防止数据被容器模组复制
-     */
     @Inject(method = "save(Lnet/minecraft/nbt/CompoundTag;)Z",
             at = @At("HEAD"),
             cancellable = true, remap = true)
     public void onSave(CompoundTag pCompound, CallbackInfoReturnable<Boolean> cir) {
-        try {
-            if ((Object) this instanceof EntityMaid maid) {
-                // 检查女仆是否装备了锚定核心饰品
-                if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
-                    Global.LOGGER.debug("Maid {} does not have anchor_core, allowing save", maid.getUUID());
-                    return;
-                }
-
-                // 记录调用栈用于调试
-                StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-                for(StackTraceElement stackTraceElement : stackTrace) {
-                    String className = stackTraceElement.getClassName();
-                    //Global.LOGGER.debug("[MaidSpell] Save className: {}", className);
-                    if(!maidSpell$classValid(className)) {
-                        maidSpell$clearCompound(pCompound);
-                        cir.setReturnValue(false);
-                        Global.LOGGER.debug("[MaidSpell] Illegal Save called for {} (anchor_core protection), className: {}", maid, className);
-                        return;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Global.LOGGER.error("Failed to check maid save source", e);
+        if (maidspell$checkAndBlockSerialization(pCompound, "save")) {
+            cir.setReturnValue(false);
         }
     }
 
-    /**
-     * 拦截女仆的saveWithoutId方法，防止被超维权杖等物品保存
-     */
     @Inject(method = "saveWithoutId(Lnet/minecraft/nbt/CompoundTag;)Lnet/minecraft/nbt/CompoundTag;",
             at = @At("HEAD"),
             cancellable = true, remap = true)
     public void onSaveWithoutId(CompoundTag pCompound, CallbackInfoReturnable<CompoundTag> cir) {
-        try {
-            if ((Object) this instanceof EntityMaid maid) {
-                // 检查女仆是否装备了锚定核心饰品
-                if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
-                    Global.LOGGER.debug("Maid {} does not have anchor_core, allowing saveWithoutId", maid.getUUID());
-                    return;
-                }
-
-                // 记录调用栈用于调试
-                StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-                for(StackTraceElement stackTraceElement : stackTrace) {
-                    String className = stackTraceElement.getClassName();
-                    //Global.LOGGER.debug("[MaidSpell] SaveWithoutId className: {}", className);
-
-                    if(!maidSpell$classValid(className)) {
-                        maidSpell$clearCompound(pCompound);
-                        cir.setReturnValue(pCompound);
-                        Global.LOGGER.warn("[MaidSpell] Illegal SaveWithoutId called for {} by {} (anchor_core protection)",
-                                maid.getUUID(), className);
-                        return;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Global.LOGGER.error("Failed to check maid saveWithoutId source", e);
+        if (maidspell$checkAndBlockSerialization(pCompound, "saveWithoutId")) {
+            cir.setReturnValue(pCompound);
         }
     }
 
@@ -128,29 +72,13 @@ public class EntityMixin {
         }
     }
 
-    @Unique
-    private static boolean maidSpell$classValid(String className) {
-        return className.startsWith("net.minecraft") ||
-                className.startsWith("net.neoforged") ||
-                className.startsWith("java") ||
-                className.startsWith("it.unimi.dsi") ||
-                className.startsWith("com.github.tartaricacid") ||
-                className.startsWith("com.github.yimeng261") ||
-                className.startsWith("com.google") ||
-                className.startsWith("com.mojang") ||
-                className.startsWith("io.redspace.ironsspellbooks") ||
-                className.startsWith("whocraft.tardis_refined") ||
-                className.startsWith("top.theillusivec4.curios") ||
-                className.contains("backup") ||
-                className.contains("maid") ||
-                className.contains("c2me");
-    }
-
-    @Unique
-    private static void maidSpell$clearCompound(CompoundTag compound) {
-        for (String key : new java.util.ArrayList<>(compound.getAllKeys())) {
-            compound.remove(key);
+    private boolean maidspell$checkAndBlockSerialization(CompoundTag compound, String method) {
+        try {
+            return AnchorCoreProtection.shouldBlockEntitySerialization((Entity) (Object) this, compound, method);
+        } catch (Exception e) {
+            Global.LOGGER.error("Failed to check maid {} source", method, e);
         }
+        return false;
     }
 
 }
