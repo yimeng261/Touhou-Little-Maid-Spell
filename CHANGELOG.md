@@ -1,5 +1,49 @@
 # Changelog / 变更日志
 
+## 1.8.0-neoforge
+
+### 新增功能 / New Features
+
+- 新增 Iron的法术与魔法书（铁魔法）联动 NPC：入魔骑士、暗影刺客、精灵守卫、圣素构造体，包含渲染、AI、生成、刷怪蛋、掉落与日记文本 /
+  Added Iron's Spells 'n Spellbooks compatibility NPCs: Corrupted Knight, Shadow Assassin, Elf Templar and Holy
+  Construct, with rendering, AI, spawning, spawn eggs, loot and diary text
+- 新增大型结构：圣遗礼拜堂、精灵秘境、堕天圣堂，并适配 1.21 结构数据 / Added large structures: Relic Chapel, Elven Realm and
+  Fallen Sanctum, with 1.21 structure data support
+- 更新魔女足迹系列结构：蘑菇岛屋、林间栖所、墓园 / Updated Enchantress' Footsteps structures: Mushroom Island House, Woods
+  Perch and Graveyard
+- 新增默认精灵酒狐/圣女酒狐女仆模型包，供结构生成使用 / Added default Elf Wine Fox/Saint Wine Fox maid model pack for
+  structure spawns
+- 新增饰品：浮波狐叶、熔岩狐叶，支持女仆踏水/踏熔岩、轨迹方块、火焰保护与主人共享效果 / Added Floating Fox Leaf and Molten
+  Fox Leaf baubles, supporting maid water/lava walking, trail blocks, fire protection and owner-shared effects
+- 新增花朵与功能方块：猩红朱华、月铃兰、净墟幽兰、镇石及盆栽变体 / Added flowers and utility blocks: Scarlet Zhuhua, Yue
+  Linglan, Jingxu Youlan, Suppression Stone and potted variants
+-
+月铃兰可为女仆提供恢复/抗性并指引精灵秘境，净墟幽兰可净化女仆负面效果并清除周围生物药水效果，镇石可阻止周围区块敌对生物自然生成 /
+Yue Linglan grants maid Regeneration/Resistance and guides to Elven Realm, Jingxu Youlan cleanses maid harmful effects
+and nearby mob effects, and Suppression Stone prevents nearby hostile natural spawns
+- 新增全局友军识别系统，统一玩家、女仆、召唤物与投射物的归属判断 / Added a global ally resolver for players, maids, summons
+  and projectiles
+- 锚定核心新增非常规移除保护，可拦截异常移除、外部捕捉和实体转换并恢复被保护女仆 / Anchor Core now protects against hard
+  removals, external capture and entity conversion, restoring protected maids
+
+### 修复 / Bug Fixes
+
+- 修复女仆对死亡或已移除实体继续施法的问题 / Fixed maids continuing to cast at dead or removed entities
+- 修复新生魔艺（Ars Nouveau）、Psi 与铁魔法的女仆代理施法、召唤施法和重复施法兼容问题 / Fixed maid proxy casting, summon
+  casting and recasting compatibility for Ars Nouveau, Psi and Iron's Spells 'n Spellbooks
+
+### 优化 / Improvements
+
+- 法术白名单命名统一（原蓝音符），调整铁魔法新版兼容与法术白名单目标逻辑 / Unified Spell Whitelist naming (formerly Blue
+  Note) and adjusted new Iron's Spells 'n Spellbooks compatibility and target logic
+- 优化多个模组兼容，包括铁魔法、诡厄巫法、新生魔艺与 Psi，并兼容最新版高版本巫术学 / Improved compatibility across multiple
+  mods, including Iron's Spells 'n Spellbooks, Goety, Ars Nouveau and Psi, with support for the latest high-version Ars
+  Nouveau
+- 优化梦云水晶功能，增强非正面效果拦截和状态保护 / Improved Dreamcloud Crystal functionality, including harmful-effect
+  blocking and state protection
+
+---
+
 ## 1.7.3-neoforge
 
 ### 新增功能 / New Features
