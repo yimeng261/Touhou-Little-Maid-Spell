@@ -11,7 +11,9 @@ import net.minecraft.world.entity.projectile.Projectile;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -32,6 +34,7 @@ public final class MaidSpellAllyResolver {
 
     private static final Map<String, Optional<Class<?>>> OPTIONAL_TYPES = new ConcurrentHashMap<>();
     private static final Map<MethodKey, Optional<Method>> METHODS = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Boolean> OWNER_CAPABLE_CACHE = new ConcurrentHashMap<>();
     private static final Optional<Object> WIZARDRY_OBJECT_DATA = loadStaticField(WIZARDRY_SERVICES, "OBJECT_DATA");
 
     private MaidSpellAllyResolver() {
@@ -40,6 +43,9 @@ public final class MaidSpellAllyResolver {
     public static boolean areFriendly(@Nullable Entity first, @Nullable Entity second) {
         if (first == null || second == null || first == second) {
             return first != null && first == second;
+        }
+        if (!couldHaveOwner(first) && !couldHaveOwner(second)) {
+            return false;
         }
         if (first.isAlliedTo(second) || second.isAlliedTo(first)) {
             return true;
@@ -158,6 +164,8 @@ public final class MaidSpellAllyResolver {
             }
         } else if (entity instanceof OwnableEntity ownable) {
             return ownable.getOwnerUUID();
+        } else if (entity instanceof Projectile) {
+            return null;
         }
         UUID ownerId = invokeUuid(entity, "getOwnerUUID");
         return ownerId != null ? ownerId : invokeUuid(entity, "getOwnerId");
@@ -172,7 +180,7 @@ public final class MaidSpellAllyResolver {
     private static Optional<Class<?>> loadOptionalType(String className) {
         try {
             return Optional.of(Class.forName(className, false, MaidSpellAllyResolver.class.getClassLoader()));
-        } catch (ClassNotFoundException | LinkageError ignored) {
+        } catch (ClassNotFoundException | RuntimeException | LinkageError ignored) {
             return Optional.empty();
         }
     }
@@ -181,7 +189,7 @@ public final class MaidSpellAllyResolver {
         try {
             Class<?> type = Class.forName(className, false, MaidSpellAllyResolver.class.getClassLoader());
             return Optional.ofNullable(type.getField(fieldName).get(null));
-        } catch (ReflectiveOperationException | LinkageError ignored) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
             return Optional.empty();
         }
     }
@@ -231,7 +239,7 @@ public final class MaidSpellAllyResolver {
 
     @Nullable
     private static Entity invokeEntity(Entity entity, String methodName) {
-        Object value = invokeNoArg(entity, methodName);
+        Object value = invokeNoArg(entity, methodName, Entity.class);
         return value instanceof Entity owner ? owner : null;
     }
 
@@ -242,37 +250,42 @@ public final class MaidSpellAllyResolver {
 
     @Nullable
     private static UUID invokeUuid(Object target, String methodName) {
-        Object value = invokeNoArg(target, methodName);
+        Object value = invokeNoArg(target, methodName, UUID.class);
         return value instanceof UUID uuid ? uuid : null;
     }
 
     private static boolean invokeBoolean(Object target, String methodName) {
-        Object value = invokeNoArg(target, methodName);
+        Object value = invokeNoArg(target, methodName, Boolean.class);
         return value instanceof Boolean result && result;
     }
 
     @Nullable
     private static Object invokeNoArg(Object target, String methodName) {
-        Optional<Method> cached = METHODS.computeIfAbsent(new MethodKey(target.getClass(), methodName), MaidSpellAllyResolver::findNoArgMethod);
+        return invokeNoArg(target, methodName, null);
+    }
+
+    @Nullable
+    private static Object invokeNoArg(Object target, String methodName, @Nullable Class<?> returnType) {
+        Optional<Method> cached = METHODS.computeIfAbsent(new MethodKey(target.getClass(), methodName, returnType, null), MaidSpellAllyResolver::findNoArgMethod);
         if (cached.isEmpty()) {
             return null;
         }
         try {
             return cached.get().invoke(target);
-        } catch (ReflectiveOperationException | LinkageError ignored) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
             return null;
         }
     }
 
     @Nullable
     private static Object invokeNoArg(Object target, String methodName, Class<?> parameterType, Object parameter) {
-        Optional<Method> cached = METHODS.computeIfAbsent(new MethodKey(target.getClass(), methodName, parameterType), MaidSpellAllyResolver::findMethod);
+        Optional<Method> cached = METHODS.computeIfAbsent(new MethodKey(target.getClass(), methodName, null, parameterType), MaidSpellAllyResolver::findMethod);
         if (cached.isEmpty()) {
             return null;
         }
         try {
             return cached.get().invoke(target, parameter);
-        } catch (ReflectiveOperationException | LinkageError ignored) {
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
             return null;
         }
     }
@@ -282,12 +295,79 @@ public final class MaidSpellAllyResolver {
     }
 
     private static Optional<Method> findMethod(MethodKey key) {
-        try {
-            Method method = key.parameterType() == null ? key.type().getMethod(key.name()) : key.type().getMethod(key.name(), key.parameterType());
-            return Optional.of(method);
-        } catch (ReflectiveOperationException | LinkageError ignored) {
+        Optional<Method> exact = findExactMethod(key);
+        if (exact.isPresent()) {
+            return exact;
+        }
+        if (key.parameterType() != null) {
             return Optional.empty();
         }
+        return findOwnerNamedMethod(key);
+    }
+
+    private static Optional<Method> findExactMethod(MethodKey key) {
+        Class<?> type = key.type();
+        while (type != null && type != Object.class) {
+            try {
+                Method method = key.parameterType() == null ? type.getDeclaredMethod(key.name()) : type.getDeclaredMethod(key.name(), key.parameterType());
+                if (isUsableMethod(method, key)) {
+                    return Optional.of(method);
+                }
+            } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            }
+            type = type.getSuperclass();
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<Method> findOwnerNamedMethod(MethodKey key) {
+        Class<?> type = key.type();
+        while (type != null && type != Object.class) {
+            try {
+                for (Method method : type.getDeclaredMethods()) {
+                    String methodName = method.getName();
+                    if (!methodName.equals(key.name()) && !methodName.toLowerCase(Locale.ROOT).contains("own")) {
+                        continue;
+                    }
+                    if (isUsableMethod(method, key)) {
+                        return Optional.of(method);
+                    }
+                }
+            } catch (RuntimeException | LinkageError ignored) {
+                return Optional.empty();
+            }
+            type = type.getSuperclass();
+        }
+        return Optional.empty();
+    }
+
+    private static boolean isUsableMethod(Method method, MethodKey key) {
+        if (key.parameterType() == null) {
+            if (method.getParameterCount() != 0) {
+                return false;
+            }
+        } else if (method.getParameterCount() != 1 || !method.getParameterTypes()[0].isAssignableFrom(key.parameterType())) {
+            return false;
+        }
+        Class<?> returnType = key.returnType();
+        if (returnType != null && !isReturnTypeCompatible(returnType, method.getReturnType())) {
+            return false;
+        }
+        if (!Modifier.isPublic(method.getModifiers()) || !Modifier.isPublic(method.getDeclaringClass().getModifiers())) {
+            method.setAccessible(true);
+        }
+        return true;
+    }
+
+    private static boolean isReturnTypeCompatible(Class<?> expected, Class<?> actual) {
+        if (expected.isAssignableFrom(actual)) {
+            return true;
+        }
+        return (expected == Boolean.class && actual == Boolean.TYPE)
+                || (expected == Integer.class && actual == Integer.TYPE)
+                || (expected == Long.class && actual == Long.TYPE)
+                || (expected == Float.class && actual == Float.TYPE)
+                || (expected == Double.class && actual == Double.TYPE);
     }
 
     @Nullable
@@ -308,9 +388,61 @@ public final class MaidSpellAllyResolver {
         return entity;
     }
 
-    private record MethodKey(Class<?> type, String name, @Nullable Class<?> parameterType) {
-        private MethodKey(Class<?> type, String name) {
-            this(type, name, null);
+    private static boolean couldHaveOwner(Entity entity) {
+        return OWNER_CAPABLE_CACHE.computeIfAbsent(entity.getClass(), MaidSpellAllyResolver::checkOwnerCapable);
+    }
+
+    private static boolean checkOwnerCapable(Class<?> clazz) {
+        if (EntityMaid.class.isAssignableFrom(clazz)
+                || OwnableEntity.class.isAssignableFrom(clazz)
+                || Projectile.class.isAssignableFrom(clazz)
+                || Player.class.isAssignableFrom(clazz)) {
+            return true;
         }
+        if (isTypeAssignableTo(clazz, IRONS_MAGIC_SUMMON)
+                || isTypeAssignableTo(clazz, GOETY_OWNED)
+                || isTypeAssignableTo(clazz, ARS_SUMMON)
+                || isTypeAssignableTo(clazz, SLASHBLADE_SHOOTABLE)) {
+            return true;
+        }
+        if (WIZARDRY_OBJECT_DATA.isPresent() && Mob.class.isAssignableFrom(clazz)) {
+            return true;
+        }
+        return hasAnyOwnerMethod(clazz);
+    }
+
+    private static boolean isTypeAssignableTo(Class<?> clazz, String interfaceName) {
+        return OPTIONAL_TYPES.computeIfAbsent(interfaceName, MaidSpellAllyResolver::loadOptionalType)
+                .map(type -> type.isAssignableFrom(clazz))
+                .orElse(false);
+    }
+
+    private static boolean hasAnyOwnerMethod(Class<?> clazz) {
+        Class<?> type = clazz;
+        while (type != null && type != Object.class) {
+            try {
+                for (Method method : type.getDeclaredMethods()) {
+                    if (method.getParameterCount() != 0) {
+                        continue;
+                    }
+                    String name = method.getName();
+                    if ("getOwner".equals(name) || "getCaster".equals(name)
+                            || "getSource".equals(name) || "getSummoner".equals(name)
+                            || "getOwnerAlt".equals(name) || "getTrueOwner".equals(name)
+                            || "getMasterOwner".equals(name) || "getShooter".equals(name)) {
+                        Class<?> ret = method.getReturnType();
+                        if (Entity.class.isAssignableFrom(ret) || UUID.class.isAssignableFrom(ret)) {
+                            return true;
+                        }
+                    }
+                }
+            } catch (RuntimeException | LinkageError ignored) {
+            }
+            type = type.getSuperclass();
+        }
+        return false;
+    }
+
+    private record MethodKey(Class<?> type, String name, @Nullable Class<?> returnType, @Nullable Class<?> parameterType) {
     }
 }
