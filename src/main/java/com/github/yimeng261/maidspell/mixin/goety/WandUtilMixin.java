@@ -21,6 +21,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(value = WandUtil.class, remap = false)
 public class WandUtilMixin {
 
+    @Inject(method = "findWand", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void onFindWand(LivingEntity livingEntity, CallbackInfoReturnable<ItemStack> cir) {
+        if (livingEntity instanceof EntityMaid maid) {
+            MaidGoetySpellData spellData = MaidGoetySpellData.getOrCreate(maid);
+            ItemStack currentStaff = spellData.getCurrentStaff();
+            if (currentStaff != null && !currentStaff.isEmpty()) {
+                cir.setReturnValue(currentStaff);
+            }
+        }
+    }
+
     /**
      * 在findFocus方法开始时注入
      * 如果是女仆且MaidGoetySpellData中有currentFocus，直接返回它
