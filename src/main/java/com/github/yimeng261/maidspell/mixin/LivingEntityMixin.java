@@ -10,6 +10,8 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.FoxLeafOwnerEffectHelper;
 import com.github.yimeng261.maidspell.utils.MaidDamageProcessor;
 import com.github.yimeng261.maidspell.utils.MaidHealthWriteGuard;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
@@ -29,7 +31,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -128,7 +129,7 @@ public abstract class LivingEntityMixin {
      * 因此还需要 MobEffectMixin 中的 addAttributeModifiers 注入作为第二重防护，
      * 确保属性修改器也不会被应用。
      */
-    @Redirect(
+    @WrapOperation(
         method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z",
         at = @At(
             value = "INVOKE",
@@ -136,14 +137,15 @@ public abstract class LivingEntityMixin {
             ordinal = 0
         )
     )
-    private Object maidspell$redirectEffectPut(Map<MobEffect, MobEffectInstance> map,
-                                               Object key, Object value) {
+    private Object maidspell$wrapEffectPut(Map<MobEffect, MobEffectInstance> map,
+                                            Object key, Object value,
+                                            Operation<Object> original) {
         LivingEntity self = (LivingEntity)(Object)this;
         if (self instanceof EntityMaid maid
                 && maidspell$shouldBlockMaidEffect(maid, (MobEffect) key)) {
             return null;
         }
-        return map.put((MobEffect) key, (MobEffectInstance) value);
+        return original.call(map, key, value);
     }
 
     /**

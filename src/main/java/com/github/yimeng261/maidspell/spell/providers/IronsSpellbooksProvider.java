@@ -44,8 +44,10 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -531,7 +533,28 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
         if (spellId == null) {
             return;
         }
-        data.getMagicData().getPlayerRecasts().removeRecast(spellId);
+        PlayerRecasts recasts = data.getMagicData().getPlayerRecasts();
+        if (recasts.getRecastInstance(spellId) == null) {
+            return;
+        }
+        if (!removeMaidRecastWithoutPlayerCallback(recasts, spellId)) {
+            LOGGER.debug("[MaidSpell][Irons] failed to clear maid recast spell={}", spellId);
+        }
+    }
+
+    private boolean removeMaidRecastWithoutPlayerCallback(PlayerRecasts recasts, String spellId) {
+        try {
+            Field lookupField = PlayerRecasts.class.getDeclaredField("recastLookup");
+            lookupField.setAccessible(true);
+            Object lookup = lookupField.get(recasts);
+            if (lookup instanceof Map<?, ?> recastLookup) {
+                recastLookup.remove(spellId);
+                return true;
+            }
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            LOGGER.debug("[MaidSpell][Irons] unable to access maid recast lookup for spell={}: {}", spellId, e.getMessage());
+        }
+        return false;
     }
 
     private void finishMaidRecastAdapter(EntityMaid maid, MaidIronsSpellData data, MaidIronsSpellData.MaidRecastSession session, boolean interrupted) {

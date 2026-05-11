@@ -397,13 +397,7 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
     }
 
     private String describeItem(ItemStack stack) {
-        if (stack == null) {
-            return "<null>";
-        }
-        if (stack.isEmpty()) {
-            return "<empty>";
-        }
-        return stack.getItem().builtInRegistryHolder().key().location().toString();
+        return SpellProviderUtils.describeItem(stack);
     }
 
     private String describeSpell(Spell spell) {
@@ -422,13 +416,10 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
     }
 
     private String describeEntity(Object entity) {
-        if (entity == null) {
-            return "<null>";
-        }
         if (entity instanceof LivingEntity living) {
-            return living.getType().builtInRegistryHolder().key().location() + "@" + living.getUUID();
+            return SpellProviderUtils.describeEntity(living);
         }
-        return entity.toString();
+        return entity == null ? "<null>" : entity.toString();
     }
 
     private record SpellSelection(Spell spell, ItemStack spellBook, int slot, String cooldownKey) {
