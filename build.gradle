@@ -175,9 +175,8 @@ dependencies {
     implementation("curse.maven:psi-241665:${psi_version}")
     // Goety
     implementation("maven.modrinth:goety-3:${goety_version}")
-
-    // 不兼容
-    // implementation("maven.modrinth:slashblade-resharped:1.6.54-forge,${minecraft_version}")
+    // SlashBlade Resharped
+    implementation("maven.modrinth:slashblade-resharped:${slashblade_version}")
 
     // 下面是一些前置
     implementation("vazkii.patchouli:Patchouli:${patchouli_version}")

@@ -5,11 +5,16 @@ import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.mojang.logging.LogUtils;
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
+import mods.flammpfeil.slashblade.item.ItemSlashBlade;
+import mods.flammpfeil.slashblade.registry.SlashArtsRegistry;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.EntityTracker;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.fml.ModList;
 import org.slf4j.Logger;
 
 /**
@@ -121,10 +126,30 @@ public class SimplifiedSpellCaster {
             spellBookManager.castSpell(maid);
         }
 
+        // 拔刀剑持续 SA 期间不打原版 melee，避免覆盖 combo 节奏。
+        if (hasSlashArt(maid.getMainHandItem())) {
+            return;
+        }
+
         if (distance <= MELEE_RANGE+1) {
             maid.doHurtTarget(target);
             maid.swing(InteractionHand.MAIN_HAND);
         }
+    }
+
+    /**
+     * 检查拔刀剑是否有 SA，可释放才会真正抢占普通近战节奏。
+     */
+    public static boolean hasSlashArt(ItemStack itemStack) {
+        if (!ModList.get().isLoaded("slashblade")) {
+            return false;
+        }
+        if (itemStack.isEmpty() || !(itemStack.getItem() instanceof ItemSlashBlade)) {
+            return false;
+        }
+        return BladeStateAccess.of(itemStack).map(state ->
+                state.getSlashArtsKey() != null && !state.getSlashArtsKey().equals(SlashArtsRegistry.NONE.getId())
+        ).orElse(false);
     }
 
     /**

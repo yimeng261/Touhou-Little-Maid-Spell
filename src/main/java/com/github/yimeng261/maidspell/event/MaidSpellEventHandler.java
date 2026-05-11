@@ -19,6 +19,7 @@ import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
+import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
@@ -604,7 +605,7 @@ public class MaidSpellEventHandler {
                     provider.stopCasting(maid);
                 }
             }
-            // MaidSlashBladeData.remove(maid.getUUID());
+            MaidSlashBladeData.remove(maid.getUUID());
             SpellBookManager.removeManager(maid);
         } catch (Exception e) {
             // 静默处理清理错误，避免影响游戏正常运行
