@@ -50,6 +50,10 @@ public class MaidYHSpellData extends IMaidSpellData {
     public static void remove(UUID maidUUID) {
         DATA_MAP.remove(maidUUID);
     }
+
+    public static void clearAll() {
+        DATA_MAP.clear();
+    }
     
     @Override
     public LivingEntity getTarget() {

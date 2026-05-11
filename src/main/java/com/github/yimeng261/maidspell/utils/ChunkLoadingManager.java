@@ -1,6 +1,5 @@
 package com.github.yimeng261.maidspell.utils;
 
-import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
@@ -226,17 +225,6 @@ public class ChunkLoadingManager {
         if (event.getServer().getTickCount() % CHECK_INTERVAL_TICKS == 0) {
             //Global.LOGGER.debug("forced chunk size: {}",chunkTimers.size());
             processChunkTimers();
-        }
-    }
-
-    @SubscribeEvent
-    public static void onoMaidTick(MaidTickEvent event) {
-        EntityMaid maid = event.getMaid();
-        if (maid.level().isClientSide()) {
-            return;
-        }
-        if(maid.tickCount % 20 == 0) {
-            //Global.LOGGER.debug("maid tick: {}", maid.getDisplayName());
         }
     }
 

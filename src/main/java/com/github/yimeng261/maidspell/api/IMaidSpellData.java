@@ -18,7 +18,7 @@ public abstract class IMaidSpellData {
 
     // === 基本状态 ===
     protected LivingEntity target;
-    protected final Set<ItemStack> spellBooks = new HashSet<>();
+    protected final List<ItemStack> spellBooks = new ArrayList<>();
     protected final Set<Class<?>> spellBookKinds = new HashSet<>();
     protected boolean isCasting = false;
     protected String currentSpellId = null;
@@ -55,9 +55,9 @@ public abstract class IMaidSpellData {
 
     /**
      * 获取所有法术书
-     * @return 法术书集合
+     * @return 法术书列表
      */
-    public Set<ItemStack> getSpellBooks() {
+    public List<ItemStack> getSpellBooks() {
         return spellBooks;
     }
 
@@ -93,9 +93,11 @@ public abstract class IMaidSpellData {
      * @param spellBook 要移除的法术书
      */
     public void removeSpellBook(ItemStack spellBook) {
-        for(ItemStack spellBookItem : spellBooks) {
-            if(ItemStack.isSameItemSameTags(spellBookItem, spellBook)) {
-                spellBooks.remove(spellBookItem);
+        Iterator<ItemStack> it = spellBooks.iterator();
+        while (it.hasNext()) {
+            ItemStack spellBookItem = it.next();
+            if (ItemStack.isSameItemSameTags(spellBookItem, spellBook)) {
+                it.remove();
                 spellBookKinds.remove(spellBook.getItem().getClass());
                 return;
             }
@@ -116,7 +118,12 @@ public abstract class IMaidSpellData {
      * @return 如果拥有返回 true
      */
     public boolean hasSpellBook(ItemStack spellBook) {
-        return spellBooks.contains(spellBook);
+        for (ItemStack item : spellBooks) {
+            if (ItemStack.isSameItemSameTags(item, spellBook)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isCasting() {

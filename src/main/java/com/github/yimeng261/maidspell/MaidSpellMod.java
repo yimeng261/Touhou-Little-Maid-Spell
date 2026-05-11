@@ -54,6 +54,10 @@ public class MaidSpellMod {
         // 手动注册事件处理器，确保事件能被正确监听
         forgeBus.register(MaidSpellEventHandler.class);
         forgeBus.register(FoxLeafOwnerWaterWalking.class);
+        // Curios 事件处理器仅在 Curios 加载时注册，避免硬依赖
+        if (net.minecraftforge.fml.ModList.get().isLoaded("curios")) {
+            forgeBus.register(com.github.yimeng261.maidspell.event.CuriosEventHandler.class);
+        }
         MaidSpellBlocks.register(modBus);
         MaidSpellBlockEntities.register(modBus);
         MaidSpellItems.register(modBus);

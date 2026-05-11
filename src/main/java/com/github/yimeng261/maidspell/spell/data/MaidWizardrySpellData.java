@@ -59,6 +59,10 @@ public class MaidWizardrySpellData extends IMaidSpellData {
         MAID_DATA_MAP.remove(maidUuid);
     }
 
+    public static void clearAll() {
+        MAID_DATA_MAP.clear();
+    }
+
     // === 基本状态管理 ===
 
     public Spell getCurrentSpell() {

@@ -49,6 +49,10 @@ public class MaidSlashBladeData extends IMaidSpellData {
     public static void remove(UUID maidUUID) {
         DATA_MAP.remove(maidUUID);
     }
+
+    public static void clearAll() {
+        DATA_MAP.clear();
+    }
     
     // 施法状态
     public void setSAExecutionStartTime(long time) { this.saExecutionStartTime = time; }

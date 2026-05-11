@@ -89,7 +89,7 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
     public void initiateCasting(EntityMaid maid) {
         MaidYHSpellData data = getData(maid);
 
-        Set<ItemStack> allDanmakuItems = data.getSpellBooks();
+        List<ItemStack> allDanmakuItems = data.getSpellBooks();
         if (allDanmakuItems.isEmpty()) {
             return;
         }
@@ -158,7 +158,7 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
     /**
      * 执行随机扇形发射
      */
-    private void performRandomFanShooting(EntityMaid maid, Set<ItemStack> allDanmakuItems) {
+    private void performRandomFanShooting(EntityMaid maid, List<ItemStack> allDanmakuItems) {
         if (!(maid.level() instanceof ServerLevel)) {
             return;
         }
@@ -314,8 +314,7 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
 
 
     private static String describeItem(ItemStack stack) {
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(stack.getItem());
-        return key == null ? stack.getItem().getDescriptionId() : key.toString();
+        return SpellProviderUtils.describeItem(stack);
     }
 
     private static String describeTarget(LivingEntity target) {
@@ -332,7 +331,7 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
     /**
      * 从背包中的符卡物品激活符卡
      */
-    private void activateSpellCardFromInventory(EntityMaid maid, MaidYHSpellData data, Set<ItemStack> allItems) {
+    private void activateSpellCardFromInventory(EntityMaid maid, MaidYHSpellData data, List<ItemStack> allItems) {
         // 收集所有符卡物品
         List<ItemStack> spellCardItems = new ArrayList<>();
         for (ItemStack item : allItems) {

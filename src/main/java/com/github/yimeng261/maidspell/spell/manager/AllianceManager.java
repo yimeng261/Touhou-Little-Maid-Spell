@@ -12,6 +12,7 @@ import com.mojang.logging.LogUtils;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 女仆结盟管理器
@@ -22,7 +23,7 @@ public class AllianceManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     
     // 存储女仆的临时队伍：女仆UUID -> 队伍名称
-    private static final Map<UUID, String> maidTeamMap = new HashMap<>();
+    private static final Map<UUID, String> maidTeamMap = new ConcurrentHashMap<>();
     
     // 队伍名称前缀
     private static final String TEAM_PREFIX = "maidspell_alliance_";
@@ -122,5 +123,9 @@ public class AllianceManager {
      */
     public static Map<UUID, String> getAllianceStatusView() {
         return java.util.Collections.unmodifiableMap(maidTeamMap);
+    }
+
+    public static void clear() {
+        maidTeamMap.clear();
     }
 } 
