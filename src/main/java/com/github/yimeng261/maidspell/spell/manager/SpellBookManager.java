@@ -59,6 +59,7 @@ public class SpellBookManager {
         registerProviderFactory("goety", "GoetyProvider", "com.github.yimeng261.maidspell.spell.providers.GoetyProvider");
         registerProviderFactory("youkaishomecoming", "YoukaiHomecomingProvider", "com.github.yimeng261.maidspell.spell.providers.YoukaiHomecomingProvider");
         registerProviderFactory("ebwizardry", "WizardryProvider", "com.github.yimeng261.maidspell.spell.providers.WizardryProvider");
+        registerProviderFactory("mna", "ManaAndArtificeProvider", "com.github.yimeng261.maidspell.spell.providers.ManaAndArtificeProvider");
         
     }
     
@@ -121,14 +122,18 @@ public class SpellBookManager {
         if (maid == null) {
             return;
         }
-        
+
         UUID maidUUID = maid.getUUID();
         SpellBookManager removed = MAID_MANAGERS.remove(maidUUID);
-        
+
         if (removed != null) {
             LOGGER.debug("Removed SpellBookManager for maid {}", maidUUID);
         }
 
+    }
+
+    public static void clearAll() {
+        MAID_MANAGERS.clear();
     }
 
 
@@ -308,4 +313,3 @@ public class SpellBookManager {
     }
 
 }
-
