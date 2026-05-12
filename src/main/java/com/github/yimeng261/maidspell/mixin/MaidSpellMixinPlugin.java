@@ -17,6 +17,7 @@ import java.util.Set;
 public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String ISS_MOD_ID = "irons_spellbooks";
     private static final String ISS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.iss.";
+    private static final String ISS_ACCESSOR_PACKAGE = "com.github.yimeng261.maidspell.mixin.iss.accessor.";
     private static final String ENIGMATIC_ADDONS_MOD_ID = "enigmaticaddons";
     private static final String ENIGMATIC_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.enigmatic.";
     private static final String GOETY_MOD_ID = "goety";
@@ -55,6 +56,10 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        // iss.accessor 子包只需要 ISS 存在即可（不依赖 TLM 动画支持）
+        if (mixinClassName.startsWith(ISS_ACCESSOR_PACKAGE)) {
+            return isIronsSpellbooksLoaded;
+        }
         // 如果是 iss 包下的 Mixin，需要检查 Iron's Spellbooks 模组是否存在
         if (mixinClassName.startsWith(ISS_MIXIN_PACKAGE)) {
             return isIronsSpellbooksLoaded && isTlmMagicAnimationSupported;

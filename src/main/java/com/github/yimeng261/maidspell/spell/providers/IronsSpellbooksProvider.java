@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.SpellWhiteList;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.SpellWhiteListSpellManager;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
+import com.github.yimeng261.maidspell.mixin.iss.accessor.PlayerRecastsAccessor;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.logging.LogUtils;
@@ -495,7 +496,8 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
         if (spellId == null) {
             return;
         }
-        data.getMagicData().getPlayerRecasts().removeRecast(spellId);
+        PlayerRecasts recasts = data.getMagicData().getPlayerRecasts();
+        ((PlayerRecastsAccessor) recasts).maidspell$getRecastLookup().remove(spellId);
     }
 
     private void finishMaidRecastAdapter(EntityMaid maid, MaidIronsSpellData data, MaidIronsSpellData.MaidRecastSession session, boolean interrupted) {

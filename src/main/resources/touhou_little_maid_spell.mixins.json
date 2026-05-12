@@ -35,6 +35,7 @@
     "goety.WandUtilMixin",
     "iss.SyncedSpellDataMixin",
     "iss.UtilsMixin",
+    "iss.accessor.PlayerRecastsAccessor",
     "psi.PieceSelectorNearbyMixin",
     "psi.PieceTrickAddMotionMixin",
     "tlm.AbstractMaidContainerMixin",
