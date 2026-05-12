@@ -1,5 +1,19 @@
 # Changelog / 变更日志
 
+## 1.8.1-neoforge
+
+### 新增功能 / New Features
+
+- 新增「拔刀剑：重逢」联动，女仆可装备拔刀剑自动施放连段或直接剑技 / Added Slash Blade: Resharpened integration — maids can
+  wield SlashBlades and auto-cast combo or direct techniques
+
+### 修复 / Bug Fixes
+
+- 修复专用服务端清理女仆铁魔法 recast 时的崩溃 / Fixed dedicated-server crash when cleaning up maid Iron's Spells 'n
+  Spellbooks recasts
+
+---
+
 ## 1.8.0-neoforge
 
 ### 新增功能 / New Features
