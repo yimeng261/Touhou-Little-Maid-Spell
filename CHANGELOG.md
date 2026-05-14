@@ -11,6 +11,13 @@
 
 - 修复专用服务端清理女仆铁魔法 recast 时的崩溃 / Fixed dedicated-server crash when cleaning up maid Iron's Spells 'n
   Spellbooks recasts
+- 解除对 Curios 的强依赖，将 Curios 相关逻辑迁移至独立 compat 模块，未安装 Curios 时不再影响梦云水晶等饰品功能 / Removed
+  hard dependency on Curios — Curios-related logic moved to a dedicated compat module so Dreamcloud Crystal and other
+  baubles work without Curios installed
+
+### 优化 / Improvements
+
+- 更新圣遗礼拜堂结构文件 / Updated Relic Sanctum structure file
 
 ---
 
