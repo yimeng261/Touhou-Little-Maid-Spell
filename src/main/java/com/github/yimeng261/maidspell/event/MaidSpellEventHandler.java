@@ -64,7 +64,6 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
-import top.theillusivec4.curios.api.event.CurioChangeEvent;
 
 import java.util.*;
 
@@ -240,27 +239,6 @@ public class MaidSpellEventHandler {
                     manager.addSpellItem(maid,event.getTo());
                 }
             }
-        }
-    }
-
-    /**
-     * 监听女仆 Curios 槽位变化事件
-     * 当女仆的 Curios 槽位装备/卸下物品时，更新法术书管理器
-     */
-    @SubscribeEvent
-    public static void onMaidCurioChange(CurioChangeEvent event) {
-        if (!(event.getEntity() instanceof EntityMaid maid)) return;
-        if (maid.level().isClientSide()) return;
-
-        SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-        ItemStack from = event.getFrom();
-        ItemStack to = event.getTo();
-
-        if (!from.isEmpty()) {
-            manager.removeSpellItem(maid, from);
-        }
-        if (!to.isEmpty()) {
-            manager.addSpellItem(maid, to);
         }
     }
 

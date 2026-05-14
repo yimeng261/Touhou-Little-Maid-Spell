@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell;
 
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
+import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
 import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
@@ -64,6 +65,7 @@ public class MaidSpellMod {
         MaidSpellSounds.SOUNDS.register(modEventBus);
         MaidSpellEntities.register(modEventBus);
         IronsSpellbooksCompat.init(modEventBus);
+        CuriosCompat.init();
         modEventBus.addListener(FragrantIngenuityBauble::onRegisterEffects);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modEventBus);
