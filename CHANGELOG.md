@@ -14,6 +14,7 @@
 - 解除对 Curios 的强依赖，将 Curios 相关逻辑迁移至独立 compat 模块，未安装 Curios 时不再影响梦云水晶等饰品功能 / Removed
   hard dependency on Curios — Curios-related logic moved to a dedicated compat module so Dreamcloud Crystal and other
   baubles work without Curios installed
+- 修复入魔骑士和暗影刺客战利品表加载异常 / Fixed loot table loading errors for Corrupted Knight and Shadow Assassin
 
 ### 优化 / Improvements
 
