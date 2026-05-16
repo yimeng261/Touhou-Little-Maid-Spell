@@ -20,7 +20,6 @@
                     "farmersdelight:backstabbing": 3
                   }
                 },
-                "irons_spellbooks:imbued_spell": "irons_spellbooks:shadow_slash",
                 "irons_spellbooks:spell_container": {
                   "maxSpells": 1,
                   "mustEquip": false,
