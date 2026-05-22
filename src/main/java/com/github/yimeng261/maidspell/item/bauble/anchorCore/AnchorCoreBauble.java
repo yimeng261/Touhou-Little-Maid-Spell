@@ -104,6 +104,7 @@ public class AnchorCoreBauble implements IMaidBauble {
                 className.startsWith("io.redspace.ironsspellbooks") ||
                 className.startsWith("whocraft.tardis_refined") ||
                 className.startsWith("top.theillusivec4.curios") ||
+                className.startsWith("tschipp.carryon") ||
                 className.contains("backup") ||
                 className.contains("maid") ||
                 className.contains("c2me");
