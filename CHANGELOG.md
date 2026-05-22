@@ -1,5 +1,21 @@
 # Changelog / 变更日志
 
+## 1.8.2-neoforge
+
+### 修复 / Bug Fixes
+
+- 修复浮波狐叶和融岩狐叶无法合成的问题 / Fixed Floating Fox Leaf and Molten Fox Leaf being uncraftable
+- 修正 minecraft tag 目录命名为 1.21 单数形式（`block`/`item`），修复花朵、花盆相关标签不生效的问题 / Renamed minecraft tag
+  directories to the 1.21 singular form (`block`/`item`), fixing flower and flower-pot tags not taking effect
+- 移除客户端启动时的二次异步资源重载，避免与初始 reload 产生竞态导致客户端卡死 / Removed the redundant async resource reload
+  on client startup to avoid a race with the initial reload that could freeze the client
+
+### 优化 / Improvements
+
+- 锚定核心放行 Carry On 模组的拾取行为，允许被携带 / Anchor Core now allows Carry On pickup behavior
+
+---
+
 ## 1.8.1-neoforge
 
 ### 新增功能 / New Features
