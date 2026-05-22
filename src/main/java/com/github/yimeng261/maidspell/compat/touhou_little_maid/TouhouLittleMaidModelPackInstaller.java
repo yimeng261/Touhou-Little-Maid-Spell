@@ -60,10 +60,6 @@ public final class TouhouLittleMaidModelPackInstaller {
         }
     }
 
-    public static boolean wasInstalledThisRun() {
-        return installedThisRun;
-    }
-
     public static void reloadServerPacksIfNeeded() {
         if (!installedThisRun || !ModList.get().isLoaded(TLM_MOD_ID)) {
             return;
