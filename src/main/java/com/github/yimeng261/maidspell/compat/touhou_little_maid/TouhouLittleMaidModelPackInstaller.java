@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.compat.touhou_little_maid;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.info.ServerCustomPackLoader;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.loading.FMLPaths;
@@ -42,6 +43,10 @@ public final class TouhouLittleMaidModelPackInstaller {
 
     public static boolean installIfNeeded() {
         if (!ModList.get().isLoaded(TLM_MOD_ID)) {
+            return false;
+        }
+        if (!Config.autoInstallTlmModelPack) {
+            MaidSpellMod.LOGGER.info("Skipped Touhou Little Maid compatibility model pack installation (autoInstallTlmModelPack=false)");
             return false;
         }
 
