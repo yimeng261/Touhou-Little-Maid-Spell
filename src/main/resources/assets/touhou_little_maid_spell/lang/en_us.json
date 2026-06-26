@@ -30,6 +30,8 @@
   "item.maidspell.double_heart_chain.desc1": "Bound by vows, eternal bond",
   "item.maidspell.double_heart_chain.desc2": "Maid and master share damage taken",
   "item.maidspell.double_heart_chain.desc3": "Each takes %s%% of the damage",
+  "death.attack.info_damage": "%1$s was claimed by the bond of fate",
+  "death.attack.info_damage.player": "%1$s was claimed by their bond with %2$s",
   "item.touhou_little_maid_spell.spring_bloom_return": "Spring Bloom: Return",
   "item.maidspell.spring_bloom_return.desc1": "Spring winds linger, fallen petals return",
   "item.maidspell.spring_bloom_return.desc2": "After casting any spell, gain 1 Bloom Return stack, up to %s, lasting %s seconds",

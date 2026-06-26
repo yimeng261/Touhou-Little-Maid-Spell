@@ -226,6 +226,12 @@ public class Config {
             .comment("Double Heart Chain damage share ratio")
             .defineInRange("doubleHeartChainShareRatio", 0.5, 0.1, 0.9);
 
+    private static final ModConfigSpec.DoubleValue DOUBLE_HEART_CHAIN_MAX_DISTANCE = BUILDER
+            .comment("双心链生效距离 (默认: 32.0)")
+            .comment("女仆与主人距离超过此值(方块)时，伤害不再分摊给主人")
+            .comment("Double Heart Chain effective distance (blocks)")
+            .defineInRange("doubleHeartChainMaxDistance", 32.0, 4.0, 128.0);
+
     static {
         BUILDER.pop(); // defense
     }
@@ -684,6 +690,7 @@ public class Config {
     // 防御相关
     public static double flowCoreDamageReduction;
     public static double doubleHeartChainShareRatio;
+    public static double doubleHeartChainMaxDistance;
 
     // 冷却相关
     public static double quickChantRingCooldownReduction;
@@ -784,6 +791,7 @@ public class Config {
         // 防御相关
         flowCoreDamageReduction = FLOW_CORE_DAMAGE_REDUCTION.get();
         doubleHeartChainShareRatio = DOUBLE_HEART_CHAIN_SHARE_RATIO.get();
+        doubleHeartChainMaxDistance = DOUBLE_HEART_CHAIN_MAX_DISTANCE.get();
 
         // 冷却相关
         quickChantRingCooldownReduction = QUICK_CHANT_RING_COOLDOWN_REDUCTION.get();

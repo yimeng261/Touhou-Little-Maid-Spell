@@ -56,6 +56,9 @@ public class DoubleHeartChainBauble implements IMaidBauble {
                 // 梦云水晶组合：主人不承担伤害，女仆只受 50%
                 if (BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL)) {
                     data.setAmount(originalDamage * 0.5f);
+                } else if (maid.distanceTo(owner) > Config.doubleHeartChainMaxDistance) {
+                    // 超出生效距离：不分摊给主人，女仆承受全额伤害
+                    return null;
                 } else if (!isSharingDamage(maid)) {
                     float sharedDamage = originalDamage * (float) Config.doubleHeartChainShareRatio; // 使用配置的分摊比例
 
