@@ -10,6 +10,12 @@
 - 移除客户端启动时的二次异步资源重载，避免与初始 reload 产生竞态导致客户端卡死 / Removed the redundant async resource reload
   on client startup to avoid a race with the initial reload that could freeze the client
 
+### 新增功能 / New Features
+
+- 双心链新增最大生效距离配置（默认 32 格），超出距离时伤害不再分摊给主人 / Double Heart Chain now has a configurable max
+  effective distance (default 32 blocks) — damage is no longer shared with the owner beyond this range
+- 新增伤害分摊致死的死亡消息 / Added death messages for damage-sharing kills
+
 ### 优化 / Improvements
 
 - 锚定核心放行 Carry On 模组的拾取行为，允许被携带 / Anchor Core now allows Carry On pickup behavior
