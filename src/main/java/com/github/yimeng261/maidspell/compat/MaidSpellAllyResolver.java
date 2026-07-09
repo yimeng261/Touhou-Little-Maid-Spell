@@ -4,7 +4,6 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -130,29 +129,27 @@ public final class MaidSpellAllyResolver {
 
     @Nullable
     private static Entity getDirectOwner(Entity entity) {
-        if (isOptionalInstance(entity, IRONS_MAGIC_SUMMON)) {
-            return invokeEntity(entity, "getSummoner");
+        if (entity instanceof Player) {
+            return null;
+        } else if (isOptionalInstance(entity, IRONS_MAGIC_SUMMON)) {
+            return invokeOptionalEntity(entity, IRONS_MAGIC_SUMMON, "getSummoner");
         } else if (isOptionalInstance(entity, GOETY_OWNED)) {
-            Entity owner = invokeEntity(entity, "getTrueOwner");
-            return owner != null ? owner : invokeEntity(entity, "getMasterOwner");
+            Entity owner = invokeOptionalEntity(entity, GOETY_OWNED, "getTrueOwner");
+            return owner != null ? owner : invokeOptionalEntity(entity, GOETY_OWNED, "getMasterOwner");
         } else if (isOptionalInstance(entity, ARS_SUMMON)) {
-            Entity owner = invokeEntity(entity, "getOwnerAlt");
+            Entity owner = invokeOptionalEntity(entity, ARS_SUMMON, "getOwnerAlt");
             if (owner != null) {
                 return owner;
             }
-            return findEntity(entity, invokeUuid(entity, "getOwnerUUID"));
+            return findEntity(entity, invokeOptionalUuid(entity, ARS_SUMMON, "getOwnerUUID"));
         } else if (entity instanceof OwnableEntity ownable) {
             return ownable.getOwner();
         } else if (isOptionalInstance(entity, SLASHBLADE_SHOOTABLE)) {
-            Entity shooter = invokeEntity(entity, "getShooter");
-            return shooter != null ? shooter : invokeCommonOwner(entity);
-        } else if (entity instanceof Mob) {
-            return invokeCommonOwner(entity);
+            return invokeOptionalEntity(entity, SLASHBLADE_SHOOTABLE, "getShooter");
         } else if (entity instanceof Projectile projectile) {
-            Entity owner = projectile.getOwner();
-            return owner != null ? owner : invokeCommonOwner(entity);
+            return projectile.getOwner();
         }
-        return invokeCommonOwner(entity);
+        return null;
     }
 
     @Nullable
@@ -160,14 +157,18 @@ public final class MaidSpellAllyResolver {
         if (entity instanceof EntityMaid maid) {
             return maid.getOwnerUUID();
         } else if (isOptionalInstance(entity, ARS_SUMMON)) {
-            return invokeUuid(entity, "getOwnerUUID");
+            return invokeOptionalUuid(entity, ARS_SUMMON, "getOwnerUUID");
         } else if (isOptionalInstance(entity, GOETY_OWNED)) {
-            return invokeUuid(entity, "getOwnerId");
+            return invokeOptionalUuid(entity, GOETY_OWNED, "getOwnerId");
+        } else if (entity instanceof Player) {
+            return null;
         } else if (entity instanceof OwnableEntity ownable) {
             return ownable.getOwnerUUID();
+        } else if (entity instanceof Projectile projectile) {
+            Entity owner = projectile.getOwner();
+            return owner != null ? owner.getUUID() : null;
         }
-        UUID ownerId = invokeUuid(entity, "getOwnerUUID");
-        return ownerId != null ? ownerId : invokeUuid(entity, "getOwnerId");
+        return null;
     }
 
     private static boolean isOptionalInstance(Entity entity, String className) {
@@ -185,44 +186,26 @@ public final class MaidSpellAllyResolver {
     }
 
     @Nullable
-    private static Entity invokeCommonOwner(Entity entity) {
-        Entity owner = invokeEntity(entity, "getOwner");
-        if (owner != null) {
-            return owner;
-        }
-        owner = invokeEntity(entity, "getCaster");
-        if (owner != null) {
-            return owner;
-        }
-        owner = invokeEntity(entity, "getSource");
-        if (owner != null) {
-            return owner;
-        }
-        return invokeEntity(entity, "getOwnerAlt");
-    }
-
-    @Nullable
-    private static Entity invokeEntity(Entity entity, String methodName) {
-        Object value = invokeNoArg(entity, methodName, Entity.class);
+    private static Entity invokeOptionalEntity(Entity entity, String className, String methodName) {
+        Object value = invokeOptionalNoArg(entity, className, methodName, Entity.class);
         return value instanceof Entity owner ? owner : null;
     }
 
     @Nullable
-    private static UUID invokeUuid(Entity entity, String methodName) {
-        return invokeUuid((Object) entity, methodName);
-    }
-
-    @Nullable
-    private static UUID invokeUuid(Object target, String methodName) {
-        Object value = invokeNoArg(target, methodName, UUID.class);
+    private static UUID invokeOptionalUuid(Entity entity, String className, String methodName) {
+        Object value = invokeOptionalNoArg(entity, className, methodName, UUID.class);
         return value instanceof UUID uuid ? uuid : null;
     }
 
     @Nullable
-    private static Object invokeNoArg(Object target, String methodName, @Nullable Class<?> returnType) {
+    private static Object invokeOptionalNoArg(Object target, String className, String methodName, @Nullable Class<?> returnType) {
+        Optional<Class<?>> type = OPTIONAL_TYPES.computeIfAbsent(className, MaidSpellAllyResolver::loadOptionalType);
+        if (type.isEmpty() || !type.get().isInstance(target)) {
+            return null;
+        }
         Optional<Method> cached = METHODS.computeIfAbsent(
-                new MethodKey(target.getClass(), methodName, returnType),
-                MaidSpellAllyResolver::findNoArgMethod);
+                new MethodKey(type.get(), methodName, returnType),
+                MaidSpellAllyResolver::findPublicNoArgMethod);
         if (cached.isEmpty()) {
             return null;
         }
@@ -233,25 +216,13 @@ public final class MaidSpellAllyResolver {
         }
     }
 
-    private static Optional<Method> findNoArgMethod(MethodKey key) {
+    private static Optional<Method> findPublicNoArgMethod(MethodKey key) {
         try {
             Method method = key.type().getMethod(key.name());
             if (isUsableMethod(method, key)) {
                 return Optional.of(method);
             }
         } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
-        }
-
-        Class<?> type = key.type();
-        while (type != null && type != Object.class) {
-            try {
-                Method method = type.getDeclaredMethod(key.name());
-                if (isUsableMethod(method, key)) {
-                    return Optional.of(method);
-                }
-            } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
-            }
-            type = type.getSuperclass();
         }
         return Optional.empty();
     }
@@ -315,34 +286,13 @@ public final class MaidSpellAllyResolver {
                 || isTypeAssignableTo(type, SLASHBLADE_SHOOTABLE)) {
             return true;
         }
-        return hasSupportedOwnerAccessor(type);
+        return false;
     }
 
     private static boolean isTypeAssignableTo(Class<?> type, String className) {
         return OPTIONAL_TYPES.computeIfAbsent(className, MaidSpellAllyResolver::loadOptionalType)
                 .map(optionalType -> optionalType.isAssignableFrom(type))
                 .orElse(false);
-    }
-
-    private static boolean hasSupportedOwnerAccessor(Class<?> type) {
-        String[] entityAccessors = {"getOwner", "getCaster", "getSource", "getOwnerAlt"};
-        for (String methodName : entityAccessors) {
-            if (METHODS.computeIfAbsent(
-                    new MethodKey(type, methodName, Entity.class),
-                    MaidSpellAllyResolver::findNoArgMethod).isPresent()) {
-                return true;
-            }
-        }
-
-        String[] uuidAccessors = {"getOwnerUUID", "getOwnerId"};
-        for (String methodName : uuidAccessors) {
-            if (METHODS.computeIfAbsent(
-                    new MethodKey(type, methodName, UUID.class),
-                    MaidSpellAllyResolver::findNoArgMethod).isPresent()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private record MethodKey(Class<?> type, String name, @Nullable Class<?> returnType) {
