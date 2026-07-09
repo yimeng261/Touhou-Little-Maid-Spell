@@ -17,9 +17,10 @@ public class MaidFeedOwnerTaskMixin {
             method = "start(Lnet/minecraft/server/level/ServerLevel;Lcom/github/tartaricacid/touhoulittlemaid/entity/passive/EntityMaid;J)V",
             at = @At(
                     value = "INVOKE",
-                    target = "Ljava/util/Optional;ifPresent(Ljava/util/function/Consumer;)V",
+                    target = "Ljava/util/OptionalInt;ifPresent(Ljava/util/function/IntConsumer;)V",
                     shift = At.Shift.AFTER
-            )
+            ),
+            require = 0
     )
     private void maidspell$applyOwnerBuffAfterFeed(ServerLevel worldIn,
                                                    EntityMaid maid,
