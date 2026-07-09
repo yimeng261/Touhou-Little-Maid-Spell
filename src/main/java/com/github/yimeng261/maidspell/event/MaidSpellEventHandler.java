@@ -26,6 +26,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.block.entity.SuppressionStoneBlockEntity;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
+import com.github.yimeng261.maidspell.utils.MaidReviveEffectCleanup;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.server.MinecraftServer;
@@ -56,6 +57,7 @@ import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
@@ -572,6 +574,13 @@ public class MaidSpellEventHandler {
                 // 从全局女仆列表中移除，避免内存泄漏
                 Global.updateMaidInfo(maid,false);
             }
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onMaidNormalDeathCleanup(LivingDeathEvent event) {
+        if (!event.isCanceled() && event.getEntity() instanceof EntityMaid maid) {
+            MaidReviveEffectCleanup.cleanupBeforeNormalDeath(maid);
         }
     }
 

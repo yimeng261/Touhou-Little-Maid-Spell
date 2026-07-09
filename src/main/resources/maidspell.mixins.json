@@ -38,6 +38,7 @@
     "iss.UtilsMixin",
     "tlm.AbstractMaidContainerMixin",
     "tlm.AltarRecipeSerializerMixin",
+    "tlm.EntityMaidBaubleReviveCleanupMixin",
     "tlm.EntityMaidAnchorCoreMixin",
     "tlm.EntityMaidFoxLeafMovementMixin",
     "tlm.EntityMaidGuiMovementMixin",
