@@ -200,6 +200,22 @@ public final class MaidHardRemovalProtection {
         return FORCE_PROTECTION_CHECK.get();
     }
 
+    public static void allowClientRemoval(EntityMaid maid) {
+        if (!(maid.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        double range = clientRestoreRange(maid);
+        for (ServerPlayer player : level.players()) {
+            if (player.distanceToSqr(maid) <= range * range) {
+                NetworkHandler.CHANNEL.send(
+                        PacketDistributor.PLAYER.with(() -> player),
+                        new MaidClientRemovalGuardMessage(maid.getId(), true)
+                );
+            }
+        }
+    }
+
     private static boolean isProtectedMaid(EntityMaid maid) {
         try {
             if (maid == null || maid.level().isClientSide()) {
@@ -483,22 +499,6 @@ public final class MaidHardRemovalProtection {
             return false;
         }
         return level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), net.minecraft.core.Direction.UP);
-    }
-
-    private static void allowClientRemoval(EntityMaid maid) {
-        if (!(maid.level() instanceof ServerLevel level)) {
-            return;
-        }
-
-        double range = clientRestoreRange(maid);
-        for (ServerPlayer player : level.players()) {
-            if (player.distanceToSqr(maid) <= range * range) {
-                NetworkHandler.CHANNEL.send(
-                        PacketDistributor.PLAYER.with(() -> player),
-                        new MaidClientRemovalGuardMessage(maid.getId(), true)
-                );
-            }
-        }
     }
 
     private static void dropSoulSpell(ServerLevel level, BlockPos origin, ItemStack soulSpell) {

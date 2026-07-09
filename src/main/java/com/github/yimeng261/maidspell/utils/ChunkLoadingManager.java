@@ -138,6 +138,14 @@ public class ChunkLoadingManager {
         public void addMaid(UUID maidId) {
             associatedMaids.add(maidId);
         }
+
+        public void removeMaid(UUID maidId) {
+            associatedMaids.remove(maidId);
+        }
+
+        public boolean hasNoMaids() {
+            return associatedMaids.isEmpty();
+        }
         
         /**
          * 返回关联女仆的快照。
@@ -182,6 +190,34 @@ public class ChunkLoadingManager {
         
         // 使用新的计时器系统
         performChunkOperation(maidId, chunkKey, true);
+    }
+
+    /**
+     * 立即释放指定女仆持有的所有强加载票据。
+     * 例如 Carry On 搬起实体时会用 UNLOADED_WITH_PLAYER 让实体暂时离开世界；
+     * 这类正常离开不应继续保留锚定核心的旧区块强加载。
+     */
+    public static void disableChunkLoading(EntityMaid maid) {
+        if (maid == null || maid.level().isClientSide()) {
+            return;
+        }
+
+        UUID maidId = maid.getUUID();
+        Set<ChunkKey> chunks = maidChunkPositions.remove(maidId);
+        if (chunks == null || chunks.isEmpty()) {
+            return;
+        }
+
+        for (ChunkKey chunkKey : new HashSet<>(chunks)) {
+            ChunkTimer timer = chunkTimers.get(chunkKey);
+            if (timer != null) {
+                timer.removeMaid(maidId);
+                if (timer.hasNoMaids()) {
+                    chunkTimers.remove(chunkKey, timer);
+                }
+            }
+            performChunkOperation(maidId, chunkKey, false);
+        }
     }
 
     
@@ -265,9 +301,7 @@ public class ChunkLoadingManager {
             // 注意：getAssociatedMaids() 返回的是快照，目的是保证后续卸载区块时仍能拿到关联女仆列表。
             // 这里不要对返回集合做“会影响内部状态”的假设；它只是当前关联关系的只读视图。
             Set<UUID> associatedMaids = timer.getAssociatedMaids();
-            Iterator<UUID> iterator = associatedMaids.iterator();
-            while (iterator.hasNext()) {
-                UUID maidId = iterator.next();
+            for (UUID maidId : associatedMaids) {
                 try {
                     boolean isValid = false;
                     if (level.getEntity(maidId) instanceof EntityMaid maid) {
@@ -277,17 +311,19 @@ public class ChunkLoadingManager {
                         }
                     }
                     if (!isValid) {
-                        iterator.remove();
+                        timer.removeMaid(maidId);
+                        performChunkOperation(maidId, chunkKey, false);
                     }
                 } catch (Exception e) {
                     // 实体获取失败，移除该女仆
-                    iterator.remove();
+                    timer.removeMaid(maidId);
+                    performChunkOperation(maidId, chunkKey, false);
                     Global.LOGGER.debug("获取女仆实体 {} 时发生错误: {}", maidId, e.getMessage());
                 }
             }
             
             // 如果没有有效女仆，开始倒计时
-            if (associatedMaids.isEmpty()) {
+            if (timer.hasNoMaids()) {
                 timer.update();
                 if (timer.isExpired()) {
                     reusableExpiredChunks.add(chunkKey);

@@ -206,6 +206,11 @@ public class MaidSpellEventHandler {
                 return;
             }
 
+            if (shouldReleaseMaidChunkLoading(maid.getRemovalReason())) {
+                MaidHardRemovalProtection.allowClientRemoval(maid);
+                ChunkLoadingManager.disableChunkLoading(maid);
+            }
+
             // 从全局女仆列表中移除，避免内存泄漏
             Global.updateMaidInfo(maid,false);
         }
@@ -716,6 +721,13 @@ public class MaidSpellEventHandler {
                  COMMAND,
                  DISPENSER -> false;
         };
+    }
+
+    private static boolean shouldReleaseMaidChunkLoading(Entity.RemovalReason reason) {
+        return reason == Entity.RemovalReason.UNLOADED_WITH_PLAYER
+            || reason == Entity.RemovalReason.CHANGED_DIMENSION
+            || reason == Entity.RemovalReason.KILLED
+            || reason == Entity.RemovalReason.DISCARDED;
     }
 
     private static void restoreRetreatLocationIfNeeded(ServerPlayer player) {

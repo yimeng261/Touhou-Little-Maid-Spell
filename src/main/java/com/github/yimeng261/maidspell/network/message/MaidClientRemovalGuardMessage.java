@@ -32,7 +32,7 @@ public class MaidClientRemovalGuardMessage {
             if (context.getDirection().getReceptionSide().isClient()) {
                 DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
                     if (message.allowRemoval) {
-                        ClientMaidRemovalGuard.allowRemoval(message.entityId);
+                        ClientMaidRemovalGuard.allowRemovalNow(message.entityId);
                     } else {
                         ClientMaidRemovalGuard.markProtected(message.entityId);
                     }

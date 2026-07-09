@@ -3,6 +3,8 @@ package com.github.yimeng261.maidspell.client;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
 
 import java.util.Map;
@@ -23,6 +25,14 @@ public final class ClientMaidRemovalGuard {
     public static void allowRemoval(int entityId) {
         PROTECTED_ENTITY_IDS.remove(entityId);
         ALLOWED_REMOVAL_IDS.put(entityId, System.currentTimeMillis() + MARK_DURATION_MILLIS);
+    }
+
+    public static void allowRemovalNow(int entityId) {
+        allowRemoval(entityId);
+        ClientLevel level = Minecraft.getInstance().level;
+        if (level != null && level.getEntity(entityId) != null) {
+            level.removeEntity(entityId, Entity.RemovalReason.DISCARDED);
+        }
     }
 
     public static boolean shouldBlockRemoval(Entity entity, int entityId) {
