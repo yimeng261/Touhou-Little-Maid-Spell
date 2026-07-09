@@ -4,10 +4,12 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHandler;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.SpellWhiteList;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.SpellWhiteListSpellManager;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
+import com.github.yimeng261.maidspell.mixin.iss.accessor.PlayerRecastsAccessor;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.logging.LogUtils;
@@ -39,7 +41,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
-import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -100,20 +101,12 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
 
     protected List<SpellSlot> collectSpellsFromCuriosSlots(EntityMaid maid) {
         List<SpellSlot> spells = new ArrayList<>();
-
         try {
-            CuriosApi.getCuriosInventory(maid).ifPresent(handler ->
-                    handler.findCurios(ISpellContainer::isSpellContainer).forEach(slotResult -> {
-                        ItemStack curiosStack = slotResult.stack();
-                        if (!curiosStack.isEmpty()) {
-                            spells.addAll(collectSpellFromSingleSpellBook(curiosStack, maid));
-                        }
-                    })
-            );
+            CuriosCompat.forEachMatchingCurio(maid, ISpellContainer::isSpellContainer,
+                    curiosStack -> spells.addAll(collectSpellFromSingleSpellBook(curiosStack, maid)));
         } catch (Exception e) {
             LOGGER.error("从女仆 {} 的 curios 槽位收集法术时出错: {}", maid.getUUID(), e.getMessage());
         }
-
         return spells;
     }
 
@@ -495,7 +488,8 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
         if (spellId == null) {
             return;
         }
-        data.getMagicData().getPlayerRecasts().removeRecast(spellId);
+        PlayerRecasts recasts = data.getMagicData().getPlayerRecasts();
+        ((PlayerRecastsAccessor) recasts).maidspell$getRecastLookup().remove(spellId);
     }
 
     private void finishMaidRecastAdapter(EntityMaid maid, MaidIronsSpellData data, MaidIronsSpellData.MaidRecastSession session, boolean interrupted) {

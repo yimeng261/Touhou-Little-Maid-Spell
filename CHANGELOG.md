@@ -1,5 +1,49 @@
 # Changelog / 变更日志
 
+## 1.8.2-neoforge
+
+### 修复 / Bug Fixes
+
+- 修复浮波狐叶和融岩狐叶无法合成的问题 / Fixed Floating Fox Leaf and Molten Fox Leaf being uncraftable
+- 修正 minecraft tag 目录命名为 1.21 单数形式（`block`/`item`），修复花朵、花盆相关标签不生效的问题 / Renamed minecraft tag
+  directories to the 1.21 singular form (`block`/`item`), fixing flower and flower-pot tags not taking effect
+- 移除客户端启动时的二次异步资源重载，避免与初始 reload 产生竞态导致客户端卡死 / Removed the redundant async resource reload
+  on client startup to avoid a race with the initial reload that could freeze the client
+
+### 新增功能 / New Features
+
+- 双心链新增最大生效距离配置（默认 32 格），超出距离时伤害不再分摊给主人 / Double Heart Chain now has a configurable max
+  effective distance (default 32 blocks) — damage is no longer shared with the owner beyond this range
+- 新增伤害分摊致死的死亡消息 / Added death messages for damage-sharing kills
+
+### 优化 / Improvements
+
+- 锚定核心放行 Carry On 模组的拾取行为，允许被携带 / Anchor Core now allows Carry On pickup behavior
+
+---
+
+## 1.8.1-neoforge
+
+### 新增功能 / New Features
+
+- 新增「拔刀剑：重逢」联动，女仆可装备拔刀剑自动施放连段或直接剑技 / Added Slash Blade: Resharpened integration — maids can
+  wield SlashBlades and auto-cast combo or direct techniques
+
+### 修复 / Bug Fixes
+
+- 修复专用服务端清理女仆铁魔法 recast 时的崩溃 / Fixed dedicated-server crash when cleaning up maid Iron's Spells 'n
+  Spellbooks recasts
+- 解除对 Curios 的强依赖，将 Curios 相关逻辑迁移至独立 compat 模块，未安装 Curios 时不再影响梦云水晶等饰品功能 / Removed
+  hard dependency on Curios — Curios-related logic moved to a dedicated compat module so Dreamcloud Crystal and other
+  baubles work without Curios installed
+- 修复入魔骑士和暗影刺客战利品表加载异常 / Fixed loot table loading errors for Corrupted Knight and Shadow Assassin
+
+### 优化 / Improvements
+
+- 更新圣遗礼拜堂结构文件 / Updated Relic Sanctum structure file
+
+---
+
 ## 1.8.0-neoforge
 
 ### 新增功能 / New Features

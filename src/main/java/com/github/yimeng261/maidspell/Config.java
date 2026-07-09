@@ -226,6 +226,12 @@ public class Config {
             .comment("Double Heart Chain damage share ratio")
             .defineInRange("doubleHeartChainShareRatio", 0.5, 0.1, 0.9);
 
+    private static final ModConfigSpec.DoubleValue DOUBLE_HEART_CHAIN_MAX_DISTANCE = BUILDER
+            .comment("双心链生效距离 (默认: 32.0)")
+            .comment("女仆与主人距离超过此值(方块)时，伤害不再分摊给主人")
+            .comment("Double Heart Chain effective distance (blocks)")
+            .defineInRange("doubleHeartChainMaxDistance", 32.0, 4.0, 128.0);
+
     static {
         BUILDER.pop(); // defense
     }
@@ -639,6 +645,26 @@ public class Config {
         BUILDER.pop(); // retreat_dimension
     }
 
+    // ========== 兼容性配置 ==========
+    static {
+        BUILDER.comment("兼容性相关配置")
+               .comment("Compatibility configurations")
+               .push("compat");
+    }
+
+    private static final ModConfigSpec.BooleanValue AUTO_INSTALL_TLM_MODEL_PACK = BUILDER
+            .comment("是否在启动时自动安装/更新内置的车万女仆兼容模型包 (默认: true)")
+            .comment("true: 每次启动都会把 jar 内置的 tlm_custom_pack 模型包写入游戏目录（覆盖同名文件），以确保模型/动画为最新修复版本")
+            .comment("false: 不自动安装，整合包作者或玩家可自行管理 tlm_custom_pack 目录下的模型包")
+            .comment("Whether to auto-install/update the bundled Touhou Little Maid compatibility model pack on startup (default: true)")
+            .comment("true: The bundled pack is written into the game directory on every launch (overwriting same-named files), keeping models/animations up to date")
+            .comment("false: No auto-install; pack authors or players manage the tlm_custom_pack directory themselves")
+            .define("autoInstallTlmModelPack", true);
+
+    static {
+        BUILDER.pop(); // compat
+    }
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     // 缓存的配置值
@@ -664,6 +690,7 @@ public class Config {
     // 防御相关
     public static double flowCoreDamageReduction;
     public static double doubleHeartChainShareRatio;
+    public static double doubleHeartChainMaxDistance;
 
     // 冷却相关
     public static double quickChantRingCooldownReduction;
@@ -722,6 +749,9 @@ public class Config {
     public static boolean allowMobSpawnsInRetreat;
     public static boolean allowHostileMobSpawnsInRetreat;
 
+    // 兼容性相关
+    public static boolean autoInstallTlmModelPack;
+
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent.Loading event) {
@@ -761,6 +791,7 @@ public class Config {
         // 防御相关
         flowCoreDamageReduction = FLOW_CORE_DAMAGE_REDUCTION.get();
         doubleHeartChainShareRatio = DOUBLE_HEART_CHAIN_SHARE_RATIO.get();
+        doubleHeartChainMaxDistance = DOUBLE_HEART_CHAIN_MAX_DISTANCE.get();
 
         // 冷却相关
         quickChantRingCooldownReduction = QUICK_CHANT_RING_COOLDOWN_REDUCTION.get();
@@ -827,6 +858,9 @@ public class Config {
         allowedStructures = structureSet;
         allowMobSpawnsInRetreat = ALLOW_MOB_SPAWNS_IN_RETREAT.get();
         allowHostileMobSpawnsInRetreat = ALLOW_HOSTILE_MOB_SPAWNS_IN_RETREAT.get();
+
+        // 兼容性相关
+        autoInstallTlmModelPack = AUTO_INSTALL_TLM_MODEL_PACK.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

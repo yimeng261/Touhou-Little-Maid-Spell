@@ -30,9 +30,9 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import org.slf4j.Logger;
-import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.*;
 import java.util.regex.Pattern;
@@ -285,10 +285,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         // 卸下时清除无敌状态
         baubleItem.remove(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS);
         // 卸下时移除 curios 额外槽位
-        CuriosApi.getCuriosInventory(maid).ifPresent(handler ->
-                handler.getCurios().keySet().forEach(slotType ->
-                        handler.removeSlotModifier(slotType, DC_CURIOS_SLOT_ID))
-        );
+        CuriosCompat.removeSlotModifierForAllTypes(maid, DC_CURIOS_SLOT_ID);
 
         // 卸下时移除属性修饰符
         removeAttributeModifier(maid, Attributes.MAX_HEALTH, DC_HP_ID);
@@ -565,13 +562,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
      * 为女仆的所有 curios 槽位各增加 1 个额外槽位（transient，需要每 20tick 刷新以维持）
      */
     private void applyCuriosSlots(EntityMaid maid) {
-        CuriosApi.getCuriosInventory(maid).ifPresent(handler -> {
-            handler.getCurios().keySet().forEach(slotType -> {
-                handler.removeSlotModifier(slotType, DC_CURIOS_SLOT_ID);
-                handler.addTransientSlotModifier(slotType, DC_CURIOS_SLOT_ID,
-                        1.0, AttributeModifier.Operation.ADD_VALUE);
-            });
-        });
+        CuriosCompat.addTransientSlotForAllTypes(maid, DC_CURIOS_SLOT_ID,
+                1.0, AttributeModifier.Operation.ADD_VALUE);
     }
 
     // ========== 调度器 ==========

@@ -27,6 +27,7 @@ public final class MaidSpellAllyResolver {
     private static final String IRONS_MAGIC_SUMMON = "io.redspace.ironsspellbooks.entity.mobs.MagicSummon";
     private static final String ARS_SUMMON = "com.hollingsworth.arsnouveau.api.entity.ISummon";
     private static final String GOETY_OWNED = "com.Polarice3.Goety.api.entities.IOwned";
+    private static final String SLASHBLADE_SHOOTABLE = "mods.flammpfeil.slashblade.entity.IShootable";
 
     private static final Map<String, Optional<Class<?>>> OPTIONAL_TYPES = new ConcurrentHashMap<>();
     private static final Map<MethodKey, Optional<Method>> METHODS = new ConcurrentHashMap<>();
@@ -127,6 +128,9 @@ public final class MaidSpellAllyResolver {
             return findEntity(entity, invokeUuid(entity, "getOwnerUUID"));
         } else if (entity instanceof OwnableEntity ownable) {
             return ownable.getOwner();
+        } else if (isOptionalInstance(entity, SLASHBLADE_SHOOTABLE)) {
+            Entity shooter = invokeEntity(entity, "getShooter");
+            return shooter != null ? shooter : invokeCommonOwner(entity);
         } else if (entity instanceof Mob) {
             return invokeCommonOwner(entity);
         } else if (entity instanceof Projectile projectile) {

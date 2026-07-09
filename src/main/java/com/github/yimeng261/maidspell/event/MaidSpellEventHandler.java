@@ -19,6 +19,7 @@ import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
+import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
@@ -63,7 +64,6 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
-import top.theillusivec4.curios.api.event.CurioChangeEvent;
 
 import java.util.*;
 
@@ -239,27 +239,6 @@ public class MaidSpellEventHandler {
                     manager.addSpellItem(maid,event.getTo());
                 }
             }
-        }
-    }
-
-    /**
-     * 监听女仆 Curios 槽位变化事件
-     * 当女仆的 Curios 槽位装备/卸下物品时，更新法术书管理器
-     */
-    @SubscribeEvent
-    public static void onMaidCurioChange(CurioChangeEvent event) {
-        if (!(event.getEntity() instanceof EntityMaid maid)) return;
-        if (maid.level().isClientSide()) return;
-
-        SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-        ItemStack from = event.getFrom();
-        ItemStack to = event.getTo();
-
-        if (!from.isEmpty()) {
-            manager.removeSpellItem(maid, from);
-        }
-        if (!to.isEmpty()) {
-            manager.addSpellItem(maid, to);
         }
     }
 
@@ -604,7 +583,7 @@ public class MaidSpellEventHandler {
                     provider.stopCasting(maid);
                 }
             }
-            // MaidSlashBladeData.remove(maid.getUUID());
+            MaidSlashBladeData.remove(maid.getUUID());
             SpellBookManager.removeManager(maid);
         } catch (Exception e) {
             // 静默处理清理错误，避免影响游戏正常运行

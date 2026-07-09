@@ -6,6 +6,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
@@ -51,7 +52,7 @@ public class TransmogNecklaceScreen extends Screen {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+        super.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
 
         int left = (width - PANEL_WIDTH) / 2;
         int top = (height - PANEL_HEIGHT) / 2;
@@ -60,7 +61,9 @@ public class TransmogNecklaceScreen extends Screen {
         guiGraphics.drawCenteredString(font, title, left + PANEL_WIDTH / 2, top + 10, 0xFFF7E8FF);
         guiGraphics.drawCenteredString(font, Component.translatable("gui.maidspell.transmog_necklace.hint"), left + PANEL_WIDTH / 2, top + 22, 0xFFD6C4E9);
 
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        for (Renderable renderable : this.renderables) {
+            renderable.render(guiGraphics, mouseX, mouseY, partialTick);
+        }
 
         for (StyleButton button : styleButtons) {
             if (button.isHovered()) {
