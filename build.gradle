@@ -197,9 +197,6 @@ tasks.named('jar', Jar).configure {
 }
 
 tasks.configureEach {
-    if (name in ['addMixinsToJarJar', 'jarJar', 'reobfJarJar']) {
-        enabled = false
-    }
     if (name == 'downloadMcpConfig') {
         // ForgeGradle marks this task out-of-date by default; only run it when the cached zip is missing.
         onlyIf { !outputs.files.singleFile.exists() }

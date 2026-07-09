@@ -5,12 +5,16 @@ import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidManaAndArtificeSpellData;
 import com.mna.api.ManaAndArtificeMod;
+import com.mna.api.capabilities.IPlayerMagic;
 import com.mna.api.items.inventory.ISpellBookInventory;
 import com.mna.api.spells.ICanContainSpell;
 import com.mna.api.spells.ISpellHelper;
 import com.mna.api.spells.SpellCastingResult;
 import com.mna.api.spells.SpellCastingResultCode;
+import com.mna.api.spells.attributes.Attribute;
+import com.mna.api.spells.base.IModifiedSpellPart;
 import com.mna.api.spells.base.ISpellDefinition;
+import com.mna.api.spells.parts.Shape;
 import com.mna.api.spells.targeting.SpellContext;
 import com.mna.api.spells.targeting.SpellSource;
 import com.mna.api.spells.targeting.SpellTarget;
@@ -22,6 +26,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
@@ -50,7 +55,7 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
             return spells;
         }
 
-        for (SpellSelection selection : collectSelections(spellBook)) {
+        for (SpellSelection selection : collectSelections(spellBook, maid)) {
             if (isUsableSpell(selection.spell())) {
                 spells.add(selection.spell());
             }
@@ -84,7 +89,9 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
         BehaviorUtils.lookAtEntity(maid, target);
         data.setCasting(true);
         data.setCastingTicks(0);
-        data.setCurrentSpell(selection.spell(), selection.container(), selection.cooldownKey());
+        data.setCurrentSpell(selection.spell(), selection.container(), selection.spellStack(), selection.cooldownKey());
+        data.setChannelDurationTicks(getChannelDurationTicks(selection.spell()));
+        data.setCurrentSpellApplied(false);
         maid.swing(InteractionHand.MAIN_HAND);
 
         LOGGER.debug("[MaidSpell/MNA] Selected spell maid={} spell={} item={} target={}",
@@ -104,7 +111,24 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
         }
 
         data.incrementCastingTicks();
-        if (data.isCastingComplete()) {
+        ISpellDefinition spell = data.getCurrentSpell();
+        if (spell.isChanneled()) {
+            if (!data.isCurrentSpellApplied() && data.isCastingComplete()) {
+                boolean success = applyCurrentSpell(maid, data);
+                data.setCurrentSpellApplied(true);
+                if (!success) {
+                    data.resetCastingState();
+                    return;
+                }
+                setCooldown(maid, data, spell);
+                SpringBloomReturnBauble.onSpellCast(maid, "mna", data.getCurrentSpellId(), target);
+            }
+            if (data.isChannelComplete()) {
+                LOGGER.debug("[MaidSpell/MNA] Channel complete maid={} spell={} ticks={}",
+                        maid.getUUID(), data.getCurrentSpellId(), data.getCastingTicks());
+                data.resetCastingState();
+            }
+        } else if (data.isCastingComplete()) {
             completeCasting(maid);
         }
     }
@@ -126,7 +150,7 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
 
         List<SpellSelection> available = new ArrayList<>();
         for (ItemStack spellBook : data.getSpellBooks()) {
-            for (SpellSelection selection : collectSelections(spellBook)) {
+            for (SpellSelection selection : collectSelections(spellBook, maid)) {
                 if (!isUsableSpell(selection.spell())) {
                     continue;
                 }
@@ -145,11 +169,11 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
         return available.get(ThreadLocalRandom.current().nextInt(available.size()));
     }
 
-    private List<SpellSelection> collectSelections(ItemStack container) {
+    private List<SpellSelection> collectSelections(ItemStack container, EntityMaid maid) {
         Map<String, SpellSelection> selections = new LinkedHashMap<>();
         // SpellBook 有多槽位，走专用路径；单法术容器（法杖、手环等）走通用路径
         if (container.getItem() instanceof SpellBook) {
-            collectSpellBookActiveSpells(container, selections);
+            collectSpellBookActiveSpells(container, maid, selections);
         } else {
             collectSingleSpellContainer(container, selections);
         }
@@ -166,20 +190,23 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
                 return;
             }
             ISpellDefinition spell = spellContainer.getSpell(container);
-            addSelection(container, spell, buildCooldownKey(container, spell), selections);
+            addSelection(container, container, spell, buildCooldownKey(container, spell), selections);
         } catch (Exception e) {
             LOGGER.debug("[MaidSpell/MNA] Failed to read spell container item={}", describeItem(container), e);
         }
     }
 
-    private void collectSpellBookActiveSpells(ItemStack container, Map<String, SpellSelection> selections) {
+    private void collectSpellBookActiveSpells(ItemStack container, EntityMaid maid, Map<String, SpellSelection> selections) {
         if (!(container.getItem() instanceof SpellBook spellBook)) {
             return;
         }
 
         try {
-            ISpellBookInventory inventory = spellBook.getInventory(container, null);
+            IPlayerMagic ownerMagic = resolveOwnerMagic(maid);
+            ISpellBookInventory inventory = spellBook.getInventory(container, ownerMagic);
             if (inventory == null) {
+                LOGGER.debug("[MaidSpell/MNA] Spell book inventory unavailable maid={} item={} ownerMagic={}",
+                        maid != null ? maid.getUUID() : null, describeItem(container), ownerMagic != null);
                 return;
             }
             ItemStack[] activeSpells = inventory.getActiveSpells();
@@ -189,11 +216,18 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
                     continue;
                 }
                 ISpellDefinition spell = parseSpell(spellStack);
-                addSelection(container, spell, buildCooldownKey(container, slot, spell), selections);
+                addSelection(container, spellStack, spell, buildCooldownKey(container, slot, spell), selections);
             }
         } catch (Exception e) {
             LOGGER.debug("[MaidSpell/MNA] Failed to read active spell book slots item={}", describeItem(container), e);
         }
+    }
+
+    private IPlayerMagic resolveOwnerMagic(EntityMaid maid) {
+        if (maid == null || !(maid.getOwner() instanceof Player owner)) {
+            return null;
+        }
+        return owner.getCapability(ManaAndArtificeMod.getMagicCapability()).orElse(null);
     }
 
     private ISpellDefinition parseSpell(ItemStack stack) {
@@ -204,16 +238,16 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
         return helper == null ? null : helper.parseSpellDefinition(stack);
     }
 
-    private void addSelection(ItemStack container, ISpellDefinition spell, String cooldownKey,
+    private void addSelection(ItemStack container, ItemStack spellStack, ISpellDefinition spell, String cooldownKey,
                               Map<String, SpellSelection> selections) {
         if (!isUsableSpell(spell)) {
             return;
         }
-        selections.putIfAbsent(cooldownKey, new SpellSelection(spell, container, cooldownKey));
+        selections.putIfAbsent(cooldownKey, new SpellSelection(spell, container, spellStack, cooldownKey));
     }
 
     private boolean isUsableSpell(ISpellDefinition spell) {
-        return spell != null && spell != ISpellDefinition.EMPTY && spell.isValid() && !spell.isChanneled();
+        return spell != null && spell != ISpellDefinition.EMPTY && spell.isValid();
     }
 
     private void completeCasting(EntityMaid maid) {
@@ -223,35 +257,70 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
         }
 
         ISpellDefinition spell = data.getCurrentSpell();
-        ItemStack container = data.getCurrentSpellBook();
-        LivingEntity target = data.getTarget();
         String cooldownKey = data.getCurrentSpellId();
 
         try {
-            if (target == null || !target.isAlive()) {
-                LOGGER.debug("[MaidSpell/MNA] Target missing before cast maid={} spell={}", maid.getUUID(), cooldownKey);
-                return;
-            }
-
-            BehaviorUtils.lookAtEntity(maid, target);
-            Vec3 forward = computeForwardToTarget(maid, target);
-            SpellSource source = new SpellSource(maid, InteractionHand.MAIN_HAND, maid.getEyePosition(), forward);
-            SpellTarget spellTarget = new SpellTarget(target);
-            SpellContext context = new SpellContext(maid.level(), spell, maid);
-            SpellCastingResult result = SpellCaster.Affect(container, spell, maid.level(), source, spellTarget, context);
-            SpellCastingResultCode code = result == null ? SpellCastingResultCode.EXCEPTION_THROWN : result.getCode();
-
-            LOGGER.debug("[MaidSpell/MNA] Cast result maid={} spell={} target={} code={}",
-                    maid.getUUID(), cooldownKey, describeEntity(target), code);
-
-            if (code.isConsideredSuccess()) {
-                data.setSpellCooldown(cooldownKey, Math.max(20, spell.getCooldown(maid)), maid);
-                SpringBloomReturnBauble.onSpellCast(maid, "mna", cooldownKey, target);
+            if (applyCurrentSpell(maid, data)) {
+                setCooldown(maid, data, spell);
+                SpringBloomReturnBauble.onSpellCast(maid, "mna", cooldownKey, data.getTarget());
             }
         } catch (Exception e) {
             LOGGER.warn("[MaidSpell/MNA] Failed to cast spell maid={} spell={}", maid.getUUID(), cooldownKey, e);
         } finally {
             data.resetCastingState();
+        }
+    }
+
+    private boolean applyCurrentSpell(EntityMaid maid, MaidManaAndArtificeSpellData data) {
+        ISpellDefinition spell = data.getCurrentSpell();
+        ItemStack container = data.getCurrentSpellBook();
+        LivingEntity target = data.getTarget();
+        String cooldownKey = data.getCurrentSpellId();
+
+        if (target == null || !target.isAlive()) {
+            LOGGER.debug("[MaidSpell/MNA] Target missing before cast maid={} spell={}", maid.getUUID(), cooldownKey);
+            return false;
+        }
+
+        BehaviorUtils.lookAtEntity(maid, target);
+        Vec3 forward = computeForwardToTarget(maid, target);
+        SpellSource source = new SpellSource(maid, InteractionHand.MAIN_HAND, maid.getEyePosition(), forward);
+        SpellTarget spellTarget = new SpellTarget(target);
+        SpellContext context = new SpellContext(maid.level(), spell, maid);
+        SpellCastingResult result = SpellCaster.Affect(container, spell, maid.level(), source, spellTarget, context);
+        SpellCastingResultCode code = result == null ? SpellCastingResultCode.EXCEPTION_THROWN : result.getCode();
+
+        LOGGER.debug("[MaidSpell/MNA] Cast result maid={} spell={} target={} code={} channeled={}",
+                maid.getUUID(), cooldownKey, describeEntity(target), code, spell.isChanneled());
+
+        return code.isConsideredSuccess();
+    }
+
+    private void setCooldown(EntityMaid maid, MaidManaAndArtificeSpellData data, ISpellDefinition spell) {
+        if (data != null && spell != null) {
+            data.setSpellCooldown(data.getCurrentSpellId(), Math.max(20, spell.getCooldown(maid)), maid);
+        }
+    }
+
+    private int getChannelDurationTicks(ISpellDefinition spell) {
+        if (spell == null || !spell.isChanneled()) {
+            return 0;
+        }
+        try {
+            IModifiedSpellPart<Shape> shape = spell.getShape();
+            if (shape == null || shape.getPart() == null) {
+                return 100;
+            }
+            int maxChannelTime = shape.getPart().maxChannelTime(shape);
+            if (maxChannelTime > 0) {
+                return Math.min(maxChannelTime, 200);
+            }
+            float durationSeconds = shape.getContainedAttributes().contains(Attribute.DURATION)
+                    ? shape.getValue(Attribute.DURATION) : 5.0F;
+            return Math.min(Math.max(20, Math.round(durationSeconds * 20.0F)), 200);
+        } catch (Exception e) {
+            LOGGER.debug("[MaidSpell/MNA] Failed to determine channel duration spell={}", describeSpell(spell), e);
+            return 100;
         }
     }
 
@@ -316,6 +385,6 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
         return SpellProviderUtils.orientAndGetDirection(maid, target);
     }
 
-    private record SpellSelection(ISpellDefinition spell, ItemStack container, String cooldownKey) {
+    private record SpellSelection(ISpellDefinition spell, ItemStack container, ItemStack spellStack, String cooldownKey) {
     }
 }

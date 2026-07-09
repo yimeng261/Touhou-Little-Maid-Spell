@@ -17,8 +17,11 @@ public class MaidManaAndArtificeSpellData extends IMaidSpellData {
     private static final int CASTING_DURATION = 10;
 
     private int castingTicks = 0;
+    private int channelDurationTicks = 0;
+    private boolean currentSpellApplied = false;
     private ISpellDefinition currentSpell = null;
     private ItemStack currentSpellBook = ItemStack.EMPTY;
+    private ItemStack currentSpellStack = ItemStack.EMPTY;
 
     private MaidManaAndArtificeSpellData() {
     }
@@ -59,9 +62,10 @@ public class MaidManaAndArtificeSpellData extends IMaidSpellData {
         return currentSpell;
     }
 
-    public void setCurrentSpell(ISpellDefinition spell, ItemStack spellBook, String spellId) {
+    public void setCurrentSpell(ISpellDefinition spell, ItemStack spellBook, ItemStack spellStack, String spellId) {
         this.currentSpell = spell;
         this.currentSpellBook = spellBook == null ? ItemStack.EMPTY : spellBook;
+        this.currentSpellStack = spellStack == null ? ItemStack.EMPTY : spellStack;
         setCurrentSpellId(spellId);
     }
 
@@ -69,16 +73,52 @@ public class MaidManaAndArtificeSpellData extends IMaidSpellData {
         return currentSpellBook;
     }
 
+    public ItemStack getCurrentSpellStack() {
+        return currentSpellStack;
+    }
+
     public boolean isCastingComplete() {
         return castingTicks >= CASTING_DURATION;
+    }
+
+    public int getCastingDuration() {
+        return CASTING_DURATION;
+    }
+
+    public int getChannelDurationTicks() {
+        return channelDurationTicks;
+    }
+
+    public void setChannelDurationTicks(int channelDurationTicks) {
+        this.channelDurationTicks = Math.max(0, channelDurationTicks);
+    }
+
+    public boolean isCurrentSpellApplied() {
+        return currentSpellApplied;
+    }
+
+    public void setCurrentSpellApplied(boolean currentSpellApplied) {
+        this.currentSpellApplied = currentSpellApplied;
+    }
+
+    public boolean isChannelComplete() {
+        return currentSpellApplied && castingTicks >= CASTING_DURATION + channelDurationTicks;
+    }
+
+    public boolean isManagingChannel() {
+        return isCasting() && currentSpell != null && currentSpell.isChanneled()
+                && currentSpellApplied && !isChannelComplete();
     }
 
     @Override
     public void resetCastingState() {
         super.resetCastingState();
         castingTicks = 0;
+        channelDurationTicks = 0;
+        currentSpellApplied = false;
         currentSpell = null;
         currentSpellBook = ItemStack.EMPTY;
+        currentSpellStack = ItemStack.EMPTY;
         setCurrentSpellId(null);
     }
 }
