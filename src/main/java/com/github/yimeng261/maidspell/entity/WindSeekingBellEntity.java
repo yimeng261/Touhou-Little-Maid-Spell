@@ -30,11 +30,17 @@ import java.util.UUID;
  * 寻风之铃实体 - 模仿末影之眼的飞行轨迹，但使用樱花粒子和自定义音效
  */
 public class WindSeekingBellEntity extends Entity {
-    private static final EntityDataAccessor<ItemStack> DATA_ITEM_STACK = 
+    private static final EntityDataAccessor<ItemStack> DATA_ITEM_STACK =
         SynchedEntityData.defineId(WindSeekingBellEntity.class, EntityDataSerializers.ITEM_STACK);
-    
+    private static final EntityDataAccessor<Float> DATA_TARGET_X =
+        SynchedEntityData.defineId(WindSeekingBellEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_TARGET_Y =
+        SynchedEntityData.defineId(WindSeekingBellEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_TARGET_Z =
+        SynchedEntityData.defineId(WindSeekingBellEntity.class, EntityDataSerializers.FLOAT);
+
     private double targetX;
-    private double targetY; 
+    private double targetY;
     private double targetZ;
     private int life;
     private boolean surviveAfterDeath;
@@ -54,7 +60,7 @@ public class WindSeekingBellEntity extends Entity {
         this(MaidSpellEntities.WIND_SEEKING_BELL.get(), level);
         this.player = player;
         this.playerUUID = player.getUUID();
-        this.setPos(player.getX(), player.getY(), player.getZ());
+        this.setPos(player.getX(), player.getY(0.5), player.getZ());
     }
 
     public void setItem(ItemStack itemStack) {
@@ -89,6 +95,9 @@ public class WindSeekingBellEntity extends Entity {
     @Override
     protected void defineSynchedData() {
         this.getEntityData().define(DATA_ITEM_STACK, ItemStack.EMPTY);
+        this.getEntityData().define(DATA_TARGET_X, 0.0F);
+        this.getEntityData().define(DATA_TARGET_Y, 0.0F);
+        this.getEntityData().define(DATA_TARGET_Z, 0.0F);
     }
 
     /**
@@ -107,7 +116,7 @@ public class WindSeekingBellEntity extends Entity {
         if (d4 > 12.0D) {
             this.targetX = this.getX() + d2 / d4 * 12.0D;
             this.targetZ = this.getZ() + d3 / d4 * 12.0D;
-            this.targetY = this.getY() + 20.0D;
+            this.targetY = this.getY() + 8.0D;
         } else {
             this.targetX = d0;
             this.targetY = i;
@@ -116,100 +125,94 @@ public class WindSeekingBellEntity extends Entity {
 
         this.life = 0;
         this.surviveAfterDeath = true;
+        this.syncTargetData();
+    }
+
+    @Override
+    public void lerpMotion(double x, double y, double z) {
+        this.setDeltaMovement(x, y, z);
+        if (this.xRotO == 0.0F && this.yRotO == 0.0F) {
+            double horizontalDistance = Math.sqrt(x * x + z * z);
+            this.setYRot((float) (Mth.atan2(x, z) * 180.0F / (float) Math.PI));
+            this.setXRot((float) (Mth.atan2(y, horizontalDistance) * 180.0F / (float) Math.PI));
+            this.yRotO = this.getYRot();
+            this.xRotO = this.getXRot();
+        }
     }
 
     @Override
     public void tick() {
         super.tick();
-        
-        if (!this.level().isClientSide) {
-            // 服务器端逻辑
-            double dx = this.targetX - this.getX();
-            double dz = this.targetZ - this.getZ();
-            double distance = Math.sqrt(dx * dx + dz * dz);
-            
-            if (distance < 1.0) {
-                // 到达目标，播放碎裂音效并消失
-                this.playBreakSound();
-                this.discard();
 
-                return;
-            }
+        Vec3 vec3 = this.getDeltaMovement();
+        double nextX = this.getX() + vec3.x;
+        double nextY = this.getY() + vec3.y;
+        double nextZ = this.getZ() + vec3.z;
+        double horizontalDistance = vec3.horizontalDistance();
+        this.setXRot(lerpRotation(this.xRotO, (float) (Mth.atan2(vec3.y, horizontalDistance) * 180.0F / (float) Math.PI)));
+        this.setYRot(lerpRotation(this.yRotO, (float) (Mth.atan2(vec3.x, vec3.z) * 180.0F / (float) Math.PI)));
 
-
-            Vec3 vec3 = this.getDeltaMovement();
-            double d0 = this.getX() + vec3.x;
-            double d2 = this.getZ() + vec3.z;
-            double d3 = vec3.horizontalDistance();
-            this.setXRot(lerpRotation(this.xRotO, (float)(Mth.atan2(vec3.y, d3) * (double)(180F / (float)Math.PI))));
-            this.setYRot(lerpRotation(this.yRotO, (float)(Mth.atan2(vec3.x, vec3.z) * (double)(180F / (float)Math.PI))));
-            double d4 = this.targetX - d0;
-            double d5 = this.targetZ - d2;
-            float f = (float)Math.sqrt(d4 * d4 + d5 * d5);
-            float f1 = (float)Mth.atan2(d5, d4);
-            double d6 = Mth.lerp(0.0025D, d3, f);
-            double d7 = vec3.y;
-            if (f < 1.0F) {
-                d6 *= 0.8D;
-                d7 *= 0.8D;
-            }
-
-            int j = this.getY() < this.targetY ? 1 : -1;
-            vec3 = new Vec3(Math.cos(f1) * d6, d7 + ((double)j - d7) * (double)0.015F, Math.sin(f1) * d6);
-            this.setDeltaMovement(vec3);
-            
-            HitResult hitResult = ProjectileUtil.getHitResultOnMoveVector(this, this::canHitEntity);
-            this.life++;
-            if (this.life > 80 || hitResult.getType() != HitResult.Type.MISS) {
-                this.playBreakSound();
-                this.discard();
-            }
-        } else {
-            // 客户端粒子效果
-            this.spawnCherryParticles();
+        double syncTargetX = this.getEntityData().get(DATA_TARGET_X);
+        double syncTargetY = this.getEntityData().get(DATA_TARGET_Y);
+        double syncTargetZ = this.getEntityData().get(DATA_TARGET_Z);
+        double dx = syncTargetX - nextX;
+        double dz = syncTargetZ - nextZ;
+        float targetDistance = (float) Math.sqrt(dx * dx + dz * dz);
+        float targetAngle = (float) Mth.atan2(dz, dx);
+        double speed = Mth.lerp(0.0025D, horizontalDistance, targetDistance);
+        double ySpeed = vec3.y;
+        if (targetDistance < 1.0F) {
+            speed *= 0.8D;
+            ySpeed *= 0.8D;
         }
-        
-        this.move(net.minecraft.world.entity.MoverType.SELF, this.getDeltaMovement());
-    }
 
-    private static float lerpRotation(float p_37274_, float p_37275_) {
-        while(p_37275_ - p_37274_ < -180.0F) {
-           p_37274_ -= 360.0F;
-        }
-  
-        while(p_37275_ - p_37274_ >= 180.0F) {
-           p_37274_ += 360.0F;
-        }
-  
-        return Mth.lerp(0.2F, p_37274_, p_37275_);
-     }
+        int yDirection = this.getY() < syncTargetY ? 1 : -1;
+        vec3 = new Vec3(Math.cos(targetAngle) * speed,
+                ySpeed + ((double) yDirection - ySpeed) * 0.015F,
+                Math.sin(targetAngle) * speed);
+        this.setDeltaMovement(vec3);
 
-    /**
-     * 生成樱花粒子效果
-     */
-    private void spawnCherryParticles() {
         if (this.level().isClientSide) {
-            // 在实体周围生成樱花花瓣粒子
             for (int i = 0; i < 4; i++) {
-                double offsetX = (this.random.nextDouble() - 0.5) * 0.3;
-                double offsetY = (this.random.nextDouble() - 0.5) * 0.3;
-                double offsetZ = (this.random.nextDouble() - 0.5) * 0.3;
-                
                 this.level().addParticle(
-                    ParticleTypes.CHERRY_LEAVES,
-                    this.getX() + offsetX,
-                    this.getY() + offsetY,
-                    this.getZ() + offsetZ,
-                    0, -0.1, 0
+                        ParticleTypes.CHERRY_LEAVES,
+                        nextX - vec3.x * 0.25 + this.random.nextDouble() * 0.6 - 0.3,
+                        nextY - vec3.y * 0.25 - 0.5,
+                        nextZ - vec3.z * 0.25 + this.random.nextDouble() * 0.6 - 0.3,
+                        vec3.x, vec3.y, vec3.z
                 );
             }
         }
+
+        if (!this.level().isClientSide) {
+            this.setPos(nextX, nextY, nextZ);
+            HitResult hitResult = ProjectileUtil.getHitResultOnMoveVector(this, this::canHitEntity);
+            this.life++;
+            if (this.life > 80 || hitResult.getType() != HitResult.Type.MISS) {
+                this.onBreak();
+                this.discard();
+            }
+        } else {
+            this.setPosRaw(nextX, nextY, nextZ);
+        }
+    }
+
+    private static float lerpRotation(float current, float target) {
+        while (target - current < -180.0F) {
+            current -= 360.0F;
+        }
+
+        while (target - current >= 180.0F) {
+            current += 360.0F;
+        }
+
+        return Mth.lerp(0.2F, current, target);
     }
 
     /**
-     * 播放碎裂音效
+     * 铃到达终点或碰撞时的处理：音效、玩家效果、掉落物品。
      */
-    private void playBreakSound() {
+    private void onBreak() {
         this.level().playSound(
             null,
             this.getX(),
@@ -232,11 +235,16 @@ public class WindSeekingBellEntity extends Entity {
 
         // 掉落物品（统一处理，不再区分玩家是否存在）
         if (this.surviveAfterDeath && (currentPlayer == null || !currentPlayer.isCreative())) {
-            ItemStack item = this.getItem();
-            if (!item.isEmpty()) {
-                ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
-                this.level().addFreshEntity(itemEntity);
-            }
+            this.dropItem();
+        }
+    }
+
+    private void dropItem() {
+        ItemStack item = this.getItem();
+        if (!item.isEmpty()) {
+            ItemEntity itemEntity = new ItemEntity(this.level(), this.getX(), this.getY(), this.getZ(), item);
+            itemEntity.setGlowingTag(true);
+            this.level().addFreshEntity(itemEntity);
         }
     }
 
@@ -286,12 +294,19 @@ public class WindSeekingBellEntity extends Entity {
         this.aY = compound.getDouble("AY");
         this.aZ = compound.getDouble("AZ");
         this.life = compound.getInt("Life");
-        this.surviveAfterDeath = compound.getBoolean("SurviveAfterDeath");
+        this.surviveAfterDeath = !compound.contains("SurviveAfterDeath") || compound.getBoolean("SurviveAfterDeath");
+        this.syncTargetData();
         
         // 加载玩家UUID
         if (compound.hasUUID("PlayerUUID")) {
             this.playerUUID = compound.getUUID("PlayerUUID");
         }
+    }
+
+    private void syncTargetData() {
+        this.getEntityData().set(DATA_TARGET_X, (float) this.targetX);
+        this.getEntityData().set(DATA_TARGET_Y, (float) this.targetY);
+        this.getEntityData().set(DATA_TARGET_Z, (float) this.targetZ);
     }
 
     @Override

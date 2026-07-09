@@ -1,0 +1,39 @@
+{
+  "forge:conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
+  "type": "touhou_little_maid:altar_crafting",
+  "output": {
+    "type": "minecraft:item",
+    "nbt": {
+      "Item": {
+        "id": "touhou_little_maid_spell:arc_cross",
+        "Count": 1
+      }
+    }
+  },
+  "power": 0.6,
+  "ingredients": [
+    {
+      "item": "minecraft:lightning_rod"
+    },
+    {
+      "item": "minecraft:nether_star"
+    },
+    {
+      "item": "irons_spellbooks:holy_rune"
+    },
+    {
+      "item": "irons_spellbooks:protection_rune"
+    },
+    {
+      "item": "irons_spellbooks:lightning_bottle"
+    },
+    {
+      "tag": "forge:gems/diamond"
+    }
+  ]
+}

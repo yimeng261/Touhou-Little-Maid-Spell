@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
@@ -24,30 +25,36 @@ public class WindSeekingBellRenderer extends EntityRenderer<WindSeekingBellEntit
     }
 
     @Override
-    public void render(WindSeekingBellEntity entity, float entityYaw, float partialTicks, 
+    public void render(WindSeekingBellEntity entity, float entityYaw, float partialTicks,
                       PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
-        poseStack.pushPose();
-        
-        // 旋转效果，让铃铛在飞行时旋转
-        float rotation = (entity.tickCount + partialTicks) * 4.0F;
-        poseStack.mulPose(Axis.YP.rotationDegrees(rotation));
-        poseStack.mulPose(Axis.XP.rotationDegrees(rotation * 0.5F));
-        
-        // 渲染物品（寻风之铃）
-        ItemStack itemStack = entity.getItem();
-        if (!itemStack.isEmpty()) {
-            this.itemRenderer.renderStatic(
-                itemStack, 
-                ItemDisplayContext.GROUND, 
-                packedLight, 
-                OverlayTexture.NO_OVERLAY, 
-                poseStack, 
-                buffer, 
-                entity.level(), 
-                entity.getId()
-            );
+        Entity cameraEntity = this.entityRenderDispatcher.camera.getEntity();
+        if (entity.tickCount < 2 && cameraEntity != null && cameraEntity.distanceToSqr(entity) < 12.25) {
+            return;
         }
-        
+
+        ItemStack itemStack = entity.getItem();
+        if (itemStack.isEmpty()) {
+            super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
+            return;
+        }
+
+        poseStack.pushPose();
+
+        poseStack.mulPose(this.entityRenderDispatcher.cameraOrientation());
+        float spin = (entity.tickCount + partialTicks) * 4.0F;
+        poseStack.mulPose(Axis.ZP.rotationDegrees(spin));
+
+        this.itemRenderer.renderStatic(
+            itemStack,
+            ItemDisplayContext.GROUND,
+            packedLight,
+            OverlayTexture.NO_OVERLAY,
+            poseStack,
+            buffer,
+            entity.level(),
+            entity.getId()
+        );
+
         poseStack.popPose();
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
     }

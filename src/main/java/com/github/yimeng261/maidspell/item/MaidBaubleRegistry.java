@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.api.ILittleMaid;
 import com.github.tartaricacid.touhoulittlemaid.api.LittleMaidExtension;
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCrossBauble;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeartBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.SpellWhiteListBauble;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChainBauble;
@@ -84,6 +85,10 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         if (IronsSpellbooksCompat.isLoaded() && MaidSpellItems.SPELL_ENHANCEMENT_CORE != null) {
             manager.bind(MaidSpellItems.SPELL_ENHANCEMENT_CORE, new SpellEnhancementBauble());
+        }
+
+        if (IronsSpellbooksCompat.isLoaded() && MaidSpellItems.ARC_CROSS != null) {
+            manager.bind(MaidSpellItems.ARC_CROSS, new ArcCrossBauble());
         }
 
         if (MaidSpellItems.BLEEDING_HEART != null) {
