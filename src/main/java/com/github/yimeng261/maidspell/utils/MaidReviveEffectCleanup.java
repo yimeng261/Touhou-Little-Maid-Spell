@@ -14,6 +14,9 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class MaidReviveEffectCleanup {
+    private static final double MIN_VALID_MOVEMENT_SPEED_BASE = 1.0E-4D;
+    private static final double DEFAULT_MOVEMENT_SPEED_BASE = Attributes.MOVEMENT_SPEED.getDefaultValue();
+
     private static final UUID GOETY_CRIPPLED_MOVEMENT_SPEED_UUID = goetyEffectUuid("crippled.movement_speed");
     private static final UUID GOETY_CRIPPLED_ATTACK_SPEED_UUID = goetyEffectUuid("crippled.attack_speed");
     private static final UUID GOETY_CRIPPLED_ATTACK_DAMAGE_UUID = goetyEffectUuid("crippled.attack_damage");
@@ -75,8 +78,19 @@ public final class MaidReviveEffectCleanup {
             maid.setNoAi(false);
         }
 
+        restoreMovementSpeedBaseIfCorrupted(maid);
+
         maid.getNavigation().stop();
         maid.setSpeed((float) maid.getAttributeValue(Attributes.MOVEMENT_SPEED));
+    }
+
+    private static void restoreMovementSpeedBaseIfCorrupted(EntityMaid maid) {
+        AttributeInstance instance = maid.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (instance == null || instance.getBaseValue() >= MIN_VALID_MOVEMENT_SPEED_BASE) {
+            return;
+        }
+
+        instance.setBaseValue(DEFAULT_MOVEMENT_SPEED_BASE);
     }
 
     private static void removeEffectsPresentBeforeRevive(
