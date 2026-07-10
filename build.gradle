@@ -68,6 +68,14 @@ sourceSets.main.resources {
     exclude '.cache/**'
 }
 
+sourceSets {
+    transformer {
+        java.srcDirs = ['src/transformer/java']
+        resources.srcDirs = ['src/transformer/resources']
+        compileClasspath += sourceSets.main.compileClasspath
+    }
+}
+
 repositories {
     maven {
         url "https://cursemaven.com"
@@ -185,15 +193,48 @@ tasks.named('processResources', ProcessResources).configure {
 }
 
 tasks.named('jar', Jar).configure {
-    duplicatesStrategy = DuplicatesStrategy.WARN
+    archiveClassifier = 'mod'
 
     manifest {
         attributes([
                 "Implementation-Title"  : project.name,
-                "Implementation-Version": "${version}"
+                "Implementation-Version": "${version}",
+                "MixinConfigs"          : "maidspell.mixins.json"
         ])
     }
     finalizedBy 'reobfJar'
+}
+
+def bundledModJar = tasks.named('jar').flatMap { it.archiveFile }
+
+tasks.register('bundleJar', Jar) {
+    dependsOn tasks.named('reobfJar'), tasks.named('transformerClasses')
+    archiveClassifier = ''
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    from sourceSets.transformer.output
+    from(bundledModJar) {
+        into 'META-INF/maidspell'
+        rename { 'maidspell-mod.jar' }
+    }
+    manifest {
+        attributes([
+                "Implementation-Title": "${project.name} bootstrap",
+                "Implementation-Version": "${version}",
+                "Automatic-Module-Name": "touhou_little_maid_spell.bootstrap",
+                "FMLModType": "LIBRARY"
+        ])
+    }
+}
+
+def maidSpellEarlyServiceRuntime = files(tasks.named('bundleJar').flatMap { it.archiveFile })
+maidSpellEarlyServiceRuntime.builtBy tasks.named('bundleJar')
+
+dependencies {
+    runtimeOnly maidSpellEarlyServiceRuntime
+}
+
+tasks.named('assemble') {
+    dependsOn tasks.named('bundleJar')
 }
 
 tasks.configureEach {
@@ -212,7 +253,6 @@ tasks.withType(JavaCompile).configureEach {
 
 mixin {
     add sourceSets.main, "maidspell.refmap.json"
-    config "maidspell.mixins.json"
 
     // 确保 refmap 文件被正确处理
     dumpTargetOnFailure true
