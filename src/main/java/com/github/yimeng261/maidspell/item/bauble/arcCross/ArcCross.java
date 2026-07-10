@@ -43,9 +43,7 @@ public class ArcCross extends Item {
                 ),
                 List.of(
                         Component.translatable("item.maidspell.arc_cross.desc3")
-                                .withStyle(ChatFormatting.GOLD),
-                        Component.translatable("item.maidspell.arc_cross.desc4")
-                                .withStyle(ChatFormatting.LIGHT_PURPLE)
+                                .withStyle(ChatFormatting.GOLD)
                 ));
     }
 }
