@@ -22,7 +22,6 @@ import net.minecraft.server.level.progress.ChunkProgressListener;
 import net.minecraft.util.thread.ReentrantBlockableEventLoop;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.storage.LevelStorageSource;
@@ -113,7 +112,7 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
             WorldData worldData = server.getWorldData();
             RetreatLevelData retreatLevelData = new RetreatLevelData(worldData, overworldLevelData);
             
-            long seed = BiomeManager.obfuscateSeed((long)(0x66ccff*Math.random()));
+            long seed = maidspell$stableDimensionSeed(overworld.getSeed(), key);
             
             // 创建一个简单的ChunkProgressListener
             ChunkProgressListener progressListener = new ChunkProgressListener() {
@@ -189,6 +188,20 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
             MaidSpellMod.LOGGER.error("Failed to create dimension: {}", key.location(), e);
             return false;
         }
+    }
+
+    private static long maidspell$stableDimensionSeed(long worldSeed, ResourceKey<Level> dimensionKey) {
+        long dimensionHash = 0xcbf29ce484222325L;
+        String dimensionId = dimensionKey.location().toString();
+        for (int i = 0; i < dimensionId.length(); i++) {
+            dimensionHash ^= dimensionId.charAt(i);
+            dimensionHash *= 0x100000001b3L;
+        }
+
+        long mixed = worldSeed ^ dimensionHash;
+        mixed = (mixed ^ (mixed >>> 30)) * 0xbf58476d1ce4e5b9L;
+        mixed = (mixed ^ (mixed >>> 27)) * 0x94d049bb133111ebL;
+        return mixed ^ (mixed >>> 31);
     }
     
     @Override

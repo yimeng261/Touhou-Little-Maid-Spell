@@ -14,7 +14,9 @@ import net.minecraft.world.level.storage.DimensionDataStorage;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -270,20 +272,40 @@ public class RetreatDimensionData extends SavedData {
     /**
      * 清理长时间未访问的维度记录（可选功能）
      */
-    public void cleanupOldDimensions(long maxInactiveTime) {
-        long currentTime = System.currentTimeMillis();
-        playerDimensions.entrySet().removeIf(entry -> {
-            DimensionInfo info = entry.getValue();
-            boolean shouldRemove = (currentTime - info.lastAccessTime) > maxInactiveTime;
-            if (shouldRemove) {
-                MaidSpellMod.LOGGER.info("Cleaned up inactive retreat dimension for player: " + entry.getKey());
-            }
-            return shouldRemove;
-        });
+    public int cleanupOldDimensions(long maxInactiveTime, Set<UUID> protectedPlayers) {
+        if (maxInactiveTime <= 0L) {
+            return 0;
+        }
 
-        if (!playerDimensions.isEmpty()) {
+        long currentTime = System.currentTimeMillis();
+        Set<UUID> protectedIds = protectedPlayers == null ? Set.of() : protectedPlayers;
+        int removedCount = 0;
+        Iterator<Map.Entry<UUID, DimensionInfo>> iterator = playerDimensions.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, DimensionInfo> entry = iterator.next();
+            DimensionInfo info = entry.getValue();
+            if (protectedIds.contains(entry.getKey()) || !isEmptyMetadata(info)
+                    || info.lastAccessTime <= 0L || info.lastAccessTime > currentTime) {
+                continue;
+            }
+            if (currentTime - info.lastAccessTime > maxInactiveTime) {
+                iterator.remove();
+                removedCount++;
+                MaidSpellMod.LOGGER.info("Cleaned up inactive empty retreat metadata for player: {}", entry.getKey());
+            }
+        }
+        if (removedCount > 0) {
             setDirty();
         }
+        return removedCount;
+    }
+
+    private static boolean isEmptyMetadata(DimensionInfo info) {
+        return info.structureQuota == 0
+            && info.foundStructurePos == null
+            && !info.structureGenerated
+            && info.pendingRestoreDimension == null
+            && info.pendingRestorePos == null;
     }
 
     /**

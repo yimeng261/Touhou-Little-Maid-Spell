@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.dimension;
 
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.utils.PortableTimerMath;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -9,6 +10,7 @@ import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -59,9 +61,9 @@ public class RetreatManager {
     // ========== 结构缓存 ==========
 
     /**
-     * 玩家 UUID → 结构位置缓存
+     * 服务器实例 + 维度 + 玩家 UUID → 结构位置缓存
      */
-    private static final Map<UUID, CacheEntry> structureCache = new ConcurrentHashMap<>();
+    private static final Map<StructureCacheKey, CacheEntry> structureCache = new ConcurrentHashMap<>();
 
     /**
      * 强制加载的结构区块：维度 ResourceKey → 区块位置集合
@@ -85,19 +87,20 @@ public class RetreatManager {
     /**
      * 负缓存 TTL：5 分钟
      */
-    private static final long NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000;
+    private static final long NEGATIVE_CACHE_TTL_TICKS = 5 * 60 * 20L;
 
     private static class CacheEntry {
         final BlockPos position; // null = 负缓存
         final long timestamp;
 
-        CacheEntry(BlockPos position) {
+        CacheEntry(BlockPos position, long timestamp) {
             this.position = position;
-            this.timestamp = System.currentTimeMillis();
+            this.timestamp = timestamp;
         }
 
-        boolean isExpiredNegative() {
-            return position == null && (System.currentTimeMillis() - timestamp) > NEGATIVE_CACHE_TTL_MS;
+        boolean isExpiredNegative(long currentTime) {
+            return position == null
+                    && PortableTimerMath.saturatingSubtract(currentTime, timestamp) >= NEGATIVE_CACHE_TTL_TICKS;
         }
     }
 
@@ -133,15 +136,79 @@ public class RetreatManager {
     }
 
     /**
-     * 服务器关闭时调用
+     * 无可用服务器实例时的静态兜底清理。
      */
     public static void shutdown() {
-        // 取消所有进行中的搜索
-        ongoingSearches.values().forEach(StructureSearchWorker::cancel);
-        // 清理结构去重记录
-        HiddenRetreatStructure.cleanupProcessedStructures("");
+        cancelRuntimeWork();
+        clearAll();
+        MaidSpellMod.LOGGER.info("RetreatManager static state cleared");
+    }
+
+    /**
+     * 服务器关闭时调用。必须先归还本管理器创建的 vanilla 强加载，再清理静态状态。
+     */
+    public static void shutdown(MinecraftServer server) {
+        if (server == null) {
+            shutdown();
+            return;
+        }
+        if (!server.isSameThread()) {
+            server.execute(() -> shutdown(server));
+            return;
+        }
+
+        cancelRuntimeWork();
+        releaseAllForcedChunks(server);
         clearAll();
         MaidSpellMod.LOGGER.info("RetreatManager shutdown");
+    }
+
+    private static void cancelRuntimeWork() {
+        ongoingSearches.values().forEach(StructureSearchWorker::cancel);
+        HiddenRetreatStructure.cleanupProcessedStructures("");
+    }
+
+    public static void releaseAllForcedChunks(MinecraftServer server) {
+        if (server == null) {
+            return;
+        }
+        if (!server.isSameThread()) {
+            server.execute(() -> releaseAllForcedChunks(server));
+            return;
+        }
+
+        int released = 0;
+        for (Map.Entry<ResourceKey<Level>, Set<ChunkPos>> entry : forceLoadedChunks.entrySet()) {
+            ResourceKey<Level> dimensionKey = entry.getKey();
+            try {
+                ServerLevel level = server.getLevel(dimensionKey);
+                if (level == null) {
+                    ServerLevel registeredLevel = dimensionRegistry.get(dimensionKey);
+                    if (registeredLevel != null && registeredLevel.getServer() == server) {
+                        level = registeredLevel;
+                    }
+                }
+                if (level == null) {
+                    MaidSpellMod.LOGGER.warn("无法在停服时释放归隐之地强加载区块，维度不存在: {}",
+                            dimensionKey.location());
+                    continue;
+                }
+
+                for (ChunkPos chunkPos : entry.getValue()) {
+                    try {
+                        level.setChunkForced(chunkPos.x, chunkPos.z, false);
+                        released++;
+                    } catch (Exception e) {
+                        MaidSpellMod.LOGGER.error("释放归隐之地强加载区块失败: dimension={}, chunk={}",
+                                dimensionKey.location(), chunkPos, e);
+                    }
+                }
+            } catch (Exception e) {
+                MaidSpellMod.LOGGER.error("释放归隐之地维度强加载状态失败: {}", dimensionKey.location(), e);
+            }
+        }
+        forceLoadedChunks.clear();
+        MaidSpellMod.LOGGER.info("停服时释放了 {} 个归隐之地强加载区块", released);
     }
 
     private static void clearAll() {
@@ -169,12 +236,8 @@ public class RetreatManager {
         generatedDimensions.remove(key);
         pendingGenerations.remove(key);
 
-        // 清理该维度对应玩家的结构缓存（通过 playerRetreats 反查 UUID）
-        playerRetreats.forEach((uuid, dimLevel) -> {
-            if (dimLevel.dimension().equals(key)) {
-                structureCache.remove(uuid);
-            }
-        });
+        structureCache.keySet().removeIf(cacheKey -> cacheKey.dimension().equals(key));
+        playerRetreats.entrySet().removeIf(entry -> entry.getValue().dimension().equals(key));
 
         // 清理强制加载的区块
         Set<ChunkPos> forcedChunks = forceLoadedChunks.remove(key);
@@ -365,13 +428,14 @@ public class RetreatManager {
 
     // ========== 结构缓存 API ==========
 
-    public static CacheResult checkCache(UUID playerUUID) {
-        CacheEntry entry = structureCache.get(playerUUID);
+    public static CacheResult checkCache(ServerLevel level, UUID playerUUID) {
+        StructureCacheKey cacheKey = new StructureCacheKey(level.getServer(), level.dimension(), playerUUID);
+        CacheEntry entry = structureCache.get(cacheKey);
         if (entry == null) {
             return CacheResult.NO_CACHE;
         }
-        if (entry.isExpiredNegative()) {
-            structureCache.remove(playerUUID);
+        if (entry.isExpiredNegative(level.getServer().overworld().getGameTime())) {
+            structureCache.remove(cacheKey, entry);
             return CacheResult.NO_CACHE;
         }
         if (entry.position != null) {
@@ -380,8 +444,12 @@ public class RetreatManager {
         return CacheResult.NEGATIVE;
     }
 
-    public static void updateCache(UUID playerUUID, @Nullable BlockPos pos) {
-        structureCache.put(playerUUID, new CacheEntry(pos));
+    public static void updateCache(ServerLevel level, UUID playerUUID, @Nullable BlockPos pos) {
+        StructureCacheKey cacheKey = new StructureCacheKey(level.getServer(), level.dimension(), playerUUID);
+        structureCache.put(cacheKey, new CacheEntry(pos, level.getServer().overworld().getGameTime()));
+    }
+
+    private record StructureCacheKey(MinecraftServer server, ResourceKey<Level> dimension, UUID playerUUID) {
     }
 
     /**
