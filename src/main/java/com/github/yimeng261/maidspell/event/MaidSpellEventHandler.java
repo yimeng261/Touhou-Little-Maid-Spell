@@ -28,6 +28,7 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.spell.providers.PsiProvider;
 import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
+import com.github.yimeng261.maidspell.utils.MaidReviveEffectCleanup;
 import com.mojang.logging.LogUtils;
 import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.ChatFormatting;
@@ -54,6 +55,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.bus.api.EventPriority;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -573,13 +575,23 @@ public class MaidSpellEventHandler {
                 }
             });
 
-            // 如果事件未被取消，则清理女仆的法术数据
-            if (!event.isCanceled()) {
-                cleanupMaidSpellData(maid);
-                // 从全局女仆列表中移除，避免内存泄漏
-                Global.updateMaidInfo(maid,false);
-            }
         }
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+    public static void onMaidNormalDeathCleanup(LivingDeathEvent event) {
+        if (!(event.getEntity() instanceof EntityMaid maid)) {
+            return;
+        }
+        if (event.isCanceled()) {
+            MaidReviveEffectCleanup.cleanupAfterCanceledDeath(maid);
+            return;
+        }
+
+        cleanupMaidSpellData(maid);
+        AllianceManager.setMaidAlliance(maid, false);
+        MaidReviveEffectCleanup.cleanupBeforeNormalDeath(maid);
+        Global.updateMaidInfo(maid,false);
     }
 
 

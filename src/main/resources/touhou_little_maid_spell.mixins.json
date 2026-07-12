@@ -41,6 +41,7 @@
     "tlm.AbstractMaidContainerMixin",
     "tlm.AltarRecipeSerializerMixin",
     "tlm.CustomModelPackAccessor",
+    "tlm.EntityMaidBaubleReviveCleanupMixin",
     "tlm.EntityMaidAnchorCoreMixin",
     "tlm.EntityMaidFoxLeafMovementMixin",
     "tlm.EntityMaidGuiMovementMixin",
