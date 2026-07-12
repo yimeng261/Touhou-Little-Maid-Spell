@@ -3,30 +3,24 @@ package com.github.yimeng261.maidspell.item.bauble.soulBook;
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
-import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.mojang.logging.LogUtils;
+import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.common.Mod;
-import org.slf4j.Logger;
 import oshi.util.tuples.Pair;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 魂之书饰品实现
  * 提供伤害保护：当伤害超过女仆生命值20%时，将伤害降为20%
  * 同时实现伤害间隔检测：若两次伤害间隔不超过10tick则取消本次伤害
  */
-@Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class SoulBookBauble implements IMaidBauble {
-    public static final Logger LOGGER = LogUtils.getLogger();
-    
-    // 存储每个女仆上次受伤的时间（tick）
-    public static final Map<UUID, Integer> lastHurtTimeMap = new HashMap<>();
-    public static final Map<UUID, Integer> maidSoulBookCount = new HashMap<>();
+    private static final Map<UUID, Integer> lastHurtTimeMap = new ConcurrentHashMap<>();
 
     public static Pair<Boolean, Float> damageCalc(EntityMaid maid, float originalDamage) {
         UUID maidId = maid.getUUID();
@@ -38,20 +32,42 @@ public class SoulBookBauble implements IMaidBauble {
         return new Pair<>(timeDiff > Config.soulBookDamageIntervalThreshold, damageThreshold);
     }
 
-    @Override
-    public void onPutOn(EntityMaid maid, ItemStack baubleItem) {
-        UUID id = maid.getOwnerUUID();
-        int count = maidSoulBookCount.getOrDefault(id, 0);
-        maidSoulBookCount.put(id, ++count);
+    public static void recordHurt(EntityMaid maid) {
+        lastHurtTimeMap.put(maid.getUUID(), maid.tickCount);
+    }
+
+    public static boolean hasOwnerProtection(UUID ownerId) {
+        Map<UUID, EntityMaid> maids = Global.ownerMaidRegistry.get(ownerId);
+        if (maids == null) {
+            return false;
+        }
+
+        for (EntityMaid maid : maids.values()) {
+            if (maid != null
+                    && !maid.isRemoved()
+                    && maid.isAddedToWorld()
+                    && maid.isAlive()
+                    && ownerId.equals(maid.getOwnerUUID())
+                    && BaubleStateManager.hasBauble(maid, MaidSpellItems.SOUL_BOOK)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
     public void onTakeOff(EntityMaid maid, ItemStack baubleItem) {
-        UUID maidId = maid.getUUID();
+        if (!maid.level().isClientSide()) {
+            cleanupMaid(maid.getUUID());
+        }
+    }
+
+    public static void cleanupMaid(UUID maidId) {
         lastHurtTimeMap.remove(maidId);
-        UUID id = maid.getOwnerUUID();
-        int count = maidSoulBookCount.getOrDefault(id, 0);
-        maidSoulBookCount.put(id, Math.max(0, count - 1));
+    }
+
+    public static void clearSession() {
+        lastHurtTimeMap.clear();
     }
 }
 

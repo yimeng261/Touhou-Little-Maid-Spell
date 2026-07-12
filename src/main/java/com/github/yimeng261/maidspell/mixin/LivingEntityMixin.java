@@ -95,7 +95,7 @@ public abstract class LivingEntityMixin {
                 return;
             }
 
-            if(SoulBookBauble.maidSoulBookCount.getOrDefault(player.getUUID(), 0) == 0) {
+            if (!SoulBookBauble.hasOwnerProtection(player.getUUID())) {
                 return;
             }
 

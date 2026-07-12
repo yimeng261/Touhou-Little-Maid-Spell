@@ -259,7 +259,10 @@ public class Global {
         }else{
             activeMaids.remove(maid);
             if(ownerUUID != null){
-                getOrCreatePlayerMaidMap(ownerUUID).remove(maid.getUUID());
+                ownerMaidRegistry.computeIfPresent(ownerUUID, (ignored, maids) -> {
+                    maids.remove(maid.getUUID());
+                    return maids.isEmpty() ? null : maids;
+                });
             }
         }
     }

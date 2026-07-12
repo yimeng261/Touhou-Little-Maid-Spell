@@ -44,7 +44,7 @@ public final class MaidDamageProcessor {
             return;
         }
         dataItem.setAmount(result.getB());
-        SoulBookBauble.lastHurtTimeMap.put(maid.getUUID(), maid.tickCount);
+        SoulBookBauble.recordHurt(maid);
     }
 
     public static void applyBaubleHandlers(DataItem dataItem, EntityMaid maid) {

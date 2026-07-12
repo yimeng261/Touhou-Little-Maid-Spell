@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import oshi.util.tuples.Pair;
 
 import java.util.UUID;
@@ -32,4 +33,19 @@ public class SilverCercisBauble implements IMaidBauble {
         }
 
     }
-} 
+
+    @Override
+    public void onTakeOff(EntityMaid maid, ItemStack baubleItem) {
+        if (!maid.level().isClientSide()) {
+            cleanupMaid(maid.getUUID());
+        }
+    }
+
+    public static void cleanupMaid(UUID maidId) {
+        maidCercisMap.remove(maidId);
+    }
+
+    public static void clearSession() {
+        maidCercisMap.clear();
+    }
+}
