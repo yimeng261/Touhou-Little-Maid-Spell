@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class YueLinglanBlockEntity extends BlockEntity {
     private static final int TICK_INTERVAL = 40;
     private static final int PARTICLE_INTERVAL = 8;
-    private static final int STRUCTURE_SEARCH_INTERVAL = 20 * 10;
     private static final int STRUCTURE_SEARCH_CACHE_REGION_CHUNKS = 16;
     private static final ResourceLocation ELVEN_REALM_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "elven_realm");
     private static final TagKey<Structure> ELVEN_REALM_TAG =
@@ -36,11 +35,12 @@ public class YueLinglanBlockEntity extends BlockEntity {
         MIN_PARTICLE_DISTANCE_TO_STRUCTURE * MIN_PARTICLE_DISTANCE_TO_STRUCTURE;
     private static final Map<StructureSearchCacheKey, StructureSearchCacheEntry> STRUCTURE_SEARCH_CACHE =
         new ConcurrentHashMap<>();
-    private static long nextStructureSearchCachePruneGameTime;
 
     @Nullable
     private BlockPos cachedStructurePos;
-    private long nextStructureSearchGameTime;
+    @Nullable
+    private BoundingBox cachedStructureBoundingBox;
+    private boolean structureSearchComplete;
     private boolean structureTrailInitialized;
     private boolean structureTrailDisabled;
 
@@ -77,16 +77,20 @@ public class YueLinglanBlockEntity extends BlockEntity {
             }
         }
 
-        if (gameTime >= nextStructureSearchGameTime) {
-            cachedStructurePos = findNearestTrackedStructure(level, pos, gameTime);
-            nextStructureSearchGameTime = gameTime + STRUCTURE_SEARCH_INTERVAL;
-            if (cachedStructurePos != null && isWithinSuppressionRange(level, pos)) {
-                structureTrailDisabled = true;
-                return;
+        if (!structureSearchComplete) {
+            structureSearchComplete = true;
+            cachedStructurePos = findNearestTrackedStructure(level, pos);
+            if (cachedStructurePos != null) {
+                cachedStructureBoundingBox = resolveStructureBoundingBox(level);
+                if (isWithinSuppressionRange(pos)) {
+                    structureTrailDisabled = true;
+                    return;
+                }
             }
         }
 
         if (cachedStructurePos == null) {
+            structureTrailDisabled = true;
             return;
         }
 
@@ -95,7 +99,7 @@ public class YueLinglanBlockEntity extends BlockEntity {
             return;
         }
 
-        if (isWithinSuppressionRange(level, pos)) {
+        if (isWithinSuppressionRange(pos)) {
             structureTrailDisabled = true;
             return;
         }
@@ -156,63 +160,54 @@ public class YueLinglanBlockEntity extends BlockEntity {
     }
 
     @Nullable
-    private BlockPos findNearestTrackedStructure(ServerLevel level, BlockPos origin, long gameTime) {
-        pruneExpiredStructureSearchCache(gameTime);
-
+    private BlockPos findNearestTrackedStructure(ServerLevel level, BlockPos origin) {
         StructureSearchCacheKey key = StructureSearchCacheKey.create(level, origin);
         StructureSearchCacheEntry cached = STRUCTURE_SEARCH_CACHE.get(key);
-        if (cached != null && cached.isValid(gameTime)) {
+        if (cached != null) {
             return cached.structurePos();
         }
 
         BlockPos structurePos = level.findNearestMapStructure(ELVEN_REALM_TAG, origin, STRUCTURE_SEARCH_RADIUS, false);
-        STRUCTURE_SEARCH_CACHE.put(key, new StructureSearchCacheEntry(structurePos, gameTime + STRUCTURE_SEARCH_INTERVAL));
+        STRUCTURE_SEARCH_CACHE.put(key, new StructureSearchCacheEntry(structurePos));
         return structurePos;
     }
 
-    private static void pruneExpiredStructureSearchCache(long gameTime) {
-        if (gameTime < nextStructureSearchCachePruneGameTime) {
-            return;
+    @Nullable
+    private BoundingBox resolveStructureBoundingBox(ServerLevel level) {
+        if (cachedStructurePos == null) {
+            return null;
         }
 
-        nextStructureSearchCachePruneGameTime = gameTime + STRUCTURE_SEARCH_INTERVAL;
-        STRUCTURE_SEARCH_CACHE.entrySet().removeIf(entry -> !entry.getValue().isValid(gameTime));
+        var structure = level.registryAccess().registryOrThrow(Registries.STRUCTURE).getOptional(ELVEN_REALM_ID);
+        if (structure.isEmpty()) {
+            return null;
+        }
+
+        StructureStart start = level.structureManager().getStructureAt(cachedStructurePos, structure.get());
+        if (!start.isValid()) {
+            start = level.structureManager().getStructureWithPieceAt(cachedStructurePos, structure.get());
+        }
+        return start.isValid() ? start.getBoundingBox() : null;
     }
 
     private boolean isInsideTrackedStructure(ServerLevel level, BlockPos pos) {
         return level.structureManager().getStructureWithPieceAt(pos, ELVEN_REALM_TAG).isValid();
     }
 
-    private boolean isWithinSuppressionRange(ServerLevel level, BlockPos pos) {
-        StructureStart structureStart = getTrackedStructureStart(level);
-        if (!structureStart.isValid()) {
+    private boolean isWithinSuppressionRange(BlockPos pos) {
+        if (cachedStructureBoundingBox == null) {
             return false;
         }
 
-        BoundingBox box = structureStart.getBoundingBox();
         int padding = (int) MIN_PARTICLE_DISTANCE_TO_STRUCTURE;
-        return pos.getX() >= box.minX() - padding
-            && pos.getX() <= box.maxX() + padding
-            && pos.getZ() >= box.minZ() - padding
-            && pos.getZ() <= box.maxZ() + padding;
+        return pos.getX() >= cachedStructureBoundingBox.minX() - padding
+            && pos.getX() <= cachedStructureBoundingBox.maxX() + padding
+            && pos.getZ() >= cachedStructureBoundingBox.minZ() - padding
+            && pos.getZ() <= cachedStructureBoundingBox.maxZ() + padding;
     }
 
-    private StructureStart getTrackedStructureStart(ServerLevel level) {
-        if (cachedStructurePos == null) {
-            return StructureStart.INVALID_START;
-        }
-
-        var structure = level.registryAccess().registryOrThrow(Registries.STRUCTURE).getOptional(ELVEN_REALM_ID);
-        if (structure.isEmpty()) {
-            return StructureStart.INVALID_START;
-        }
-
-        StructureStart structureStart = level.structureManager().getStructureAt(cachedStructurePos, structure.get());
-        if (structureStart.isValid()) {
-            return structureStart;
-        }
-
-        return level.structureManager().getStructureWithPieceAt(cachedStructurePos, structure.get());
+    public static void clearStructureSearchCache() {
+        STRUCTURE_SEARCH_CACHE.clear();
     }
 
     @SuppressWarnings("unchecked")
@@ -234,9 +229,6 @@ public class YueLinglanBlockEntity extends BlockEntity {
         }
     }
 
-    private record StructureSearchCacheEntry(@Nullable BlockPos structurePos, long expiresGameTime) {
-        private boolean isValid(long gameTime) {
-            return gameTime < expiresGameTime;
-        }
+    private record StructureSearchCacheEntry(@Nullable BlockPos structurePos) {
     }
 }

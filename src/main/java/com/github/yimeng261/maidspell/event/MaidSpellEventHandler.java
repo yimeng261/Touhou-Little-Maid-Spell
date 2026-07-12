@@ -10,6 +10,7 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
 import com.github.yimeng261.maidspell.block.entity.SuppressionStoneBlockEntity;
+import com.github.yimeng261.maidspell.block.entity.YueLinglanBlockEntity;
 import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
@@ -716,6 +717,7 @@ public class MaidSpellEventHandler {
         Global.ownerMaidRegistry.clear();
         MaidHardRemovalProtection.clear();
         AnchorCoreBauble.clearRuntimeCache();
+        YueLinglanBlockEntity.clearStructureSearchCache();
         SpellBookManager.clearAll();
         AllianceManager.clear(server);
         if (SpellBookManager.hasProvider("irons_spellbooks")) {
