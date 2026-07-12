@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.item;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
+import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCross;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
 import com.github.yimeng261.maidspell.item.block.JingxuYoulanItem;
 import com.github.yimeng261.maidspell.item.block.ScarletZhuhuaItem;
@@ -46,6 +47,7 @@ public class MaidSpellItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MaidSpellMod.MOD_ID);
 
     public static final DeferredItem<Item> SPELL_ENHANCEMENT_CORE = ITEMS.register("spell_enhancement_core", SpellEnhancementCore::new);
+    public static final DeferredItem<Item> ARC_CROSS = ITEMS.register("arc_cross", ArcCross::new);
     public static final DeferredItem<Item> BLEEDING_HEART = ITEMS.register("bleeding_heart", BleedingHeart::new);
     public static final DeferredItem<Item> FLOW_CORE = ITEMS.register("flow_core", FlowCore::new);
     public static final DeferredItem<Item> QUICK_CHANT_RING = ITEMS.register("quick_chant_ring", QuickChantRing::new);
