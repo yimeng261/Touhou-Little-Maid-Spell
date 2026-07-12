@@ -657,7 +657,7 @@ public class MaidSpellEventHandler {
         Global.ownerMaidRegistry.clear();
         MaidHardRemovalProtection.clear();
         AnchorCoreBauble.clearRuntimeCache();
-        YueLinglanBlockEntity.clearStructureSearchCache();
+        YueLinglanBlockEntity.clearAllStructureSearchCaches();
         SpellBookManager.clearAll();
     }
 
