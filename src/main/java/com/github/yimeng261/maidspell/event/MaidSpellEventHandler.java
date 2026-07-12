@@ -14,6 +14,7 @@ import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
@@ -205,7 +206,7 @@ public class MaidSpellEventHandler {
     }
 
     /**
-     * 当女仆离开世界时释放运行时法术状态；重新加入时会重建这些状态。
+     * 当女仆离开世界时释放运行时法术状态和区块加载；重新加入时会重建这些状态。
      */
     @SubscribeEvent
     public static void onEntityLeaveLevel(EntityLeaveLevelEvent event) {
@@ -219,6 +220,11 @@ public class MaidSpellEventHandler {
             if (MaidHardRemovalProtection.handleMaidLeaveLevel(maid)) {
                 Global.updateMaidInfo(maid,true);
                 return;
+            }
+
+            if (shouldReleaseMaidChunkLoading(maid.getRemovalReason())) {
+                MaidHardRemovalProtection.allowClientRemoval(maid);
+                AnchorCoreBauble.disableChunkLoading(maid);
             }
 
             cleanupMaidSpellData(maid);
@@ -627,6 +633,13 @@ public class MaidSpellEventHandler {
         }
     }
 
+    private static boolean shouldReleaseMaidChunkLoading(Entity.RemovalReason reason) {
+        return reason == Entity.RemovalReason.UNLOADED_WITH_PLAYER
+                || reason == Entity.RemovalReason.CHANGED_DIMENSION
+                || reason == Entity.RemovalReason.KILLED
+                || reason == Entity.RemovalReason.DISCARDED;
+    }
+
     /**
      * 为女仆添加步高属性，让她能够直接走上一格高的方块
      */
@@ -690,6 +703,7 @@ public class MaidSpellEventHandler {
         Global.activeMaids.clear();
         Global.ownerMaidRegistry.clear();
         MaidHardRemovalProtection.clear();
+        AnchorCoreBauble.clearRuntimeCache();
         SpellBookManager.clearAll();
         AllianceManager.clear(server);
         if (SpellBookManager.hasProvider("irons_spellbooks")) {

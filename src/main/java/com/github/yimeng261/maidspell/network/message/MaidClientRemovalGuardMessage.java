@@ -30,7 +30,7 @@ public record MaidClientRemovalGuardMessage(int entityId, boolean allowRemoval) 
     @OnlyIn(Dist.CLIENT)
     public void handle() {
         if (allowRemoval) {
-            ClientMaidRemovalGuard.allowRemoval(entityId);
+            ClientMaidRemovalGuard.allowRemovalNow(entityId);
         } else {
             ClientMaidRemovalGuard.markProtected(entityId);
         }

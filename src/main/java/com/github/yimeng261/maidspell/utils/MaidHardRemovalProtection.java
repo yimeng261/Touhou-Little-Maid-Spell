@@ -497,16 +497,13 @@ public final class MaidHardRemovalProtection {
         return level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), net.minecraft.core.Direction.UP);
     }
 
-    private static void allowClientRemoval(EntityMaid maid) {
+    public static void allowClientRemoval(EntityMaid maid) {
         if (!(maid.level() instanceof ServerLevel level)) {
             return;
         }
 
-        double range = clientRestoreRange(maid);
-        for (ServerPlayer player : level.players()) {
-            if (player.distanceToSqr(maid) <= range * range) {
-                player.connection.send(new MaidClientRemovalGuardMessage(maid.getId(), true));
-            }
+        for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+            player.connection.send(new MaidClientRemovalGuardMessage(maid.getId(), true));
         }
     }
 
