@@ -16,12 +16,18 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraftforge.event.level.LevelEvent;
+import net.minecraftforge.event.server.ServerAboutToStartEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class YueLinglanBlockEntity extends BlockEntity {
     private static final int TICK_INTERVAL = 40;
     private static final int PARTICLE_INTERVAL = 8;
@@ -172,6 +178,31 @@ public class YueLinglanBlockEntity extends BlockEntity {
         return structurePos;
     }
 
+    public static void clearStructureSearchCache(ServerLevel level) {
+        STRUCTURE_SEARCH_CACHE.keySet().removeIf(key -> key.level() == level);
+    }
+
+    public static void clearAllStructureSearchCaches() {
+        STRUCTURE_SEARCH_CACHE.clear();
+    }
+
+    @SubscribeEvent
+    public static void onLevelUnload(LevelEvent.Unload event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            clearStructureSearchCache(level);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+        clearAllStructureSearchCaches();
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        clearAllStructureSearchCaches();
+    }
+
     @Nullable
     private BoundingBox resolveStructureBoundingBox(ServerLevel level) {
         if (cachedStructurePos == null) {
@@ -213,15 +244,30 @@ public class YueLinglanBlockEntity extends BlockEntity {
             : null;
     }
 
-    private record StructureSearchCacheKey(ResourceLocation dimension, int regionX, int regionZ) {
+    private record StructureSearchCacheKey(ServerLevel level, int regionX, int regionZ) {
         private static StructureSearchCacheKey create(ServerLevel level, BlockPos pos) {
             int chunkX = pos.getX() >> 4;
             int chunkZ = pos.getZ() >> 4;
             return new StructureSearchCacheKey(
-                level.dimension().location(),
+                level,
                 Math.floorDiv(chunkX, STRUCTURE_SEARCH_CACHE_REGION_CHUNKS),
                 Math.floorDiv(chunkZ, STRUCTURE_SEARCH_CACHE_REGION_CHUNKS)
             );
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj || obj instanceof StructureSearchCacheKey other
+                && level == other.level
+                && regionX == other.regionX
+                && regionZ == other.regionZ;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = System.identityHashCode(level);
+            result = 31 * result + regionX;
+            return 31 * result + regionZ;
         }
     }
 
