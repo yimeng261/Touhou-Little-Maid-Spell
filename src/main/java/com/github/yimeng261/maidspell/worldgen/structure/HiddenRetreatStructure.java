@@ -135,15 +135,13 @@ public class HiddenRetreatStructure extends Structure {
             return;
         }
 
-        // 私人模式：持久化结构已生成标记，防止重启后重复生成
+        UUID privateRetreatOwner = null;
         if (Config.enablePrivateDimensions) {
             String dimPath = dimKey.location().getPath();
             if (dimPath.startsWith("the_retreat_")) {
                 try {
                     String uuidStr = dimPath.substring("the_retreat_".length()).replace('_', '-');
-                    UUID playerUUID = UUID.fromString(uuidStr);
-                    MinecraftServer server = serverLevel.getServer();
-                    RetreatDimensionData.get(server).markStructureGenerated(playerUUID);
+                    privateRetreatOwner = UUID.fromString(uuidStr);
                 } catch (IllegalArgumentException e) {
                     MaidSpellMod.LOGGER.warn("afterPlace: 无法从维度路径解析玩家 UUID: {}", dimPath);
                 }
@@ -163,8 +161,18 @@ public class HiddenRetreatStructure extends Structure {
             }
         }
 
-        // 取消强制加载，允许区块自然卸载
-        RetreatManager.unforceLoadStructureChunks(dimKey, structureCenter);
+        // afterPlace may run on a worldgen worker. SavedData and chunk tickets belong to the server thread.
+        MinecraftServer server = serverLevel.getServer();
+        UUID ownerToPersist = privateRetreatOwner;
+        server.execute(() -> {
+            if (server.getLevel(dimKey) != serverLevel) {
+                return;
+            }
+            if (ownerToPersist != null) {
+                RetreatDimensionData.get(server).markStructureGenerated(ownerToPersist);
+            }
+            RetreatManager.unforceLoadStructureChunks(dimKey, structureCenter);
+        });
     }
 
     @Override
