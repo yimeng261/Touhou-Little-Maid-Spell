@@ -1,4 +1,10 @@
 {
+  "forge:conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
   "pools": [
     {
       "rolls": 5,

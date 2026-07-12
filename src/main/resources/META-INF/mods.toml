@@ -65,3 +65,31 @@ mandatory = false
 versionRange = "[3.1.11,)"
 ordering = "NONE"
 side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "psi"
+mandatory = false
+versionRange = "[2.0.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "slashblade"
+mandatory = false
+versionRange = "[1.6.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "ebwizardry"
+mandatory = false
+versionRange = "[0.8.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "enigmaticaddons"
+mandatory = false
+versionRange = "[1.2.0,)"
+ordering = "NONE"
+side = "BOTH"

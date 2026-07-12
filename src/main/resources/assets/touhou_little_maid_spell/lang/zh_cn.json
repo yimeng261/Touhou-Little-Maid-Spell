@@ -143,6 +143,8 @@
   "item.touhou_little_maid_spell.wind_seeking_bell.search_time": "搜索耗时: %s毫秒",
   "item.touhou_little_maid_spell.wind_seeking_bell.sound": "寻风之铃响起",
   "item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat": "已进入归隐之地",
+  "item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared": "已登记共享归隐之地，并获得一次隐世之境搜索配额",
+  "item.touhou_little_maid_spell.wind_seeking_bell.no_quota": "隐世之境搜索配额已用尽",
   "item.touhou_little_maid_spell.wind_seeking_bell.return_to_overworld": "已返回主世界",
   "item.touhou_little_maid_spell.wind_seeking_bell.teleport_failed": "传送失败，无法创建归隐之地",
   "item.touhou_little_maid_spell.wind_seeking_bell.search_timeout": "搜索超时，请稍后再试",
