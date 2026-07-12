@@ -79,9 +79,11 @@ public final class OwnerScenes {
             ctx.check(listed(player).contains(plain.getUUID())).as("没装备末影腰包的女仆在列表里").isFalse();
             ctx.check(listed(player).contains(stranger.getUUID())).as("别人的女仆在列表里").isFalse();
             ctx.record("watchingRemote", level.getChunkSource().chunkMap.getPlayers(new ChunkPos(far), false).contains(player));
-            ctx.check(EnderPocketService.openMaidInventory(player, level.dimension(), stranger.getId()))
+            ctx.check(EnderPocketService.openMaidInventory(player, stranger.getUUID()))
                     .as("用末影腰包打开别人女仆的背包").isFalse();
-            ctx.check(EnderPocketService.openMaidInventory(player, level.dimension(), remote.getId()))
+            ctx.check(EnderPocketService.openMaidInventory(player, plain.getUUID()))
+                    .as("用末影腰包打开没装备末影腰包的自有女仆背包").isFalse();
+            ctx.check(EnderPocketService.openMaidInventory(player, remote.getUUID()))
                     .as("用末影腰包打开远程女仆的背包").isTrue();
             AbstractContainerMenu menu = player.containerMenu;
             ctx.check(menu instanceof AbstractMaidContainer container && container.getMaid() == remote)

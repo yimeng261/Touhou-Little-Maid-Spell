@@ -24,11 +24,15 @@ import java.util.List;
  * @since 2025-10-25 20:30
  */
 public record S2CEnderPocketMaidList(List<EnderPocketService.EnderPocketMaidInfo> maidInfos, boolean fromMaidBackpack) implements CustomPacketPayload {
+    public S2CEnderPocketMaidList {
+        maidInfos = List.copyOf(maidInfos.subList(0, Math.min(maidInfos.size(), EnderPocketService.MAX_MAID_INFOS)));
+    }
+
     public static final Type<S2CEnderPocketMaidList> TYPE
             = new Type<>(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "ender_pocket_response_maid_list"));
 
     public static final StreamCodec<ByteBuf, S2CEnderPocketMaidList> STREAM_CODEC = StreamCodec.composite(
-            EnderPocketService.EnderPocketMaidInfo.STREAM_CODEC.apply(ByteBufCodecs.collection(ArrayList::new)),
+            ByteBufCodecs.collection(ArrayList::new, EnderPocketService.EnderPocketMaidInfo.STREAM_CODEC, EnderPocketService.MAX_MAID_INFOS),
             S2CEnderPocketMaidList::maidInfos,
             ByteBufCodecs.BOOL,
             S2CEnderPocketMaidList::fromMaidBackpack,

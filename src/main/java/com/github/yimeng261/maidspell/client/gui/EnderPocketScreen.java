@@ -9,14 +9,13 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
 import javax.annotation.Nonnull;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 末影腰包选择界面
@@ -70,7 +69,7 @@ public class EnderPocketScreen extends Screen {
             Button maidButton = new TransparentButton(
                 buttonX, buttonY, buttonWidth, buttonHeight,
                 Component.literal(maidInfo.maidName),
-                button -> openMaidInventory(maidInfo.levelKey, maidInfo.maidEntityId)
+                button -> openMaidInventory(maidInfo.maidUUID)
             );
 
             this.addRenderableWidget(maidButton);
@@ -78,8 +77,8 @@ public class EnderPocketScreen extends Screen {
 
     }
 
-    private void openMaidInventory(ResourceKey<Level> maidLevelKey, int maidEntityId) {
-        getMinecraft().getConnection().send(new C2SEnderPocketOpenInventory(maidLevelKey, maidEntityId));
+    private void openMaidInventory(UUID maidUuid) {
+        getMinecraft().getConnection().send(new C2SEnderPocketOpenInventory(maidUuid));
     }
 
 

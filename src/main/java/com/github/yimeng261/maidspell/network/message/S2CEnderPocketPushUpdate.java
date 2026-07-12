@@ -23,11 +23,15 @@ import java.util.List;
  * @since 2025-10-25 21:03
  */
 public record S2CEnderPocketPushUpdate(List<EnderPocketService.EnderPocketMaidInfo> maidInfos, boolean fromMaidBackpack) implements CustomPacketPayload {
+    public S2CEnderPocketPushUpdate {
+        maidInfos = List.copyOf(maidInfos.subList(0, Math.min(maidInfos.size(), EnderPocketService.MAX_MAID_INFOS)));
+    }
+
     public static final Type<S2CEnderPocketPushUpdate> TYPE
             = new Type<>(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "ender_pocket_server_push_update"));
 
     public static final StreamCodec<ByteBuf, S2CEnderPocketPushUpdate> STREAM_CODEC = StreamCodec.composite(
-            EnderPocketService.EnderPocketMaidInfo.STREAM_CODEC.apply(ByteBufCodecs.collection(ArrayList::new)),
+            ByteBufCodecs.collection(ArrayList::new, EnderPocketService.EnderPocketMaidInfo.STREAM_CODEC, EnderPocketService.MAX_MAID_INFOS),
             S2CEnderPocketPushUpdate::maidInfos,
             ByteBufCodecs.BOOL,
             S2CEnderPocketPushUpdate::fromMaidBackpack,

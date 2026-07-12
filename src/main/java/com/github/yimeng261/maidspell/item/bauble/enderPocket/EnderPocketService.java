@@ -14,7 +14,6 @@ import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 
 import java.util.*;
@@ -23,6 +22,7 @@ import java.util.*;
  * 末影腰包服务类 - 统一管理所有enderPocket相关逻辑
  */
 public class EnderPocketService {
+    public static final int MAX_MAID_INFOS = 64;
 
     /**
      * 末影腰包女仆信息
@@ -33,10 +33,12 @@ public class EnderPocketService {
         public final ResourceKey<Level> levelKey;
         public final int maidEntityId;
 
+        public static final int MAX_MAID_NAME_LENGTH = 64;
+
         public static final StreamCodec<ByteBuf, EnderPocketMaidInfo> STREAM_CODEC = StreamCodec.composite(
                 UUIDUtil.STREAM_CODEC,
                 EnderPocketMaidInfo::getMaidUUID,
-                ByteBufCodecs.STRING_UTF8,
+                ByteBufCodecs.stringUtf8(MAX_MAID_NAME_LENGTH),
                 EnderPocketMaidInfo::getMaidName,
                 ResourceKey.streamCodec(Registries.DIMENSION),
                 EnderPocketMaidInfo::getLevelKey,
@@ -47,7 +49,7 @@ public class EnderPocketService {
 
         public EnderPocketMaidInfo(UUID maidUUID, String maidName, ResourceKey<Level> levelKey, int maidEntityId) {
             this.maidUUID = maidUUID;
-            this.maidName = maidName;
+            this.maidName = truncate(maidName, MAX_MAID_NAME_LENGTH);
             this.levelKey = levelKey;
             this.maidEntityId = maidEntityId;
         }
@@ -67,6 +69,13 @@ public class EnderPocketService {
         public ResourceKey<Level> getLevelKey() {
             return levelKey;
         }
+
+        private static String truncate(String value, int maxLength) {
+            if (value == null) {
+                return "";
+            }
+            return value.length() <= maxLength ? value : value.substring(0, maxLength);
+        }
     }
 
 
@@ -74,7 +83,8 @@ public class EnderPocketService {
      * 获取玩家所有装备末影腰包的女仆信息
      */
     public static List<EnderPocketMaidInfo> getPlayerEnderPocketMaids(ServerPlayer player) {
-        Map<UUID, EntityMaid> maids = Global.getOrCreatePlayerMaidMap(player.getUUID());
+        UUID playerUUID = player.getUUID();
+        Map<UUID, EntityMaid> maids = Global.ownerMaidRegistry.get(playerUUID);
         if (maids == null || maids.isEmpty()) {
             return Collections.emptyList();
         }
@@ -82,7 +92,9 @@ public class EnderPocketService {
         List<EnderPocketMaidInfo> enderPocketMaids = new ArrayList<>();
 
         for (EntityMaid maid : maids.values()) {
-            if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
+            if (maid != null && maid.isAlive() && !maid.isRemoved()
+                    && playerUUID.equals(maid.getOwnerUUID())
+                    && BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
                 enderPocketMaids.add(new EnderPocketMaidInfo(
                         maid.getUUID(),
                         maid.getName().getString(),
@@ -98,20 +110,26 @@ public class EnderPocketService {
     /**
      * 打开女仆背包
      */
-    public static boolean openMaidInventory(ServerPlayer player, ResourceKey<Level> maidLevelKey, int maidEntityId) {
-        EntityMaid maid = findMaidForEnderPocket(player, maidLevelKey, maidEntityId);
-        if (maid == null) {
+    public static boolean openMaidInventory(ServerPlayer player, UUID maidUuid) {
+        if (maidUuid == null) {
             return false;
         }
-        ServerLevel maidLevel = (ServerLevel) maid.level();
 
-        // 检查权限
-        if (!maid.isOwnedBy(player) || maid.isSleeping() || !maid.isAlive()) {
+        Map<UUID, EntityMaid> maids = Global.ownerMaidRegistry.get(player.getUUID());
+        EntityMaid maid = maids == null ? null : maids.get(maidUuid);
+        if (maid == null
+                || maid.isRemoved()
+                || !maid.isAlive()
+                || maid.isSleeping()
+                || !player.getUUID().equals(maid.getOwnerUUID())
+                || !maid.isOwnedBy(player)
+                || !BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)
+                || !(maid.level() instanceof ServerLevel maidLevel)) {
             return false;
         }
 
         if (!maidLevel.getChunkSource().chunkMap.getPlayersWatching(maid).contains(player)) {
-            ChunkMap.TrackedEntity trackedEntity = maidLevel.getChunkSource().chunkMap.entityMap.get(maidEntityId);
+            ChunkMap.TrackedEntity trackedEntity = maidLevel.getChunkSource().chunkMap.entityMap.get(maid.getId());
             if (trackedEntity == null) {
                 return false;
             }
@@ -123,25 +141,5 @@ public class EnderPocketService {
         // 使用车万女仆本体的GUI打开方法
         maid.openMaidGui(player, com.github.tartaricacid.touhoulittlemaid.entity.passive.TabIndex.MAIN);
         return true;
-    }
-
-    private static EntityMaid findMaidForEnderPocket(ServerPlayer player, ResourceKey<Level> maidLevelKey, int maidEntityId) {
-        ServerLevel maidLevel = player.server.getLevel(maidLevelKey);
-        if (maidLevel != null) {
-            Entity entity = maidLevel.getEntity(maidEntityId);
-            if (entity instanceof EntityMaid maid) {
-                return maid;
-            }
-        }
-
-        for (EntityMaid activeMaid : Global.activeMaids) {
-            if (activeMaid.getId() == maidEntityId
-                    && activeMaid.level() instanceof ServerLevel activeLevel
-                    && activeLevel.dimension().equals(maidLevelKey)
-                    && activeMaid.isOwnedBy(player)) {
-                return activeMaid;
-            }
-        }
-        return null;
     }
 }
