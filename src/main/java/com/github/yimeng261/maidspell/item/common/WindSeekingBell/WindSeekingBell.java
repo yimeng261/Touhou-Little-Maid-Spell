@@ -219,7 +219,7 @@ public class WindSeekingBell extends Item {
         }
 
         // 2. 检查内存缓存
-        RetreatManager.CacheResult cacheResult = RetreatManager.checkCache(player.getUUID());
+        RetreatManager.CacheResult cacheResult = RetreatManager.checkCache(serverLevel, player.getUUID());
         if (cacheResult.hasCache && !cacheResult.isNegative) {
             ItemStack displayItem = itemStack.copy();
             displayItem.setCount(1);
@@ -265,7 +265,7 @@ public class WindSeekingBell extends Item {
                         RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
                         data.setFoundStructurePos(player.getUUID(), result);
                     }
-                    RetreatManager.updateCache(player.getUUID(), result);
+                    RetreatManager.updateCache(serverLevel, player.getUUID(), result);
 
                     // 检查玩家手上是否仍持有寻风之铃（异步搜索期间可能已切换物品）
                     boolean holdingBell = player.getMainHandItem().getItem() instanceof WindSeekingBell
@@ -285,7 +285,7 @@ public class WindSeekingBell extends Item {
                     ).withStyle(ChatFormatting.LIGHT_PURPLE));
                 } else {
                     // 搜索失败：不消耗物品，设置负缓存
-                    RetreatManager.updateCache(player.getUUID(), null);
+                    RetreatManager.updateCache(serverLevel, player.getUUID(), null);
                     handleSearchResult(serverLevel, playerPos, player, null, searchTime, false, ItemStack.EMPTY);
                 }
             });

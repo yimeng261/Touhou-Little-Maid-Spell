@@ -112,7 +112,7 @@ public class MaidSpellCommand {
         }
 
         data.removeDimension(player.getUUID());
-        RetreatManager.updateCache(player.getUUID(), null);
+        RetreatManager.clearPlayerCache(player.getUUID());
         RetreatManager.removeCachedPlayerRetreat(player.getUUID());
 
         context.getSource().sendSuccess(() -> Component.translatable(

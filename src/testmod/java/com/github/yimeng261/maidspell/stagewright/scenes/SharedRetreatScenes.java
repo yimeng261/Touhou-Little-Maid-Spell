@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.stagewright.scenes;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
+import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.stagewright.support.Batch;
@@ -102,7 +103,7 @@ public final class SharedRetreatScenes {
     private static void switchItemDuringSearch(SceneContext ctx, ServerPlayer player) {
         Players.hold(player, RetreatScenes.bell(BELLS));
         RetreatScenes.enterRetreat(ctx, player, () -> {
-            RetreatScenes.structureCache().remove(player.getUUID());
+            RetreatManager.clearPlayerCache(player.getUUID());
             // 搜索分帧进行，结果最早下一 tick 才回来；右键后立刻把铃挪到背包别的格子
             RetreatScenes.search(ctx, player, () -> {
                 ItemStack bells = player.getMainHandItem().copy();
@@ -163,7 +164,7 @@ public final class SharedRetreatScenes {
             });
             info.foundStructurePos = null;
             info.structureQuota = 0;
-            RetreatScenes.structureCache().remove(player.getUUID());
+            RetreatManager.clearPlayerCache(player.getUUID());
             RetreatScenes.whenReady(ctx, player, () -> {
                 long mark = ChatTap.mark();
                 Players.use(player);
@@ -219,7 +220,7 @@ public final class SharedRetreatScenes {
                     ServerPlayer again = walkers.getFirst();
                     BlockPos first = found.get(again.getGameProfile().getName());
                     again.getCooldowns().removeCooldown(MaidSpellItems.WIND_SEEKING_BELL.get());
-                    RetreatScenes.structureCache().remove(again.getUUID());
+                    RetreatManager.clearPlayerCache(again.getUUID());
                     Players.use(again);
                     Checks.after(ctx, 40, () -> {
                         ctx.check(RetreatDimensionData.get(ctx.server()).getFoundStructurePos(again.getUUID())).as("再次搜索后记住的位置")
@@ -264,6 +265,6 @@ public final class SharedRetreatScenes {
     private static void resetFirstEntry(SceneContext ctx, ServerPlayer player) {
         RetreatScenes.toOverworldNearOrigin(ctx, player);
         RetreatDimensionData.get(ctx.server()).removeDimension(player.getUUID());
-        RetreatScenes.structureCache().remove(player.getUUID());
+        RetreatManager.clearPlayerCache(player.getUUID());
     }
 }

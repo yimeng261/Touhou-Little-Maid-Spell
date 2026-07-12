@@ -16,7 +16,9 @@ import net.minecraft.world.level.storage.DimensionDataStorage;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -265,6 +267,45 @@ public class RetreatDimensionData extends SavedData {
     public Map<UUID, DimensionInfo> getAllDimensions() {
         return new HashMap<>(playerDimensions);
     }
+    
+    /**
+     * 清理长时间未访问的维度记录（可选功能）
+     */
+    public int cleanupOldDimensions(long maxInactiveTime, Set<UUID> protectedPlayers) {
+        if (maxInactiveTime <= 0L) {
+            return 0;
+        }
+
+        long currentTime = System.currentTimeMillis();
+        Set<UUID> protectedIds = protectedPlayers == null ? Set.of() : protectedPlayers;
+        int removedCount = 0;
+        Iterator<Map.Entry<UUID, DimensionInfo>> iterator = playerDimensions.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, DimensionInfo> entry = iterator.next();
+            DimensionInfo info = entry.getValue();
+            if (protectedIds.contains(entry.getKey()) || !isEmptyMetadata(info)
+                    || info.lastAccessTime <= 0L || info.lastAccessTime > currentTime) {
+                continue;
+            }
+            if (currentTime - info.lastAccessTime > maxInactiveTime) {
+                iterator.remove();
+                removedCount++;
+                MaidSpellMod.LOGGER.info("Cleaned up inactive empty retreat metadata for player: {}", entry.getKey());
+            }
+        }
+        if (removedCount > 0) {
+            setDirty();
+        }
+        return removedCount;
+    }
+
+    private static boolean isEmptyMetadata(DimensionInfo info) {
+        return info.structureQuota == 0
+            && info.foundStructurePos == null
+            && !info.structureGenerated
+            && info.pendingRestoreDimension == null
+            && info.pendingRestorePos == null;
+    }
 
     /**
      * 标记玩家维度的结构已生成（私人模式持久化）
@@ -315,25 +356,6 @@ public class RetreatDimensionData extends SavedData {
             info.pendingRestorePos = null;
             setDirty();
             MaidSpellMod.LOGGER.debug("Cleared pending retreat restore for player {}", playerUUID);
-        }
-    }
-
-    /**
-     * 清理长时间未访问的维度记录
-     */
-    public void cleanupOldDimensions(long maxInactiveTime) {
-        long currentTime = System.currentTimeMillis();
-        playerDimensions.entrySet().removeIf(entry -> {
-            DimensionInfo info = entry.getValue();
-            boolean shouldRemove = (currentTime - info.lastAccessTime) > maxInactiveTime;
-            if (shouldRemove) {
-                MaidSpellMod.LOGGER.info("Cleaned up inactive retreat dimension for player: " + entry.getKey());
-            }
-            return shouldRemove;
-        });
-
-        if (!playerDimensions.isEmpty()) {
-            setDirty();
         }
     }
 }

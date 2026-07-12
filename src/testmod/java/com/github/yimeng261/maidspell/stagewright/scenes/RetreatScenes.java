@@ -132,7 +132,7 @@ public final class RetreatScenes {
     private static void searchFindsHiddenRetreat(SceneContext ctx, ServerPlayer player) {
         Players.hold(player, bell(BELLS));
         enterRetreat(ctx, player, () -> {
-            structureCache().remove(player.getUUID());
+            RetreatManager.clearPlayerCache(player.getUUID());
             BlockPos from = player.blockPosition();
             search(ctx, player, result -> {
                 long mark = result.mark();
@@ -178,7 +178,7 @@ public final class RetreatScenes {
     private static void researchAfterCacheLoss(SceneContext ctx, ServerPlayer player) {
         Players.hold(player, bell(BELLS));
         enterRetreat(ctx, player, () -> locate(ctx, player, first -> {
-            structureCache().remove(player.getUUID());
+            RetreatManager.clearPlayerCache(player.getUUID());
             search(ctx, player, result -> {
                 ctx.check(ChatTap.find(result.mark(), NO_STRUCTURE, true).isPresent()).as("提示附近没有隐世之境").isFalse();
                 Found again = found(ctx, result.mark());
@@ -272,12 +272,12 @@ public final class RetreatScenes {
                     return;
                 }
                 FakePlayer walker = walker(level, profile, entryPos);
-                structureCache().remove(profile.getId());
+                RetreatManager.clearPlayerCache(profile.getId());
                 Players.use(walker);
                 int started = ctx.ticks();
-                ctx.await(() -> RetreatManager.checkCache(profile.getId()).hasCache || ctx.ticks() >= started + FAR_SEARCH_TICKS)
+                ctx.await(() -> RetreatManager.checkCache(level, profile.getId()).hasCache || ctx.ticks() >= started + FAR_SEARCH_TICKS)
                         .within(FAR_SEARCH_TICKS + 10).then(() -> {
-                            RetreatManager.CacheResult result = RetreatManager.checkCache(profile.getId());
+                            RetreatManager.CacheResult result = RetreatManager.checkCache(level, profile.getId());
                             ctx.record("searchTicks", ctx.ticks() - started);
                             String got = !result.hasCache ? "<" + FAR_SEARCH_TICKS + " tick 内没有结果>"
                                     : result.position == null ? "<没有找到>" : new ChunkPos(result.position).toString();
@@ -436,10 +436,6 @@ public final class RetreatScenes {
 
     private static List<EntityMaid> structureMaids(ServerLevel level, AABB area) {
         return level.getEntitiesOfClass(EntityMaid.class, area, maid -> maid.getOwnerUUID() == null);
-    }
-
-    static Map<UUID, ?> structureCache() {
-        return Reflect.field(null, RetreatManager.class, "structureCache");
     }
 
     /** 取消本维度仍在进行的分帧搜索，免得超时的场景拖慢后面的场景。 */
