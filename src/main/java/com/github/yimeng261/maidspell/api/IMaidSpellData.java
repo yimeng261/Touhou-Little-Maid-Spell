@@ -19,7 +19,6 @@ public abstract class IMaidSpellData {
     // === 基本状态 ===
     protected LivingEntity target;
     protected final List<ItemStack> spellBooks = new ArrayList<>();
-    protected final Set<Class<?>> spellBookKinds = new HashSet<>();
     protected boolean isCasting = false;
     protected String currentSpellId = null;
 
@@ -75,12 +74,12 @@ public abstract class IMaidSpellData {
             }
         }
         spellBooks.add(spellBook);
-        spellBookKinds.add(spellBook.getItem().getClass());
     }
 
     protected boolean canAddSpellBook(ItemStack spellBook) {
         Class<?> spellBookClass = spellBook.getItem().getClass();
-        for(Class<?> spellBookKind : spellBookKinds) {
+        for (ItemStack existingSpellBook : spellBooks) {
+            Class<?> spellBookKind = existingSpellBook.getItem().getClass();
             if(spellBookKind.isAssignableFrom(spellBookClass)||spellBookClass.isAssignableFrom(spellBookKind)) {
                 return false;
             }
@@ -98,7 +97,6 @@ public abstract class IMaidSpellData {
             ItemStack spellBookItem = it.next();
             if (ItemStack.isSameItemSameTags(spellBookItem, spellBook)) {
                 it.remove();
-                spellBookKinds.remove(spellBook.getItem().getClass());
                 return;
             }
         }
@@ -109,7 +107,6 @@ public abstract class IMaidSpellData {
      */
     public void clearSpellBooks() {
         spellBooks.clear();
-        spellBookKinds.clear();
     }
 
     /**
@@ -132,6 +129,9 @@ public abstract class IMaidSpellData {
 
     public void setCasting(boolean casting) {
         this.isCasting = casting;
+        if (!casting) {
+            this.currentSpellId = null;
+        }
     }
 
     /**
@@ -141,6 +141,13 @@ public abstract class IMaidSpellData {
         this.isCasting = false;
         this.target = null;
         this.currentSpellId = null;
+    }
+
+    /**
+     * Releases entity and third-party runtime references while retaining spell books and cooldowns.
+     */
+    public void releaseRuntimeReferences() {
+        resetCastingState();
     }
 
     public boolean isSpellOnCooldown(String spellId) {

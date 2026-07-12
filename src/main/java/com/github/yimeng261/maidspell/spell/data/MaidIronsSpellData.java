@@ -7,6 +7,7 @@ import io.redspace.ironsspellbooks.api.spells.ICastDataSerializable;
 import io.redspace.ironsspellbooks.api.spells.SpellData;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import io.redspace.ironsspellbooks.capabilities.magic.RecastInstance;
+import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.Map;
@@ -101,6 +102,8 @@ public class MaidIronsSpellData extends IMaidSpellData {
         this.currentCastingSpell = spell;
         if(spell != null && spell.getSpell() != null) {
             setCurrentSpellId(spell.getSpell().getSpellId());
+        } else {
+            setCurrentSpellId(null);
         }
     }
 
@@ -159,6 +162,14 @@ public class MaidIronsSpellData extends IMaidSpellData {
         return magicData;
     }
 
+    public void bindSyncedSpellData(EntityMaid maid) {
+        magicData.setSyncedData(new SyncedSpellData(maid));
+    }
+
+    public void releaseSyncedSpellData() {
+        magicData.setSyncedData(new SyncedSpellData(-1));
+    }
+
     public MaidRecastSession getRecastSession() {
         return recastSession;
     }
@@ -185,7 +196,8 @@ public class MaidIronsSpellData extends IMaidSpellData {
      */
     @Override
     public void resetCastingState() {
-        setCasting(false);
+        super.resetCastingState();
+        origin_target = null;
         currentCastingSpell = null;
         clearCurrentSpellPlayerTargetState();
         clearCachedCastSource();

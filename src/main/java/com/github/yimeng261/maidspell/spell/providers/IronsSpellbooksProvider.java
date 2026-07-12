@@ -85,7 +85,27 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
      * 构造函数，绑定 MaidIronsSpellData 数据类型和 SpellData 法术类型
      */
     public IronsSpellbooksProvider() {
-        super(MaidIronsSpellData::getOrCreate, SpellData.class);
+        super(MaidIronsSpellData::getOrCreate, MaidIronsSpellData::get,
+                MaidIronsSpellData::remove, MaidIronsSpellData::clearAll, SpellData.class);
+    }
+
+    @Override
+    public void onMaidJoin(EntityMaid maid) {
+        MaidIronsSpellData data = getData(maid);
+        if (data != null) {
+            data.bindSyncedSpellData(maid);
+        }
+    }
+
+    @Override
+    protected void releaseProviderRuntimeReferences(EntityMaid maid, MaidIronsSpellData data) {
+        try {
+            super.releaseProviderRuntimeReferences(maid, data);
+        } finally {
+            if (data != null) {
+                data.releaseSyncedSpellData();
+            }
+        }
     }
 
     // === 核心方法（接受EntityMaid参数） ===
@@ -198,7 +218,7 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
                 return true;
             }
             // 检查法术是否在黑名单中
-            if (Config.spellBlacklist != null && Config.spellBlacklist.contains(spellId)) {
+            if (Config.ironsSpellBlacklist != null && Config.ironsSpellBlacklist.contains(spellId)) {
                 LOGGER.debug("法术 {} 在黑名单中，女仆 {} 跳过施放", spellId, maid.getUUID());
                 return true;
             }

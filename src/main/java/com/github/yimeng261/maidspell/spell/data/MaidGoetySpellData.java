@@ -100,6 +100,8 @@ public class MaidGoetySpellData extends IMaidSpellData {
         this.currentSpell = currentSpell;
         if(currentSpell != null) {
             setCurrentSpellId(currentSpell.getClass().getSimpleName());
+        } else {
+            setCurrentSpellId(null);
         }
     }
     
@@ -134,8 +136,9 @@ public class MaidGoetySpellData extends IMaidSpellData {
     /**
      * 重置施法状态（保留冷却数据）
      */
+    @Override
     public void resetCastingState() {
-        this.setCasting(false);
+        super.resetCastingState();
         this.castingTime = 0;
         this.maxCastingTime = 0;
         this.currentSpell = null;

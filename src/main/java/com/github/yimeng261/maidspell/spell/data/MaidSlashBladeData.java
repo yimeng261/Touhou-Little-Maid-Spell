@@ -5,6 +5,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -44,6 +45,10 @@ public class MaidSlashBladeData extends IMaidSpellData {
     
     public static MaidSlashBladeData getOrCreate(UUID maidUUID) {
         return DATA_MAP.computeIfAbsent(maidUUID, MaidSlashBladeData::new);
+    }
+
+    public static MaidSlashBladeData get(UUID maidUUID) {
+        return DATA_MAP.get(maidUUID);
     }
     
     public static void remove(UUID maidUUID) {
@@ -97,8 +102,9 @@ public class MaidSlashBladeData extends IMaidSpellData {
         pendingDirectSkillExpiryTime = 0L;
         pendingDirectSkillName = null;
     }
+    @Override
     public void resetCastingState() {
-        this.isCasting = false;
+        super.resetCastingState();
         this.saExecutionStartTime = 0;
         this.targetUseTime = 0;
         this.lastComboState = null;
@@ -118,10 +124,11 @@ public class MaidSlashBladeData extends IMaidSpellData {
 
     @Override
     public void removeSpellBook(ItemStack spellBook){
-        for(ItemStack oldSpellBook : spellBooks){
+        Iterator<ItemStack> iterator = spellBooks.iterator();
+        while (iterator.hasNext()) {
+            ItemStack oldSpellBook = iterator.next();
             if(ItemStack.isSameItem(oldSpellBook, spellBook)){
-                spellBookKinds.remove(spellBook.getItem().getClass());
-                spellBooks.remove(oldSpellBook);
+                iterator.remove();
                 return;
             }
         }

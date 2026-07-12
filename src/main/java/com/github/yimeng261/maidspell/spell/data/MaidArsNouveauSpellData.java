@@ -87,7 +87,7 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
         this.currentSpell = spell;
         this.currentSpellBook = spellBook == null ? ItemStack.EMPTY : spellBook;
         this.currentSpellSlot = slot;
-        setCurrentSpellId(spellId);
+        setCurrentSpellId(spell == null ? null : spellId);
     }
 
     public ItemStack getCurrentSpellBook() {
@@ -125,4 +125,4 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
     }
     
 
-} 
+}

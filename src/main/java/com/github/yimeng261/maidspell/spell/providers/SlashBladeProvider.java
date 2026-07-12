@@ -80,7 +80,8 @@ public class SlashBladeProvider extends ISpellBookProvider<MaidSlashBladeData, R
 
     // ==================== 构造函数 ====================
     public SlashBladeProvider() {
-        super(MaidSlashBladeData::getOrCreate, ResourceLocation.class);
+        super(MaidSlashBladeData::getOrCreate, MaidSlashBladeData::get,
+                MaidSlashBladeData::remove, MaidSlashBladeData::clearAll, ResourceLocation.class);
     }
 
     // ==================== ISpellBookProvider API ====================
@@ -157,6 +158,8 @@ public class SlashBladeProvider extends ISpellBookProvider<MaidSlashBladeData, R
             }
             maid.startUsingItem(InteractionHand.MAIN_HAND);
             int targetUseTime = state.getFullChargeTicks(maid) + SlashArts.getJustReceptionSpan(maid) / 2;
+            ResourceLocation slashArtId = state.getSlashArtsKey();
+            data.setCurrentSpellId(slashArtId == null ? "slashblade:slash_art" : slashArtId.toString());
             data.setCasting(true);
             data.setSAExecutionStartTime(maid.level().getGameTime());
             data.setTargetUseTime(targetUseTime);
@@ -401,6 +404,7 @@ public class SlashBladeProvider extends ISpellBookProvider<MaidSlashBladeData, R
 
             ResourceLocation after = state.getComboSeq();
             if (!after.equals(ComboStateRegistry.NONE.getId())) {
+                data.setCurrentSpellId(after.toString());
                 data.setCasting(true);
                 data.setSAExecutionStartTime(maid.level().getGameTime());
                 data.setLastComboState(null);

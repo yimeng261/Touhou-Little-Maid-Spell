@@ -49,7 +49,8 @@ public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData
      * 注：对于Youkai-Homecoming，弹幕物品本身就是"法术"，同时支持符卡系统
      */
     public YoukaiHomecomingProvider() {
-        super(MaidYHSpellData::getOrCreate, ItemStack.class);
+        super(MaidYHSpellData::getOrCreate, MaidYHSpellData::get,
+                MaidYHSpellData::remove, MaidYHSpellData::clearAll, ItemStack.class);
         LOGGER.info("YoukaiHomecomingProvider initialized with SpellCard support");
     }
     

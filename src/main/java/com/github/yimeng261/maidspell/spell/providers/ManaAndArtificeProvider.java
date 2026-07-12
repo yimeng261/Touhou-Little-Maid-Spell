@@ -45,7 +45,9 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public ManaAndArtificeProvider() {
-        super(MaidManaAndArtificeSpellData::getOrCreate, ISpellDefinition.class);
+        super(MaidManaAndArtificeSpellData::getOrCreate, MaidManaAndArtificeSpellData::get,
+                MaidManaAndArtificeSpellData::remove, MaidManaAndArtificeSpellData::clearAll,
+                ISpellDefinition.class);
     }
 
     @Override

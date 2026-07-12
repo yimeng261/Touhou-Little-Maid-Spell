@@ -66,7 +66,22 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
      * 构造函数，绑定 MaidPsiSpellData 数据类型和 Spell 法术类型
      */
     public PsiProvider() {
-        super(MaidPsiSpellData::getOrCreate, Spell.class);
+        super(MaidPsiSpellData::getOrCreate, MaidPsiSpellData::get,
+                MaidPsiSpellData::remove, MaidPsiSpellData::clearAll, Spell.class);
+    }
+
+    @Override
+    protected void releaseProviderRuntimeReferences(EntityMaid maid, MaidPsiSpellData data) {
+        cleanupLoopcast(maid.getUUID(), "maid_release");
+    }
+
+    @Override
+    public void clearAllData() {
+        try {
+            clearAllLoopcastContexts("provider_clear");
+        } finally {
+            super.clearAllData();
+        }
     }
 
     /**
@@ -407,24 +422,47 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
     }
 
     private void replaceLoopcastContext(EntityMaid maid, CopiedCadContext newContext) {
-        CopiedCadContext oldContext = ACTIVE_LOOPCAST_CONTEXTS.put(maid.getUUID(), newContext);
+        CopiedCadContext oldContext;
+        synchronized (ACTIVE_LOOPCAST_CONTEXTS) {
+            oldContext = ACTIVE_LOOPCAST_CONTEXTS.put(maid.getUUID(), newContext);
+        }
         if (oldContext != null && oldContext != newContext) {
-            oldContext.close();
+            closeLoopcastContext(maid.getUUID(), oldContext, "context_replaced");
         }
     }
 
-    private void cleanupLoopcast(EntityMaid maid, String reason) {
-        CopiedCadContext context = ACTIVE_LOOPCAST_CONTEXTS.remove(maid.getUUID());
+    private void cleanupLoopcast(UUID maidId, String reason) {
+        CopiedCadContext context;
+        synchronized (ACTIVE_LOOPCAST_CONTEXTS) {
+            context = ACTIVE_LOOPCAST_CONTEXTS.remove(maidId);
+        }
         if (context == null) {
             return;
         }
+        closeLoopcastContext(maidId, context, reason);
+    }
+
+    private void clearAllLoopcastContexts(String reason) {
+        List<Map.Entry<UUID, CopiedCadContext>> contexts;
+        synchronized (ACTIVE_LOOPCAST_CONTEXTS) {
+            contexts = new ArrayList<>(ACTIVE_LOOPCAST_CONTEXTS.entrySet());
+            ACTIVE_LOOPCAST_CONTEXTS.clear();
+        }
+        contexts.forEach(entry -> closeLoopcastContext(entry.getKey(), entry.getValue(), reason));
+    }
+
+    private void closeLoopcastContext(UUID maidId, CopiedCadContext context, String reason) {
         try {
             PlayerDataHandler.PlayerData playerData = PlayerDataHandler.get(context.caster());
             playerData.stopLoopcast();
         } catch (Exception e) {
-            LOGGER.warn("{} abort stage=loopcast_stop maid={} reason=exception", PSI_LOG_PREFIX, maid.getUUID(), e);
+            LOGGER.warn("{} abort stage=loopcast_stop maid={} reason={}", PSI_LOG_PREFIX, maidId, reason, e);
         } finally {
-            context.close();
+            try {
+                context.close();
+            } catch (Exception e) {
+                LOGGER.warn("{} abort stage=loopcast_close maid={} reason={}", PSI_LOG_PREFIX, maidId, reason, e);
+            }
         }
     }
 
@@ -450,7 +488,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
                 playerData.overflowed = false;
                 playerData.tick();
                 if (!playerData.loopcasting) {
-                    cleanupLoopcast(maid, "psi_stopped");
+                    cleanupLoopcast(maid.getUUID(), "psi_stopped");
                     data.setCasting(false);
                     data.setCurrentSpell(null);
                     data.setCastingTicks(0);
@@ -458,7 +496,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
                 }
             } catch (Exception e) {
                 LOGGER.warn("{} abort stage=loopcast_tick maid={} reason=exception", PSI_LOG_PREFIX, maid.getUUID(), e);
-                cleanupLoopcast(maid, "tick_exception");
+                cleanupLoopcast(maid.getUUID(), "tick_exception");
                 data.setCasting(false);
                 data.setCurrentSpell(null);
                 data.setCastingTicks(0);
@@ -472,7 +510,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
 
         // 如果施法完成，重置状态
         if (remainingTicks <= 0) {
-            cleanupLoopcast(maid, "duration_elapsed");
+            cleanupLoopcast(maid.getUUID(), "duration_elapsed");
             data.setCasting(false);
             data.setCurrentSpell(null);
             data.setCastingTicks(0);
@@ -486,7 +524,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
     public void stopCasting(EntityMaid maid) {
         MaidPsiSpellData data = getData(maid);
         if (data != null) {
-            cleanupLoopcast(maid, "stop_casting");
+            cleanupLoopcast(maid.getUUID(), "stop_casting");
             data.setCasting(false);
             data.setCurrentSpell(null);
             data.setCastingTicks(0);

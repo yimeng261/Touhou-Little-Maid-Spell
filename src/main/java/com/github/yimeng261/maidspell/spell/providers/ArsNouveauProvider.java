@@ -42,7 +42,8 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
      * 构造函数，绑定 MaidArsNouveauSpellData 数据类型和 Spell 法术类型
      */
     public ArsNouveauProvider() {
-        super(MaidArsNouveauSpellData::getOrCreate, Spell.class);
+        super(MaidArsNouveauSpellData::getOrCreate, MaidArsNouveauSpellData::get,
+                MaidArsNouveauSpellData::remove, MaidArsNouveauSpellData::clearAll, Spell.class);
     }
     
     // === 核心方法（接受EntityMaid参数） ===

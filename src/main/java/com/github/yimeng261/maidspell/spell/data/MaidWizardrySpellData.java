@@ -73,6 +73,8 @@ public class MaidWizardrySpellData extends IMaidSpellData {
         this.currentSpell = currentSpell;
         if (currentSpell != null) {
             setCurrentSpellId(currentSpell.getLocation().toString());
+        } else {
+            setCurrentSpellId(null);
         }
     }
 
@@ -127,7 +129,7 @@ public class MaidWizardrySpellData extends IMaidSpellData {
      */
     @Override
     public void resetCastingState() {
-        this.setCasting(false);
+        super.resetCastingState();
         this.castingTime = 0;
         this.maxCastingTime = 0;
         this.chargeupTime = 0;

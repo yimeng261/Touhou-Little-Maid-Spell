@@ -66,7 +66,7 @@ public class MaidManaAndArtificeSpellData extends IMaidSpellData {
         this.currentSpell = spell;
         this.currentSpellBook = spellBook == null ? ItemStack.EMPTY : spellBook;
         this.currentSpellStack = spellStack == null ? ItemStack.EMPTY : spellStack;
-        setCurrentSpellId(spellId);
+        setCurrentSpellId(spell == null ? null : spellId);
     }
 
     public ItemStack getCurrentSpellBook() {

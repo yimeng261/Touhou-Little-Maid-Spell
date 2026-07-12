@@ -43,6 +43,10 @@ public class MaidYHSpellData extends IMaidSpellData {
     public static MaidYHSpellData getOrCreate(UUID maidUUID) {
         return DATA_MAP.computeIfAbsent(maidUUID, MaidYHSpellData::new);
     }
+
+    public static MaidYHSpellData get(UUID maidUUID) {
+        return DATA_MAP.get(maidUUID);
+    }
     
     /**
      * 移除女仆数据
@@ -85,9 +89,11 @@ public class MaidYHSpellData extends IMaidSpellData {
     /**
      * 重置施法状态
      */
+    @Override
     public void resetCastingState() {
-        this.isCasting = false;
+        super.resetCastingState();
         this.castingTime = 0;
+        deactivateSpellCard();
     }
 
 
@@ -106,13 +112,22 @@ public class MaidYHSpellData extends IMaidSpellData {
      * @param spellCard 符卡包装器
      */
     public void activateSpellCard(SpellCardWrapper spellCard) {
-        this.isCasting = true;
         this.castingTime = 0;
         this.activeProjectiles.clear();
         this.activeSpellCard = spellCard;
+
+        if (spellCard == null || spellCard.modelId == null || spellCard.modelId.isBlank()) {
+            this.activeSpellCard = null;
+            setCasting(false);
+            setCurrentSpellId(null);
+            return;
+        }
+
+        setCurrentSpellId(spellCard.modelId);
+        setCasting(true);
         
         // 重置符卡状态
-        if (spellCard != null && spellCard.card != null) {
+        if (spellCard.card != null) {
             spellCard.card.reset();
         }
     }
@@ -149,5 +164,6 @@ public class MaidYHSpellData extends IMaidSpellData {
         }
         activeProjectiles.clear();
         activeSpellCard = null;
+        setCurrentSpellId(null);
     }
 }

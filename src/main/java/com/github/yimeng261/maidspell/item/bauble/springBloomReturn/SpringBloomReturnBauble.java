@@ -6,7 +6,9 @@ import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
+import com.github.yimeng261.maidspell.utils.PortableTimerMath;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -23,8 +25,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 
 public class SpringBloomReturnBauble implements IMaidBauble {
+    private static final int CLOCK_VERSION = 1;
+    private static final int MAX_STORED_STACKS = 8;
+    private static final int MIGRATION_GRACE_TICKS = 20;
+    private static final String NBT_CLOCK_VERSION = "spring_bloom_return_clock_version";
     private static final String NBT_STACK_EXPIRIES = "spring_bloom_return_expiries";
     private static final String NBT_LAST_GAIN_TICK = "spring_bloom_return_last_gain_tick";
+    private static final String NBT_GAIN_COOLDOWN_UNTIL = "spring_bloom_return_gain_cooldown_until";
     private static final String NBT_TRIGGER_COOLDOWN_UNTIL = "spring_bloom_return_trigger_cooldown_until";
     private static final Map<UUID, Integer> EQUIPPED_SLOT_CACHE = new ConcurrentHashMap<>();
 
@@ -35,6 +42,10 @@ public class SpringBloomReturnBauble implements IMaidBauble {
     @Override
     public void onPutOn(EntityMaid maid, ItemStack baubleItem) {
         refreshEquippedSlotCache(maid, baubleItem);
+        if (!maid.level().isClientSide && !baubleItem.isEmpty()) {
+            long now = getServerGameTime(maid);
+            prepareTimerState(baubleItem, maid, now);
+        }
     }
 
     @Override
@@ -52,24 +63,26 @@ public class SpringBloomReturnBauble implements IMaidBauble {
             return;
         }
 
-        long now = maid.level().getGameTime();
-        pruneExpiredStacks(stack, now);
-        CompoundTag tag = stack.getOrCreateTag();
-
-        long lastGainTick = tag.getLong(NBT_LAST_GAIN_TICK);
-        if (now - lastGainTick < Config.springBloomReturnGainCooldownTicks) {
+        long now = getServerGameTime(maid);
+        TimerState state = prepareTimerState(stack, maid, now);
+        if (!state.writable()) {
             return;
         }
 
-        List<Long> expiries = getExpiries(stack);
-        if (expiries.size() >= Config.springBloomReturnMaxStacks) {
+        if (state.gainCooldownUntil() != null && now < state.gainCooldownUntil()) {
             return;
         }
 
-        expiries.add(now + Config.springBloomReturnStackDurationTicks);
-        expiries.sort(Long::compareTo);
-        saveExpiries(stack, expiries);
-        tag.putLong(NBT_LAST_GAIN_TICK, now);
+        int maxStacks = Math.min(MAX_STORED_STACKS, Math.max(0, Config.springBloomReturnMaxStacks));
+        if (state.expiries().size() >= maxStacks) {
+            return;
+        }
+
+        state.expiries().add(PortableTimerMath.saturatingAdd(now,
+            Math.max(0L, Config.springBloomReturnStackDurationTicks)));
+        state.expiries().sort(Long::compareTo);
+        state.setGainCooldownUntil(deadlineOrNull(now, Config.springBloomReturnGainCooldownTicks));
+        saveTimerState(stack, state, true);
     }
 
     @SubscribeEvent
@@ -101,30 +114,31 @@ public class SpringBloomReturnBauble implements IMaidBauble {
             return;
         }
 
-        long now = maid.level().getGameTime();
-        pruneExpiredStacks(stack, now);
-        List<Long> expiries = getExpiries(stack);
-        if (expiries.isEmpty()) {
+        long now = getServerGameTime(maid);
+        TimerState state = prepareTimerState(stack, maid, now);
+        if (!state.writable()) {
             return;
         }
 
-        CompoundTag tag = stack.getOrCreateTag();
-        long triggerCooldownUntil = tag.getLong(NBT_TRIGGER_COOLDOWN_UNTIL);
-        if (now < triggerCooldownUntil) {
+        if (state.expiries().isEmpty()) {
             return;
         }
 
-        expiries.sort(Long::compareTo);
-        expiries.remove(0);
-        saveExpiries(stack, expiries);
-        tag.putLong(NBT_TRIGGER_COOLDOWN_UNTIL, now + Config.springBloomReturnTriggerCooldownTicks);
+        if (state.triggerCooldownUntil() != null && now < state.triggerCooldownUntil()) {
+            return;
+        }
+
+        state.expiries().remove(0);
+        state.setTriggerCooldownUntil(deadlineOrNull(now, Config.springBloomReturnTriggerCooldownTicks));
+        saveTimerState(stack, state, true);
 
         float healEquivalent = (float) (protectedTarget.getMaxHealth() * Config.springBloomReturnHealRatio);
         event.setAmount(Math.max(0, event.getAmount() - healEquivalent));
 
         int favorabilityLevel = maid.getFavorabilityManager().getLevel();
         if (favorabilityLevel >= 2) {
-            SpellBookManager.getOrCreateManager(maid).refundCooldowns(Config.springBloomReturnCooldownRefundRatio);
+            SpellBookManager.getOrCreateManager(maid).refundCooldowns(
+                maid, Config.springBloomReturnCooldownRefundRatio);
         }
         if (favorabilityLevel >= 3) {
             purgeOneNegativeEffect(protectedTarget);
@@ -150,8 +164,12 @@ public class SpringBloomReturnBauble implements IMaidBauble {
         if (stack.isEmpty()) {
             return 0;
         }
-        pruneExpiredStacks(stack, maid.level().getGameTime());
-        return getExpiries(stack).size();
+        long now = getServerGameTime(maid);
+        TimerState state = prepareTimerState(stack, maid, now);
+        if (!state.writable()) {
+            return 0;
+        }
+        return state.expiries().size();
     }
 
     private static ItemStack findEquippedStack(EntityMaid maid) {
@@ -193,29 +211,238 @@ public class SpringBloomReturnBauble implements IMaidBauble {
             .ifPresent(entity::removeEffect);
     }
 
-    private static void pruneExpiredStacks(ItemStack stack, long now) {
-        List<Long> expiries = getExpiries(stack);
-        expiries.removeIf(expiry -> expiry <= now);
-        saveExpiries(stack, expiries);
+    private static long getServerGameTime(EntityMaid maid) {
+        return maid.level().getServer().overworld().getGameTime();
     }
 
-    private static List<Long> getExpiries(ItemStack stack) {
-        List<Long> expiries = new ArrayList<>();
+    private static TimerState prepareTimerState(ItemStack stack, EntityMaid maid, long serverNow) {
+        TimerState state = loadTimerState(stack, maid, serverNow);
+        if (state.writable()) {
+            pruneExpiredTimers(state, serverNow);
+            saveTimerState(stack, state, state.hasManagedData());
+        }
+        return state;
+    }
+
+    private static TimerState loadTimerState(ItemStack stack, EntityMaid maid, long serverNow) {
         CompoundTag tag = stack.getTag();
-        if (tag == null || !tag.contains(NBT_STACK_EXPIRIES)) {
+        int storedVersion = tag != null && tag.contains(NBT_CLOCK_VERSION, Tag.TAG_ANY_NUMERIC)
+            ? tag.getInt(NBT_CLOCK_VERSION)
+            : 0;
+        if (storedVersion > CLOCK_VERSION) {
+            return TimerState.readOnly();
+        }
+
+        List<Long> expiries = new ArrayList<>();
+        if (tag != null && tag.contains(NBT_STACK_EXPIRIES, Tag.TAG_LONG_ARRAY)) {
+            for (long expiry : tag.getLongArray(NBT_STACK_EXPIRIES)) {
+                expiries.add(expiry);
+            }
+        }
+
+        Long gainCooldownUntil = getOptionalLong(tag, NBT_GAIN_COOLDOWN_UNTIL);
+        Long triggerCooldownUntil = getOptionalLong(tag, NBT_TRIGGER_COOLDOWN_UNTIL);
+        boolean legacy = storedVersion < CLOCK_VERSION;
+        boolean hadManagedData = hasManagedTimerData(tag);
+        long stackDuration = Math.max(0L, Config.springBloomReturnStackDurationTicks);
+        if (legacy && hadManagedData) {
+            long oldLocalNow = maid.level().getGameTime();
+            expiries.replaceAll(expiry -> PortableTimerMath.migrateDeadline(
+                expiry, oldLocalNow, serverNow, stackDuration, MIGRATION_GRACE_TICKS));
+
+            Long lastGainTick = getOptionalLong(tag, NBT_LAST_GAIN_TICK);
+            if (lastGainTick != null) {
+                long gainCooldown = Math.max(0L, Config.springBloomReturnGainCooldownTicks);
+                long migratedLastGain = PortableTimerMath.migrateTimestamp(
+                    lastGainTick, oldLocalNow, serverNow,
+                    gainCooldown, MIGRATION_GRACE_TICKS);
+                gainCooldownUntil = PortableTimerMath.saturatingAdd(migratedLastGain, gainCooldown);
+            } else if (gainCooldownUntil != null) {
+                gainCooldownUntil = PortableTimerMath.migrateDeadline(
+                    gainCooldownUntil, oldLocalNow, serverNow,
+                    Config.springBloomReturnGainCooldownTicks, MIGRATION_GRACE_TICKS);
+            }
+
+            if (triggerCooldownUntil != null) {
+                triggerCooldownUntil = PortableTimerMath.migrateDeadline(
+                    triggerCooldownUntil, oldLocalNow, serverNow,
+                    Config.springBloomReturnTriggerCooldownTicks, MIGRATION_GRACE_TICKS);
+            }
+        }
+
+        expiries.replaceAll(expiry -> PortableTimerMath.migrateDeadline(
+            expiry, serverNow, serverNow, stackDuration, 0L));
+        if (gainCooldownUntil != null) {
+            gainCooldownUntil = PortableTimerMath.migrateDeadline(
+                gainCooldownUntil, serverNow, serverNow,
+                Config.springBloomReturnGainCooldownTicks, 0L);
+        }
+        if (triggerCooldownUntil != null) {
+            triggerCooldownUntil = PortableTimerMath.migrateDeadline(
+                triggerCooldownUntil, serverNow, serverNow,
+                Config.springBloomReturnTriggerCooldownTicks, 0L);
+        }
+
+        expiries.sort(Long::compareTo);
+        int storedStackLimit = Math.min(MAX_STORED_STACKS,
+            Math.max(0, Config.springBloomReturnMaxStacks));
+        if (expiries.size() > storedStackLimit) {
+            expiries = new ArrayList<>(expiries.subList(0, storedStackLimit));
+        }
+        return new TimerState(expiries, gainCooldownUntil, triggerCooldownUntil,
+            true, legacy && hadManagedData);
+    }
+
+    private static void pruneExpiredTimers(TimerState state, long now) {
+        state.expiries().removeIf(expiry -> expiry <= now);
+        if (state.gainCooldownUntil() != null && state.gainCooldownUntil() <= now) {
+            state.setGainCooldownUntil(null);
+        }
+        if (state.triggerCooldownUntil() != null && state.triggerCooldownUntil() <= now) {
+            state.setTriggerCooldownUntil(null);
+        }
+    }
+
+    private static void saveTimerState(ItemStack stack, TimerState state, boolean forceVersion) {
+        if (!state.writable()) {
+            return;
+        }
+
+        CompoundTag currentTag = stack.getTag();
+        boolean needsWrite = state.requiresVersionWrite()
+            || forceVersion && (currentTag == null || currentTag.getInt(NBT_CLOCK_VERSION) != CLOCK_VERSION)
+            || currentTag != null && currentTag.contains(NBT_LAST_GAIN_TICK)
+            || !longArrayEquals(currentTag, NBT_STACK_EXPIRIES, state.expiries())
+            || !optionalLongEquals(currentTag, NBT_GAIN_COOLDOWN_UNTIL, state.gainCooldownUntil())
+            || !optionalLongEquals(currentTag, NBT_TRIGGER_COOLDOWN_UNTIL, state.triggerCooldownUntil());
+        if (!needsWrite) {
+            return;
+        }
+
+        CompoundTag tag = stack.getOrCreateTag();
+        if (forceVersion || state.requiresVersionWrite()) {
+            tag.putInt(NBT_CLOCK_VERSION, CLOCK_VERSION);
+        }
+        tag.remove(NBT_LAST_GAIN_TICK);
+        putLongArrayOrRemove(tag, NBT_STACK_EXPIRIES, state.expiries());
+        putOptionalLong(tag, NBT_GAIN_COOLDOWN_UNTIL, state.gainCooldownUntil());
+        putOptionalLong(tag, NBT_TRIGGER_COOLDOWN_UNTIL, state.triggerCooldownUntil());
+        state.markPersisted();
+    }
+
+    private static boolean hasManagedTimerData(CompoundTag tag) {
+        return tag != null && (tag.contains(NBT_STACK_EXPIRIES)
+            || tag.contains(NBT_LAST_GAIN_TICK)
+            || tag.contains(NBT_GAIN_COOLDOWN_UNTIL)
+            || tag.contains(NBT_TRIGGER_COOLDOWN_UNTIL)
+            || tag.contains(NBT_CLOCK_VERSION));
+    }
+
+    private static Long getOptionalLong(CompoundTag tag, String key) {
+        return tag != null && tag.contains(key, Tag.TAG_ANY_NUMERIC) ? tag.getLong(key) : null;
+    }
+
+    private static Long deadlineOrNull(long now, long durationTicks) {
+        return durationTicks <= 0L ? null : PortableTimerMath.saturatingAdd(now, durationTicks);
+    }
+
+    private static boolean longArrayEquals(CompoundTag tag, String key, List<Long> values) {
+        if (values.isEmpty()) {
+            return tag == null || !tag.contains(key);
+        }
+        if (tag == null || !tag.contains(key, Tag.TAG_LONG_ARRAY)) {
+            return false;
+        }
+        long[] stored = tag.getLongArray(key);
+        if (stored.length != values.size()) {
+            return false;
+        }
+        for (int i = 0; i < stored.length; i++) {
+            if (stored[i] != values.get(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean optionalLongEquals(CompoundTag tag, String key, Long value) {
+        if (value == null) {
+            return tag == null || !tag.contains(key);
+        }
+        return tag != null && tag.contains(key, Tag.TAG_ANY_NUMERIC) && tag.getLong(key) == value;
+    }
+
+    private static void putLongArrayOrRemove(CompoundTag tag, String key, List<Long> values) {
+        if (values.isEmpty()) {
+            tag.remove(key);
+        } else {
+            tag.putLongArray(key, values.stream().mapToLong(Long::longValue).toArray());
+        }
+    }
+
+    private static void putOptionalLong(CompoundTag tag, String key, Long value) {
+        if (value == null) {
+            tag.remove(key);
+        } else {
+            tag.putLong(key, value);
+        }
+    }
+
+    private static final class TimerState {
+        private final List<Long> expiries;
+        private Long gainCooldownUntil;
+        private Long triggerCooldownUntil;
+        private final boolean writable;
+        private boolean requiresVersionWrite;
+
+        private TimerState(List<Long> expiries, Long gainCooldownUntil, Long triggerCooldownUntil,
+                           boolean writable, boolean requiresVersionWrite) {
+            this.expiries = expiries;
+            this.gainCooldownUntil = gainCooldownUntil;
+            this.triggerCooldownUntil = triggerCooldownUntil;
+            this.writable = writable;
+            this.requiresVersionWrite = requiresVersionWrite;
+        }
+
+        private static TimerState readOnly() {
+            return new TimerState(new ArrayList<>(), null, null, false, false);
+        }
+
+        private List<Long> expiries() {
             return expiries;
         }
-        for (long expiry : tag.getLongArray(NBT_STACK_EXPIRIES)) {
-            expiries.add(expiry);
-        }
-        expiries.sort(Long::compareTo);
-        return expiries;
-    }
 
-    private static void saveExpiries(ItemStack stack, List<Long> expiries) {
-        stack.getOrCreateTag().putLongArray(
-            NBT_STACK_EXPIRIES,
-            expiries.stream().mapToLong(Long::longValue).toArray()
-        );
+        private Long gainCooldownUntil() {
+            return gainCooldownUntil;
+        }
+
+        private void setGainCooldownUntil(Long gainCooldownUntil) {
+            this.gainCooldownUntil = gainCooldownUntil;
+        }
+
+        private Long triggerCooldownUntil() {
+            return triggerCooldownUntil;
+        }
+
+        private void setTriggerCooldownUntil(Long triggerCooldownUntil) {
+            this.triggerCooldownUntil = triggerCooldownUntil;
+        }
+
+        private boolean writable() {
+            return writable;
+        }
+
+        private boolean requiresVersionWrite() {
+            return requiresVersionWrite;
+        }
+
+        private boolean hasManagedData() {
+            return requiresVersionWrite || !expiries.isEmpty()
+                || gainCooldownUntil != null || triggerCooldownUntil != null;
+        }
+
+        private void markPersisted() {
+            requiresVersionWrite = false;
+        }
     }
 }

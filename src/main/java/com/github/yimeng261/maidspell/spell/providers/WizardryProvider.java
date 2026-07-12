@@ -62,7 +62,8 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
      * 构造函数，绑定 MaidWizardrySpellData 数据类型
      */
     public WizardryProvider() {
-        super(MaidWizardrySpellData::getOrCreate, Spell.class);
+        super(MaidWizardrySpellData::getOrCreate, MaidWizardrySpellData::get,
+                MaidWizardrySpellData::remove, MaidWizardrySpellData::clearAll, Spell.class);
     }
 
     @Override
