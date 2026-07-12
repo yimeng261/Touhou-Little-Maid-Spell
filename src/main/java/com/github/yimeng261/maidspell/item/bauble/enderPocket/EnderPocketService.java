@@ -6,7 +6,6 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 
 import java.util.*;
 
@@ -28,7 +27,7 @@ public class EnderPocketService {
      * 获取玩家所有装备末影腰包的女仆信息
      */
     public static List<EnderPocketMaidInfo> getPlayerEnderPocketMaids(UUID playerUUID) {
-        Map<UUID, EntityMaid> maids = Global.getOrCreatePlayerMaidMap(playerUUID);
+        Map<UUID, EntityMaid> maids = Global.ownerMaidRegistry.get(playerUUID);
         if (maids == null || maids.isEmpty()) {
             return Collections.emptyList();
         }
@@ -36,7 +35,9 @@ public class EnderPocketService {
         List<EnderPocketMaidInfo> enderPocketMaids = new ArrayList<>();
         
         for (EntityMaid maid : maids.values()) {
-            if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
+            if (maid != null && maid.isAlive() && !maid.isRemoved()
+                    && playerUUID.equals(maid.getOwnerUUID())
+                    && BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
                 enderPocketMaids.add(new EnderPocketMaidInfo(
                         maid.getUUID(),
                         maid.getName().getString(),
@@ -51,14 +52,20 @@ public class EnderPocketService {
     /**
      * 打开女仆背包
      */
-    public static boolean openMaidInventory(ServerPlayer player, int maidEntityId) {
-        Entity entity = player.level().getEntity(maidEntityId);
-        if (!(entity instanceof EntityMaid maid)) {
+    public static boolean openMaidInventory(ServerPlayer player, UUID maidUuid) {
+        if (maidUuid == null) {
             return false;
         }
-        
-        // 检查权限
-        if (!maid.isOwnedBy(player) || maid.isSleeping() || !maid.isAlive()) {
+
+        Map<UUID, EntityMaid> maids = Global.ownerMaidRegistry.get(player.getUUID());
+        EntityMaid maid = maids == null ? null : maids.get(maidUuid);
+        if (maid == null
+                || maid.isRemoved()
+                || !maid.isAlive()
+                || maid.isSleeping()
+                || !player.getUUID().equals(maid.getOwnerUUID())
+                || !maid.isOwnedBy(player)
+                || !BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
             return false;
         }
         

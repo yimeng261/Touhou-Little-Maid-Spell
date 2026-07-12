@@ -4,7 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
-import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
+import com.github.yimeng261.maidspell.network.message.EnderPocketDataMessage;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
@@ -61,7 +61,7 @@ public class EnderPocketBauble implements IMaidBauble {
                     EnderPocketService.getPlayerEnderPocketMaids(player);
             
             // 使用便利方法创建服务器推送更新消息
-            EnderPocketMessage message = EnderPocketMessage.serverPushUpdate(maidInfos);
+            EnderPocketDataMessage message = EnderPocketDataMessage.serverPushUpdate(maidInfos);
             
             NetworkHandler.CHANNEL.sendTo(
                     message, 

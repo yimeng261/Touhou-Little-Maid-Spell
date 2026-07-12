@@ -20,7 +20,7 @@ public class EnderPocketClientHandler {
     /**
      * 处理客户端的末影腰包消息
      */
-    public static void handleClientMessage(EnderPocketMessage.Type type, 
+    public static void handleClientMessage(EnderPocketDataMessage.Type type,
                                          List<EnderPocketService.EnderPocketMaidInfo> maidInfos, 
                                          boolean fromMaidBackpack) {
         Minecraft mc = Minecraft.getInstance();

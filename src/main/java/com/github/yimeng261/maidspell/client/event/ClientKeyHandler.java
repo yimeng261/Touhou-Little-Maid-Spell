@@ -2,7 +2,7 @@ package com.github.yimeng261.maidspell.client.event;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.KeyBinds;
-import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
+import com.github.yimeng261.maidspell.network.message.EnderPocketRequestMessage;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
@@ -24,7 +24,7 @@ public class ClientKeyHandler {
             // 检查末影腰包GUI按键
             if (KeyBinds.OPEN_ENDER_POCKET_GUI.consumeClick()) {
                 if (mc.player != null) {
-                    NetworkHandler.CHANNEL.sendToServer(EnderPocketMessage.requestMaidList());
+                    NetworkHandler.CHANNEL.sendToServer(EnderPocketRequestMessage.requestMaidList());
                 }
             }
         }

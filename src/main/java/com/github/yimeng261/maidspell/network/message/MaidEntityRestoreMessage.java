@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.network.message;
 
+import io.netty.handler.codec.DecoderException;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -15,6 +16,8 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public class MaidEntityRestoreMessage {
+    public static final int MAX_ENTITY_TYPE_ID_LENGTH = 256;
+    public static final int MAX_ENTITY_DATA_VALUES = 255;
     private final int entityId;
     private final UUID uuid;
     private final ResourceLocation entityTypeId;
@@ -44,8 +47,11 @@ public class MaidEntityRestoreMessage {
     public static void encode(MaidEntityRestoreMessage message, FriendlyByteBuf buf) {
         buf.writeVarInt(message.entityId);
         buf.writeUUID(message.uuid);
-        buf.writeResourceLocation(message.entityTypeId);
+        buf.writeUtf(message.entityTypeId.toString(), MAX_ENTITY_TYPE_ID_LENGTH);
         buf.writeNbt(message.entityTag);
+        if (message.entityData.size() > MAX_ENTITY_DATA_VALUES) {
+            throw new IllegalArgumentException("Entity data count exceeds limit: " + message.entityData.size());
+        }
         buf.writeVarInt(message.entityData.size());
         for (SynchedEntityData.DataValue<?> dataValue : message.entityData) {
             dataValue.write(buf);
@@ -60,9 +66,16 @@ public class MaidEntityRestoreMessage {
     public static MaidEntityRestoreMessage decode(FriendlyByteBuf buf) {
         int entityId = buf.readVarInt();
         UUID uuid = buf.readUUID();
-        ResourceLocation entityTypeId = buf.readResourceLocation();
+        String entityTypeIdString = buf.readUtf(MAX_ENTITY_TYPE_ID_LENGTH);
+        ResourceLocation entityTypeId = ResourceLocation.tryParse(entityTypeIdString);
+        if (entityTypeId == null) {
+            throw new DecoderException("Invalid entity type id: " + entityTypeIdString);
+        }
         CompoundTag entityTag = buf.readNbt();
         int entityDataSize = buf.readVarInt();
+        if (entityDataSize < 0 || entityDataSize > MAX_ENTITY_DATA_VALUES) {
+            throw new DecoderException("Entity data count exceeds limit: " + entityDataSize);
+        }
         List<SynchedEntityData.DataValue<?>> entityData = new ArrayList<>(entityDataSize);
         for (int i = 0; i < entityDataSize; i++) {
             int dataId = buf.readUnsignedByte();

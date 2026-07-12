@@ -6,7 +6,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.
 import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen.TransparentButton;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
-import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
+import com.github.yimeng261.maidspell.network.message.EnderPocketRequestMessage;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
@@ -154,7 +154,7 @@ public class MaidBackpackEnderPocketIntegration {
             Button maidButton = new TransparentButton(
                 buttonX, buttonY, buttonWidth, buttonHeight,
                 Component.literal(maidInfo.maidName()),
-                button -> handleMaidButtonClick(maidInfo.maidEntityId(),event.getGui())
+                button -> handleMaidButtonClick(maidInfo.maidUUID(), event.getGui())
             );
 
             event.addButton("maid_button_" + i, maidButton);
@@ -234,7 +234,7 @@ public class MaidBackpackEnderPocketIntegration {
      * 请求末影腰包数据（直接版本）
      */
     private static void requestEnderPocketData() {
-        NetworkHandler.CHANNEL.sendToServer(EnderPocketMessage.requestMaidListFromBackpack());
+        NetworkHandler.CHANNEL.sendToServer(EnderPocketRequestMessage.requestMaidListFromBackpack());
     }
     
 
@@ -311,8 +311,8 @@ public class MaidBackpackEnderPocketIntegration {
     /**
      * 处理女仆按钮点击（通过事件系统调用）
      */
-    private static void handleMaidButtonClick(int maidEntityId,AbstractMaidContainerGui<?> gui) {
-        NetworkHandler.CHANNEL.sendToServer(EnderPocketMessage.openMaidInventory(maidEntityId));
+    private static void handleMaidButtonClick(java.util.UUID maidUuid, AbstractMaidContainerGui<?> gui) {
+        NetworkHandler.CHANNEL.sendToServer(EnderPocketRequestMessage.openMaidInventory(maidUuid));
     }
 
     

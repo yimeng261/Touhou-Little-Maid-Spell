@@ -2,7 +2,7 @@ package com.github.yimeng261.maidspell.client.gui;
 
 import com.github.yimeng261.maidspell.client.KeyBinds;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
-import com.github.yimeng261.maidspell.network.message.EnderPocketMessage;
+import com.github.yimeng261.maidspell.network.message.EnderPocketRequestMessage;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
@@ -70,7 +70,7 @@ public class EnderPocketScreen extends Screen {
             Button maidButton = new TransparentButton(
                 buttonX, buttonY, buttonWidth, buttonHeight,
                 Component.literal(maidInfo.maidName()),
-                button -> openMaidInventory(maidInfo.maidEntityId())
+                button -> openMaidInventory(maidInfo.maidUUID())
             );
             
             this.addRenderableWidget(maidButton);
@@ -78,8 +78,8 @@ public class EnderPocketScreen extends Screen {
         
     }
     
-    private void openMaidInventory(int maidEntityId) {
-        NetworkHandler.CHANNEL.sendToServer(EnderPocketMessage.openMaidInventory(maidEntityId));
+    private void openMaidInventory(java.util.UUID maidUuid) {
+        NetworkHandler.CHANNEL.sendToServer(EnderPocketRequestMessage.openMaidInventory(maidUuid));
     }
     
 
