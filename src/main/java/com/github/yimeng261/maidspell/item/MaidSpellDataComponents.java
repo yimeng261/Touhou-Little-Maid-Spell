@@ -55,6 +55,10 @@ public class MaidSpellDataComponents {
         .persistent(Codec.LONG.listOf())
         .build());
 
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> DREAM_CRYSTAL_REVIVE_CLOCK_VERSION = DATA_COMPONENTS.register("dream_crystal_revive_clock_version", key -> DataComponentType.<Integer>builder()
+        .persistent(Codec.INT)
+        .build());
+
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> DREAM_CRYSTAL_INVULNERABLE_TICKS = DATA_COMPONENTS.register("dream_crystal_invulnerable_ticks", key -> DataComponentType.<Integer>builder()
         .persistent(Codec.INT)
         .build());

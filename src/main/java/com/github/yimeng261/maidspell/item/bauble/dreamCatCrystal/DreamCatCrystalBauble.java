@@ -10,11 +10,13 @@ import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.PortableTimerMath;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -72,6 +74,11 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     private static final Map<UUID, BoostedMaidState> BOOSTED_MAIDS = new HashMap<>();
     private static final PriorityQueue<ScheduledExpiry> BOOSTED_MAID_EXPIRIES =
             new PriorityQueue<>(Comparator.comparingLong(ScheduledExpiry::expiry));
+
+    private static final int REVIVE_CLOCK_VERSION = 1;
+    private static final int MAX_REVIVE_TIMESTAMPS = 10;
+    private static final long REVIVE_WINDOW_TICKS = 2400L;
+    private static final long LEGACY_TIMESTAMP_GRACE_TICKS = 20L;
 
     // ========== 属性修饰符 ResourceLocation ==========
     private static final ResourceLocation DC_HP_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "dream_crystal_hp");
@@ -134,8 +141,11 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
             // 2. 时停 1 秒（仅在服务端执行）
             if (!maid.level().isClientSide() && target.isAlive() && target instanceof Mob mob) {
-                long unfreezeTime = maid.level().getGameTime() + 20L;
-                freezeTarget(mob, unfreezeTime);
+                MinecraftServer server = maid.getServer();
+                if (server != null) {
+                    long unfreezeTime = PortableTimerMath.saturatingAdd(globalGameTime(server), 20L);
+                    freezeTarget(mob, unfreezeTime);
+                }
             }
 
             // 3. 弹幕溅射：对目标周围 5 格内的敌方实体造成 10% 伤害
@@ -167,17 +177,31 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 return null;
             }
 
+            MinecraftServer server = maid.getServer();
+            if (server == null) {
+                return null;
+            }
+            int storedClockVersion = baubleStack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_CLOCK_VERSION, 0);
+            if (storedClockVersion > REVIVE_CLOCK_VERSION) {
+                return null;
+            }
+
             // 获取并过滤最近 120 秒（2400 tick）内的复活时间戳
-            long currentTime = maid.level().getGameTime();
-            List<Long> timestamps = getReviveTimestamps(baubleStack);
-            timestamps.removeIf(t -> currentTime - t > 2400L);
+            long currentTime = globalGameTime(server);
+            ReviveHistory history = loadReviveHistory(baubleStack, storedClockVersion, maid.level().getGameTime(), currentTime);
+            List<Long> timestamps = history.timestamps();
 
             int n = timestamps.size();
             // 复活概率 = 100% - N×10%
             float reviveChance = Math.max(0.0f, 1.0f - n * 0.1f);
-            if (reviveChance <= 0.0f) return null; // N >= 10，无法复活
-
-            if (maid.getRandom().nextFloat() >= reviveChance) return null; // 概率未触发
+            boolean revived = reviveChance > 0.0f && maid.getRandom().nextFloat() < reviveChance;
+            if (revived) {
+                timestamps.add(currentTime);
+            }
+            if (history.changed() || revived) {
+                saveReviveHistory(baubleStack, timestamps);
+            }
+            if (!revived) return null;
 
             // 触发复活
             event.setCanceled(true);
@@ -185,10 +209,6 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             // 恢复到最大生命值
             float healAmount = maid.getMaxHealth();
             maid.setHealth(healAmount);
-
-            // 记录本次复活时间戳
-            timestamps.add(currentTime);
-            saveReviveTimestamps(baubleStack, timestamps);
 
             // 设置 15 秒无敌（300 tick）
             setInvulnerableTicks(baubleStack, 300);
@@ -230,6 +250,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         if (tick % 20 != 3) return;
 
         // ========== 每 20 tick（约 1 秒）的效果 ==========
+
+        normalizeReviveHistory(maid, baubleItem);
 
         // 1. 血量上限 +50%
         applyAttributeModifier(maid, Attributes.MAX_HEALTH, DC_HP_ID,
@@ -359,7 +381,11 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     // ========== 范围女仆强化 ==========
     private void applyRangeMaidBoost(EntityMaid sourceMaid) {
-        long expiry = sourceMaid.level().getGameTime() + 40L; // 40 tick 有效期（比 20tick 扫描间隔多 20tick 缓冲）
+        MinecraftServer server = sourceMaid.getServer();
+        if (server == null) {
+            return;
+        }
+        long expiry = PortableTimerMath.saturatingAdd(globalGameTime(server), 40L); // 40 tick 有效期（比 20tick 扫描间隔多 20tick 缓冲）
 
         // 扫描 20 格内的女仆（排除自身）
         List<EntityMaid> nearbyMaids = sourceMaid.level().getEntitiesOfClass(
@@ -533,16 +559,81 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         return ItemStack.EMPTY;
     }
 
-    private static List<Long> getReviveTimestamps(ItemStack stack) {
-        return new ArrayList<>(stack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS, List.of()));
+    private static ReviveHistory loadReviveHistory(ItemStack stack, int storedClockVersion,
+                                                   long legacyNow, long serverNow) {
+        List<Long> storedTimestamps = stack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS, List.of());
+        List<Long> normalized = new ArrayList<>(Math.min(storedTimestamps.size(), MAX_REVIVE_TIMESTAMPS));
+        long oldestAllowed = PortableTimerMath.saturatingSubtract(serverNow, REVIVE_WINDOW_TICKS);
+
+        for (long storedTimestamp : storedTimestamps) {
+            long timestamp;
+            if (storedClockVersion < REVIVE_CLOCK_VERSION) {
+                timestamp = PortableTimerMath.migrateTimestamp(
+                        storedTimestamp,
+                        legacyNow,
+                        serverNow,
+                        REVIVE_WINDOW_TICKS,
+                        LEGACY_TIMESTAMP_GRACE_TICKS
+                );
+            } else {
+                timestamp = storedTimestamp;
+            }
+            timestamp = Math.min(timestamp, serverNow);
+            if (timestamp >= oldestAllowed) {
+                normalized.add(timestamp);
+            }
+        }
+
+        normalized.sort(Long::compareTo);
+        if (normalized.size() > MAX_REVIVE_TIMESTAMPS) {
+            normalized = new ArrayList<>(normalized.subList(
+                    normalized.size() - MAX_REVIVE_TIMESTAMPS,
+                    normalized.size()
+            ));
+        }
+
+        boolean changed = storedClockVersion != REVIVE_CLOCK_VERSION
+                || !storedTimestamps.equals(normalized);
+        return new ReviveHistory(normalized, changed);
     }
 
-    private static void saveReviveTimestamps(ItemStack stack, List<Long> timestamps) {
+    private static void normalizeReviveHistory(EntityMaid maid, ItemStack baubleItem) {
+        if (!baubleItem.has(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_CLOCK_VERSION)
+                && !baubleItem.has(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS)) {
+            return;
+        }
+
+        int storedClockVersion = baubleItem.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_CLOCK_VERSION, 0);
+        if (storedClockVersion > REVIVE_CLOCK_VERSION) {
+            return;
+        }
+        MinecraftServer server = maid.getServer();
+        if (server == null) {
+            return;
+        }
+
+        ReviveHistory history = loadReviveHistory(
+                baubleItem,
+                storedClockVersion,
+                maid.level().getGameTime(),
+                globalGameTime(server)
+        );
+        if (history.changed()) {
+            saveReviveHistory(baubleItem, history.timestamps());
+        }
+    }
+
+    private static void saveReviveHistory(ItemStack stack, List<Long> timestamps) {
+        if (stack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_CLOCK_VERSION, 0) != REVIVE_CLOCK_VERSION) {
+            stack.set(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_CLOCK_VERSION, REVIVE_CLOCK_VERSION);
+        }
         if (timestamps.isEmpty()) {
             stack.remove(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS);
             return;
         }
-        stack.set(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS, List.copyOf(timestamps));
+        if (!timestamps.equals(stack.get(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS))) {
+            stack.set(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS, List.copyOf(timestamps));
+        }
     }
 
     private static void setInvulnerableTicks(ItemStack stack, int ticks) {
@@ -568,9 +659,10 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     // ========== 调度器 ==========
 
-    public static void processScheduledEffects() {
-        processFrozenTargets();
-        processBoostedMaids();
+    public static void processScheduledEffects(MinecraftServer server) {
+        long currentTime = globalGameTime(server);
+        processFrozenTargets(currentTime);
+        processBoostedMaids(currentTime);
     }
 
     public static void clearScheduledEffects() {
@@ -599,7 +691,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         }
     }
 
-    private static void processFrozenTargets() {
+    private static void processFrozenTargets(long currentTime) {
         while (!FROZEN_TARGET_EXPIRIES.isEmpty()) {
             ScheduledExpiry scheduled = FROZEN_TARGET_EXPIRIES.peek();
             FrozenTargetState state = FROZEN_TARGETS.get(scheduled.entityId());
@@ -615,7 +707,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 continue;
             }
 
-            if (target.level().getGameTime() < scheduled.expiry()) {
+            if (currentTime < scheduled.expiry()) {
                 break;
             }
 
@@ -632,8 +724,12 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         if (state == null) {
             return false;
         }
+        MinecraftServer server = maid.getServer();
+        if (server == null) {
+            return false;
+        }
         state.maid = maid;
-        return maid.level().getGameTime() < state.expiry;
+        return globalGameTime(server) < state.expiry;
     }
 
     private static void applyOrRefreshMaidBoost(EntityMaid maid, long expiry) {
@@ -659,7 +755,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         BOOSTED_MAID_EXPIRIES.add(new ScheduledExpiry(maidUUID, expiry));
     }
 
-    private static void processBoostedMaids() {
+    private static void processBoostedMaids(long currentTime) {
         while (!BOOSTED_MAID_EXPIRIES.isEmpty()) {
             ScheduledExpiry scheduled = BOOSTED_MAID_EXPIRIES.peek();
             BoostedMaidState state = BOOSTED_MAIDS.get(scheduled.entityId());
@@ -675,7 +771,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 continue;
             }
 
-            if (maid.level().getGameTime() < scheduled.expiry()) {
+            if (currentTime < scheduled.expiry()) {
                 break;
             }
 
@@ -686,6 +782,13 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     }
 
     private record ScheduledExpiry(UUID entityId, long expiry) {
+    }
+
+    private record ReviveHistory(List<Long> timestamps, boolean changed) {
+    }
+
+    private static long globalGameTime(MinecraftServer server) {
+        return server.overworld().getGameTime();
     }
 
     private static final class FrozenTargetState {
