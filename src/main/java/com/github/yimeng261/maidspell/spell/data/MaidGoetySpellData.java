@@ -63,6 +63,10 @@ public class MaidGoetySpellData extends IMaidSpellData {
         MAID_DATA_MAP.remove(maidUuid);
     }
 
+    public static void clearAll() {
+        MAID_DATA_MAP.clear();
+    }
+
 
     // === 基本状态管理 ===
 
@@ -125,8 +129,9 @@ public class MaidGoetySpellData extends IMaidSpellData {
     /**
      * 重置施法状态（保留冷却数据）
      */
+    @Override
     public void resetCastingState() {
-        this.setCasting(false);
+        super.resetCastingState();
         this.castingTime = 0;
         this.maxCastingTime = 0;
         this.currentSpell = null;

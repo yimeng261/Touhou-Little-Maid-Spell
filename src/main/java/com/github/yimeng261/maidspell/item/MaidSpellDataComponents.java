@@ -39,6 +39,14 @@ public class MaidSpellDataComponents {
         .persistent(Codec.LONG)
         .build());
 
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Long>> SPRING_BLOOM_RETURN_GAIN_COOLDOWN_UNTIL = DATA_COMPONENTS.register("spring_bloom_return_gain_cooldown_until", key -> DataComponentType.<Long>builder()
+        .persistent(Codec.LONG)
+        .build());
+
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> SPRING_BLOOM_RETURN_CLOCK_VERSION = DATA_COMPONENTS.register("spring_bloom_return_clock_version", key -> DataComponentType.<Integer>builder()
+        .persistent(Codec.INT)
+        .build());
+
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Long>> SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_UNTIL = DATA_COMPONENTS.register("spring_bloom_return_trigger_cooldown_until", key -> DataComponentType.<Long>builder()
         .persistent(Codec.LONG)
         .build());

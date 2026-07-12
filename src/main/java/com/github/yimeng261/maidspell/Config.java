@@ -120,9 +120,9 @@ public class Config {
         BUILDER.comment("");
     }
 
-    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> SPELL_BLACKLIST = BUILDER
-            .comment("法术黑名单，女仆不会施放这些法术")
-            .comment("Spell blacklist, maids will not cast these spells")
+    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> IRONS_SPELL_BLACKLIST = BUILDER
+            .comment("铁魔法法术黑名单，女仆不会施放这些法术")
+            .comment("Iron's Spells blacklist; maids will not cast these spells")
             .comment("示例: [\"irons_spellbooks:spectral_hammer\", \"irons_spellbooks:firecracker\"]")
             .comment("Example: [\"irons_spellbooks:spectral_hammer\", \"irons_spellbooks:firecracker\"]")
             .defineListAllowEmpty(
@@ -130,17 +130,6 @@ public class Config {
                 () -> List.of("irons_spellbooks:spectral_hammer"),
                 obj -> obj instanceof String
             );
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.BooleanValue AUTO_ALLIANCE_ENABLED = BUILDER
-            .comment("是否自动设置女仆与玩家结盟 (默认: true)")
-            .comment("Whether to automatically set alliance between maids and players")
-            .comment("结盟后，女仆与玩家将被加入同一队伍，禁止友军伤害")
-            .comment("When allied, maids and players will be in the same team with friendly fire disabled")
-            .define("autoAllianceEnabled", true);
 
     static {
         BUILDER.pop();
@@ -641,6 +630,11 @@ public class Config {
             .comment("Whether to allow hostile mob spawns in The Retreat (default: false)")
             .define("allowHostileMobSpawnsInRetreat", false);
 
+    private static final ModConfigSpec.IntValue RETREAT_RECORD_RETENTION_DAYS = BUILDER
+            .comment("未引用且无结构/配额/恢复状态的归隐维度元数据保留天数（0=禁用自动清理）")
+            .comment("Retention days for unreferenced empty retreat metadata (0 disables cleanup)")
+            .defineInRange("retreatRecordRetentionDays", 0, 0, 36500);
+
     static {
         BUILDER.pop(); // retreat_dimension
     }
@@ -655,8 +649,7 @@ public class Config {
     public static double coolDownMultiplier;
     public static int meleeAttackInterval;
     public static int farAttackInterval;
-    public static List<String> spellBlacklist;
-    public static boolean autoAllianceEnabled;
+    public static List<String> ironsSpellBlacklist;
 
     // 饰品配置缓存值
     // 伤害相关
@@ -728,6 +721,7 @@ public class Config {
     public static Set<ResourceLocation> allowedStructures;
     public static boolean allowMobSpawnsInRetreat;
     public static boolean allowHostileMobSpawnsInRetreat;
+    public static int retreatRecordRetentionDays;
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent.Loading event) {
@@ -752,8 +746,7 @@ public class Config {
         farRange = FAR_RANGE.get();
         meleeAttackInterval = MELEE_ATTACK_INTERVAL.get();
         farAttackInterval = FAR_ATTACK_INTERVAL.get();
-        spellBlacklist = new ArrayList<>(SPELL_BLACKLIST.get());
-        autoAllianceEnabled = AUTO_ALLIANCE_ENABLED.get();
+        ironsSpellBlacklist = new ArrayList<>(IRONS_SPELL_BLACKLIST.get());
 
         // 加载饰品配置值
         // 伤害相关
@@ -834,6 +827,7 @@ public class Config {
         allowedStructures = structureSet;
         allowMobSpawnsInRetreat = ALLOW_MOB_SPAWNS_IN_RETREAT.get();
         allowHostileMobSpawnsInRetreat = ALLOW_HOSTILE_MOB_SPAWNS_IN_RETREAT.get();
+        retreatRecordRetentionDays = RETREAT_RECORD_RETENTION_DAYS.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

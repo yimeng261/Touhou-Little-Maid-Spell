@@ -37,7 +37,8 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
      * 构造函数，绑定 MaidGoetySpellData 数据类型
      */
     public GoetyProvider() {
-        super(MaidGoetySpellData::getOrCreate, ItemStack.class);
+        super(MaidGoetySpellData::getOrCreate, MaidGoetySpellData::get,
+                MaidGoetySpellData::remove, MaidGoetySpellData::clearAll, ItemStack.class);
     }
 
     @Override

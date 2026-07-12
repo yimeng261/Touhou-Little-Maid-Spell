@@ -44,6 +44,10 @@ public class MaidUsefulMagicSpellData extends IMaidSpellData {
         return MAID_DATA_MAP.computeIfAbsent(maidUuid, k -> new MaidUsefulMagicSpellData());
     }
 
+    public static MaidUsefulMagicSpellData get(UUID maidUuid) {
+        return MAID_DATA_MAP.get(maidUuid);
+    }
+
     public static void remove(UUID maidUuid) {
         MAID_DATA_MAP.remove(maidUuid);
     }
@@ -97,8 +101,14 @@ public class MaidUsefulMagicSpellData extends IMaidSpellData {
         this.setCasting(true);
     }
 
+    @Override
+    public void releaseRuntimeReferences() {
+        super.releaseRuntimeReferences();
+        this.target = null;
+    }
+
     /**
-     * 重置施法状态（保留 target，让女仆继续锁敌，与 Goety 一致）。
+     * 重置施法状态（保留 target，让女仆继续锁敌）。
      */
     @Override
     public void resetCastingState() {

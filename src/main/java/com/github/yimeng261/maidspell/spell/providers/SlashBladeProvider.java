@@ -72,7 +72,8 @@ public class SlashBladeProvider extends ISpellBookProvider<MaidSlashBladeData, R
     }
 
     public SlashBladeProvider() {
-        super(MaidSlashBladeData::getOrCreate, ResourceLocation.class);
+        super(MaidSlashBladeData::getOrCreate, MaidSlashBladeData::get,
+                MaidSlashBladeData::remove, MaidSlashBladeData::clearAll, ResourceLocation.class);
     }
 
     // ==================== ISpellBookProvider API ====================

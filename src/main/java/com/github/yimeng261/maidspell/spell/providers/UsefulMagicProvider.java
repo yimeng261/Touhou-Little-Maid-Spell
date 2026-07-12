@@ -47,7 +47,8 @@ public class UsefulMagicProvider extends ISpellBookProvider<MaidUsefulMagicSpell
     }
 
     public UsefulMagicProvider() {
-        super(MaidUsefulMagicSpellData::getOrCreate, MagicWandPair.class);
+        super(MaidUsefulMagicSpellData::getOrCreate, MaidUsefulMagicSpellData::get,
+                MaidUsefulMagicSpellData::remove, MaidUsefulMagicSpellData::clearAll, MagicWandPair.class);
     }
 
     @Override

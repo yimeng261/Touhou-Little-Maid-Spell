@@ -7,7 +7,6 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
 import com.github.yimeng261.maidspell.block.entity.SuppressionStoneBlockEntity;
 import com.github.yimeng261.maidspell.block.entity.YueLinglanBlockEntity;
@@ -18,13 +17,11 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
+import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
+import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
+import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
-import com.github.yimeng261.maidspell.spell.data.MaidArsNouveauSpellData;
-import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
-import com.github.yimeng261.maidspell.spell.data.MaidPsiSpellData;
-import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
-import com.github.yimeng261.maidspell.spell.data.MaidUsefulMagicSpellData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
@@ -32,7 +29,6 @@ import com.github.yimeng261.maidspell.spell.providers.PsiProvider;
 import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
 import com.github.yimeng261.maidspell.utils.MaidReviveEffectCleanup;
 import com.mojang.logging.LogUtils;
-import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -58,7 +54,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.bus.api.EventPriority;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.util.FakePlayer;
@@ -70,6 +65,7 @@ import net.neoforged.neoforge.event.entity.living.*;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
@@ -97,15 +93,7 @@ public class MaidSpellEventHandler {
         Entity entity = event.getEntity();
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-            manager.setMaid(maid);
-            manager.initSpellBooks();
-
-            if (IronsSpellbooksCompat.isLoaded()) {
-                MaidIronsSpellData ironsSpellData = MaidIronsSpellData.get(maid.getUUID());
-                if (ironsSpellData != null) {
-                    ironsSpellData.getMagicData().setSyncedData(new SyncedSpellData(maid));
-                }
-            }
+            manager.onMaidJoin(maid);
 
             Global.updateMaidInfo(maid,true);
             addStepHeightToMaid(maid);
@@ -216,14 +204,20 @@ public class MaidSpellEventHandler {
     public static void onEntityLeaveLevel(EntityLeaveLevelEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
-            SpellBookManager manager = SpellBookManager.getManager(maid.getUUID());
-            if (manager != null) {
-                manager.stopAllCasting();
-            }
+            SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
+            cleanupMaidBaubleRuntimeState(maid.getUUID());
 
             if (MaidHardRemovalProtection.handleMaidLeaveLevel(maid)) {
+                manager.releaseMaidRuntimeReferences(maid);
                 Global.updateMaidInfo(maid,true);
                 return;
+            }
+
+            MinecraftServer server = event.getLevel().getServer();
+            if (server != null) {
+                manager.onMaidLeave(maid, server);
+            } else {
+                manager.releaseMaidRuntimeReferences(maid);
             }
 
             if (shouldReleaseMaidChunkLoading(maid.getRemovalReason())) {
@@ -231,8 +225,6 @@ public class MaidSpellEventHandler {
                 AnchorCoreBauble.disableChunkLoading(maid);
             }
 
-            cleanupMaidSpellData(maid);
-            AllianceManager.setMaidAlliance(maid, false);
             // 从全局女仆列表中移除，避免内存泄漏
             Global.updateMaidInfo(maid,false);
         }
@@ -342,24 +334,16 @@ public class MaidSpellEventHandler {
         if (!maid.level().isClientSide()) {
             try {
                 SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-                manager.tick();
+                manager.tick(maid);
                 if (maid.tickCount % 2 == 0) {
                     if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
                         MaidHardRemovalProtection.rememberProtected(maid);
                     }
                 }
-                // 每20个tick更新一次结盟状态
                 if(maid.tickCount%20 == 0){
                     boolean isMaidSpellTask = MaidSpellMod.MOD_ID.equals(maid.getTask().getUid().getNamespace());
                     if(maid.isNoAi() && isMaidSpellTask){
                         maid.setNoAi(false);
-                    }
-                    if(isMaidSpellTask) {
-                        if(!AllianceManager.isAllied(maid.getUUID())) {
-                            AllianceManager.setMaidAlliance(maid, true);
-                        }
-                    }else{
-                        AllianceManager.setMaidAlliance(maid, false);
                     }
                 }
             } catch (Exception e) {
@@ -568,7 +552,7 @@ public class MaidSpellEventHandler {
      */
     @SubscribeEvent
     public static void onMaidDeath(LivingDeathEvent event) {
-        if (event.getEntity() instanceof EntityMaid maid) {
+        if (event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
             // 先处理饰品的死亡事件
 
             Global.baubleDeathHandlers.forEach((item, func) -> {
@@ -582,72 +566,18 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
     public static void onMaidNormalDeathCleanup(LivingDeathEvent event) {
-        if (!(event.getEntity() instanceof EntityMaid maid)) {
+        if (!(event.getEntity() instanceof EntityMaid maid) || maid.level().isClientSide()) {
             return;
         }
+        cleanupMaidBaubleRuntimeState(maid.getUUID());
         if (event.isCanceled()) {
             MaidReviveEffectCleanup.cleanupAfterCanceledDeath(maid);
             return;
         }
 
-        cleanupMaidSpellData(maid);
-        AllianceManager.setMaidAlliance(maid, false);
+        SpellBookManager.getOrCreateManager(maid).removeMaidData(maid);
         MaidReviveEffectCleanup.cleanupBeforeNormalDeath(maid);
         Global.updateMaidInfo(maid,false);
-    }
-
-
-
-    /**
-     * 清理女仆的法术相关数据
-     */
-    private static void cleanupMaidSpellData(EntityMaid maid) {
-        UUID uuid = maid.getUUID();
-        try {
-            // 通过SpellBookManager获取提供者并停止所有正在进行的施法
-            SpellBookManager manager = SpellBookManager.getManager(uuid);
-            if (manager != null) {
-                for (ISpellBookProvider<?, ?> provider : manager.getProviders()) {
-                    try {
-                        if (provider.isCasting(maid)) {
-                            provider.stopCasting(maid);
-                        }
-                    } catch (RuntimeException | LinkageError e) {
-                        LOGGER.warn("Failed to stop provider {} for maid {}", provider.getClass().getName(), uuid, e);
-                    }
-                }
-            }
-        } catch (RuntimeException | LinkageError e) {
-            LOGGER.warn("Failed to access spell providers while cleaning maid {}", uuid, e);
-        } finally {
-            if (SpellBookManager.hasProvider("irons_spellbooks")) {
-                runSpellDataCleanup("irons_spellbooks", () -> MaidIronsSpellData.remove(uuid));
-            }
-            if (SpellBookManager.hasProvider("ars_nouveau")) {
-                runSpellDataCleanup("ars_nouveau", () -> MaidArsNouveauSpellData.remove(uuid));
-            }
-            if (SpellBookManager.hasProvider("psi")) {
-                runSpellDataCleanup("psi", () -> {
-                    PsiProvider.clearLoopcastContext(uuid);
-                    MaidPsiSpellData.remove(uuid);
-                });
-            }
-            if (SpellBookManager.hasProvider("slashblade")) {
-                runSpellDataCleanup("slashblade", () -> MaidSlashBladeData.remove(uuid));
-            }
-            if (SpellBookManager.hasProvider("usefulmagic")) {
-                runSpellDataCleanup("usefulmagic", () -> MaidUsefulMagicSpellData.remove(uuid));
-            }
-            SpellBookManager.removeManager(maid);
-        }
-    }
-
-    private static void runSpellDataCleanup(String modId, Runnable cleanup) {
-        try {
-            cleanup.run();
-        } catch (RuntimeException | LinkageError e) {
-            LOGGER.warn("Failed to clear {} spell data", modId, e);
-        }
     }
 
     private static boolean shouldReleaseMaidChunkLoading(Entity.RemovalReason reason) {
@@ -708,45 +638,45 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent
     public static void onServerStart(ServerAboutToStartEvent event) {
-        clearRuntimeSpellState(event.getServer());
+        clearRuntimeSpellState();
+    }
+
+    @SubscribeEvent
+    public static void onServerStarted(ServerStartedEvent event) {
+        AllianceManager.cleanupLegacyTeams(event.getServer());
     }
 
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
-        clearRuntimeSpellState(event.getServer());
+        clearRuntimeSpellState();
     }
 
-    private static void clearRuntimeSpellState(MinecraftServer server) {
+    private static void clearRuntimeSpellState() {
+        clearBaubleRuntimeState();
         Global.activeMaids.clear();
         Global.ownerMaidRegistry.clear();
         MaidHardRemovalProtection.clear();
         AnchorCoreBauble.clearRuntimeCache();
         YueLinglanBlockEntity.clearStructureSearchCache();
         SpellBookManager.clearAll();
-        AllianceManager.clear(server);
-        if (SpellBookManager.hasProvider("irons_spellbooks")) {
-            runSpellDataCleanup("irons_spellbooks", MaidIronsSpellData::clearAll);
-        }
-        if (SpellBookManager.hasProvider("ars_nouveau")) {
-            runSpellDataCleanup("ars_nouveau", MaidArsNouveauSpellData::clearAll);
-        }
-        if (SpellBookManager.hasProvider("psi")) {
-            runSpellDataCleanup("psi", () -> {
-                PsiProvider.clearAllLoopcastContexts();
-                MaidPsiSpellData.clearAll();
-            });
-        }
-        if (SpellBookManager.hasProvider("slashblade")) {
-            runSpellDataCleanup("slashblade", MaidSlashBladeData::clearAll);
-        }
-        if (SpellBookManager.hasProvider("usefulmagic")) {
-            runSpellDataCleanup("usefulmagic", MaidUsefulMagicSpellData::clearAll);
-        }
+    }
+
+    private static void cleanupMaidBaubleRuntimeState(UUID maidId) {
+        SoulBookBauble.cleanupMaid(maidId);
+        WoundRimeBladeBauble.cleanupMaid(maidId);
+        SilverCercisBauble.cleanupMaid(maidId);
+    }
+
+    private static void clearBaubleRuntimeState() {
+        SoulBookBauble.clearSession();
+        WoundRimeBladeBauble.clearSession();
+        SilverCercisBauble.clearSession();
     }
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         MaidHardRemovalProtection.tick(event.getServer());
+        SpellBookManager.tickPendingRemovals(event.getServer());
     }
 
     /**

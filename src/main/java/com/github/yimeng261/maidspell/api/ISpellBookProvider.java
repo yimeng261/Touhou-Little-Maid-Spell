@@ -7,6 +7,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -24,6 +25,13 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
     protected final Function<UUID, T> dataFactory;
 
     /**
+     * Non-creating lookup used by unload and death cleanup paths.
+     */
+    private final Function<UUID, T> dataLookup;
+    private final Consumer<UUID> dataRemover;
+    private final Runnable dataClearer;
+
+    /**
      * 法术类的Class对象，用于类型识别
      */
     protected final Class<S> spellClass;
@@ -33,8 +41,15 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
      * @param dataFactory 数据工厂方法，根据女仆UUID获取或创建对应的法术数据
      * @param spellClass 法术类的Class对象
      */
-    protected ISpellBookProvider(Function<UUID, T> dataFactory, Class<S> spellClass) {
+    protected ISpellBookProvider(Function<UUID, T> dataFactory,
+                                 Function<UUID, T> dataLookup,
+                                 Consumer<UUID> dataRemover,
+                                 Runnable dataClearer,
+                                 Class<S> spellClass) {
         this.dataFactory = dataFactory;
+        this.dataLookup = dataLookup;
+        this.dataRemover = dataRemover;
+        this.dataClearer = dataClearer;
         this.spellClass = spellClass;
     }
 
@@ -69,6 +84,48 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
             return null;
         }
         return dataFactory.apply(maid.getUUID());
+    }
+
+    protected T getExistingData(UUID maidId) {
+        return maidId == null ? null : dataLookup.apply(maidId);
+    }
+
+    public boolean hasData(UUID maidId) {
+        return getExistingData(maidId) != null;
+    }
+
+    /**
+     * Hook for providers that need to bind third-party runtime state to a newly loaded maid entity.
+     */
+    public void onMaidJoin(EntityMaid maid) {
+    }
+
+    /**
+     * Stops provider runtime work without creating data and always clears shared entity references.
+     */
+    public final void releaseRuntimeReferences(EntityMaid maid) {
+        T data = getExistingData(maid.getUUID());
+        try {
+            releaseProviderRuntimeReferences(maid, data);
+        } finally {
+            if (data != null) {
+                data.releaseRuntimeReferences();
+            }
+        }
+    }
+
+    protected void releaseProviderRuntimeReferences(EntityMaid maid, T data) {
+        if (data != null && data.isCasting()) {
+            stopCasting(maid);
+        }
+    }
+
+    public void removeData(UUID maidId) {
+        dataRemover.accept(maidId);
+    }
+
+    public void clearAllData() {
+        dataClearer.run();
     }
 
     /**
