@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.compat;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.compat.ftbteams.FTBTeamsCompat;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -61,7 +62,7 @@ public final class MaidSpellAllyResolver {
                 return true;
             }
         }
-        return false;
+        return FTBTeamsCompat.areFriendly(firstOwners, secondOwners);
     }
 
     private static boolean hasExplicitTeamAlliance(Entity first, Entity second) {

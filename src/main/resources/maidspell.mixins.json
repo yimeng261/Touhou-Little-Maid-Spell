@@ -34,6 +34,7 @@
     "ars.SpellContextAccessor",
     "ars.SpellContextMixin",
     "mna.ChanneledSpellEntityMixin",
+    "ftbteams.TamableAnimalMixin",
     "iss.SyncedSpellDataMixin",
     "iss.UtilsMixin",
     "tlm.AbstractMaidContainerMixin",
