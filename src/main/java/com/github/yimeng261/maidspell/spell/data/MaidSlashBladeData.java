@@ -50,6 +50,10 @@ public class MaidSlashBladeData extends IMaidSpellData {
         DATA_MAP.remove(maidUUID);
     }
 
+    public static void clearAll() {
+        DATA_MAP.clear();
+    }
+
     // 施法状态
     public void setSAExecutionStartTime(long time) { this.saExecutionStartTime = time; }
     public long getSAExecutionStartTime() { return saExecutionStartTime; }
@@ -116,10 +120,14 @@ public class MaidSlashBladeData extends IMaidSpellData {
 
     @Override
     public void removeSpellBook(ItemStack spellBook){
-        for(ItemStack oldSpellBook : spellBooks){
+        if (removeSpellBookByIdentity(spellBook)) {
+            return;
+        }
+        for (var iterator = spellBooks.iterator(); iterator.hasNext(); ) {
+            ItemStack oldSpellBook = iterator.next();
             if(ItemStack.isSameItem(oldSpellBook, spellBook)){
-                spellBookKinds.remove(spellBook.getItem().getClass());
-                spellBooks.remove(oldSpellBook);
+                iterator.remove();
+                rebuildSpellBookKinds();
                 return;
             }
         }

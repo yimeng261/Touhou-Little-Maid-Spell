@@ -414,7 +414,15 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
     }
 
     private void cleanupLoopcast(EntityMaid maid, String reason) {
-        CopiedCadContext context = ACTIVE_LOOPCAST_CONTEXTS.remove(maid.getUUID());
+        clearLoopcastContext(maid.getUUID(), reason);
+    }
+
+    public static void clearLoopcastContext(UUID maidUuid) {
+        clearLoopcastContext(maidUuid, "runtime_cleanup");
+    }
+
+    private static void clearLoopcastContext(UUID maidUuid, String reason) {
+        CopiedCadContext context = ACTIVE_LOOPCAST_CONTEXTS.remove(maidUuid);
         if (context == null) {
             return;
         }
@@ -422,9 +430,23 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
             PlayerDataHandler.PlayerData playerData = PlayerDataHandler.get(context.caster());
             playerData.stopLoopcast();
         } catch (Exception e) {
-            LOGGER.warn("{} abort stage=loopcast_stop maid={} reason=exception", PSI_LOG_PREFIX, maid.getUUID(), e);
+            LOGGER.warn("{} abort stage=loopcast_stop maid={} reason={}", PSI_LOG_PREFIX, maidUuid, reason, e);
         } finally {
             context.close();
+        }
+    }
+
+    public static void clearAllLoopcastContexts() {
+        try {
+            for (UUID maidUuid : new ArrayList<>(ACTIVE_LOOPCAST_CONTEXTS.keySet())) {
+                try {
+                    clearLoopcastContext(maidUuid, "runtime_clear");
+                } catch (RuntimeException | LinkageError e) {
+                    LOGGER.warn("{} abort stage=loopcast_clear maid={}", PSI_LOG_PREFIX, maidUuid, e);
+                }
+            }
+        } finally {
+            ACTIVE_LOOPCAST_CONTEXTS.clear();
         }
     }
 

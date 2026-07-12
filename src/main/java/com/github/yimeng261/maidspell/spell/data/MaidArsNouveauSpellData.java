@@ -59,6 +59,10 @@ public class MaidArsNouveauSpellData extends IMaidSpellData {
         MAID_DATA_MAP.remove(maidUuid);
     }
 
+    public static void clearAll() {
+        MAID_DATA_MAP.clear();
+    }
+
     public int getCastingTicks() {
         return castingTicks;
     }

@@ -19,7 +19,7 @@ public abstract class IMaidSpellData {
 
     // === 基本状态 ===
     protected LivingEntity target;
-    protected final Set<ItemStack> spellBooks = new HashSet<>();
+    protected final List<ItemStack> spellBooks = new ArrayList<>();
     protected final Set<Class<?>> spellBookKinds = new HashSet<>();
     protected boolean isCasting = false;
 
@@ -47,9 +47,9 @@ public abstract class IMaidSpellData {
 
     /**
      * 获取所有法术书
-     * @return 法术书集合
+     * @return 法术书列表
      */
-    public Set<ItemStack> getSpellBooks() {
+    public List<ItemStack> getSpellBooks() {
         return spellBooks;
     }
 
@@ -60,6 +60,11 @@ public abstract class IMaidSpellData {
     public void addSpellBook(ItemStack spellBook, EntityMaid maid) {
         if(spellBook==null||spellBook.isEmpty()){
             return;
+        }
+        for (ItemStack existing : spellBooks) {
+            if (existing == spellBook) {
+                return;
+            }
         }
         if(!BaubleStateManager.hasBauble(maid, MaidSpellItems.SPELL_OVERLIMIT_CORE)) {
             if (!canAddSpellBook(spellBook)) {
@@ -85,12 +90,36 @@ public abstract class IMaidSpellData {
      * @param spellBook 要移除的法术书
      */
     public void removeSpellBook(ItemStack spellBook) {
-        for(ItemStack spellBookItem : spellBooks) {
+        if (removeSpellBookByIdentity(spellBook)) {
+            return;
+        }
+        Iterator<ItemStack> iterator = spellBooks.iterator();
+        while (iterator.hasNext()) {
+            ItemStack spellBookItem = iterator.next();
             if (ItemStack.isSameItemSameComponents(spellBookItem, spellBook)) {
-                spellBooks.remove(spellBookItem);
-                spellBookKinds.remove(spellBook.getItem().getClass());
+                iterator.remove();
+                rebuildSpellBookKinds();
                 return;
             }
+        }
+    }
+
+    protected boolean removeSpellBookByIdentity(ItemStack spellBook) {
+        Iterator<ItemStack> iterator = spellBooks.iterator();
+        while (iterator.hasNext()) {
+            if (iterator.next() == spellBook) {
+                iterator.remove();
+                rebuildSpellBookKinds();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected void rebuildSpellBookKinds() {
+        spellBookKinds.clear();
+        for (ItemStack spellBook : spellBooks) {
+            spellBookKinds.add(spellBook.getItem().getClass());
         }
     }
 
@@ -108,7 +137,12 @@ public abstract class IMaidSpellData {
      * @return 如果拥有返回 true
      */
     public boolean hasSpellBook(ItemStack spellBook) {
-        return spellBooks.contains(spellBook);
+        for (ItemStack item : spellBooks) {
+            if (ItemStack.isSameItemSameComponents(item, spellBook)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isCasting() {

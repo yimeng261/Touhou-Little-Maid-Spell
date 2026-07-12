@@ -37,6 +37,10 @@ public class MaidPsiSpellData extends IMaidSpellData {
         MAID_DATA.remove(maidUUID);
     }
 
+    public static void clearAll() {
+        MAID_DATA.clear();
+    }
+
 
     public Object getCurrentSpell() {
         return currentSpell;

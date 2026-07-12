@@ -75,7 +75,7 @@ public class SpellBookManager {
                 LOGGER.debug("Mod {} loaded, finished {} registration", modId, providerName);
             }
 
-        } catch (Exception e) {
+        } catch (Exception | LinkageError e) {
             LOGGER.error("Failed to register provider factory for mod {}: {}", modId, e.getMessage());
         }
     }
@@ -106,6 +106,10 @@ public class SpellBookManager {
         });
     }
 
+    public static SpellBookManager getManager(UUID maidUUID) {
+        return MAID_MANAGERS.get(maidUUID);
+    }
+
     /**
      * 移除女仆的管理器实例（当女仆被移除时调用）
      *
@@ -123,6 +127,10 @@ public class SpellBookManager {
             LOGGER.debug("Removed SpellBookManager for maid {}", maidUUID);
         }
 
+    }
+
+    public static void clearAll() {
+        MAID_MANAGERS.clear();
     }
 
 

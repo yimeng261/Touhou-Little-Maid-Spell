@@ -18,7 +18,9 @@ import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
+import com.github.yimeng261.maidspell.spell.data.MaidArsNouveauSpellData;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
+import com.github.yimeng261.maidspell.spell.data.MaidPsiSpellData;
 import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -52,6 +54,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
@@ -62,6 +65,7 @@ import net.neoforged.neoforge.event.entity.living.*;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
 
@@ -201,22 +205,24 @@ public class MaidSpellEventHandler {
     }
 
     /**
-     * 当女仆离开世界时，停止所有施法但不移除管理器
-     * 因为女仆可能很快就会重新进入世界（魂符移动）
-     * 同时禁用区块加载
+     * 当女仆离开世界时释放运行时法术状态；重新加入时会重建这些状态。
      */
     @SubscribeEvent
     public static void onEntityLeaveLevel(EntityLeaveLevelEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
-            SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-            manager.stopAllCasting();
+            SpellBookManager manager = SpellBookManager.getManager(maid.getUUID());
+            if (manager != null) {
+                manager.stopAllCasting();
+            }
 
             if (MaidHardRemovalProtection.handleMaidLeaveLevel(maid)) {
                 Global.updateMaidInfo(maid,true);
                 return;
             }
 
+            cleanupMaidSpellData(maid);
+            AllianceManager.setMaidAlliance(maid, false);
             // 从全局女仆列表中移除，避免内存泄漏
             Global.updateMaidInfo(maid,false);
         }
@@ -229,15 +235,13 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onMaidEquip(LivingEquipmentChangeEvent event) {
         if(event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
-            if (!maid.level().isClientSide()) {
-                SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-                LOGGER.debug("[MaidSpell] from: {}, to: {}",event.getFrom(), event.getTo());
-                if (!event.getFrom().isEmpty()) {
-                    manager.removeSpellItem(maid,event.getFrom());
-                }
-                if (!event.getTo().isEmpty()) {
-                    manager.addSpellItem(maid,event.getTo());
-                }
+            SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
+            LOGGER.debug("[MaidSpell] from: {}, to: {}",event.getFrom(), event.getTo());
+            if (!event.getFrom().isEmpty()) {
+                manager.removeSpellItem(maid,event.getFrom());
+            }
+            if (!event.getTo().isEmpty()) {
+                manager.addSpellItem(maid,event.getTo());
             }
         }
     }
@@ -336,10 +340,11 @@ public class MaidSpellEventHandler {
                 }
                 // 每20个tick更新一次结盟状态
                 if(maid.tickCount%20 == 0){
-                    if(maid.isNoAi() && maid.getTask().getUid().toString().startsWith("maidspell")){
+                    boolean isMaidSpellTask = MaidSpellMod.MOD_ID.equals(maid.getTask().getUid().getNamespace());
+                    if(maid.isNoAi() && isMaidSpellTask){
                         maid.setNoAi(false);
                     }
-                    if(maid.getTask().getUid().toString().startsWith("maidspell")) {
+                    if(isMaidSpellTask) {
                         if(!AllianceManager.isAllied(maid.getUUID())) {
                             AllianceManager.setMaidAlliance(maid, true);
                         }
@@ -453,8 +458,10 @@ public class MaidSpellEventHandler {
     /**
      * 阻止由女仆 Psi 假玩家或 Psi 法术实体造成的玩家伤害
      */
+    private static final boolean PSI_LOADED = ModList.get().isLoaded("psi");
+
     private static boolean shouldBlockMaidPsiPlayerDamage(LivingEntity target, DamageSource source) {
-        if (!(target instanceof Player)) {
+        if (!PSI_LOADED || !(target instanceof Player)) {
             return false;
         }
         Entity causing = source.getEntity();
@@ -575,18 +582,48 @@ public class MaidSpellEventHandler {
      * 清理女仆的法术相关数据
      */
     private static void cleanupMaidSpellData(EntityMaid maid) {
+        UUID uuid = maid.getUUID();
         try {
             // 通过SpellBookManager获取提供者并停止所有正在进行的施法
-            SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-            for (ISpellBookProvider<?, ?> provider : manager.getProviders()) {
-                if (provider.isCasting(maid)) {
-                    provider.stopCasting(maid);
+            SpellBookManager manager = SpellBookManager.getManager(uuid);
+            if (manager != null) {
+                for (ISpellBookProvider<?, ?> provider : manager.getProviders()) {
+                    try {
+                        if (provider.isCasting(maid)) {
+                            provider.stopCasting(maid);
+                        }
+                    } catch (RuntimeException | LinkageError e) {
+                        LOGGER.warn("Failed to stop provider {} for maid {}", provider.getClass().getName(), uuid, e);
+                    }
                 }
             }
-            MaidSlashBladeData.remove(maid.getUUID());
+        } catch (RuntimeException | LinkageError e) {
+            LOGGER.warn("Failed to access spell providers while cleaning maid {}", uuid, e);
+        } finally {
+            if (SpellBookManager.hasProvider("irons_spellbooks")) {
+                runSpellDataCleanup("irons_spellbooks", () -> MaidIronsSpellData.remove(uuid));
+            }
+            if (SpellBookManager.hasProvider("ars_nouveau")) {
+                runSpellDataCleanup("ars_nouveau", () -> MaidArsNouveauSpellData.remove(uuid));
+            }
+            if (SpellBookManager.hasProvider("psi")) {
+                runSpellDataCleanup("psi", () -> {
+                    PsiProvider.clearLoopcastContext(uuid);
+                    MaidPsiSpellData.remove(uuid);
+                });
+            }
+            if (SpellBookManager.hasProvider("slashblade")) {
+                runSpellDataCleanup("slashblade", () -> MaidSlashBladeData.remove(uuid));
+            }
             SpellBookManager.removeManager(maid);
-        } catch (Exception e) {
-            // 静默处理清理错误，避免影响游戏正常运行
+        }
+    }
+
+    private static void runSpellDataCleanup(String modId, Runnable cleanup) {
+        try {
+            cleanup.run();
+        } catch (RuntimeException | LinkageError e) {
+            LOGGER.warn("Failed to clear {} spell data", modId, e);
         }
     }
 
@@ -641,9 +678,35 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent
     public static void onServerStart(ServerAboutToStartEvent event) {
+        clearRuntimeSpellState(event.getServer());
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        clearRuntimeSpellState(event.getServer());
+    }
+
+    private static void clearRuntimeSpellState(MinecraftServer server) {
         Global.activeMaids.clear();
         Global.ownerMaidRegistry.clear();
         MaidHardRemovalProtection.clear();
+        SpellBookManager.clearAll();
+        AllianceManager.clear(server);
+        if (SpellBookManager.hasProvider("irons_spellbooks")) {
+            runSpellDataCleanup("irons_spellbooks", MaidIronsSpellData::clearAll);
+        }
+        if (SpellBookManager.hasProvider("ars_nouveau")) {
+            runSpellDataCleanup("ars_nouveau", MaidArsNouveauSpellData::clearAll);
+        }
+        if (SpellBookManager.hasProvider("psi")) {
+            runSpellDataCleanup("psi", () -> {
+                PsiProvider.clearAllLoopcastContexts();
+                MaidPsiSpellData.clearAll();
+            });
+        }
+        if (SpellBookManager.hasProvider("slashblade")) {
+            runSpellDataCleanup("slashblade", MaidSlashBladeData::clearAll);
+        }
     }
 
     @SubscribeEvent

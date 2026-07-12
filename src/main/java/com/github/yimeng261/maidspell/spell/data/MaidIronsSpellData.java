@@ -70,6 +70,10 @@ public class MaidIronsSpellData extends IMaidSpellData {
         MAID_DATA_MAP.remove(maidUuid);
     }
 
+    public static void clearAll() {
+        MAID_DATA_MAP.clear();
+    }
+
     public void switchTargetToOwner(EntityMaid maid) {
         origin_target = getTarget();
         setTarget(maid.getOwner());

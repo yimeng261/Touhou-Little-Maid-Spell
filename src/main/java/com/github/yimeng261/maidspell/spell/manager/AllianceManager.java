@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.spell.manager;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
 import com.mojang.logging.LogUtils;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.scores.PlayerTeam;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 女仆结盟管理器
@@ -22,7 +24,7 @@ public class AllianceManager {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     // 存储女仆的临时队伍：女仆UUID -> 队伍名称
-    private static final Map<UUID, String> maidTeamMap = new HashMap<>();
+    private static final Map<UUID, String> maidTeamMap = new ConcurrentHashMap<>();
 
     // 队伍名称前缀
     private static final String TEAM_PREFIX = "maidspell_alliance_";
@@ -121,5 +123,19 @@ public class AllianceManager {
      */
     public static Map<UUID, String> getAllianceStatusView() {
         return java.util.Collections.unmodifiableMap(maidTeamMap);
+    }
+
+    public static void clear(MinecraftServer server) {
+        maidTeamMap.clear();
+        if (server == null) {
+            return;
+        }
+
+        Scoreboard scoreboard = server.getScoreboard();
+        for (PlayerTeam team : new java.util.ArrayList<>(scoreboard.getPlayerTeams())) {
+            if (team.getName().startsWith(TEAM_PREFIX)) {
+                scoreboard.removePlayerTeam(team);
+            }
+        }
     }
 }
