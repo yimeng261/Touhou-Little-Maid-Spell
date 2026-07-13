@@ -101,6 +101,19 @@ public class PlayerRetreatManager {
         return ensureDimensionReady(server, dimensionKey, ownerUUID);
     }
 
+    public static boolean expireRetreatCreationRequest(MinecraftServer server,
+                                                       ResourceKey<Level> dimensionKey,
+                                                       CompletableFuture<ServerLevel> expectedFuture,
+                                                       String reason) {
+        PendingCreation pending = PENDING_CREATIONS.get(dimensionKey);
+        if (pending == null || pending.server() != server || pending.future() != expectedFuture
+                || !PENDING_CREATIONS.remove(dimensionKey, pending)) {
+            return false;
+        }
+        return expectedFuture.completeExceptionally(new IllegalStateException(
+                reason + ": " + dimensionKey.location()));
+    }
+
     @Nullable
     public static ServerLevel getLoadedPlayerRetreat(MinecraftServer server, UUID playerUUID) {
         if (!Config.enablePrivateDimensions) {
