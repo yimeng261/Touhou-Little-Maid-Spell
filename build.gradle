@@ -144,7 +144,7 @@ dependencies {
 
     implementation fg.deobf("curse.maven:ftb-teams-forge-404468:7499810")
     runtimeOnly fg.deobf("curse.maven:ftb-library-forge-404465:8226927")
-    runtimeOnly fg.deobf("curse.maven:architectury-api-419699:5137938")
+    implementation fg.deobf("curse.maven:architectury-api-419699:5137938")
 
     implementation fg.deobf("maven.modrinth:ars-nouveau:4.12.6-forge,1.20.1")
 

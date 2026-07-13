@@ -62,7 +62,7 @@ public final class MaidSpellAllyResolver {
                 return true;
             }
         }
-        return FTBTeamsCompat.areFriendly(firstOwners, secondOwners);
+        return FTBTeamsCompat.areFriendly(first, firstOwners, secondOwners);
     }
 
     private static boolean hasExplicitTeamAlliance(Entity first, Entity second) {
@@ -75,9 +75,9 @@ public final class MaidSpellAllyResolver {
     }
 
     public static boolean isFriendlyDamage(LivingEntity target, @Nullable Entity causing, @Nullable Entity direct) {
-        return areFriendly(target, causing)
-                || areFriendly(target, direct)
-                || resolveResponsibleEntity(direct).map(owner -> areFriendly(target, owner)).orElse(false);
+        return areFriendly(causing, target)
+                || areFriendly(direct, target)
+                || resolveResponsibleEntity(direct).map(owner -> areFriendly(owner, target)).orElse(false);
     }
 
     public static Optional<Entity> resolveResponsibleEntity(@Nullable Entity entity) {
@@ -100,6 +100,28 @@ public final class MaidSpellAllyResolver {
         Set<UUID> ids = new HashSet<>();
         collectAffinityIds(entity, ids, new HashSet<>(), 0);
         return ids;
+    }
+
+    public static AffinityType getAffinityType(@Nullable Entity entity) {
+        if (entity == null) {
+            return AffinityType.NONE;
+        }
+        Entity current = entity;
+        boolean playerFound = false;
+        for (int depth = 0; depth < OWNER_TRACE_LIMIT && current != null; depth++) {
+            if (current instanceof EntityMaid) {
+                return AffinityType.MAID;
+            }
+            if (current instanceof Player) {
+                playerFound = true;
+            }
+            Entity owner = getDirectOwner(current);
+            if (owner == current) {
+                break;
+            }
+            current = owner;
+        }
+        return playerFound ? AffinityType.PLAYER : AffinityType.NONE;
     }
 
     private static void collectAffinityIds(@Nullable Entity entity, Set<UUID> ids, Set<UUID> visited, int depth) {
@@ -413,5 +435,11 @@ public final class MaidSpellAllyResolver {
     }
 
     private record MethodKey(Class<?> type, String name, @Nullable Class<?> returnType, @Nullable Class<?> parameterType) {
+    }
+
+    public enum AffinityType {
+        NONE,
+        PLAYER,
+        MAID
     }
 }

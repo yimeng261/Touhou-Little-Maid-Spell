@@ -222,5 +222,10 @@
   "item.maidspell.yue_linglan.desc3": "散发指向精灵秘境的指引光尘",
   "item.maidspell.jingxu_youlan.desc1": "幽兰净墟，涤荡一切杂尘",
   "item.maidspell.jingxu_youlan.desc2": "每隔一段时间，移除周围3格内女仆的负面效果",
-  "item.maidspell.jingxu_youlan.desc3": "清除周围3格内其他生物的全部药水效果"
+  "item.maidspell.jingxu_youlan.desc3": "清除周围3格内其他生物的全部药水效果",
+  "ftbteamsconfig.touhou_little_maid_spell": "万法皆通",
+  "ftbteamsconfig.touhou_little_maid_spell.allow_player_friendly_fire": "允许玩家友伤",
+  "ftbteamsconfig.touhou_little_maid_spell.allow_player_friendly_fire.tooltip": "允许队伍玩家发起的攻击伤害队友及队友的女仆",
+  "ftbteamsconfig.touhou_little_maid_spell.allow_maid_friendly_fire": "允许女仆友伤",
+  "ftbteamsconfig.touhou_little_maid_spell.allow_maid_friendly_fire.tooltip": "允许队伍女仆发起的攻击伤害队友及队友的女仆"
 }

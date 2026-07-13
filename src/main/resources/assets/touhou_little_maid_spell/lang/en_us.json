@@ -225,5 +225,10 @@
   "item.maidspell.yue_linglan.desc3": "Emits guiding dust towards the Elven Realm",
   "item.maidspell.jingxu_youlan.desc1": "An orchid of the pure ruins, cleansing all impurities",
   "item.maidspell.jingxu_youlan.desc2": "Periodically removes harmful effects from maids within 3 blocks",
-  "item.maidspell.jingxu_youlan.desc3": "Removes all potion effects from other living beings within 3 blocks"
+  "item.maidspell.jingxu_youlan.desc3": "Removes all potion effects from other living beings within 3 blocks",
+  "ftbteamsconfig.touhou_little_maid_spell": "Touhou Little Maid: Spell",
+  "ftbteamsconfig.touhou_little_maid_spell.allow_player_friendly_fire": "Allow Player Friendly Fire",
+  "ftbteamsconfig.touhou_little_maid_spell.allow_player_friendly_fire.tooltip": "Allows attacks caused by team players to affect teammates and their maids",
+  "ftbteamsconfig.touhou_little_maid_spell.allow_maid_friendly_fire": "Allow Maid Friendly Fire",
+  "ftbteamsconfig.touhou_little_maid_spell.allow_maid_friendly_fire.tooltip": "Allows attacks caused by team maids to affect teammates and their maids"
 }
