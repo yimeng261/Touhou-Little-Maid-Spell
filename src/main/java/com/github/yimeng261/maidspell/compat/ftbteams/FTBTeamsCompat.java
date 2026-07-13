@@ -8,6 +8,7 @@ import dev.ftb.mods.ftbteams.api.TeamManager;
 import dev.ftb.mods.ftbteams.api.event.TeamEvent;
 import dev.ftb.mods.ftbteams.api.property.BooleanProperty;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.fml.ModList;
 
@@ -49,6 +50,10 @@ public final class FTBTeamsCompat {
                 && ApiBridge.shouldPreventFriendlyFire(sourceIds, targetIds, sourceType);
     }
 
+    public static boolean canModifyTeamProperties(ServerPlayer player) {
+        return isLoaded() && ApiBridge.canModifyTeamProperties(player);
+    }
+
     private static final class ApiBridge {
         private static final BooleanProperty ALLOW_PLAYER_FRIENDLY_FIRE = new BooleanProperty(
                 new ResourceLocation(MaidSpellMod.MOD_ID, "allow_player_friendly_fire"), true);
@@ -83,6 +88,15 @@ public final class FTBTeamsCompat {
                 }
             }
             return false;
+        }
+
+        private static boolean canModifyTeamProperties(ServerPlayer player) {
+            FTBTeamsAPI.API api = FTBTeamsAPI.api();
+            return api != null
+                    && api.isManagerLoaded()
+                    && api.getManager().getTeamForPlayer(player)
+                    .map(team -> team.getRankForPlayer(player.getUUID()).isOfficerOrBetter())
+                    .orElse(false);
         }
 
         private static boolean isFriendlyFireDisabled(Team team, MaidSpellAllyResolver.AffinityType sourceType) {
