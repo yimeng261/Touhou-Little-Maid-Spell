@@ -14,6 +14,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -22,6 +23,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.ResetUniversalAngerTargetGoal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.raid.Raider;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
@@ -61,6 +63,11 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
     @Override
     protected boolean addDefaultPlayerTargetGoal() {
         return false;
+    }
+
+    @Override
+    protected boolean alertSameTypeWhenHurt() {
+        return true;
     }
 
     @Override
@@ -110,8 +117,14 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
 
     @Override
     protected void registerAdditionalGoals() {
+        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, LivingEntity.class, 10, true, false,
+                this::isNaturalEnemy));
         this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Player.class, 10, true, false, this::isAngryAt));
         this.targetSelector.addGoal(5, new ResetUniversalAngerTargetGoal<>(this, false));
+    }
+
+    private boolean isNaturalEnemy(LivingEntity target) {
+        return target instanceof Raider || target.getType().is(EntityTypeTags.UNDEAD);
     }
 
     @Override
