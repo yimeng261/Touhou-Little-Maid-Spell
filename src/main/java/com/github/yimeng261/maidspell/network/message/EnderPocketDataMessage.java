@@ -16,10 +16,12 @@ import java.util.function.Supplier;
 public final class EnderPocketDataMessage {
     public static final int MAX_MAID_INFOS = 64;
     public static final int MAX_MAID_NAME_LENGTH = 64;
+    public static final int MAX_RESOURCE_ID_LENGTH = 256;
 
     public enum Type {
         RESPONSE_MAID_LIST,
-        SERVER_PUSH_UPDATE
+        SERVER_PUSH_UPDATE,
+        HUD_UPDATE
     }
 
     private final Type type;
@@ -45,6 +47,11 @@ public final class EnderPocketDataMessage {
         return new EnderPocketDataMessage(Type.SERVER_PUSH_UPDATE, maidInfos, true);
     }
 
+    public static EnderPocketDataMessage hudUpdate(
+            List<EnderPocketService.EnderPocketMaidInfo> maidInfos) {
+        return new EnderPocketDataMessage(Type.HUD_UPDATE, maidInfos, false);
+    }
+
     public static void encode(EnderPocketDataMessage message, FriendlyByteBuf buf) {
         buf.writeEnum(message.type);
         buf.writeBoolean(message.fromMaidBackpack);
@@ -53,6 +60,15 @@ public final class EnderPocketDataMessage {
             buf.writeUUID(info.maidUUID());
             buf.writeUtf(truncate(info.maidName(), MAX_MAID_NAME_LENGTH), MAX_MAID_NAME_LENGTH);
             buf.writeVarInt(info.maidEntityId());
+            buf.writeFloat(info.health());
+            buf.writeFloat(info.maxHealth());
+            buf.writeVarInt(info.armor());
+            buf.writeDouble(info.x());
+            buf.writeDouble(info.y());
+            buf.writeDouble(info.z());
+            buf.writeUtf(truncate(info.dimension(), MAX_RESOURCE_ID_LENGTH), MAX_RESOURCE_ID_LENGTH);
+            buf.writeBoolean(info.hasAnchorCore());
+            buf.writeUtf(truncate(info.modelId(), MAX_RESOURCE_ID_LENGTH), MAX_RESOURCE_ID_LENGTH);
         }
     }
 
@@ -69,7 +85,18 @@ public final class EnderPocketDataMessage {
             UUID maidUuid = buf.readUUID();
             String maidName = buf.readUtf(MAX_MAID_NAME_LENGTH);
             int entityId = buf.readVarInt();
-            maidInfos.add(new EnderPocketService.EnderPocketMaidInfo(maidUuid, maidName, entityId));
+            float health = buf.readFloat();
+            float maxHealth = buf.readFloat();
+            int armor = buf.readVarInt();
+            double x = buf.readDouble();
+            double y = buf.readDouble();
+            double z = buf.readDouble();
+            String dimension = buf.readUtf(MAX_RESOURCE_ID_LENGTH);
+            boolean hasAnchorCore = buf.readBoolean();
+            String modelId = buf.readUtf(MAX_RESOURCE_ID_LENGTH);
+            maidInfos.add(new EnderPocketService.EnderPocketMaidInfo(
+                    maidUuid, maidName, entityId, health, maxHealth, armor,
+                    x, y, z, dimension, hasAnchorCore, modelId));
         }
         return new EnderPocketDataMessage(type, maidInfos, fromMaidBackpack);
     }

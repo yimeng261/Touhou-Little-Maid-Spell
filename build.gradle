@@ -126,7 +126,7 @@ dependencies {
         jarJar.ranged(it, "[0.3.5,)")
     }
 
-    implementation fg.deobf("curse.maven:touhou-little-maid-355044:7510714-sources-7510716")
+    implementation fg.deobf("curse.maven:touhou-little-maid-355044:8061847")
 
     implementation fg.deobf("curse.maven:applied-energistics-2-223794:7148487")
     implementation fg.deobf("curse.maven:guideme-1173950:7127447")
@@ -167,6 +167,7 @@ dependencies {
     compileOnly fg.deobf("curse.maven:mana-and-artifice-406360:6847805")
     runtimeOnly fg.deobf("curse.maven:mana-and-artifice-406360:6847805")
     
+    compileOnly fg.deobf("curse.maven:jei-238222:7037120")
     runtimeOnly fg.deobf("curse.maven:jei-238222:7037120")
     runtimeOnly fg.deobf("curse.maven:mouse-tweaks-60089:5338457")
     runtimeOnly fg.deobf("curse.maven:imblocker-483760:6487340")

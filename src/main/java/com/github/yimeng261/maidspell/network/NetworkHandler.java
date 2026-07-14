@@ -2,6 +2,8 @@ package com.github.yimeng261.maidspell.network;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.network.message.EnderPocketDataMessage;
+import com.github.yimeng261.maidspell.network.message.EnderPocketMaidReadyMessage;
+import com.github.yimeng261.maidspell.network.message.EnderPocketMaidSnapshotMessage;
 import com.github.yimeng261.maidspell.network.message.EnderPocketRequestMessage;
 import com.github.yimeng261.maidspell.network.message.MaidClientRemovalGuardMessage;
 import com.github.yimeng261.maidspell.network.message.MaidEntityRestoreMessage;
@@ -17,7 +19,7 @@ import java.util.Optional;
  * 网络消息处理器
  */
 public class NetworkHandler {
-    private static final String PROTOCOL_VERSION = "2";
+    private static final String PROTOCOL_VERSION = "4";
     
     @SuppressWarnings("removal")
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
@@ -73,6 +75,24 @@ public class NetworkHandler {
                 MaidClientRemovalGuardMessage::decode,
                 MaidClientRemovalGuardMessage::handle,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                EnderPocketMaidSnapshotMessage.class,
+                EnderPocketMaidSnapshotMessage::encode,
+                EnderPocketMaidSnapshotMessage::decode,
+                EnderPocketMaidSnapshotMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                EnderPocketMaidReadyMessage.class,
+                EnderPocketMaidReadyMessage::encode,
+                EnderPocketMaidReadyMessage::decode,
+                EnderPocketMaidReadyMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER)
         );
 
     }

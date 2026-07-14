@@ -44,9 +44,21 @@
     "tlm.EntityMaidGuiMovementMixin",
     "tlm.EntityMaidStructureSpawnMixin",
     "tlm.MaidBackupsManagerMixin",
+    "tlm.MaidConfigMessageMixin",
     "tlm.MaidMoveControlMixin",
+    "tlm.MaidModelMessageMixin",
     "tlm.MaidNodeEvaluatorMixin",
+    "tlm.MaidSubConfigMessageMixin",
+    "tlm.MaidTaskMessageMixin",
     "tlm.OpenMaidGuiMessageMixin",
+    "tlm.RefreshMaidBrainMessageMixin",
+    "tlm.RemoteMaidLambdaMessageMixin",
+    "tlm.RequestEffectMessageMixin",
+    "tlm.SendNameTagMessageMixin",
+    "tlm.ServantBellSetMessageMixin",
+    "tlm.SetAttackListMessageMixin",
+    "tlm.SetMaidSoundIdMessageMixin",
+    "tlm.YsmMaidModelMessageMixin",
     "tlm.MaidFeedOwnerTaskMixin",
     "psi.PieceSelectorNearbyMixin",
     "psi.PieceTrickAddMotionMixin"
@@ -54,7 +66,9 @@
   "client": [
     "client.ClientPacketListenerMixin",
     "iss.ClientMagicDataMixin",
-    "iss.MaidEntityAnimateStateMixin"
+    "iss.MaidEntityAnimateStateMixin",
+    "tlm.RemoteMaidClientMessageMixin",
+    "tlm.SyncBaubleMessageMixin"
   ],
   "injectors": {
     "defaultRequire": 1

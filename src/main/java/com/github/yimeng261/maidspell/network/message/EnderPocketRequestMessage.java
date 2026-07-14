@@ -17,13 +17,17 @@ import java.util.function.Supplier;
 /** Client-to-server requests for the Ender Pocket UI. */
 public final class EnderPocketRequestMessage {
     private static final long LIST_REQUEST_COOLDOWN_NANOS = TimeUnit.MILLISECONDS.toNanos(200);
+    private static final long HUD_REQUEST_COOLDOWN_NANOS = TimeUnit.MILLISECONDS.toNanos(500);
     private static final long OPEN_REQUEST_COOLDOWN_NANOS = TimeUnit.MILLISECONDS.toNanos(250);
+    private static final long TELEPORT_REQUEST_COOLDOWN_NANOS = TimeUnit.SECONDS.toNanos(1);
     private static final Map<ServerPlayer, RateLimitState> RATE_LIMITS =
             Collections.synchronizedMap(new WeakHashMap<>());
 
     public enum Action {
         REQUEST_MAID_LIST,
-        OPEN_MAID_INVENTORY
+        REQUEST_HUD_DATA,
+        OPEN_MAID_INVENTORY,
+        TELEPORT_TO_MAID
     }
 
     private final Action action;
@@ -44,15 +48,24 @@ public final class EnderPocketRequestMessage {
         return new EnderPocketRequestMessage(Action.REQUEST_MAID_LIST, true, null);
     }
 
+    public static EnderPocketRequestMessage requestHudData() {
+        return new EnderPocketRequestMessage(Action.REQUEST_HUD_DATA, false, null);
+    }
+
     public static EnderPocketRequestMessage openMaidInventory(UUID maidUuid) {
         return new EnderPocketRequestMessage(Action.OPEN_MAID_INVENTORY, false, maidUuid);
+    }
+
+    public static EnderPocketRequestMessage teleportToMaid(UUID maidUuid) {
+        return new EnderPocketRequestMessage(Action.TELEPORT_TO_MAID, false, maidUuid);
     }
 
     public static void encode(EnderPocketRequestMessage message, FriendlyByteBuf buf) {
         buf.writeEnum(message.action);
         switch (message.action) {
             case REQUEST_MAID_LIST -> buf.writeBoolean(message.fromMaidBackpack);
-            case OPEN_MAID_INVENTORY -> buf.writeUUID(message.maidUuid);
+            case REQUEST_HUD_DATA -> { }
+            case OPEN_MAID_INVENTORY, TELEPORT_TO_MAID -> buf.writeUUID(message.maidUuid);
         }
     }
 
@@ -60,7 +73,9 @@ public final class EnderPocketRequestMessage {
         Action action = buf.readEnum(Action.class);
         return switch (action) {
             case REQUEST_MAID_LIST -> new EnderPocketRequestMessage(action, buf.readBoolean(), null);
-            case OPEN_MAID_INVENTORY -> new EnderPocketRequestMessage(action, false, buf.readUUID());
+            case REQUEST_HUD_DATA -> new EnderPocketRequestMessage(action, false, null);
+            case OPEN_MAID_INVENTORY, TELEPORT_TO_MAID ->
+                    new EnderPocketRequestMessage(action, false, buf.readUUID());
         };
     }
 
@@ -85,7 +100,14 @@ public final class EnderPocketRequestMessage {
                     player.connection.connection,
                     NetworkDirection.PLAY_TO_CLIENT
             );
+            case REQUEST_HUD_DATA -> NetworkHandler.CHANNEL.sendTo(
+                    EnderPocketDataMessage.hudUpdate(
+                            EnderPocketService.getPlayerEnderPocketMaids(player)),
+                    player.connection.connection,
+                    NetworkDirection.PLAY_TO_CLIENT
+            );
             case OPEN_MAID_INVENTORY -> EnderPocketService.openMaidInventory(player, message.maidUuid);
+            case TELEPORT_TO_MAID -> EnderPocketService.teleportToMaid(player, message.maidUuid);
         }
     }
 
@@ -93,24 +115,42 @@ public final class EnderPocketRequestMessage {
         long now = System.nanoTime();
         synchronized (RATE_LIMITS) {
             RateLimitState state = RATE_LIMITS.getOrDefault(player, RateLimitState.EMPTY);
-            long lastRequest = action == Action.REQUEST_MAID_LIST
-                    ? state.lastListRequestNanos
-                    : state.lastOpenRequestNanos;
-            long cooldown = action == Action.REQUEST_MAID_LIST
-                    ? LIST_REQUEST_COOLDOWN_NANOS
-                    : OPEN_REQUEST_COOLDOWN_NANOS;
+            long lastRequest = switch (action) {
+                case REQUEST_MAID_LIST -> state.lastListRequestNanos;
+                case REQUEST_HUD_DATA -> state.lastHudRequestNanos;
+                case OPEN_MAID_INVENTORY -> state.lastOpenRequestNanos;
+                case TELEPORT_TO_MAID -> state.lastTeleportRequestNanos;
+            };
+            long cooldown = switch (action) {
+                case REQUEST_MAID_LIST -> LIST_REQUEST_COOLDOWN_NANOS;
+                case REQUEST_HUD_DATA -> HUD_REQUEST_COOLDOWN_NANOS;
+                case OPEN_MAID_INVENTORY -> OPEN_REQUEST_COOLDOWN_NANOS;
+                case TELEPORT_TO_MAID -> TELEPORT_REQUEST_COOLDOWN_NANOS;
+            };
             if (lastRequest != 0L && now - lastRequest < cooldown) {
                 return false;
             }
 
-            RATE_LIMITS.put(player, action == Action.REQUEST_MAID_LIST
-                    ? new RateLimitState(now, state.lastOpenRequestNanos)
-                    : new RateLimitState(state.lastListRequestNanos, now));
+            RATE_LIMITS.put(player, switch (action) {
+                case REQUEST_MAID_LIST ->
+                        new RateLimitState(now, state.lastHudRequestNanos,
+                                state.lastOpenRequestNanos, state.lastTeleportRequestNanos);
+                case REQUEST_HUD_DATA ->
+                        new RateLimitState(state.lastListRequestNanos, now,
+                                state.lastOpenRequestNanos, state.lastTeleportRequestNanos);
+                case OPEN_MAID_INVENTORY ->
+                        new RateLimitState(state.lastListRequestNanos, state.lastHudRequestNanos,
+                                now, state.lastTeleportRequestNanos);
+                case TELEPORT_TO_MAID ->
+                        new RateLimitState(state.lastListRequestNanos, state.lastHudRequestNanos,
+                                state.lastOpenRequestNanos, now);
+            });
             return true;
         }
     }
 
-    private record RateLimitState(long lastListRequestNanos, long lastOpenRequestNanos) {
-        private static final RateLimitState EMPTY = new RateLimitState(0L, 0L);
+    private record RateLimitState(long lastListRequestNanos, long lastHudRequestNanos,
+                                  long lastOpenRequestNanos, long lastTeleportRequestNanos) {
+        private static final RateLimitState EMPTY = new RateLimitState(0L, 0L, 0L, 0L);
     }
 }

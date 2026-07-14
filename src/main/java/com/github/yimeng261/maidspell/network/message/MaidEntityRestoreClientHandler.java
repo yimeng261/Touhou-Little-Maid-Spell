@@ -40,7 +40,7 @@ final class MaidEntityRestoreClientHandler {
         entity.refreshDimensions();
     }
 
-    private static Entity createEntity(ClientLevel level, MaidEntityRestoreMessage message) {
+    static Entity createEntity(ClientLevel level, MaidEntityRestoreMessage message) {
         Optional<EntityType<?>> entityType = BuiltInRegistries.ENTITY_TYPE.getOptional(message.entityTypeId());
         if (entityType.isEmpty()) {
             return null;

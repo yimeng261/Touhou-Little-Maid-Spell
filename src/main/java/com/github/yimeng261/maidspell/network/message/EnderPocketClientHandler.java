@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.
 import com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration;
 import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
+import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
@@ -25,6 +26,7 @@ public class EnderPocketClientHandler {
                                          boolean fromMaidBackpack) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
+        EnderPocketHudOverlay.update(maidInfos);
         
         switch (type) {
             case RESPONSE_MAID_LIST:
@@ -51,6 +53,14 @@ public class EnderPocketClientHandler {
                 // 如果当前在女仆背包界面，刷新界面
                 if (mc.screen instanceof IBackpackContainerScreen) {
                     mc.screen.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+                } else if (mc.screen instanceof EnderPocketScreen screen) {
+                    screen.updateMaidInfos(maidInfos);
+                }
+                break;
+
+            case HUD_UPDATE:
+                if (mc.screen instanceof EnderPocketScreen screen) {
+                    screen.updateMaidInfos(maidInfos);
                 }
                 break;
                 

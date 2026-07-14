@@ -1,9 +1,11 @@
 package com.github.yimeng261.maidspell.network.message;
 
 import io.netty.handler.codec.DecoderException;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -42,6 +44,30 @@ public class MaidEntityRestoreMessage {
         this.z = z;
         this.yRot = yRot;
         this.xRot = xRot;
+    }
+
+    public static MaidEntityRestoreMessage remoteSnapshot(EntityMaid maid) {
+        CompoundTag entityTag = new CompoundTag();
+        maid.saveWithoutId(entityTag);
+        entityTag.remove("MaidHistoryChat");
+        entityTag.remove("MaidHistorySummary");
+
+        List<SynchedEntityData.DataValue<?>> entityData = maid.getEntityData().getNonDefaultValues();
+        if (entityData == null) {
+            entityData = Collections.emptyList();
+        }
+        return new MaidEntityRestoreMessage(
+                maid.getId(),
+                maid.getUUID(),
+                BuiltInRegistries.ENTITY_TYPE.getKey(maid.getType()),
+                entityTag,
+                entityData,
+                maid.getX(),
+                maid.getY(),
+                maid.getZ(),
+                maid.getYRot(),
+                maid.getXRot()
+        );
     }
 
     public static void encode(MaidEntityRestoreMessage message, FriendlyByteBuf buf) {

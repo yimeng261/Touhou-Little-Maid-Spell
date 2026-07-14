@@ -14,6 +14,7 @@ import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
@@ -48,6 +49,7 @@ import net.minecraftforge.event.level.ExplosionEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent.PlayerChangedDimensionEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
@@ -163,6 +165,7 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            EnderPocketService.clearRemoteSession(player);
             MinecraftServer server = player.getServer();
             if (server == null) {
                 return;
@@ -174,6 +177,13 @@ public class MaidSpellEventHandler {
             } else {
                 data.clearPendingRestore(player.getUUID());
             }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerChangedDimension(PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            EnderPocketService.clearRemoteSession(player);
         }
     }
 
@@ -625,6 +635,7 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent
     public static void onServerStart(ServerAboutToStartEvent event) {
+        EnderPocketService.clearRemoteSessions(event.getServer());
         clearBaubleRuntimeState();
         Global.activeMaids.clear();
         Global.ownerMaidRegistry.clear();
@@ -639,6 +650,7 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
+        EnderPocketService.clearRemoteSessions(event.getServer());
         clearBaubleRuntimeState();
         SpellBookManager.clearAll();
     }
@@ -658,6 +670,7 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase == TickEvent.Phase.END) {
+            EnderPocketService.tickRemoteSessions(event.getServer());
             MaidHardRemovalProtection.tick(event.getServer());
             SpellBookManager.tickPendingRemovals(event.getServer());
         }
