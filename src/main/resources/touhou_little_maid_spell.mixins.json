@@ -47,17 +47,31 @@
     "tlm.EntityMaidMixin",
     "tlm.EntityMaidStructureSpawnMixin",
     "tlm.MaidBackupsManagerMixin",
+    "tlm.MaidConfigPackageMixin",
     "tlm.MaidFeedOwnerTaskMixin",
+    "tlm.MaidModelPackageMixin",
     "tlm.MaidMoveControlMixin",
     "tlm.MaidNodeEvaluatorMixin",
+    "tlm.MaidSubConfigPackageMixin",
+    "tlm.MaidTaskPackageMixin",
     "tlm.OpenMaidGuiPackageMixin",
+    "tlm.RefreshMaidBrainPackageMixin",
+    "tlm.RequestEffectPackageMixin",
+    "tlm.SendNameTagPackageMixin",
+    "tlm.ServantBellSetPackageMixin",
+    "tlm.SetAttackListPackageMixin",
+    "tlm.SetMaidSoundIdPackageMixin",
+    "tlm.ToggleTabPackageMixin",
+    "tlm.YsmMaidModelPackageMixin",
     "usefulmagic.FriendFilterHelperMixin",
     "usefulmagic.HealthMagicMixin"
   ],
   "client": [
     "ClientPacketListenerMixin",
     "iss.ClientMagicDataMixin",
-    "iss.MaidEntityAnimateStateMixin"
+    "iss.MaidEntityAnimateStateMixin",
+    "tlm.SendEffectPackageMixin",
+    "tlm.SyncBaublePackageMixin"
   ],
   "injectors": {
     "defaultRequire": 1

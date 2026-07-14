@@ -170,6 +170,7 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            EnderPocketService.clearRemoteSession(player);
             MinecraftServer server = player.getServer();
             if (server == null) {
                 return;
@@ -181,6 +182,13 @@ public class MaidSpellEventHandler {
             } else {
                 data.clearPendingRestore(player.getUUID());
             }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            EnderPocketService.clearRemoteSession(player);
         }
     }
 
@@ -638,6 +646,7 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent
     public static void onServerStart(ServerAboutToStartEvent event) {
+        EnderPocketService.clearRemoteSessions(event.getServer());
         clearRuntimeSpellState();
     }
 
@@ -648,6 +657,7 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
+        EnderPocketService.clearRemoteSessions(event.getServer());
         clearRuntimeSpellState();
     }
 
@@ -675,6 +685,7 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        EnderPocketService.tickRemoteSessions(event.getServer());
         MaidHardRemovalProtection.tick(event.getServer());
         SpellBookManager.tickPendingRemovals(event.getServer());
     }

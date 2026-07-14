@@ -3,6 +3,8 @@ package com.github.yimeng261.maidspell.network.message;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.IBackpackContainerScreen;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration;
+import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen;
+import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
@@ -48,10 +50,13 @@ public record S2CEnderPocketPushUpdate(List<EnderPocketService.EnderPocketMaidIn
         Minecraft mc = Minecraft.getInstance();
         // 服务器主动推送的数据更新
         MaidBackpackEnderPocketIntegration.updateEnderPocketData(maidInfos());
+        EnderPocketHudOverlay.update(maidInfos());
 
         // 如果当前在女仆背包界面，刷新界面
         if (mc.screen instanceof IBackpackContainerScreen) {
             mc.screen.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+        } else if (mc.screen instanceof EnderPocketScreen screen) {
+            screen.updateMaidInfos(maidInfos());
         }
     }
 }

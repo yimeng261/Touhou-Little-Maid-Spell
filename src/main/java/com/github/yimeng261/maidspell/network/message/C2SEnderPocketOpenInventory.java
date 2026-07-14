@@ -33,7 +33,7 @@ public record C2SEnderPocketOpenInventory(UUID maidUuid) implements CustomPacket
     }
 
     public void handle(ServerPlayer player) {
-        if (!EnderPocketRequestRateLimiter.tryAcquireOpen(player)) {
+        if (!EnderPocketRequestRateLimiter.tryAcquire(player, EnderPocketRequestRateLimiter.Action.OPEN)) {
             return;
         }
         EnderPocketService.openMaidInventory(player, maidUuid());

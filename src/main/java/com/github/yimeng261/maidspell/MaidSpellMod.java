@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell;
 
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
+import com.github.yimeng261.maidspell.client.EnderPocketClientConfig;
 import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
@@ -80,6 +81,7 @@ public class MaidSpellMod {
         }
 
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        modContainer.registerConfig(ModConfig.Type.CLIENT, EnderPocketClientConfig.SPEC, MOD_ID + "-client.toml");
         if (dist.isClient()) {
             modContainer.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
         }

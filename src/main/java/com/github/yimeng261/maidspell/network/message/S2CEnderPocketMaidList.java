@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration;
 import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen;
+import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
@@ -49,6 +50,7 @@ public record S2CEnderPocketMaidList(List<EnderPocketService.EnderPocketMaidInfo
         Minecraft mc = Minecraft.getInstance();
         // 更新女仆背包集成的数据
         MaidBackpackEnderPocketIntegration.updateEnderPocketData(maidInfos());
+        EnderPocketHudOverlay.update(maidInfos());
 
         // 根据请求来源和当前界面决定显示方式
         if (fromMaidBackpack()) {

@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.client.event;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.KeyBinds;
+import com.github.yimeng261.maidspell.network.message.C2SEnderPocketHudRequest;
 import com.github.yimeng261.maidspell.network.message.C2SEnderPocketMaidList;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
@@ -14,10 +15,18 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
  */
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID, value = Dist.CLIENT)
 public class ClientKeyHandler {
+    private static int hudRefreshTicks;
 
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
+
+        if (mc.player != null && mc.getConnection() != null && ++hudRefreshTicks >= 20) {
+            hudRefreshTicks = 0;
+            mc.getConnection().send(C2SEnderPocketHudRequest.INSTANCE);
+        } else if (mc.player == null) {
+            hudRefreshTicks = 0;
+        }
 
         // 检查末影腰包GUI按键
         if (KeyBinds.OPEN_ENDER_POCKET_GUI.consumeClick()) {

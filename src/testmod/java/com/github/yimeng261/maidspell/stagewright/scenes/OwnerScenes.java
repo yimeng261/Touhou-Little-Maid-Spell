@@ -58,7 +58,7 @@ public final class OwnerScenes {
 
     /**
      * 末影腰包：装备它的自有女仆出现在主人的末影腰包列表里（没装备的不在），
-     * 远在视距外也能打开她的背包界面；别人的女仆打不开。
+     * 远在视距外也能打开她的背包界面（客户端确认代理就绪后才打开）；别人的女仆打不开。
      */
     private static void enderPocket(SceneContext ctx, ServerPlayer player) {
         ServerLevel level = ctx.level();
@@ -85,9 +85,12 @@ public final class OwnerScenes {
                     .as("用末影腰包打开没装备末影腰包的自有女仆背包").isFalse();
             ctx.check(EnderPocketService.openMaidInventory(player, remote.getUUID()))
                     .as("用末影腰包打开远程女仆的背包").isTrue();
-            AbstractContainerMenu menu = player.containerMenu;
-            ctx.check(menu instanceof AbstractMaidContainer container && container.getMaid() == remote)
-                    .as("打开的界面是远程女仆的背包（实际 " + menu.getClass().getSimpleName() + "）").isTrue();
+            // 服务端先同步女仆代理，客户端确认后才打开界面
+            ctx.await(() -> player.containerMenu instanceof AbstractMaidContainer).within(40).then(() -> {
+                AbstractContainerMenu menu = player.containerMenu;
+                ctx.check(menu instanceof AbstractMaidContainer container && container.getMaid() == remote)
+                        .as("打开的界面是远程女仆的背包（实际 " + menu.getClass().getSimpleName() + "）").isTrue();
+            });
         });
     }
 
