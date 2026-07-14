@@ -82,6 +82,13 @@ public abstract class AbstractSpellMeleeMob extends NeutralWizard implements IAn
     }
 
     /**
+     * Whether nearby mobs of the same type should retaliate when this mob is attacked.
+     */
+    protected boolean alertSameTypeWhenHurt() {
+        return false;
+    }
+
+    /**
      * 返回主动索敌的目标类型，默认仅针对玩家。
      * 子类可重写以攻击更广泛的目标（如所有 LivingEntity）
      */
@@ -210,7 +217,11 @@ public abstract class AbstractSpellMeleeMob extends NeutralWizard implements IAn
         }
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0f));
         this.goalSelector.addGoal(10, new WizardRecoverGoal(this));
-        this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
+        HurtByTargetGoal hurtByTargetGoal = new HurtByTargetGoal(this);
+        if (alertSameTypeWhenHurt()) {
+            hurtByTargetGoal.setAlertOthers();
+        }
+        this.targetSelector.addGoal(1, hurtByTargetGoal);
         if (addDefaultPlayerTargetGoal()) {
             this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, getPlayerTargetClass(), 10, true, false, this::isDefaultPlayerTargetHostile));
             this.targetSelector.addGoal(5, new ResetUniversalAngerTargetGoal<>(this, false));

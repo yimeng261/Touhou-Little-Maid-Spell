@@ -52,6 +52,7 @@ maid-affection
 # other
 eclipse
 run
+/logs/
 *.md
 AGENTS.md
 # Files from Forge MDK
