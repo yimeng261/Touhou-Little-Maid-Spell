@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.client.EnderPocketClientConfig;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidLegacyModelPackCleaner;
 import com.github.yimeng261.maidspell.crafting.OptionalModIngredientSerializer;
 import com.github.yimeng261.maidspell.event.FoxLeafOwnerWaterWalking;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
@@ -37,7 +38,8 @@ public class MaidSpellMod {
 
     @SuppressWarnings("removal")
     public MaidSpellMod() {
-        
+        TouhouLittleMaidLegacyModelPackCleaner.cleanGameDirectory();
+
         var modBus = FMLJavaModLoadingContext.get().getModEventBus();
         var forgeBus = MinecraftForge.EVENT_BUS;
         

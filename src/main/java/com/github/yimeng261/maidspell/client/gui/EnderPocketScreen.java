@@ -1,12 +1,14 @@
 package com.github.yimeng261.maidspell.client.gui;
 
 import com.github.yimeng261.maidspell.client.KeyBinds;
+import com.github.yimeng261.maidspell.client.EnderPocketClientConfig;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.network.message.EnderPocketRequestMessage;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -16,6 +18,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import javax.annotation.Nonnull;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 末影腰包选择界面
@@ -77,6 +80,9 @@ public class EnderPocketScreen extends Screen {
         int startY = (this.height - GUI_HEIGHT) / 2;
 
         this.addRenderableWidget(new TransparentButton(
+                startX + 6, startY + 2, 35, 12,
+                getHudToggleLabel(), this::toggleHud));
+        this.addRenderableWidget(new TransparentButton(
                 startX + GUI_WIDTH - 31, startY + 2, 25, 12,
                 Component.translatable("gui.maidspell.ender_pocket.hud_settings"),
                 button -> openHudEditor()));
@@ -85,13 +91,18 @@ public class EnderPocketScreen extends Screen {
         for (int i = 0; i < maidInfos.size() && i < 8; i++) { // 最多显示8个女仆
             EnderPocketService.EnderPocketMaidInfo maidInfo = maidInfos.get(i);
             
-            int buttonX = startX + 6;
+            int rowX = startX + 6;
             int buttonHeight = 16;
             int buttonY = startY + 16 + (i * buttonHeight);
-            int buttonWidth = maidInfo.hasAnchorCore() ? 90 : GUI_WIDTH - 13;
+            int nameButtonX = rowX + 18;
+            int nameButtonRight = maidInfo.hasAnchorCore()
+                    ? startX + ACTION_SEPARATOR_X - 2
+                    : startX + GUI_WIDTH - RIGHT_CAP_WIDTH;
 
+            this.addRenderableWidget(new MaidHudVisibilityButton(
+                    rowX, buttonY, maidInfo.maidUUID()));
             Button maidButton = new TransparentButton(
-                buttonX, buttonY, buttonWidth, buttonHeight,
+                nameButtonX, buttonY, nameButtonRight - nameButtonX, buttonHeight,
                 Component.literal(maidInfo.maidName()),
                 button -> openMaidInventory(maidInfo.maidUUID())
             );
@@ -100,7 +111,7 @@ public class EnderPocketScreen extends Screen {
 
             if (maidInfo.hasAnchorCore()) {
                 Button teleportButton = new TransparentButton(
-                        buttonX + buttonWidth + 4, buttonY, 43, buttonHeight,
+                        startX + ACTION_SEPARATOR_X + 2, buttonY, 43, buttonHeight,
                         Component.translatable("gui.maidspell.ender_pocket.teleport"),
                         button -> teleportToMaid(maidInfo.maidUUID()));
                 this.addRenderableWidget(teleportButton);
@@ -122,6 +133,18 @@ public class EnderPocketScreen extends Screen {
         if (minecraft != null) {
             minecraft.setScreen(new EnderPocketHudEditorScreen(this));
         }
+    }
+
+    private void toggleHud(Button button) {
+        EnderPocketClientConfig.HUD_ENABLED.set(!EnderPocketClientConfig.HUD_ENABLED.get());
+        button.setMessage(getHudToggleLabel());
+    }
+
+    private static Component getHudToggleLabel() {
+        String key = EnderPocketClientConfig.HUD_ENABLED.get()
+                ? "gui.maidspell.ender_pocket.hud_hide"
+                : "gui.maidspell.ender_pocket.hud_show";
+        return Component.translatable(key);
     }
     
 
@@ -213,6 +236,49 @@ public class EnderPocketScreen extends Screen {
             int textColor = this.active ? 0xFFFFFF : 0xA0A0A0;
             guiGraphics.drawCenteredString(net.minecraft.client.Minecraft.getInstance().font, this.getMessage(), 
                 this.getX() + this.width / 2, this.getY() + (this.height - 8) / 2, textColor);
+        }
+    }
+
+    private static class MaidHudVisibilityButton extends Button {
+        private final UUID maidUuid;
+        private boolean visible;
+
+        private MaidHudVisibilityButton(int x, int y, UUID maidUuid) {
+            super(x, y, 16, 16, Component.empty(), button -> { }, DEFAULT_NARRATION);
+            this.maidUuid = maidUuid;
+            this.visible = EnderPocketClientConfig.isMaidVisible(maidUuid);
+            updateLabel();
+        }
+
+        @Override
+        public void onPress() {
+            visible = !visible;
+            EnderPocketClientConfig.setMaidVisible(maidUuid, visible);
+            updateLabel();
+        }
+
+        @Override
+        public void renderWidget(@Nonnull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            if (isHovered()) {
+                graphics.fill(getX(), getY(), getX() + width, getY() + height, 0x50FFFFFF);
+            }
+            int boxX = getX() + 3;
+            int boxY = getY() + 3;
+            graphics.fill(boxX, boxY, boxX + 10, boxY + 10, 0xA040392D);
+            graphics.renderOutline(boxX, boxY, 10, 10, 0xFFE0CA9F);
+            if (visible) {
+                graphics.drawCenteredString(net.minecraft.client.Minecraft.getInstance().font,
+                        "\u2713", getX() + 8, getY() + 3, 0xFFFFFFFF);
+            }
+        }
+
+        private void updateLabel() {
+            String key = visible
+                    ? "gui.maidspell.ender_pocket.hud_maid_visible"
+                    : "gui.maidspell.ender_pocket.hud_maid_hidden";
+            Component label = Component.translatable(key);
+            setMessage(label);
+            setTooltip(Tooltip.create(label));
         }
     }
 }
