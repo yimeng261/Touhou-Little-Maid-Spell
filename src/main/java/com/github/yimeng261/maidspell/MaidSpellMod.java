@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
 import com.github.yimeng261.maidspell.client.EnderPocketClientConfig;
 import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidLegacyModelPackCleaner;
 import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.event.FoxLeafOwnerWaterWalking;
@@ -46,6 +47,8 @@ public class MaidSpellMod {
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
 
     public MaidSpellMod(IEventBus modEventBus, ModContainer modContainer, Dist dist) {
+        TouhouLittleMaidLegacyModelPackCleaner.cleanGameDirectory();
+
         // 检查依赖
         modEventBus.addListener(this::setup);
         // 注册网络消息

@@ -119,6 +119,10 @@
   "gui.maidspell.ender_pocket.maid.click_to_open": "Click to open backpack",
   "gui.maidspell.ender_pocket.teleport": "Teleport",
   "gui.maidspell.ender_pocket.hud_settings": "HUD",
+  "gui.maidspell.ender_pocket.hud_hide": "Hide",
+  "gui.maidspell.ender_pocket.hud_show": "Show",
+  "gui.maidspell.ender_pocket.hud_maid_visible": "HUD: Visible",
+  "gui.maidspell.ender_pocket.hud_maid_hidden": "HUD: Hidden",
   "gui.maidspell.ender_pocket.hud_editor.title": "Maid HUD Position",
   "gui.maidspell.ender_pocket.hud_editor.x": "X Position",
   "gui.maidspell.ender_pocket.hud_editor.y": "Y Position",
@@ -288,6 +292,7 @@
   "touhou_little_maid_spell.configuration.hudEnabled": "Show the Ender Pocket maid status HUD",
   "touhou_little_maid_spell.configuration.hudX": "Ender Pocket HUD X position",
   "touhou_little_maid_spell.configuration.hudY": "Ender Pocket HUD Y position",
+  "touhou_little_maid_spell.configuration.hudHiddenMaidUuids": "Maids hidden from the Ender Pocket HUD",
   "item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared": "First time entering The Retreat, your exclusive Hidden Retreat has been assigned",
   "item.touhou_little_maid_spell.wind_seeking_bell.no_quota": "You can only seek it once!"
 }

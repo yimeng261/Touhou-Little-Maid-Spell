@@ -44,8 +44,9 @@ public final class EnderPocketHudOverlay implements LayeredDraw.Layer {
         Minecraft mc = Minecraft.getInstance();
         int screenWidth = graphics.guiWidth();
         int screenHeight = graphics.guiHeight();
+        List<EnderPocketService.EnderPocketMaidInfo> visibleInfos = getVisibleMaidInfos();
         if (mc.player == null || mc.level == null || mc.options.hideGui || mc.screen != null
-                || maidInfos.isEmpty() || !EnderPocketClientConfig.HUD_ENABLED.get()) {
+                || visibleInfos.isEmpty() || !EnderPocketClientConfig.HUD_ENABLED.get()) {
             return;
         }
 
@@ -55,7 +56,7 @@ public final class EnderPocketHudOverlay implements LayeredDraw.Layer {
                 0, Math.max(0, screenWidth - ROW_WIDTH));
         int preferredY = Mth.clamp(EnderPocketClientConfig.HUD_Y.get(),
                 0, Math.max(0, usableBottom - ROW_HEIGHT));
-        int maxRows = Math.min(maidInfos.size(), Math.max(0, (usableBottom + 3) / rowPitch));
+        int maxRows = Math.min(visibleInfos.size(), Math.max(0, (usableBottom + 3) / rowPitch));
         if (maxRows == 0) {
             return;
         }
@@ -76,7 +77,7 @@ public final class EnderPocketHudOverlay implements LayeredDraw.Layer {
         }
 
         for (int i = 0; i < visibleRows; i++) {
-            renderRow(graphics, mc, maidInfos.get(i), position[0], position[1] + i * rowPitch);
+            renderRow(graphics, mc, visibleInfos.get(i), position[0], position[1] + i * rowPitch);
         }
     }
 
@@ -134,7 +135,7 @@ public final class EnderPocketHudOverlay implements LayeredDraw.Layer {
 
     public static int getEditorPreviewHeight(int availableBottom, int y) {
         int rowPitch = ROW_HEIGHT + 3;
-        int requestedRows = Math.max(1, maidInfos.size());
+        int requestedRows = Math.max(1, getVisibleMaidInfos().size());
         int visibleRows = Math.min(requestedRows, Math.max(1, (availableBottom - y) / rowPitch));
         return visibleRows * rowPitch - 3;
     }
@@ -144,7 +145,8 @@ public final class EnderPocketHudOverlay implements LayeredDraw.Layer {
         if (mc.player == null || mc.level == null) {
             return;
         }
-        if (maidInfos.isEmpty()) {
+        List<EnderPocketService.EnderPocketMaidInfo> visibleInfos = getVisibleMaidInfos();
+        if (visibleInfos.isEmpty()) {
             graphics.fill(x, y, x + ROW_WIDTH, y + ROW_HEIGHT, 0xB8101018);
             graphics.renderOutline(x, y, ROW_WIDTH, ROW_HEIGHT, 0xFF565664);
             graphics.drawCenteredString(mc.font,
@@ -154,10 +156,16 @@ public final class EnderPocketHudOverlay implements LayeredDraw.Layer {
         }
 
         int rowPitch = ROW_HEIGHT + 3;
-        int visibleRows = Math.min(maidInfos.size(), Math.max(1, (availableBottom - y) / rowPitch));
+        int visibleRows = Math.min(visibleInfos.size(), Math.max(1, (availableBottom - y) / rowPitch));
         for (int i = 0; i < visibleRows; i++) {
-            renderRow(graphics, mc, maidInfos.get(i), x, y + i * rowPitch);
+            renderRow(graphics, mc, visibleInfos.get(i), x, y + i * rowPitch);
         }
+    }
+
+    private static List<EnderPocketService.EnderPocketMaidInfo> getVisibleMaidInfos() {
+        return maidInfos.stream()
+                .filter(info -> EnderPocketClientConfig.isMaidVisible(info.maidUUID))
+                .toList();
     }
 
     private static void renderRow(GuiGraphics graphics, Minecraft mc,
