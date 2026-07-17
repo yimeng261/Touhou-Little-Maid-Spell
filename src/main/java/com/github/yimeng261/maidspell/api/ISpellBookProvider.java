@@ -161,6 +161,28 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
     }
 
     /**
+     * 精确对准目标：法术/弹幕通常直接读取 shooter 的朝向向量，普通的 lookAt 记忆不够即时，
+     * 这里把女仆的 yaw/pitch（含上一 tick 的 O 值）一次性同步到指向目标。各 Provider 共用。
+     */
+    protected void updatePreciseOrientation(EntityMaid maid, LivingEntity target) {
+        if (target == null) return;
+        double dx = target.getX() - maid.getX();
+        double dy = target.getEyeY() - maid.getEyeY();
+        double dz = target.getZ() - maid.getZ();
+        double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+        float yaw = (float) (Math.atan2(dz, dx) * 180.0 / Math.PI) - 90.0F;
+        float pitch = (float) (-(Math.atan2(dy, horizontalDistance) * 180.0 / Math.PI));
+        maid.setYRot(yaw);
+        maid.setXRot(pitch);
+        maid.setYHeadRot(yaw);
+        maid.yBodyRot = yaw;
+        maid.yRotO = yaw;
+        maid.xRotO = pitch;
+        maid.yHeadRotO = yaw;
+        maid.yBodyRotO = yaw;
+    }
+
+    /**
      * 开始施法
      */
     protected abstract void initiateCasting(EntityMaid maid);

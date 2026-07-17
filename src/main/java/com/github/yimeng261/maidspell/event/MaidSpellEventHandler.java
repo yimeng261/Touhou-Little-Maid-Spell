@@ -24,6 +24,7 @@ import com.github.yimeng261.maidspell.spell.data.MaidArsNouveauSpellData;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import com.github.yimeng261.maidspell.spell.data.MaidPsiSpellData;
 import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
+import com.github.yimeng261.maidspell.spell.data.MaidUsefulMagicSpellData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
@@ -634,6 +635,9 @@ public class MaidSpellEventHandler {
             if (SpellBookManager.hasProvider("slashblade")) {
                 runSpellDataCleanup("slashblade", () -> MaidSlashBladeData.remove(uuid));
             }
+            if (SpellBookManager.hasProvider("usefulmagic")) {
+                runSpellDataCleanup("usefulmagic", () -> MaidUsefulMagicSpellData.remove(uuid));
+            }
             SpellBookManager.removeManager(maid);
         }
     }
@@ -734,6 +738,9 @@ public class MaidSpellEventHandler {
         }
         if (SpellBookManager.hasProvider("slashblade")) {
             runSpellDataCleanup("slashblade", MaidSlashBladeData::clearAll);
+        }
+        if (SpellBookManager.hasProvider("usefulmagic")) {
+            runSpellDataCleanup("usefulmagic", MaidUsefulMagicSpellData::clearAll);
         }
     }
 
