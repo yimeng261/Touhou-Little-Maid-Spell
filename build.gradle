@@ -175,6 +175,10 @@ dependencies {
     implementation("curse.maven:psi-241665:${psi_version}")
     // Goety
     implementation("maven.modrinth:goety:${goety_version}")
+    // UsefulMagic（弹幕/魔法阵战斗，Kotlin）+ 其前置
+    implementation("maven.modrinth:usefulmagic:${usefulmagic_version}")
+    implementation("maven.modrinth:cooparticlesapi:${cooparticlesapi_version}")
+    implementation("maven.modrinth:kotlin-for-forge:${kotlinforforge_version}")
     // SlashBlade Resharped
     implementation("maven.modrinth:slashblade-resharped:${slashblade_version}")
 
