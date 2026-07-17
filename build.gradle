@@ -174,7 +174,7 @@ dependencies {
     // PSI
     implementation("curse.maven:psi-241665:${psi_version}")
     // Goety
-    implementation("maven.modrinth:goety-3:${goety_version}")
+    implementation("maven.modrinth:goety:${goety_version}")
     // SlashBlade Resharped
     implementation("maven.modrinth:slashblade-resharped:${slashblade_version}")
 
