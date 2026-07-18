@@ -53,7 +53,9 @@
     "tlm.MaidMoveControlMixin",
     "tlm.MaidNodeEvaluatorMixin",
     "tlm.OpenMaidGuiPackageMixin",
-    "tlm.ServerMaidModelsMergeMixin"
+    "tlm.ServerMaidModelsMergeMixin",
+    "usefulmagic.FriendFilterHelperMixin",
+    "usefulmagic.HealthMagicMixin"
   ],
   "client": [
     "ClientPacketListenerMixin",

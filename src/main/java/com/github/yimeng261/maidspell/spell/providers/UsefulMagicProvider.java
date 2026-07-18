@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidUsefulMagicSpellData;
+import com.github.yimeng261.maidspell.utils.UsefulMagicHealSupport;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -15,6 +16,7 @@ import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper;
 
 import cn.coostack.usefulmagic.extend.EntityExtendKt;
 import cn.coostack.usefulmagic.items.prop.SpellBagItem;
+import cn.coostack.usefulmagic.items.weapon.magic.HealthMagic;
 import cn.coostack.usefulmagic.items.weapon.magic.MagicItem;
 import cn.coostack.usefulmagic.items.weapon.wands.MagicWand;
 import cn.coostack.usefulmagic.utils.MagicHelper;
@@ -64,7 +66,7 @@ public class UsefulMagicProvider extends ISpellBookProvider<MaidUsefulMagicSpell
         }
         ItemContainerContents contents = spellBook.getOrDefault(DataComponents.CONTAINER, ItemContainerContents.EMPTY);
         contents.nonEmptyStream().forEach(magicStack -> {
-            if (!(magicStack.getItem() instanceof MagicItem) || data.isSpellOnCooldown(getSpellId(magicStack))) {
+            if (!isCastableSpell(data, maid, magicStack)) {
                 return;
             }
             // 收集时即配对法杖并随法术带出，施法时直接复用，避免重新遍历背包配对。
@@ -119,6 +121,67 @@ public class UsefulMagicProvider extends ISpellBookProvider<MaidUsefulMagicSpell
         return emptyWand;
     }
 
+    /**
+     * 收集法术：法杖内嵌的法术球（玩家预装进 WAND_MAGIC 的球）优先，预装池非空则只用预装池，
+     * 否则回退法术袋散球池。让 {@code initiateCasting} 保持通用，收集策略集中在此。
+     */
+    @Override
+    protected List<MagicWandPair> collectSpellFromAvailableSpellBooks(EntityMaid maid) {
+        List<MagicWandPair> preloaded = collectWandEmbeddedSpells(maid);
+        return !preloaded.isEmpty() ? preloaded : super.collectSpellFromAvailableSpellBooks(maid);
+    }
+
+    /**
+     * 收集女仆背包里所有法杖「内嵌的法术球」作为可施法项（玩家预装进 WAND_MAGIC 的球，未必在法术袋内）。
+     * 这些球已装在法杖上（loadedByProvider=false，施法结束不卸），选球阶段优先于法术袋散球。
+     * 同样过滤冷却与 HealthMagic 血量门槛。
+     */
+    private List<MagicWandPair> collectWandEmbeddedSpells(EntityMaid maid) {
+        List<MagicWandPair> preloaded = new ArrayList<>();
+        MaidUsefulMagicSpellData data = getData(maid);
+        for (ItemStack wand : collectMagicWands(maid)) {
+            MagicWand wandItem = (MagicWand) wand.getItem();
+            ItemStack loaded = wandItem.getLoadedMagic(wand);
+            if (!isCastableSpell(data, maid, loaded)) {
+                continue;
+            }
+            preloaded.add(new MagicWandPair(loaded, wand));
+        }
+        return preloaded;
+    }
+
+    /**
+     * 可施法门槛：是 MagicItem、未在冷却、且通过选球门槛（{@link #isSpellEligible}）。
+     * 两处收集（法术袋散球、法杖内嵌球）共用，空球（AIR）自然被首个判定排除。
+     */
+    private boolean isCastableSpell(MaidUsefulMagicSpellData data, EntityMaid maid, ItemStack magicStack) {
+        return magicStack.getItem() instanceof MagicItem
+                && !data.isSpellOnCooldown(getSpellId(magicStack))
+                && isSpellEligible(maid, magicStack);
+    }
+
+    /**
+     * 选球门槛：HealthMagic（生命法术）只有在女仆或范围内主人未满血时才可选，避免满血空放。
+     * 其它法术始终可选。
+     */
+    private boolean isSpellEligible(EntityMaid maid, ItemStack magicStack) {
+        if (magicStack.getItem() instanceof HealthMagic) {
+            return maidOrOwnerHurt(maid);
+        }
+        return true;
+    }
+
+    /**
+     * 女仆自己，或范围内存活主人（见 {@link UsefulMagicHealSupport#ownerInHealRange}），是否有一方未满血。
+     */
+    private boolean maidOrOwnerHurt(EntityMaid maid) {
+        if (maid.getHealth() < maid.getMaxHealth()) {
+            return true;
+        }
+        LivingEntity owner = UsefulMagicHealSupport.ownerInHealRange(maid);
+        return owner != null && owner.getHealth() < owner.getMaxHealth();
+    }
+
     private String getSpellId(ItemStack magicStack) {
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(magicStack.getItem());
         return id.toString();
@@ -134,6 +197,7 @@ public class UsefulMagicProvider extends ISpellBookProvider<MaidUsefulMagicSpell
         if (target == null || !target.isAlive()) {
             return;
         }
+        // 收集策略（法杖内嵌优先，回退法术袋）集中在 collectSpellFromAvailableSpellBooks 覆写里。
         List<MagicWandPair> spells = collectSpellFromAvailableSpellBooks(maid);
         if (spells.isEmpty()) {
             return;
