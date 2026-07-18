@@ -28,6 +28,8 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String ARS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.ars.";
     private static final String MNA_MOD_ID = "mna";
     private static final String MNA_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.mna.";
+    private static final String FTB_TEAMS_MOD_ID = "ftbteams";
+    private static final String FTB_TEAMS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.ftbteams.";
 
     private boolean isIronsSpellbooksLoaded = false;
     private boolean isTlmMagicAnimationSupported = false;
@@ -36,6 +38,7 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private boolean isPsiLoaded = false;
     private boolean isArsNouveauLoaded = false;
     private boolean isMnaLoaded = false;
+    private boolean isFtbTeamsLoaded = false;
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -53,6 +56,7 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         isPsiLoaded = LoadingModList.get().getModFileById(PSI_MOD_ID) != null;
         isArsNouveauLoaded = LoadingModList.get().getModFileById(ARS_MOD_ID) != null;
         isMnaLoaded = LoadingModList.get().getModFileById(MNA_MOD_ID) != null;
+        isFtbTeamsLoaded = LoadingModList.get().getModFileById(FTB_TEAMS_MOD_ID) != null;
     }
 
     @Override
@@ -86,6 +90,10 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
 
         if (mixinClassName.startsWith(MNA_MIXIN_PACKAGE)) {
             return isMnaLoaded;
+        }
+
+        if (mixinClassName.startsWith(FTB_TEAMS_MIXIN_PACKAGE)) {
+            return isFtbTeamsLoaded;
         }
 
         // 其他 Mixin 正常加载

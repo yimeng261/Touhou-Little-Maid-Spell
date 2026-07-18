@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.client.EnderPocketClientConfig;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
+import com.github.yimeng261.maidspell.compat.ftbteams.FTBTeamsCompat;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidLegacyModelPackCleaner;
 import com.github.yimeng261.maidspell.crafting.OptionalModIngredientSerializer;
@@ -60,6 +61,7 @@ public class MaidSpellMod {
         MaidSpellContainers.register(modBus);
         MaidSpellSounds.SOUNDS.register(modBus);
         MaidSpellEntities.register(modBus);
+        FTBTeamsCompat.init();
         IronsSpellbooksCompat.init(modBus);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modBus);
