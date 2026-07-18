@@ -55,6 +55,19 @@ public class UsefulMagicProvider extends ISpellBookProvider<MaidUsefulMagicSpell
         return itemStack != null && !itemStack.isEmpty() && itemStack.getItem() instanceof SpellBagItem;
     }
 
+    /**
+     * 不要求法术袋：女仆背包里有已装载法术球的法杖时，仅凭该法杖即可施法。
+     * 是否真有可用法术（法杖内嵌球优先、否则法术袋散球）统一交由 {@link #initiateCasting} 判定，
+     * 其内部先校验目标再收集，无目标时不扫背包。
+     */
+    @Override
+    public void castSpell(EntityMaid maid) {
+        if (getData(maid).isCasting()) {
+            return;
+        }
+        initiateCasting(maid);
+    }
+
     @Override
     protected List<MagicWandPair> collectSpellFromSingleSpellBook(ItemStack spellBook, EntityMaid maid) {
         List<MagicWandPair> available = new ArrayList<>();
