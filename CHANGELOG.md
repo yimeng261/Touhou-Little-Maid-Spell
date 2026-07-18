@@ -1,5 +1,40 @@
 # Changelog / 变更日志
 
+## 1.8.4-neoforge
+
+### 新增功能 / New Features
+
+- 新增「UsefulMagic」法术联动：女仆可携带法术袋（法术书）与法杖，自动为法术球配对并装载法杖后施放弹幕/魔法阵类法术，冷却依法杖真实数值计算 /
+  Added UsefulMagic integration — maids can carry spell bags and wands, automatically pairing and loading magic orbs to
+  cast danmaku/magic-circle spells, with cooldowns derived from the wand's real values
+
+---
+
+## 1.8.3-neoforge
+
+### 新增功能 / New Features
+
+- 新增弧光十字饰品：女仆装备时持续获得 10 级雷暴与神圣守护 / Added the Arc Cross bauble — the equipped maid continuously
+  gains Thunderstorm X and Holy Protection X
+
+### 修复 / Bug Fixes
+
+- 修复馥郁巧思导致女仆无法放出的问题 / Fixed Fragrant Ingenuity preventing maids from being deployed
+- 修复 Carry On 删除同步与锚定核心区块加载问题 / Fixed Carry On removal syncing and Anchor Core chunk loading
+- 清理女仆死亡与复活时的残留状态 / Cleaned up residual state left on maid death and revival
+- 清理运行时残留的法术数据与缓存 / Cleaned up leftover runtime spell data and caches
+
+### 优化 / Improvements
+
+- Goety 依赖切换到官方发布版（`maven.modrinth:goety` 3.0.3），并适配官方版的类与包路径变更 /
+  Switched the Goety dependency to the official release (`maven.modrinth:goety` 3.0.3) and adapted the integration to its
+  class and package changes
+- 优化通用盟友归属判定 / Optimized the shared ally-ownership resolution
+- 缓存月铃兰结构搜索结果以降低开销 / Cached Yue Linglan structure-search results to reduce overhead
+- 调整圣遗礼拜堂（Relic Sanctum）结构 / Adjusted the Relic Sanctum structure
+
+---
+
 ## 1.8.2-neoforge
 
 ### 修复 / Bug Fixes

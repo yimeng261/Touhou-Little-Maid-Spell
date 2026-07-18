@@ -32,7 +32,7 @@ import net.minecraft.world.phys.AABB;
 import net.neoforged.fml.ModList;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import org.jetbrains.annotations.NotNull;
-import za.co.infernos.goety.api.entities.IOwned;
+import com.Polarice3.Goety.api.entities.IOwned;
 import org.slf4j.Logger;
 
 import java.util.List;

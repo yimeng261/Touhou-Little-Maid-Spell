@@ -14,8 +14,8 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
-import za.co.infernos.goety.common.effects.GoetyEffects;
-import za.co.infernos.goety.utils.ModDamageSource;
+import com.Polarice3.Goety.common.effects.GoetyEffects;
+import com.Polarice3.Goety.utils.ModDamageSource;
 
 /**
  * 不洁圣冠饰品逻辑

@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.item;
 
+import com.Polarice3.Goety.common.items.ModItems;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
@@ -111,7 +112,7 @@ public class MaidSpellItems {
     public static Item getUnholyHat() {
         if (ModList.get().isLoaded("goety")) {
             try {
-                return za.co.infernos.goety.common.items.ModItems.UNHOLY_HAT.get();
+                return ModItems.UNHOLY_HAT.get();
             } catch (Exception e) {
                 return null;
             }

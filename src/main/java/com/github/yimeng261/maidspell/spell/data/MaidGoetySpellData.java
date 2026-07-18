@@ -3,7 +3,7 @@ package com.github.yimeng261.maidspell.spell.data;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import net.minecraft.world.item.ItemStack;
-import za.co.infernos.goety.api.magic.ISpell;
+import com.Polarice3.Goety.api.magic.ISpell;
 
 import java.util.Map;
 import java.util.UUID;
