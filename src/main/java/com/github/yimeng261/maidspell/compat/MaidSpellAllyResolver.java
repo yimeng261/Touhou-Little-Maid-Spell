@@ -70,6 +70,10 @@ public final class MaidSpellAllyResolver {
     }
 
     public static boolean isFriendlyDamage(LivingEntity target, @Nullable Entity causing, @Nullable Entity direct) {
+        // 玩家造成的伤害按目标原有规则处理（例如女仆对主人伤害的减免）
+        if (causing instanceof Player || direct instanceof Player) {
+            return false;
+        }
         return areFriendly(target, causing)
                 || areFriendly(target, direct)
                 || resolveResponsibleEntity(direct).map(owner -> areFriendly(target, owner)).orElse(false);

@@ -725,11 +725,17 @@ public class Config {
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent.Loading event) {
+        if (event.getConfig().getSpec() != SPEC) {
+            return;
+        }
         refreshConfig();
     }
 
     @SubscribeEvent
     static void onReload(final ModConfigEvent.Reloading event) {
+        if (event.getConfig().getSpec() != SPEC) {
+            return;
+        }
         refreshConfig();
     }
 
