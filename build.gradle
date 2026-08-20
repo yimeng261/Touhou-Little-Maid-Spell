@@ -233,8 +233,25 @@ tasks.register('bundleJar', Jar) {
     }
 }
 
-def maidSpellEarlyServiceRuntime = files(tasks.named('bundleJar').flatMap { it.archiveFile })
-maidSpellEarlyServiceRuntime.builtBy tasks.named('bundleJar')
+tasks.register('transformerDevJar', Jar) {
+    dependsOn tasks.named('transformerClasses')
+    archiveClassifier = 'transformer-dev'
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    from sourceSets.transformer.output
+    exclude 'META-INF/services/net.minecraftforge.forgespi.locating.IModLocator'
+    manifest {
+        attributes([
+                "Implementation-Title": "${project.name} development bootstrap",
+                "Implementation-Version": "${version}",
+                "Automatic-Module-Name": "touhou_little_maid_spell.bootstrap"
+        ])
+    }
+}
+
+// The exploded development mod is already supplied through MOD_CLASSES. Loading the
+// nested-mod locator here would make Forge discover this jar once per service entry.
+def maidSpellEarlyServiceRuntime = files(tasks.named('transformerDevJar').flatMap { it.archiveFile })
+maidSpellEarlyServiceRuntime.builtBy tasks.named('transformerDevJar')
 
 dependencies {
     runtimeOnly maidSpellEarlyServiceRuntime
