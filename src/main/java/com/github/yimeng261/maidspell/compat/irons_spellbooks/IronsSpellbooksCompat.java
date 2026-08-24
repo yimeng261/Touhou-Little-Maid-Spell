@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.IronsSpellbooksCompatClient;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.VoidPhaseDamageHandler;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxBossSleepGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
@@ -31,6 +32,7 @@ public final class IronsSpellbooksCompat {
         IronsSpellbooksCompatEffects.register(eventBus);
         IronsSpellbooksCompatSpells.register(eventBus);
         MinecraftForge.EVENT_BUS.register(VoidPhaseDamageHandler.class);
+        MinecraftForge.EVENT_BUS.register(WinefoxBossSleepGuard.class);
     }
 
     public static void initClient(EntityRenderersEvent.RegisterRenderers event) {
