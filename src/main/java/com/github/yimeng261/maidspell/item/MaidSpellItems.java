@@ -5,6 +5,9 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
 import com.github.yimeng261.maidspell.compat.curios.DreamCrystalCurios;
+import com.github.yimeng261.maidspell.item.bauble.staranchorPearl.StaranchorPearl;
+import com.github.yimeng261.maidspell.item.common.NebulaCoreItem;
+import com.github.yimeng261.maidspell.item.common.StarglintMaterialItem;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCross;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
@@ -78,6 +81,19 @@ public class MaidSpellItems {
     // 梦云水晶
     public static final DeferredItem<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal",
         () -> CuriosCompat.isLoaded() ? DreamCrystalCurios.createItem() : new DreamCatCrystal());
+
+    // 星锚珍珠：玩家右键获得 30 秒虚空漫步，女仆佩戴可代挡虚空伤害并消耗耐久
+    public static final DeferredItem<Item> STARANCHOR_PEARL = ITEMS.register("staranchor_pearl", StaranchorPearl::new);
+
+    // 星云核心仅由合格的魔女挑战发放。
+    public static final DeferredItem<Item> NEBULA_CORE = ITEMS.register("nebula_core", NebulaCoreItem::new);
+    public static final DeferredItem<Item> STAR_METEORITE = ITEMS.register("star_meteorite",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.star_meteorite.desc"));
+    public static final DeferredItem<Item> RITUAL_HILT = ITEMS.register("ritual_hilt",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.ritual_hilt.desc"));
+    // 归星：星之魔女的誓约信物，配方要秘银锭，挂在铁魔法条件下
+    public static final DeferredItem<Item> RETURNING_STAR = ITEMS.register("returning_star",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.returning_star.desc"));
 
     // 寻风之铃
     public static final DeferredItem<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);

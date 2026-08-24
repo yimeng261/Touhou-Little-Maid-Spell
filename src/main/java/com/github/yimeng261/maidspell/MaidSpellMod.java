@@ -8,8 +8,10 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCom
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidLegacyModelPackCleaner;
 import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
+import com.github.yimeng261.maidspell.effect.MaidSpellEffects;
 import com.github.yimeng261.maidspell.event.FoxLeafOwnerWaterWalking;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
+import com.github.yimeng261.maidspell.event.StaranchorPearlEvents;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -63,6 +65,7 @@ public class MaidSpellMod {
         // 手动注册事件处理器，确保事件能被正确监听
         NeoForge.EVENT_BUS.register(MaidSpellEventHandler.class);
         NeoForge.EVENT_BUS.register(FoxLeafOwnerWaterWalking.class);
+        NeoForge.EVENT_BUS.register(StaranchorPearlEvents.class);
         MaidSpellBlocks.register(modEventBus);
         MaidSpellBlockEntities.register(modEventBus);
         MaidSpellItems.register(modEventBus);
@@ -70,6 +73,7 @@ public class MaidSpellMod {
         MaidSpellContainers.register(modEventBus);
         MaidSpellSounds.SOUNDS.register(modEventBus);
         MaidSpellParticles.PARTICLES.register(modEventBus);
+        MaidSpellEffects.register(modEventBus);
         MaidSpellEntities.register(modEventBus);
         IronsSpellbooksCompat.init(modEventBus);
         CuriosCompat.init();

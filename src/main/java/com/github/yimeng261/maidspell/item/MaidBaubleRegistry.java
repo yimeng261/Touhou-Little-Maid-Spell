@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.item;
 import com.github.tartaricacid.touhoulittlemaid.api.ILittleMaid;
 import com.github.tartaricacid.touhoulittlemaid.api.LittleMaidExtension;
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
+import com.github.yimeng261.maidspell.item.bauble.staranchorPearl.StaranchorPearlBauble;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCrossBauble;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeartBauble;
@@ -131,6 +132,10 @@ public class MaidBaubleRegistry implements ILittleMaid {
         // 梦云水晶
         if (MaidSpellItems.DREAM_CAT_CRYSTAL != null) {
             manager.bind(MaidSpellItems.DREAM_CAT_CRYSTAL, new DreamCatCrystalBauble());
+        }
+
+        if (MaidSpellItems.STARANCHOR_PEARL != null) {
+            manager.bind(MaidSpellItems.STARANCHOR_PEARL, new StaranchorPearlBauble());
         }
 
         // 不洁圣冠（使用原版 Goety 的物品）

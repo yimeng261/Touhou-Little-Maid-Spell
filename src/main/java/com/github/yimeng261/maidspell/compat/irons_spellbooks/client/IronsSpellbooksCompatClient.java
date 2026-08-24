@@ -8,13 +8,21 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.en
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.StarShadowStrikeRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.WinefoxSwordProjectileRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
 import io.redspace.ironsspellbooks.entity.spells.comet.CometRenderer;
+import io.redspace.ironsspellbooks.render.ClientStaffItemExtensions;
 import net.minecraft.client.renderer.entity.NoopRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 
 public final class IronsSpellbooksCompatClient {
     private IronsSpellbooksCompatClient() {
+    }
+
+    /** 星影法杖沿用铁魔法法杖的持握姿势；物品渲染由 GeckoLib 通过 GeoRenderProvider 接管。 */
+    public static void onRegisterClientExtensions(RegisterClientExtensionsEvent event) {
+        event.registerItem(new ClientStaffItemExtensions(), IronsSpellbooksCompatItems.STAR_SHADOW_STAFF.get());
     }
 
     public static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
