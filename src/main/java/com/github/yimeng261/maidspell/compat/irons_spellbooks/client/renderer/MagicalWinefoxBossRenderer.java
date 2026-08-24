@@ -1,7 +1,9 @@
-package com.github.yimeng261.maidspell.client.renderer.entity;
+package com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer;
 
-import com.github.yimeng261.maidspell.client.model.MagicalWinefoxBossModel;
-import com.github.yimeng261.maidspell.entity.MagicalWinefoxBossEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model.MagicalWinefoxBossModel;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.layer.WinefoxBossEquipmentLayer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.layer.WinefoxBossHeldItemLayer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.MagicalWinefoxBossEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.LightTexture;
@@ -16,6 +18,9 @@ public class MagicalWinefoxBossRenderer extends GeoEntityRenderer<MagicalWinefox
     public MagicalWinefoxBossRenderer(EntityRendererProvider.Context context) {
         super(context, new MagicalWinefoxBossModel());
         this.withScale(1.0F);
+        this.addRenderLayer(new WinefoxBossEquipmentLayer(this));
+        // 顺序无所谓：两层各管各的骨骼，且拿自制装备时持物层会自己让开。
+        this.addRenderLayer(new WinefoxBossHeldItemLayer(this, context.getItemInHandRenderer()));
         this.shadowRadius = 0.8F;
     }
 

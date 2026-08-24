@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.entity;
+package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
 
 public enum WinefoxBossSpellAction {
     MAGIC_MISSILE,
@@ -16,6 +16,5 @@ public enum WinefoxBossSpellAction {
     MODIFIED_TELEPORT,
     FLAMING_STRIKE,
     DIVINE_SMITE,
-    SWORD_PRISON,
-    SPEAR_THROW
+    SWORD_PRISON
 }

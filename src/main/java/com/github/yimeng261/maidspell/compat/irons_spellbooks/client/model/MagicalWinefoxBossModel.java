@@ -1,7 +1,7 @@
-package com.github.yimeng261.maidspell.client.model;
+package com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.entity.MagicalWinefoxBossEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.MagicalWinefoxBossEntity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import software.bernie.geckolib.cache.object.GeoBone;
@@ -85,7 +85,9 @@ public class MagicalWinefoxBossModel extends GeoModel<MagicalWinefoxBossEntity> 
         if (modelData != null) {
             float headYaw = Mth.clamp(modelData.netHeadYaw(), -55.0F, 55.0F);
             float headPitch = Mth.clamp(modelData.headPitch(), -35.0F, 45.0F);
-            if (!entity.isDeadOrDying() && !entity.isActionAnimationPlaying()) {
+            // isDefeated() 而不是 isDeadOrDying()：她战败时血量停在 1，后者恒为假，
+            // 结果就是人已经躺下了，脑袋还在追着玩家转。
+            if (!entity.isDefeated() && !entity.isActionAnimationPlaying()) {
                 this.getBone("Head").ifPresent(head ->
                         this.headRotation.apply(head, headPitch * Mth.DEG_TO_RAD, headYaw * Mth.DEG_TO_RAD, 0.0F));
             }

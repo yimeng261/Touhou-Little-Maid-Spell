@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ShadowAssas
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCloudEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCometEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.WinefoxSwordProjectileEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.MagicalWinefoxBossEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
@@ -82,6 +83,14 @@ public final class IronsSpellbooksCompatEntities {
                             .updateInterval(1)
                             .build("winefox_sword_projectile"));
 
+    public static final RegistryObject<EntityType<MagicalWinefoxBossEntity>> MAGICAL_WINEFOX_BOSS =
+            ENTITY_TYPES.register("magical_winefox_boss",
+                    () -> EntityType.Builder.of(MagicalWinefoxBossEntity::new, MobCategory.MONSTER)
+                            .sized(0.8F, 2.4F)
+                            .clientTrackingRange(10)
+                            .updateInterval(2)
+                            .build("magical_winefox_boss"));
+
     private IronsSpellbooksCompatEntities() {
     }
 
@@ -96,6 +105,7 @@ public final class IronsSpellbooksCompatEntities {
         event.put(SHADOW_ASSASSIN.get(), ShadowAssassinEntity.createAttributes().build());
         event.put(ELF_TEMPLAR.get(), ElfTemplarEntity.createAttributes().build());
         event.put(HOLY_CONSTRUCT.get(), HolyConstructEntity.prepareAttributes().build());
+        event.put(MAGICAL_WINEFOX_BOSS.get(), MagicalWinefoxBossEntity.createAttributes().build());
     }
 
     private static void onRegisterSpawnPlacements(SpawnPlacementRegisterEvent event) {

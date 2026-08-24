@@ -4,7 +4,6 @@ import com.github.yimeng261.maidspell.client.gui.SpellWhiteListScreen;
 import com.github.yimeng261.maidspell.client.model.SharedHaloModel;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
-import com.github.yimeng261.maidspell.client.renderer.entity.MagicalWinefoxBossRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
@@ -79,7 +78,6 @@ public class MaidSpellClientMod {
     public static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(MaidSpellEntities.WIND_SEEKING_BELL.get(), WindSeekingBellRenderer::new);
         event.registerEntityRenderer(MaidSpellEntities.STAR_SHADOW_SPEAR.get(), StarShadowSpearRenderer::new);
-        event.registerEntityRenderer(MaidSpellEntities.MAGICAL_WINEFOX_BOSS.get(), MagicalWinefoxBossRenderer::new);
         IronsSpellbooksCompat.initClient(event);
     }
 

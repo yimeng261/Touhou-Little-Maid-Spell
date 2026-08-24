@@ -260,8 +260,9 @@
   "death.attack.touhou_little_maid_spell.sword_prison": "%1$s被%2$s召唤的剑牢贯穿",
   "death.attack.touhou_little_maid_spell.teleport_modified": "%1$s被%2$s传送时释放的魔法飞弹击中",
   "entity.touhou_little_maid_spell.winefox_sword_projectile": "召唤利剑投射物",
-  "entity.touhou_little_maid_spell.magical_winefox_boss": "万法酒狐",
-  "item.touhou_little_maid_spell.magical_winefox_boss_spawn_egg": "万法酒狐刷怪蛋",
+  "entity.touhou_little_maid_spell.magical_winefox_boss": "星之魔女",
+  "entity.touhou_little_maid_spell.magical_winefox_boss.bossbar": "万法酒狐——%s",
+  "item.touhou_little_maid_spell.magical_winefox_boss_spawn_egg": "星之魔女刷怪蛋",
   "item.touhou_little_maid_spell.star_shadow_longsword": "星影长剑",
   "item.touhou_little_maid_spell.star_shadow_staff": "星影法杖",
   "item.touhou_little_maid_spell.star_witch_hat": "星之魔女法帽"

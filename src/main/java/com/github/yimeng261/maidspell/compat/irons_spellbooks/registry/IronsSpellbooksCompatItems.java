@@ -53,6 +53,13 @@ public final class IronsSpellbooksCompatItems {
     public static final RegistryObject<Item> STAR_WITCH_HAT =
             ITEMS.register("star_witch_hat", StarWitchHatItem::new);
 
+    public static final RegistryObject<Item> MAGICAL_WINEFOX_BOSS_SPAWN_EGG =
+            ITEMS.register("magical_winefox_boss_spawn_egg",
+                    () -> new ForgeSpawnEggItem(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS,
+                            0x5B3B87,
+                            0xE8D8FF,
+                            new Item.Properties()));
+
     private IronsSpellbooksCompatItems() {
     }
 

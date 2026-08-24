@@ -33,13 +33,11 @@ import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import com.github.yimeng261.maidspell.item.common.StarShadowSpearItem;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
-import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import net.minecraft.Util;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -110,13 +108,6 @@ public class MaidSpellItems {
     // 任务图标物品
     public static final RegistryObject<Item> MELEE_TASK_ICON = ITEMS.register("melee_task_icon", MeleeTaskIcon::new);
     public static final RegistryObject<Item> FAR_TASK_ICON = ITEMS.register("far_task_icon", FarTaskIcon::new);
-
-    public static final RegistryObject<Item> MAGICAL_WINEFOX_BOSS_SPAWN_EGG =
-        ITEMS.register("magical_winefox_boss_spawn_egg",
-            () -> new ForgeSpawnEggItem(MaidSpellEntities.MAGICAL_WINEFOX_BOSS,
-                0x5B3B87,
-                0xE8D8FF,
-                new Item.Properties()));
 
     /**
      * 注册物品

@@ -1,18 +1,14 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
 
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.WinefoxSwordProjectileEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;
-import com.github.yimeng261.maidspell.entity.MagicalWinefoxBossEntity;
-import com.github.yimeng261.maidspell.entity.WinefoxBossSpellAction;
-import com.github.yimeng261.maidspell.entity.WinefoxBossSpellBridge;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.MagicalWinefoxBossEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.WinefoxBossSpellAction;
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
-import io.redspace.ironsspellbooks.api.spells.CastSource;
-import io.redspace.ironsspellbooks.api.spells.CastType;
 import io.redspace.ironsspellbooks.api.util.AnimationHolder;
 import io.redspace.ironsspellbooks.capabilities.magic.TargetEntityCastData;
 import net.minecraft.util.Mth;
@@ -22,9 +18,18 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
-public final class WinefoxBossIronsSpellBridge implements WinefoxBossSpellBridge.Delegate {
-    @Override
-    public void addAttributes(AttributeSupplier.Builder builder) {
+/**
+ * 万法酒狐的铁魔法法术行为。boss 本身只在装了铁魔法时注册，所以这里直接调用铁魔法 API。
+ */
+public final class WinefoxBossSpells {
+
+    /** 表示该动作只需要停止当前吟唱动画。 */
+    public static final String STOP_CAST_ANIMATION = "#stop";
+
+    private WinefoxBossSpells() {
+    }
+
+    public static void addAttributes(AttributeSupplier.Builder builder) {
         builder.add(AttributeRegistry.MAX_MANA.get(), 1_000_000.0D)
                 .add(AttributeRegistry.SPELL_POWER.get(), 1.0D)
                 .add(AttributeRegistry.CASTING_MOVESPEED.get(), 1.0D)
@@ -34,19 +39,34 @@ public final class WinefoxBossIronsSpellBridge implements WinefoxBossSpellBridge
                 .add(AttributeRegistry.HOLY_SPELL_POWER.get(), 1.0D);
     }
 
-    @Override
-    public boolean cast(MagicalWinefoxBossEntity boss, @Nullable LivingEntity target,
+    /**
+     * 发起一次施法。
+     *
+     * <p>以前这里是自己造一个 {@code new MagicData(true)}，然后把 {@code onServerPreCast} 与
+     * {@code onCast} 连着调掉——等于绕开铁魔法整套吟唱状态机，法术全是瞬发的，
+     * 前摇由酒狐这边另拿一套 {@code pendingCastTicks} 手算。
+     *
+     * <p>改继承 {@code AbstractSpellCastingMob} 之后直接走 {@code initiateCastSpell}：
+     * 吟唱时长、{@code onServerCastTick}、CONTINUOUS 每 10t 复发、收尾、以及存档中断后的续播，
+     * 全部由铁魔法自己管。酒狐只负责"什么时候选哪个法术"。
+     *
+     * @return 是否真的开始了一次吟唱
+     */
+    public static boolean cast(MagicalWinefoxBossEntity boss, @Nullable LivingEntity target,
                         WinefoxBossSpellAction action, int spellLevel) {
         if (boss.level().isClientSide) {
             return false;
         }
         int clampedLevel = Mth.clamp(spellLevel, 1, 10);
-        if (action == WinefoxBossSpellAction.SPEAR_THROW) {
-            return throwSpear(boss, target);
-        }
-
         AbstractSpell spell = getSpell(action);
         if (spell == null) {
+            return false;
+        }
+        // 上一发还没结束就不再叠一发；下面用 isCasting() 判断本次是否真的起来了，也依赖这个前置。
+        if (boss.isCasting()) {
+            return false;
+        }
+        if (needsTargetData(action) && (target == null || !target.isAlive())) {
             return false;
         }
         if (target != null && action != WinefoxBossSpellAction.HEAL
@@ -55,35 +75,41 @@ public final class WinefoxBossIronsSpellBridge implements WinefoxBossSpellBridge
             faceTarget(boss, target);
         }
 
-        MagicData magicData = new MagicData(true);
-        if (action == WinefoxBossSpellAction.MODIFIED_TELEPORT
-                || action == WinefoxBossSpellAction.SWORD_PRISON) {
-            if (target == null || !target.isAlive()) {
-                return false;
-            }
+        MagicData magicData = boss.getMagicData();
+        if (needsTargetData(action)) {
+            // 必须在 initiateCastSpell 之前设：它内部的 onServerPreCast 就要读这份数据。
+            // MagicData.initiateCast 不会碰 additionalCastData，所以设了不会被冲掉（已核对）。
             magicData.setAdditionalCastData(new TargetEntityCastData(target));
         }
 
-        spell.onServerPreCast(boss.level(), clampedLevel, boss, magicData);
-        spell.onCast(boss.level(), clampedLevel, boss, CastSource.MOB, magicData);
+        boss.initiateCastSpell(spell, clampedLevel);
+        // initiateCastSpell 是 void 的：法术为 none、或 checkPreCastConditions 不通过时会静默放弃。
+        // 上面已确保进来时不在施法，所以这里为 true 就说明这一发确实起来了。
+        if (!boss.isCasting()) {
+            return false;
+        }
+        boss.onSpellCastStarted(action);
         return true;
     }
 
-    @Override
-    public boolean isCasting(LivingEntity entity) {
+    /** 这两个法术要在施法数据里带上目标实体，没有目标就没法施。 */
+    private static boolean needsTargetData(WinefoxBossSpellAction action) {
+        return action == WinefoxBossSpellAction.MODIFIED_TELEPORT
+                || action == WinefoxBossSpellAction.SWORD_PRISON;
+    }
+
+    public static boolean isCasting(LivingEntity entity) {
         if (entity instanceof Player) {
             return MagicData.getPlayerMagicData(entity).isCasting();
         }
         return entity instanceof IMagicEntity magicEntity && magicEntity.isCasting();
     }
 
-    @Override
-    public boolean hasVoidPhase(MagicalWinefoxBossEntity boss) {
+    public static boolean hasVoidPhase(MagicalWinefoxBossEntity boss) {
         return boss.hasEffect(IronsSpellbooksCompatEffects.VOID_PHASE.get());
     }
 
-    @Override
-    public int getCooldownTicks(WinefoxBossSpellAction action, double multiplier,
+    public static int getCooldownTicks(WinefoxBossSpellAction action, double multiplier,
                                 int fallbackTicks) {
         AbstractSpell spell = getSpell(action);
         return spell == null
@@ -91,17 +117,17 @@ public final class WinefoxBossIronsSpellBridge implements WinefoxBossSpellBridge
                 : Math.max(1, Mth.ceil(spell.getSpellCooldown() * multiplier));
     }
 
-    @Override
-    public int getCastTimeTicks(MagicalWinefoxBossEntity boss,
-                                WinefoxBossSpellAction action, int spellLevel) {
-        AbstractSpell spell = getSpell(action);
-        return spell == null || spell.getCastType() != CastType.LONG
-                ? 0
-                : Math.max(0, spell.getEffectiveCastTime(spellLevel, boss));
-    }
-
-    @Override
-    public String getCastAnimation(WinefoxBossSpellAction action, boolean finish) {
+    /**
+     * 法术那边指定的动画名要能对上酒狐这边的一条轨道。
+     *
+     * <p>{@code SwordPrisonSpell.getCastStartAnimation()} 返回的是
+     * {@code touhou_little_maid_spell:spear_throw}，取 path 得到 {@code spear_throw}，
+     * 正好命中 {@link WinefoxCastAnimation#SPEAR_THROW}，
+     * 于是酒狐播 {@code iss:spear_throw}、玩家播自己那份 player_animation ——
+     * 同一个 key，两套骨骼各播各的。
+     */
+    @Nullable
+    public static String getCastAnimation(WinefoxBossSpellAction action, boolean finish) {
         AbstractSpell spell = getSpell(action);
         if (spell == null) {
             return null;
@@ -114,11 +140,11 @@ public final class WinefoxBossIronsSpellBridge implements WinefoxBossSpellBridge
         }
         return animation.getForPlayer()
                 .map(resource -> resource.getPath())
-                .orElse(finish ? WinefoxBossSpellBridge.STOP_CAST_ANIMATION : null);
+                .orElse(finish ? STOP_CAST_ANIMATION : null);
     }
 
     @Nullable
-    private AbstractSpell getSpell(WinefoxBossSpellAction action) {
+    private static AbstractSpell getSpell(WinefoxBossSpellAction action) {
         return switch (action) {
             case MAGIC_MISSILE -> SpellRegistry.MAGIC_MISSILE_SPELL.get();
             case COUNTERSPELL -> SpellRegistry.COUNTERSPELL_SPELL.get();
@@ -136,28 +162,10 @@ public final class WinefoxBossIronsSpellBridge implements WinefoxBossSpellBridge
             case FLAMING_STRIKE -> SpellRegistry.FLAMING_STRIKE_SPELL.get();
             case DIVINE_SMITE -> SpellRegistry.DIVINE_SMITE_SPELL.get();
             case SWORD_PRISON -> IronsSpellbooksCompatSpells.SWORD_PRISON.get();
-            case SPEAR_THROW -> null;
         };
     }
 
-    private boolean throwSpear(MagicalWinefoxBossEntity boss, @Nullable LivingEntity target) {
-        if (target == null || !target.isAlive()) {
-            return false;
-        }
-        Vec3 spawn = boss.getEyePosition().add(boss.getLookAngle().scale(0.5D));
-        Vec3 targetPosition = target.getBoundingBox().getCenter()
-                .add(target.getDeltaMovement().scale(0.35D));
-        Vec3 direction = targetPosition.subtract(spawn).normalize();
-        WinefoxSwordProjectileEntity spear = new WinefoxSwordProjectileEntity(boss.level(), boss);
-        spear.setPos(spawn);
-        spear.shoot(direction);
-        spear.setDeltaMovement(direction.scale(3.5D));
-        spear.setDamage(20.0F);
-        boss.level().addFreshEntity(spear);
-        return true;
-    }
-
-    private void faceTarget(MagicalWinefoxBossEntity boss, LivingEntity target) {
+    private static void faceTarget(MagicalWinefoxBossEntity boss, LivingEntity target) {
         Vec3 direction = target.getEyePosition().subtract(boss.getEyePosition());
         float yaw = (float) (Mth.atan2(direction.z, direction.x) * Mth.RAD_TO_DEG) - 90.0F;
         float pitch = (float) -(Mth.atan2(direction.y, direction.horizontalDistance()) * Mth.RAD_TO_DEG);

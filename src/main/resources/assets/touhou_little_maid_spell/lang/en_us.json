@@ -260,8 +260,9 @@
   "death.attack.touhou_little_maid_spell.sword_prison": "%1$s was pierced by %2$s's sword prison",
   "death.attack.touhou_little_maid_spell.teleport_modified": "%1$s was struck by the missiles released during %2$s's teleport",
   "entity.touhou_little_maid_spell.winefox_sword_projectile": "Summoned Sword Projectile",
-  "entity.touhou_little_maid_spell.magical_winefox_boss": "Magical Winefox",
-  "item.touhou_little_maid_spell.magical_winefox_boss_spawn_egg": "Magical Winefox Spawn Egg",
+  "entity.touhou_little_maid_spell.magical_winefox_boss": "Star Witch",
+  "entity.touhou_little_maid_spell.magical_winefox_boss.bossbar": "Magical Winefox — %s",
+  "item.touhou_little_maid_spell.magical_winefox_boss_spawn_egg": "Star Witch Spawn Egg",
   "item.touhou_little_maid_spell.star_shadow_longsword": "Starshadow Longsword",
   "item.touhou_little_maid_spell.star_shadow_staff": "Starshadow Staff",
   "item.touhou_little_maid_spell.star_witch_hat": "Star Witch's Hat"
