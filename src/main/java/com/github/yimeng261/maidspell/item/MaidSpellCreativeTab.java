@@ -26,6 +26,9 @@ public class MaidSpellCreativeTab {
             .icon(() -> new ItemStack(MaidSpellItems.FLOW_CORE.get()))
             .displayItems((parameters, output) -> {
                 if (IronsSpellbooksCompat.isLoaded()) {
+                    output.accept(IronsSpellbooksCompatItems.STAR_SHADOW_LONGSWORD.get());
+                    output.accept(IronsSpellbooksCompatItems.STAR_SHADOW_STAFF.get());
+                    output.accept(IronsSpellbooksCompatItems.STAR_WITCH_HAT.get());
                     output.accept(MaidSpellItems.SPELL_ENHANCEMENT_CORE.get());
                     output.accept(MaidSpellItems.ARC_CROSS.get());
                     output.accept(MaidSpellItems.SPELL_WHITE_LIST.get());

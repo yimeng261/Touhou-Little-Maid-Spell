@@ -1,6 +1,9 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.registry;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarWitchHatItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -39,6 +42,16 @@ public final class IronsSpellbooksCompatItems {
                             0xF5EBC7,
                             0xFFD54F,
                             new Item.Properties()));
+
+    // 万法酒狐佩戴的星之魔女系列装备
+    public static final RegistryObject<Item> STAR_SHADOW_LONGSWORD =
+            ITEMS.register("star_shadow_longsword", StarShadowLongswordItem::new);
+
+    public static final RegistryObject<Item> STAR_SHADOW_STAFF =
+            ITEMS.register("star_shadow_staff", StarShadowStaffItem::new);
+
+    public static final RegistryObject<Item> STAR_WITCH_HAT =
+            ITEMS.register("star_witch_hat", StarWitchHatItem::new);
 
     private IronsSpellbooksCompatItems() {
     }

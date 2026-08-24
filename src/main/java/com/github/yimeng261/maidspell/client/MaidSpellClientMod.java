@@ -6,12 +6,15 @@ import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.client.renderer.entity.MagicalWinefoxBossRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.server.packs.PackType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
@@ -40,6 +43,18 @@ public class MaidSpellClientMod {
     @SubscribeEvent
     public static void onRegisterGuiOverlays(RegisterGuiOverlaysEvent event) {
         event.registerAbove(VanillaGuiOverlay.HOTBAR.id(), "ender_pocket_status", new EnderPocketHudOverlay());
+    }
+
+    /**
+     * 星影长剑/星影法杖物品栏用的平面图标模型。
+     *
+     * <p>两把武器的物品模型是 {@code builtin/entity}，没任何东西引用这两份平面模型，
+     * 不在这里登记就不会被烘焙，取出来就是紫黑方块。
+     */
+    @SubscribeEvent
+    public static void onRegisterAdditionalModels(ModelEvent.RegisterAdditional event) {
+        event.register(StarShadowLongswordItem.GUI_MODEL);
+        event.register(StarShadowStaffItem.GUI_MODEL);
     }
 
     @SubscribeEvent

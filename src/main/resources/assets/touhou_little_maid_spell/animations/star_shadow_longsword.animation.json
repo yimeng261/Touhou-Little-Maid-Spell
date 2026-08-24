@@ -1,0 +1,41 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"halo_spin": {
+			"loop": true,
+			"animation_length": 2,
+			"bones": {
+				"ysmGlowquan2": {
+					"rotation": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"2.0": {
+							"vector": [0, 0, 360]
+						}
+					}
+				},
+				"ysmGlowquan3": {
+					"rotation": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"2.0": {
+							"vector": [0, 0, -360]
+						}
+					}
+				},
+				"ysmGlowquan4": {
+					"rotation": {
+						"0.0": {
+							"vector": [0, 0, 0]
+						},
+						"2.0": {
+							"vector": [0, 0, -360]
+						}
+					}
+				}
+			}
+		}
+	}
+}
