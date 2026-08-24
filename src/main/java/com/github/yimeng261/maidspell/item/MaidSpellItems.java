@@ -7,6 +7,7 @@ import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
 import com.github.yimeng261.maidspell.compat.curios.DreamCrystalCurios;
 import com.github.yimeng261.maidspell.item.bauble.staranchorPearl.StaranchorPearl;
 import com.github.yimeng261.maidspell.item.common.NebulaCoreItem;
+import com.github.yimeng261.maidspell.item.common.StarShadowSpearItem;
 import com.github.yimeng261.maidspell.item.common.StarglintMaterialItem;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCross;
@@ -94,6 +95,9 @@ public class MaidSpellItems {
     // 归星：星之魔女的誓约信物，配方要秘银锭，挂在铁魔法条件下
     public static final DeferredItem<Item> RETURNING_STAR = ITEMS.register("returning_star",
         () -> new StarglintMaterialItem("item.touhou_little_maid_spell.returning_star.desc"));
+
+    // 星影投枪：星之魔女的投枪，玩家拿到后按三叉戟使用
+    public static final DeferredItem<Item> STAR_SHADOW_SPEAR = ITEMS.register("star_shadow_spear", StarShadowSpearItem::new);
 
     // 寻风之铃
     public static final DeferredItem<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
