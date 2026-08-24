@@ -10,6 +10,7 @@ import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.CastSource;
 import io.redspace.ironsspellbooks.api.spells.CastType;
 import io.redspace.ironsspellbooks.api.spells.SpellRarity;
+import io.redspace.ironsspellbooks.api.util.AnimationHolder;
 import io.redspace.ironsspellbooks.api.util.Utils;
 import io.redspace.ironsspellbooks.capabilities.magic.TargetEntityCastData;
 import net.minecraft.network.chat.Component;
@@ -28,6 +29,27 @@ public class SwordPrisonSpell extends AbstractSpell {
     public static final ResourceLocation SPELL_ID =
             new ResourceLocation(MaidSpellMod.MOD_ID, "sword_prison");
     private static final int TARGET_RANGE = 32;
+
+    /** 出发点在施法者头顶多高处，以及这个高度的随机浮动。 */
+    private static final double LAUNCH_HEIGHT = 3.5D;
+    private static final double LAUNCH_HEIGHT_JITTER = 1.5D;
+    /** 出发点的水平散布，免得所有剑从同一个点出发叠成一根柱子。 */
+    private static final double LAUNCH_SPREAD = 1.6D;
+
+    /**
+     * 举枪。玩家施法时由 PlayerAnimator 播，资源在
+     * {@code assets/touhou_little_maid_spell/player_animation/spear_throw.json}。
+     *
+     * <p>铁魔法给 INSTANT 法术的默认动画是 {@code instant_projectile}，
+     * 一个 0.1875s 的抬手 —— 配不上"召出一圈剑把人围死"。
+     *
+     * <p>酒狐那边不走这条：她是 Mob，用的是自己 geo 模型上的
+     * {@code iss:spear_throw}（骨骼完全不同），由
+     * {@code WinefoxBossSpells.getCastAnimation} 单独指定。
+     * 两边是同一个动作的两份实现，改表演时记得一起改。
+     */
+    private static final AnimationHolder CAST_START_ANIMATION =
+            new AnimationHolder(new ResourceLocation(MaidSpellMod.MOD_ID, "spear_throw"), true);
 
     private final DefaultConfig defaultConfig = new DefaultConfig()
             .setMinRarity(SpellRarity.RARE)
@@ -52,6 +74,11 @@ public class SwordPrisonSpell extends AbstractSpell {
     @Override
     public CastType getCastType() {
         return CastType.INSTANT;
+    }
+
+    @Override
+    public AnimationHolder getCastStartAnimation() {
+        return CAST_START_ANIMATION;
     }
 
     @Override
@@ -88,6 +115,15 @@ public class SwordPrisonSpell extends AbstractSpell {
         super.onCast(level, spellLevel, caster, castSource, magicData);
     }
 
+    /**
+     * 从施法者头顶斜着扑向目标，落点围成一圈把人锁在中间。
+     *
+     * <p>原先是在**目标正上方**生成、直直往下掉 —— 像天上凭空掉下来一堆剑，
+     * 跟施法者没有任何视觉联系。现在改成从施法者上方一段高度出发，
+     * 朝各自落点斜插过去：看得出剑是她甩出去的。
+     *
+     * <p>出发点带一点横向散布，否则十把剑从同一个点出发会在起手瞬间叠成一根柱子。
+     */
     private void summonSwordRing(Level level, int spellLevel, LivingEntity caster, LivingEntity target) {
         int count = getSwordCount(spellLevel);
         float damage = getSwordDamage(spellLevel, caster);
@@ -100,30 +136,36 @@ public class SwordPrisonSpell extends AbstractSpell {
             double angle = baseAngle + Mth.TWO_PI * i / count
                     + (random.nextDouble() - 0.5D) * 0.2D;
             double radius = target.getBbWidth() + 2.2D + random.nextDouble() * 1.4D;
-            double landingX = center.x + Math.cos(angle) * radius;
-            double landingZ = center.z + Math.sin(angle) * radius;
-            Vec3 spawn = new Vec3(
-                    landingX + (random.nextDouble() - 0.5D) * 0.65D,
-                    groundY + 5.5D + random.nextDouble() * 2.5D,
-                    landingZ + (random.nextDouble() - 0.5D) * 0.65D);
-
-            WinefoxSwordProjectileEntity sword = new WinefoxSwordProjectileEntity(level, caster);
-            sword.setPos(spawn);
-            sword.shoot(new Vec3(
-                    (random.nextDouble() - 0.5D) * 0.55D,
-                    -1.0D,
-                    (random.nextDouble() - 0.5D) * 0.55D).normalize());
-            sword.setRoll(random.nextFloat() * 360.0F);
-            sword.setDamage(damage);
-            level.addFreshEntity(sword);
+            Vec3 landing = new Vec3(
+                    center.x + Math.cos(angle) * radius + (random.nextDouble() - 0.5D) * 0.65D,
+                    groundY,
+                    center.z + Math.sin(angle) * radius + (random.nextDouble() - 0.5D) * 0.65D);
+            launchSword(level, caster, random, landing, damage);
         }
 
-        WinefoxSwordProjectileEntity centerSword = new WinefoxSwordProjectileEntity(level, caster);
-        centerSword.setPos(center.x, groundY + 7.5D, center.z);
-        centerSword.shoot(new Vec3(0.0D, -1.0D, 0.0D));
-        centerSword.setRoll(random.nextFloat() * 360.0F);
-        centerSword.setDamage(damage);
-        level.addFreshEntity(centerSword);
+        // 正中间那一把压轴，落点就是目标脚下。
+        launchSword(level, caster, random, new Vec3(center.x, groundY, center.z), damage);
+    }
+
+    /** 从施法者头顶附近出发，朝 {@code landing} 斜插过去。 */
+    private static void launchSword(Level level, LivingEntity caster, RandomSource random,
+                                    Vec3 landing, float damage) {
+        Vec3 spawn = caster.position()
+                .add((random.nextDouble() - 0.5D) * LAUNCH_SPREAD,
+                        caster.getBbHeight() + LAUNCH_HEIGHT + random.nextDouble() * LAUNCH_HEIGHT_JITTER,
+                        (random.nextDouble() - 0.5D) * LAUNCH_SPREAD);
+
+        Vec3 direction = landing.subtract(spawn);
+        if (direction.lengthSqr() < 1.0E-6D) {
+            direction = new Vec3(0.0D, -1.0D, 0.0D);
+        }
+
+        WinefoxSwordProjectileEntity sword = new WinefoxSwordProjectileEntity(level, caster);
+        sword.setPos(spawn);
+        sword.shoot(direction.normalize());
+        sword.setRoll(random.nextFloat() * 360.0F);
+        sword.setDamage(damage);
+        level.addFreshEntity(sword);
     }
 
     public int getSwordCount(int spellLevel) {
