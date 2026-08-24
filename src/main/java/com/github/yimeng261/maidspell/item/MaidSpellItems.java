@@ -30,6 +30,7 @@ import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrysta
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturn;
 import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
+import com.github.yimeng261.maidspell.item.common.StarShadowSpearItem;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
@@ -99,6 +100,9 @@ public class MaidSpellItems {
         () -> new BlockItem(MaidSpellBlocks.STAR_GLOW_FLOWER_CLUSTER.get(), new Item.Properties()));
     public static final RegistryObject<Item> SUPPRESSION_STONE = ITEMS.register("suppression_stone",
         () -> new BlockItem(MaidSpellBlocks.SUPPRESSION_STONE.get(), new Item.Properties()));
+
+    // 星影投枪：万法酒狐的投枪，不进创造模式物品栏，也没有 lang 条目，只能 /give
+    public static final RegistryObject<Item> STAR_SHADOW_SPEAR = ITEMS.register("star_shadow_spear", StarShadowSpearItem::new);
 
     // 管理员工具
     public static final RegistryObject<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);

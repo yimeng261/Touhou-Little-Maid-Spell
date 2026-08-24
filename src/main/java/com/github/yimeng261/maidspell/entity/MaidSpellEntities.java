@@ -32,6 +32,15 @@ public class MaidSpellEntities {
                 .updateInterval(2)
                 .build("magical_winefox_boss"));
     
+    /** 扔出去的星影投枪。跟着物品一起放在基础注册表里 —— 物品无条件存在，实体也必须无条件存在。 */
+    public static final RegistryObject<EntityType<StarShadowSpearEntity>> STAR_SHADOW_SPEAR =
+        ENTITY_TYPES.register("star_shadow_spear",
+            () -> EntityType.Builder.<StarShadowSpearEntity>of(StarShadowSpearEntity::new, MobCategory.MISC)
+                .sized(0.5F, 0.5F)
+                .clientTrackingRange(4)
+                .updateInterval(20)
+                .build("star_shadow_spear"));
+
     /**
      * 注册实体类型
      */
