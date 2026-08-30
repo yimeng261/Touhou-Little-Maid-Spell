@@ -1023,7 +1023,7 @@
 					]
 				},
 				{
-					"name": "ysmGlowCOREstyle3",
+					"name": "ysmGlowGemCore",
 					"parent": "style3",
 					"pivot": [0.00224, -0.02314, -31.47616],
 					"cubes": [

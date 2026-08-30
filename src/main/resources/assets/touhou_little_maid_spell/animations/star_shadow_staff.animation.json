@@ -5,7 +5,7 @@
 			"loop": true,
 			"animation_length": 2,
 			"bones": {
-				"ysmGlowCOREstyle3": {
+				"ysmGlowGemCore": {
 					"rotation": {
 						"0.0": {
 							"vector": [0, 0, 0]
