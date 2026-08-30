@@ -28,15 +28,10 @@ public class WinefoxSwordProjectileRenderer extends GeoEntityRenderer<WinefoxSwo
      * 模型里枪柄朝 +Z、枪头朝 −Z，所以"枪尖朝前"在模型局部就是 −Z。
      *
      * <p>实测：整份模型在实体渲染空间里 z ∈ [−2.0245, +2.4233]，
-     * 最长的一根轴就是 Z，而 −Z 那一端正是枪尖（{@link #TIP_TO_ORIGIN} 与它对得上）。
+     * 最长的一根轴就是 Z，而 −Z 那一端正是枪尖
+     * （{@link StarShadowSpearItem#TIP_TO_ORIGIN} 与它对得上）。
      */
     private static final Vector3f MODEL_FORWARD = new Vector3f(0.0F, 0.0F, -1.0F);
-
-    /**
-     * 枪尖距模型原点 32.37 像素。不往回挪的话，命中瞬间枪尖会捅到目标后面两格去 ——
-     * 判定点在实体坐标上，而枪尖在它前方两格。往 +Z（枪柄方向）挪回来对齐。
-     */
-    private static final float TIP_TO_ORIGIN = 32.37F / 16.0F;
 
     public WinefoxSwordProjectileRenderer(EntityRendererProvider.Context context) {
         super(context, new StarEquipmentGeoModel<>(StarShadowSpearItem.MODEL, StarShadowSpearItem.TEXTURE));
@@ -68,6 +63,6 @@ public class WinefoxSwordProjectileRenderer extends GeoEntityRenderer<WinefoxSwo
         poseStack.mulPose(new Quaternionf().rotationTo(MODEL_FORWARD, target));
         // 绕自身长轴的滚转，让一圈剑不是齐刷刷同一个面朝外。
         poseStack.mulPose(Axis.ZP.rotationDegrees(entity.getRoll()));
-        poseStack.translate(0.0F, 0.0F, TIP_TO_ORIGIN);
+        poseStack.translate(0.0F, 0.0F, StarShadowSpearItem.TIP_TO_ORIGIN);
     }
 }

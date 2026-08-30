@@ -31,13 +31,6 @@ public class StarShadowSpearRenderer extends GeoEntityRenderer<StarShadowSpearEn
      */
     private static final float TRIDENT_FRAME_ROTATION = -90.0F;
 
-    /**
-     * 枪尖在模型里距原点 32.37 像素。原版三叉戟只有 4 像素，差别看不出来；
-     * 这把枪有两格多，不往回挪的话命中瞬间枪尖会捅到目标后面两格去。
-     * 往 +Z（枪柄方向）挪回来，让枪尖正好落在实体坐标上，也就是判定点上。
-     */
-    private static final float TIP_TO_ORIGIN = 32.37F / 16.0F;
-
     public StarShadowSpearRenderer(EntityRendererProvider.Context context) {
         super(context, new StarEquipmentGeoModel<>(StarShadowSpearItem.MODEL, StarShadowSpearItem.TEXTURE));
         this.shadowRadius = 0.0F;
@@ -57,6 +50,6 @@ public class StarShadowSpearRenderer extends GeoEntityRenderer<StarShadowSpearEn
         poseStack.mulPose(Axis.ZP.rotationDegrees(
                 Mth.lerp(partialTick, entity.xRotO, entity.getXRot()) + 90.0F));
         poseStack.mulPose(Axis.XP.rotationDegrees(TRIDENT_FRAME_ROTATION));
-        poseStack.translate(0.0F, 0.0F, TIP_TO_ORIGIN);
+        poseStack.translate(0.0F, 0.0F, StarShadowSpearItem.TIP_TO_ORIGIN);
     }
 }

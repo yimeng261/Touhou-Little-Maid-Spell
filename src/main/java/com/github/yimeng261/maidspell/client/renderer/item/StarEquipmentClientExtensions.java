@@ -6,13 +6,16 @@ import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import software.bernie.geckolib.core.animatable.GeoAnimatable;
+import software.bernie.geckolib.renderer.GeoArmorRenderer;
 
 import javax.annotation.Nullable;
+import java.util.function.Supplier;
 
 /**
  * 星之魔女系列装备的客户端渲染扩展，仅在客户端加载。
@@ -24,14 +27,7 @@ public final class StarEquipmentClientExtensions {
 
     public static <T extends Item & GeoAnimatable> IClientItemExtensions item(ResourceLocation model,
                                                                               ResourceLocation texture) {
-        return item(model, texture, StarEquipmentGeoModel.SHARED_ANIMATION);
-    }
-
-    /** 带自己动画文件的装备用这个重载，控制器要播的轨道得在这份文件里。 */
-    public static <T extends Item & GeoAnimatable> IClientItemExtensions item(ResourceLocation model,
-                                                                              ResourceLocation texture,
-                                                                              ResourceLocation animation) {
-        return item(model, texture, animation, null);
+        return item(model, texture, StarEquipmentGeoModel.SHARED_ANIMATION, null);
     }
 
     /**
@@ -61,6 +57,37 @@ public final class StarEquipmentClientExtensions {
                                                                                ResourceLocation animation,
                                                                                @Nullable ResourceLocation guiModel) {
         return withArmPose(model, texture, animation, guiModel, StaffArmPose.STAFF_ARM_POS);
+    }
+
+    /**
+     * 护甲用这个：物品形态还是走上面那套 GeckoLib 物品渲染器，
+     * 再补上穿戴时的 {@link GeoArmorRenderer}。
+     *
+     * <p>护甲那份模型通常和物品那份不是同一个文件 —— 骨架模型的方块坐标得落在
+     * 对应护甲槽那一段，物品模型则要平移回原点，所以 {@code itemModel} 单独传。
+     */
+    public static IClientItemExtensions armor(ResourceLocation itemModel,
+                                              ResourceLocation texture,
+                                              Supplier<GeoArmorRenderer<?>> armorRendererFactory) {
+        IClientItemExtensions itemExtensions = item(itemModel, texture);
+        return new IClientItemExtensions() {
+            private GeoArmorRenderer<?> armorRenderer;
+
+            @Override
+            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                return itemExtensions.getCustomRenderer();
+            }
+
+            @Override
+            public HumanoidModel<?> getHumanoidArmorModel(LivingEntity livingEntity, ItemStack itemStack,
+                                                          EquipmentSlot equipmentSlot, HumanoidModel<?> original) {
+                if (armorRenderer == null) {
+                    armorRenderer = armorRendererFactory.get();
+                }
+                armorRenderer.prepForRender(livingEntity, itemStack, equipmentSlot, original);
+                return armorRenderer;
+            }
+        };
     }
 
     private static <T extends Item & GeoAnimatable> IClientItemExtensions withArmPose(ResourceLocation model,

@@ -2,14 +2,12 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.item;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.model.item.StarEquipmentGeoModel;
+import com.github.yimeng261.maidspell.client.renderer.item.StarEquipmentClientExtensions;
 import io.redspace.ironsspellbooks.item.armor.ExtendedArmorItem;
 import io.redspace.ironsspellbooks.item.weapons.AttributeContainer;
-import net.minecraft.client.model.HumanoidModel;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -18,7 +16,6 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import software.bernie.geckolib.renderer.GeoArmorRenderer;
-import software.bernie.geckolib.renderer.GeoItemRenderer;
 
 import java.util.function.Consumer;
 
@@ -62,28 +59,6 @@ public class StarWitchHatItem extends ExtendedArmorItem {
 
     @Override
     public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(new IClientItemExtensions() {
-            private GeoArmorRenderer<?> armorRenderer;
-            private BlockEntityWithoutLevelRenderer itemRenderer;
-
-            @Override
-            public HumanoidModel<?> getHumanoidArmorModel(LivingEntity livingEntity, ItemStack itemStack,
-                                                          EquipmentSlot equipmentSlot, HumanoidModel<?> original) {
-                if (armorRenderer == null) {
-                    armorRenderer = supplyRenderer();
-                }
-                armorRenderer.prepForRender(livingEntity, itemStack, equipmentSlot, original);
-                return armorRenderer;
-            }
-
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (itemRenderer == null) {
-                    itemRenderer = new GeoItemRenderer<StarWitchHatItem>(
-                            new StarEquipmentGeoModel<>(ITEM_MODEL, TEXTURE));
-                }
-                return itemRenderer;
-            }
-        });
+        consumer.accept(StarEquipmentClientExtensions.armor(ITEM_MODEL, TEXTURE, this::supplyRenderer));
     }
 }
