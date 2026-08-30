@@ -616,6 +616,20 @@ public class Config {
 
     static {
         BUILDER.pop(); // retreat_dimension
+        BUILDER.push("compat");
+    }
+
+    private static final ForgeConfigSpec.BooleanValue AUTO_INSTALL_TLM_MODEL_PACK = BUILDER
+            .comment("是否在启动时自动安装/更新内置的车万女仆模型包 (默认: true)")
+            .comment("true: 每次启动都会把 jar 内置的 tlm_custom_pack 模型包写入游戏目录（覆盖同名文件），以确保模型/动画为最新修复版")
+            .comment("false: 不自动安装，整合包作者或玩家可自行管理 tlm_custom_pack 目录下的模型包")
+            .comment("Whether to auto-install/update the bundled Touhou Little Maid model pack on startup (default: true)")
+            .comment("true: The bundled pack is written into the game directory on every launch (overwriting same-named files), keeping models/animations up to date")
+            .comment("false: No auto-install; pack authors or players manage the tlm_custom_pack directory themselves")
+            .define("autoInstallTlmModelPack", true);
+
+    static {
+        BUILDER.pop(); // compat
     }
 
     public static final ForgeConfigSpec SPEC = BUILDER.build();
@@ -698,6 +712,9 @@ public class Config {
     public static boolean allowMobSpawnsInRetreat;
     public static boolean allowHostileMobSpawnsInRetreat;
     public static int retreatRecordRetentionDays;
+
+    // 兼容性相关
+    public static boolean autoInstallTlmModelPack;
 
 
     @SubscribeEvent
@@ -785,6 +802,9 @@ public class Config {
         allowMobSpawnsInRetreat = ALLOW_MOB_SPAWNS_IN_RETREAT.get();
         allowHostileMobSpawnsInRetreat = ALLOW_HOSTILE_MOB_SPAWNS_IN_RETREAT.get();
         retreatRecordRetentionDays = RETREAT_RECORD_RETENTION_DAYS.get();
+
+        // 兼容性相关
+        autoInstallTlmModelPack = AUTO_INSTALL_TLM_MODEL_PACK.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

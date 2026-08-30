@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.client;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.animation.WinefoxMaidAnimationStates;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model.GenericSpellHumanoidModel;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.WinefoxSwordProjectileRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.HolyConstructRenderer;
@@ -14,6 +15,14 @@ import net.minecraftforge.client.event.EntityRenderersEvent;
 
 public final class IronsSpellbooksCompatClient {
     private IronsSpellbooksCompatClient() {
+    }
+
+    /**
+     * 万法酒狐要的三条 main 通道动画。TLM 那张动画状态表是全局静态的，{@code reloadPacks()}
+     * 不清它 —— 只能注册一次，绝不能挂进任何资源重载回调。
+     */
+    public static void onClientSetup() {
+        WinefoxMaidAnimationStates.register();
     }
 
     public static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {

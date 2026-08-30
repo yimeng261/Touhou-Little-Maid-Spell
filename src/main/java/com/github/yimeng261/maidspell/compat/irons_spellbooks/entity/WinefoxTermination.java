@@ -21,18 +21,17 @@ public enum WinefoxTermination {
     LOOP,
 
     /** 播完停在最后一帧。JSON 里 {@code "loop": "hold_on_last_frame"}。 */
-    HOLD_LAST_FRAME,
-
-    /** 终止时机由别处决定（施法动画交给 {@link WinefoxCastAnimation}）。 */
-    EXTERNAL;
+    HOLD_LAST_FRAME;
 
     /**
      * 这一项在动画 JSON 的 {@code loop} 字段上是否有对应写法。
      *
-     * <p>{@link #NONE} 与 {@link #EXTERNAL} 是 Java 侧的占位，不对应任何 JSON 状态，
-     * 对账测试要跳过它们。
+     * <p>只有 {@link #NONE} 没有：它是 Java 侧的占位，对账测试要跳过它。
+     *
+     * <p>原先还有一项 {@code EXTERNAL}（「终止时机由别处决定」），是给
+     * {@code WinefoxAction.CAST} 用的。施法整条交给铁魔法之后那一项没了调用者，一并删掉。
      */
     public boolean hasJsonCounterpart() {
-        return this == ONE_SHOT || this == LOOP || this == HOLD_LAST_FRAME;
+        return this != NONE;
     }
 }

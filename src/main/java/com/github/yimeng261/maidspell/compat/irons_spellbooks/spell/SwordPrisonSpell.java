@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.spell;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.MagicalWinefoxBossEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.WinefoxSwordProjectileEntity;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
@@ -37,16 +38,22 @@ public class SwordPrisonSpell extends AbstractSpell {
     private static final double LAUNCH_SPREAD = 1.6D;
 
     /**
-     * 举枪。玩家施法时由 PlayerAnimator 播，资源在
+     * 投枪。玩家施法时由 PlayerAnimator 播，资源在
      * {@code assets/touhou_little_maid_spell/player_animation/spear_throw.json}。
      *
      * <p>铁魔法给 INSTANT 法术的默认动画是 {@code instant_projectile}，
      * 一个 0.1875s 的抬手 —— 配不上"召出一圈剑把人围死"。
      *
-     * <p>酒狐那边不走这条：她是 Mob，用的是自己 geo 模型上的
-     * {@code iss:spear_throw}（骨骼完全不同），由
-     * {@code WinefoxBossSpells.getCastAnimation} 单独指定。
+     * <p>酒狐那边不走这条：她是 Mob，用的是内置模型包里的
+     * {@code iss:spear_throw}（骨骼完全不同）。两边用同一个 key：
+     * {@code AnimationHolder} 给 Mob 的 {@code RawAnimation} 里那一条 stage 的名字
+     * 就是这里这个 {@code ResourceLocation} 的 path，
+     * {@code ISSCastingAnimationProvider} 再给它拼上 {@code iss:} 前缀。
      * 两边是同一个动作的两份实现，改表演时记得一起改。
+     *
+     * <p>那条动画自带一把投枪：{@code weapon3} 挂在 {@code LeftHand} 下面，
+     * 0.6s 凭空出现在她左手里，<b>2.1s 甩出去</b>。所以酒狐的剑不能在第 0 帧就落 ——
+     * 见 {@link #onCast} 里那一支。法术本身仍是瞬发的，玩家和女仆放它照旧当场落剑。
      */
     private static final AnimationHolder CAST_START_ANIMATION =
             new AnimationHolder(new ResourceLocation(MaidSpellMod.MOD_ID, "spear_throw"), true);
@@ -108,7 +115,13 @@ public class SwordPrisonSpell extends AbstractSpell {
             LivingEntity target = targetData.getTarget((ServerLevel) level);
             if (target != null && target.isAlive()
                     && !MaidSpellAllyResolver.areFriendly(caster, target)) {
-                summonSwordRing(level, spellLevel, caster, target);
+                if (caster instanceof MagicalWinefoxBossEntity boss) {
+                    // 她的投掷动画 2.1s 才把枪甩出去，剑得等到那一帧才落，
+                    // 否则就是"剑先出现，她过两秒才做投掷动作"。
+                    boss.scheduleSwordRing(spellLevel, target);
+                } else {
+                    summonSwordRing(level, spellLevel, caster, target);
+                }
             }
             magicData.resetAdditionalCastData();
         }
@@ -123,8 +136,11 @@ public class SwordPrisonSpell extends AbstractSpell {
      * 朝各自落点斜插过去：看得出剑是她甩出去的。
      *
      * <p>出发点带一点横向散布，否则十把剑从同一个点出发会在起手瞬间叠成一根柱子。
+     *
+     * <p>{@code public} 是因为酒狐要延后到投掷动画甩出去那一帧才调它，
+     * 见 {@code MagicalWinefoxBossEntity.tickSwordRing}。
      */
-    private void summonSwordRing(Level level, int spellLevel, LivingEntity caster, LivingEntity target) {
+    public void summonSwordRing(Level level, int spellLevel, LivingEntity caster, LivingEntity target) {
         int count = getSwordCount(spellLevel);
         float damage = getSwordDamage(spellLevel, caster);
         Vec3 center = target.getBoundingBox().getCenter();

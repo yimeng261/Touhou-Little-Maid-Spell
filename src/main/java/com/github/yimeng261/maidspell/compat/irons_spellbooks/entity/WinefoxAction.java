@@ -22,50 +22,41 @@ public enum WinefoxAction {
     STAFF_ATTACK_1("staff_attack_1", 20, WinefoxTermination.ONE_SHOT),
     STAFF_ATTACK_2("staff_attack_2", 20, WinefoxTermination.ONE_SHOT),
 
-    SWORD_ATTACK_1("sword_attack_01", 30, WinefoxTermination.ONE_SHOT),
-    SWORD_ATTACK_2("sword_attack_02", 20, WinefoxTermination.ONE_SHOT),
-    SWORD_ATTACK_3("sword_attack_03", 18, WinefoxTermination.ONE_SHOT),
-    SWORD_ATTACK_4("sword_attack_04", 19, WinefoxTermination.ONE_SHOT),
+    SWORD_ATTACK_1("sword_attack_1", 30, WinefoxTermination.ONE_SHOT),
+    SWORD_ATTACK_2("sword_attack_2", 20, WinefoxTermination.ONE_SHOT),
+    SWORD_ATTACK_3("sword_attack_3", 18, WinefoxTermination.ONE_SHOT),
+    SWORD_ATTACK_4("sword_attack_4", 19, WinefoxTermination.ONE_SHOT),
 
     /**
-     * 进二阶段：第 55t 半径 5 格击退，同一 tick 把主手从法杖换成长剑。
+     * 转阶段：第 55t 半径 5 格击退，同一 tick 把主手换成本阶段该拿的那把。
      *
      * <p>2.75s 正好落在动画把武器缩到 0 的那一小段（2.625s~3.0s）正中间 ——
      * 换手是瞬间的，得有一段看不见的窗口盖住，不然会当场闪一下。
+     *
+     * <p><b>进二阶段（法杖→长剑）和被治疗退形回一阶段（长剑→法杖）是同一项。</b>
+     * 没单独做一条逆向动画：两个方向都是“站定、发光、换武器”，同一段表演够用；
+     * 击退两边都保留，否则贴身的人看不出她在切形态。方向本身不在这里，
+     * 而在实体的 {@code phaseTransitionTarget}（那一位才是落 NBT 的），
+     * 所以这里一项就够。
      */
     PHASE_TRANSITION("phase_transition", 120, WinefoxTermination.ONE_SHOT,
             Event.at(55, EventKind.KNOCKBACK),
             Event.at(55, EventKind.WEAPON_SWAP)),
 
     /**
-     * 回一阶段：被治疗回半血以上时退形。
-     *
-     * <p><b>共用 {@code phase_transition} 这条动画</b>，只是换手方向相反（长剑→法杖）。
-     * 没单独做一条逆向动画：两个方向都是“站定、发光、换武器”，
-     * 同一段表演够用。击退也保留，否则贴身的人看不出她在切形态。
-     *
-     * <p>它不走 {@link #worthResending()}：与进二阶段同理，120t 够长，晚到的人值得补一遍。
-     */
-    PHASE_REVERT("phase_transition", 120, WinefoxTermination.ONE_SHOT,
-            Event.at(55, EventKind.KNOCKBACK),
-            Event.at(55, EventKind.WEAPON_SWAP)),
-
-    /**
-     * 施法。动画名与时长在运行时由法术决定，见 {@link WinefoxCastAnimation}；
-     * 时长由铁魔法 {@code handleCastDuration()} 管，不走 {@code actionTicks}。
-     */
-    CAST(null, 0, WinefoxTermination.EXTERNAL),
-
-    /**
      * 战败。
      *
-     * <p><b>它属于顶层的「战败」状态，不属于动作区域</b>，永远不走 {@code action} 控制器，
-     * 也不由 {@code beginAction} 发起——列在这里只是因为它的时长是同一类知识
-     * （{@code DEFEAT_ANIMATION_TICKS} 与 {@code defeat} 的 2.0s 又是一份手抄），
-     * 放进来就能白拿一份对账。遍历 {@code values()} 做动作逻辑时要和
-     * {@link #NONE}、{@link #CAST} 一样过滤掉。
+     * <p><b>它属于顶层的「战败」状态，不属于动作区域</b>，不由 {@code beginAction} 发起，
+     * 而是由 {@code DEFEATED} 同步标志驱动。遍历 {@code values()} 做动作逻辑时要和
+     * {@link #NONE} 一样过滤掉。
+     *
+     * <p>动画名是模型包作者起的 {@code death}（我们这边原先叫 {@code defeat}）。
+     * 时长 10000s = 200000t 也是作者的手法：这个 geckolib3 分支里
+     * {@code hold_on_last_frame} 和 {@code play_once} 行为一致，播完控制器直接 STOP、
+     * 姿势弹回，所以「定格」只能靠把动画拉长到播不完。作者给每条 {@code hold_mainhand:*}
+     * 用的都是这一招。这里的 200000 不是什么倒计时，只是照实抄动画时长好让对账测试成立。
      */
-    DEFEAT("defeat", 40, WinefoxTermination.HOLD_LAST_FRAME);
+    DEFEAT("death", 200000, WinefoxTermination.HOLD_LAST_FRAME);
 
     private static final WinefoxAction[] BY_ID = values();
 
@@ -82,7 +73,7 @@ public enum WinefoxAction {
         this.events = List.of(events);
     }
 
-    /** 动画文件里的轨道名；{@link #NONE} 与 {@link #CAST} 没有，返回 {@code null}。 */
+    /** 动画文件里的轨道名；只有 {@link #NONE} 没有，返回 {@code null}。 */
     public String animationName() {
         return this.animationName;
     }
@@ -101,38 +92,9 @@ public enum WinefoxAction {
         return this.events;
     }
 
-    /**
-     * 是否有自己的动画轨道。对账测试与触发逻辑都靠这个过滤。
-     *
-     * <p>注意动画名不是唯一的：{@link #PHASE_TRANSITION} 与 {@link #PHASE_REVERT}
-     * 共用 {@code phase_transition}，区别只在服务端的换手方向。
-     */
+    /** 是否有自己的动画轨道。对账测试与触发逻辑都靠这个过滤。 */
     public boolean hasOwnAnimation() {
         return this.animationName != null;
-    }
-
-    /**
-     * 动作期间是否锁死移动（{@code getNavigation().stop()} + 清零位移）。
-     *
-     * <p>照抄现状：只有转阶段（两个方向）锁移动，近战与施法不锁。
-     */
-    public boolean locksMovement() {
-        return this == PHASE_TRANSITION || this == PHASE_REVERT;
-    }
-
-    /**
-     * 触发之后才进入追踪范围的玩家，值不值得给他单独补发一遍。
-     *
-     * <p>{@code triggerAnim} 是发完即忘的，晚到的人什么都收不到。近战 20t 补发反而容易
-     * 让人看到半截动作，所以只有 120t 的转阶段值得。
-     *
-     * <p><b>这只是补发条件的一半。</b>另一半是循环施法，它由
-     * {@link WinefoxCastAnimation#worthResending()} 回答——{@link #CAST} 自己
-     * {@link #animationName()} 是 {@code null}，压根给不出该补发哪条动画。
-     * 补发点要把两边或起来。
-     */
-    public boolean worthResending() {
-        return this == PHASE_TRANSITION || this == PHASE_REVERT;
     }
 
     /**

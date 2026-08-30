@@ -1,21 +1,24 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
 
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.WinefoxAction;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.WinefoxAnimations;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.WinefoxCastAnimation;
+import com.github.tartaricacid.touhoulittlemaid.api.animation.IMagicCastingState;
+import com.github.tartaricacid.touhoulittlemaid.api.entity.IMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.WinefoxBossSpells;
+import com.github.yimeng261.maidspell.client.animation.MagicCastingAnimateState;
+import com.github.yimeng261.maidspell.client.spell.CastingAnimateStateAccessor;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.SwordPrisonSpell;
+import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityHealthAccessor;
 import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -34,6 +37,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -55,14 +59,10 @@ import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.Item;
-import io.redspace.ironsspellbooks.item.weapons.StaffItem;
-import net.minecraft.world.item.BowItem;
-import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
@@ -75,28 +75,21 @@ import io.redspace.ironsspellbooks.capabilities.magic.PlayerRecasts;
 import io.redspace.ironsspellbooks.capabilities.magic.SummonManager;
 import io.redspace.ironsspellbooks.entity.mobs.IMagicSummon;
 import io.redspace.ironsspellbooks.entity.mobs.abstract_spell_casting_mob.AbstractSpellCastingMob;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.keyframe.event.SoundKeyframeEvent;
-import software.bernie.geckolib.core.object.PlayState;
+import io.redspace.ironsspellbooks.network.casting.SyncEntityDataPacket;
+import io.redspace.ironsspellbooks.setup.PacketDistributor;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
-public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements Enemy, GeoEntity {
+public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
+        implements Enemy, IMaid, CastingAnimateStateAccessor {
     private static final EntityDataAccessor<Integer> ACTION =
             SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> ACTION_SERIAL =
             SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.INT);
-    private static final EntityDataAccessor<String> CAST_ANIMATION =
-            SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Boolean> PHASE_TWO =
             SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> TRANSITIONING =
@@ -140,53 +133,84 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
      */
     private static final float SURVIVAL_HEALTH_FLOOR = 1.0F;
 
+    /**
+     * 投掷动画真正把枪甩出去的那一帧。
+     *
+     * <p>{@code iss:spear_throw} 自带一把枪：{@code weapon3}（挂在 {@code LeftHand} 下面，
+     * 4 个 cube）在 0.6s 凭空出现在她左手里，2.0s 之前一直握着，
+     * <b>2.1s 那一帧 scale 归 0、位置飞到 {@code [8,-24,-15]}</b> —— 那才是投出去的瞬间，
+     * 法阵 {@code ysmGlowmofazhen14} 也在同一帧炸开。她右手的法杖/长剑全程都在，
+     * 这把投枪是动画自己召出来的，不是换装备换出来的。
+     *
+     * <p>2.1s × 20 = 42。剑要等到这一帧才落，否则就是「剑先出现，她过两秒才把枪甩出去」。
+     */
+    private static final int SWORD_RING_RELEASE_TICKS = 42;
+
     /** 身体转向目标的最大角速度。太大就是瞬间贴脸，太小绕圈时会追不上。 */
     private static final float BODY_TURN_DEGREES_PER_TICK = 15.0F;
     private static final double COMBAT_TELEPORT_DISTANCE = 15.0D;
     private static final double TRANSITION_KNOCKBACK_RADIUS = 5.0D;
     private static final double TRANSITION_KNOCKBACK_STRENGTH = 4.0D;
 
-    private static final RawAnimation PHASE_ONE_IDLE = RawAnimation.begin().thenLoop("phase_one_idle");
-    private static final RawAnimation PHASE_TWO_IDLE = RawAnimation.begin().thenLoop("phase_two_idle");
-    private static final RawAnimation STAFF_FORM = RawAnimation.begin().thenLoop("staff_form");
-    private static final RawAnimation SWORD_FORM = RawAnimation.begin().thenLoop("sword_form");
-    private static final RawAnimation WALK = RawAnimation.begin().thenLoop("walk");
-    private static final RawAnimation RUN = RawAnimation.begin().thenLoop("run");
-    private static final RawAnimation FLY = RawAnimation.begin().thenLoop("fly");
-    private static final RawAnimation JUMP = RawAnimation.begin().thenLoop("jump");
-    private static final RawAnimation DEFEAT = WinefoxAnimations.of(WinefoxAction.DEFEAT);
-    private static final RawAnimation AMBIENT_PARTS = RawAnimation.begin().thenLoop("ambient_parts");
-    private static final RawAnimation BLINK = RawAnimation.begin().thenLoop("blink");
-    private static final RawAnimation TAIL_IDLE = RawAnimation.begin().thenLoop("tail_idle");
-    private static final RawAnimation TAIL_WALK = RawAnimation.begin().thenLoop("tail_walk");
-    private static final RawAnimation TAIL_RUN = RawAnimation.begin().thenLoop("tail_run");
-    private static final RawAnimation TAIL_JUMP = RawAnimation.begin().thenLoop("tail_jump");
-    private static final RawAnimation MAGIC_RINGS = RawAnimation.begin().thenLoop("magic_rings");
     /**
-     * 一阶段飞行时把背后那圈法阵张开。
+     * 内置模型包里那份模型的 id。
      *
-     * <p>{@code ambient_parts} 把 {@code ysmGlowMagicCircle15~18} 常年缩成 0
-     * （它是无条件控制器），而 {@code fly} 只转不放大 —— 于是飞起来法阵是隐形的，
-     * 与法杖当初那个 bug 同一个形状。这条只负责把 scale 放回 1，转由 {@code magic_rings} 管。
+     * <p>客户端渲染时 TLM 拿它去 {@code CustomPackLoader.MAID_MODELS} 查模型 / 贴图 / 动画，
+     * 包由 {@code TouhouLittleMaidModelPackInstaller} 解压到 {@code gameDir/tlm_custom_pack}。
+     * 包没装上时 TLM 会静默退回默认女仆模型，不会崩。
      */
-    private static final RawAnimation FLIGHT_CIRCLE =
-            RawAnimation.begin().thenLoop("phase_one_flight_circle");
-    private static final RawAnimation HOLD_SWORD = RawAnimation.begin().thenPlayAndHold("hold_mainhand:sword");
-    private static final RawAnimation HOLD_BOW = RawAnimation.begin().thenLoop("hold_mainhand:bow");
-    // 动作动画与施法动画不再手写 thenPlay / thenLoop，一律经 WinefoxAnimations 从枚举推导。
+    public static final String MODEL_ID = "touhou_little_maid_spell:sea_witch_winefox";
 
     private final ServerBossEvent bossEvent = new ServerBossEvent(
             this.createBossBarName(), BossEvent.BossBarColor.PURPLE, BossEvent.BossBarOverlay.PROGRESS);
     private int nextSwordVariant;
     private int nextStaffVariant;
     private int lastSwordSwingTick = Integer.MIN_VALUE;
+
+    /**
+     * 当前动作动画是第几 tick 起的（服务端计时，不同步）。
+     * 只给 {@link #canStartNewComboAction()} 用 —— 服务端本来没有这个计时：
+     * {@code clearAction()} 只在转阶段结束和战败时调，近战动作起了就一直挂着。
+     */
+    private int actionStartTick;
+    /** &gt;0 表示投掷动画在跑、还没到甩出去那一帧；数到 0 剑才落。 */
+    private int swordRingDelayTicks;
+    private int swordRingSpellLevel;
+    @Nullable
+    private LivingEntity swordRingTarget;
     private int phaseTransitionTicks;
-    private int lastHandledActionSerial = Integer.MIN_VALUE;
     private boolean phaseTransitionKnockbackReleased;
     private boolean phaseTransitionWeaponSwapped;
     /** 本次转场结束后该处于二阶段还是一阶段。进二阶段为 true，退形为 false。 */
     private boolean phaseTransitionTarget;
-    private boolean actionAnimationPlaying;
+
+    /**
+     * 上一帧的手持物快照，**必须是持久字段**。
+     *
+     * <p>TLM 的 {@code AnimationManager.predicateMainhandHold} 会往这个数组里写当前手持物，
+     * 用来判断“手里的东西换了没有”。{@link IMaid} 的默认实现每次返回一个新数组，
+     * 写进去当场就丢 —— 于是每一帧都判定成“刚换了武器”，持握动画被 {@code empty} 打断，
+     * 表现为持握姿势疯狂闪烁。
+     */
+    private final ItemStack[] handItemsForAnimation = {ItemStack.EMPTY, ItemStack.EMPTY};
+
+    /**
+     * 挂在 TLM {@code magic_casting} 通道上的那份状态，只在客户端读写。
+     *
+     * <p>放在实体上而不是 provider 里，是因为 provider 是全局单例、一份要伺候所有酒狐。
+     */
+    private final WinefoxCastingAnimateState castingAnimateState = new WinefoxCastingAnimateState();
+
+    /**
+     * 施法动画那一份状态，由 {@code ISSCastingAnimationProvider} 读，只在客户端读写。
+     *
+     * <p>与上面那份 {@link #castingAnimateState} 不是一回事：这一份喂的是施法，
+     * 上面那份喂的是近战 / 转阶段 / 战败。普通女仆的这一份由
+     * {@code MaidEntityAnimateStateMixin} 挂上去，酒狐不是 {@code EntityMaid}，
+     * 只能自己实现 {@link CastingAnimateStateAccessor}。
+     */
+    private final MagicCastingAnimateState issCastingAnimateState =
+            new MagicCastingAnimateState(IMagicCastingState.CastingPhase.NONE);
 
     public MagicalWinefoxBossEntity(EntityType<? extends MagicalWinefoxBossEntity> entityType, Level level) {
         super(entityType, level);
@@ -286,6 +310,48 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         this.setDropChance(EquipmentSlot.MAINHAND, 0.0F);
     }
 
+    /**
+     * 剑牢的剑不当场落，等投掷动画甩出去那一帧再落。
+     *
+     * <p>由 {@code SwordPrisonSpell.onCast} 调：法术本身仍是瞬发的，
+     * 玩家和女仆放它照旧当场落剑，只有酒狐要跟自己的投掷动作对齐。
+     */
+    public void scheduleSwordRing(int spellLevel, LivingEntity target) {
+        this.swordRingDelayTicks = SWORD_RING_RELEASE_TICKS;
+        this.swordRingSpellLevel = spellLevel;
+        this.swordRingTarget = target;
+    }
+
+    /** 甩枪那一下还没做完，别的 AI 决策一律让路，见 {@link #isBusyCombatAction}。 */
+    private boolean isThrowingSpear() {
+        return this.swordRingDelayTicks > 0;
+    }
+
+    /** 中途出事（转阶段 / 战败 / 脱战）就作废：动作被打断了，枪就当没投出去。 */
+    private void cancelSwordRing() {
+        this.swordRingDelayTicks = 0;
+        this.swordRingTarget = null;
+    }
+
+    /**
+     * 数到甩出去那一帧，把剑放出来。
+     *
+     * <p>放在实体这边而不是战斗 Goal 里：Goal 的 {@code tick()} 在目标没了时第一行就返回，
+     * 计时会卡住，剑永远不落。
+     */
+    private void tickSwordRing() {
+        if (this.swordRingDelayTicks <= 0 || --this.swordRingDelayTicks > 0) {
+            return;
+        }
+        LivingEntity target = this.swordRingTarget;
+        this.swordRingTarget = null;
+        if (target == null || !target.isAlive()
+                || !(IronsSpellbooksCompatSpells.SWORD_PRISON.get() instanceof SwordPrisonSpell spell)) {
+            return;
+        }
+        spell.summonSwordRing(this.level(), this.swordRingSpellLevel, this, target);
+    }
+
     /** 主手拿的是星影长剑。主手物品会同步给客户端，动画可以直接判。 */
     private boolean isHoldingLongsword() {
         return this.getMainHandItem().getItem() instanceof StarShadowLongswordItem;
@@ -294,32 +360,6 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
     /** 主手拿的是星影法杖。 */
     private boolean isHoldingStaff() {
         return this.getMainHandItem().getItem() instanceof StarShadowStaffItem;
-    }
-
-    /**
-     * 该摆持杖/持弓姿势：法杖、弓、弩，以及铁魔法的法杖类。
-     *
-     * <p>{@code hold_mainhand:bow} 这个名字是 YSM 遗留的（见 D2），它其实就是
-     * "双手在身前端着一根长杆"的姿势 —— 法杖和弓都合适。
-     *
-     * <p>判 {@code StaffItem} 用的是铁魔法的基类，所以别的模组加的铁魔法法杖也算数；
-     * 星影法杖自己就继承它，不必单独列。
-     */
-    private boolean usesStaffHoldPose() {
-        Item item = this.getMainHandItem().getItem();
-        return item instanceof StaffItem
-                || item instanceof BowItem
-                || item instanceof CrossbowItem;
-    }
-
-    /**
-     * 该摆持剑姿势：任何 {@link SwordItem}。
-     *
-     * <p>星影长剑、铁魔法的 {@code MagicSwordItem}（经 {@code ExtendedSwordItem}）
-     * 都继承原版 {@code SwordItem}，一条就够，不必逐个列举。
-     */
-    private boolean usesSwordHoldPose() {
-        return this.getMainHandItem().getItem() instanceof SwordItem;
     }
 
     @Override
@@ -339,8 +379,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
      * 她是侧着甚至背对着人飞的，看上去像在逃跑而不是在压迫。
      *
      * <p>{@code yBodyRot} 是**身体**朝向，头由 {@code LookControl} 另外管、
-     * 并在模型里以 ±55° 的偏移叠加（见 {@code MagicalWinefoxBossModel}），
-     * 所以这里只钉身体就够，头会自然跟上。
+     * 再由 TLM 的渲染器按模型包里的骨骼叠上去，所以这里只钉身体就够，头会自然跟上。
      */
     @Override
     public void aiStep() {
@@ -369,7 +408,6 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         this.entityData.define(DEFEATED, false);
         this.entityData.define(ACTION, WinefoxAction.NONE.id());
         this.entityData.define(ACTION_SERIAL, 0);
-        this.entityData.define(CAST_ANIMATION, "");
         this.entityData.define(PHASE_TWO, false);
         this.entityData.define(TRANSITIONING, false);
     }
@@ -438,6 +476,39 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
     private void beginAction(WinefoxAction action) {
         this.entityData.set(ACTION, action.id());
         this.entityData.set(ACTION_SERIAL, this.entityData.get(ACTION_SERIAL) + 1);
+        this.actionStartTick = this.tickCount;
+    }
+
+    /**
+     * 上一条动作动画放完了没有 —— 没放完就不再起新的。
+     *
+     * <p>不这样卡的话，施法动画会在她贴脸时**整段哑掉**。链路是这样的：
+     * 近战冷却写死 12t，可挥砍动画是 18~30t，于是她总在上一条播完之前就砍下一刀，
+     * 每刀都 {@code beginAction} 涨一次序号 → provider 报一次 INSTANT →
+     * {@code markNeedsReload()} 把 {@code magic_casting} 控制器重新拉起来。
+     * 而 TLM 的 {@code predicateMagicCastingAnimation} 里有这么一段：
+     *
+     * <pre>
+     * if (currentPhase == NONE) {
+     *     if ((lastPhase == INSTANT || lastPhase == END)
+     *             &amp;&amp; controller.getAnimationState() != STOPPED) {
+     *         return PlayState.CONTINUE;   // &lt;-- 直接 return，轮不到下一个 provider
+     *     }
+     *     ...
+     * </pre>
+     *
+     * 控制器只要没 STOPPED 就从这儿返回，{@code ISSCastingAnimationProvider}
+     * 一次都轮不到。持续贴脸 = 控制器永远没机会停 = 施法动画一直不播。
+     *
+     * <p>所以这里只卡「起不起新动画」，<b>不卡伤害</b>：{@code doHurtTarget} 仍旧每 12t 一次，
+     * DPS 一点没变；只是两刀之间留出了空档，让控制器停下来、把通道让给施法动画。
+     */
+    private boolean canStartNewComboAction() {
+        WinefoxAction action = this.currentAction();
+        if (!action.hasOwnAnimation()) {
+            return true;
+        }
+        return this.tickCount - this.actionStartTick >= action.durationTicks();
     }
 
     /** 客户端与服务端都从这里读当前动作，整数编号只活在同步值里。 */
@@ -475,15 +546,30 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
             if (this.isTransitioning()) {
                 return;
             }
-            if (this.isPhaseTwo()) {
-                this.beginAction(this.nextGroundSwordAction());
-            } else {
-                this.beginAction(this.nextStaffAction());
+            // 只卡动画，不卡伤害 —— doHurtTarget 在 goal 那边照旧每 12t 一次。
+            if (this.canStartNewComboAction()) {
+                if (this.isPhaseTwo()) {
+                    this.beginAction(this.nextGroundSwordAction());
+                } else {
+                    this.beginAction(this.nextStaffAction());
+                }
             }
         }
         super.swing(hand);
     }
 
+    /**
+     * 法术起不来时的兜底远程攻击。
+     *
+     * <p><b>不调 {@link #swing}。</b>她这边 {@code swing()} 被重载成「起一段武器攻击动作」
+     * （{@code sword_attack_*} / {@code staff_attack_*}），射一箭却播一段劈砍是错的；
+     * 而且这一发本来就是替某个法术兜底的，法术那条路自己有动画
+     * （{@code ISSCastingAnimationProvider} 从铁魔法的同步数据算相位）。
+     *
+     * <p>女仆那边同理：{@code IronsSpellbooksProvider} 里那句 {@code maid.swing(...)}
+     * 是注释掉的，只有 {@code ArsNouveauProvider} / {@code ManaAndArtificeProvider}
+     * 留着 —— 那两个模组的法术没有自己的施法动画，才需要挥一下手当兜底。
+     */
     public void performRangedAttack(LivingEntity target, float distanceFactor) {
         ItemStack arrowStack = new ItemStack(Items.ARROW);
         AbstractArrow arrow = ProjectileUtil.getMobArrow(this, arrowStack, distanceFactor);
@@ -494,71 +580,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         arrow.shoot(dx, dy + horizontalDistance * 0.2, dz, 1.6F, 4.0F);
         this.playSound(SoundEvents.ARROW_SHOOT, 1.0F, 0.9F + this.random.nextFloat() * 0.2F);
         this.level().addFreshEntity(arrow);
-        this.swing(InteractionHand.MAIN_HAND);
-    }
-
-    /**
-     * 正在施放的法术动作，供 {@link #castComplete()} 播收尾动画；{@code null} 表示没在施法。
-     *
-     * <p>铁魔法只记 {@code castingSpell}（一个 {@code AbstractSpell}），倒推不回酒狐这边的
-     * {@link WinefoxBossSpellAction}，所以自己留一份。
-     */
-    @Nullable
-    private WinefoxBossSpellAction castingSpellAction;
-
-    /** 由 {@code WinefoxBossSpells.cast} 在真的起了一次吟唱之后调用。 */
-    void onSpellCastStarted(WinefoxBossSpellAction action) {
-        this.castingSpellAction = action;
-        this.triggerCastStartAnimation(action);
-    }
-
-    /**
-     * 吟唱结束（正常走完或被 {@code cancelCast()} 打断）时，铁魔法都会调到这里。
-     *
-     * <p>收尾动画就挂在这儿——原先是战斗 Goal 自己数着一个 {@code pendingCastTicks} 到点了再触发
-     * （那套已经删掉），现在时机由铁魔法说了算。若该法术的收尾动画是 {@code "#stop"} 或压根没有，
-     * {@code triggerCastAnimation} 内部会退化成停掉当前吟唱动画。
-     */
-    @Override
-    public void castComplete() {
-        WinefoxBossSpellAction finished = this.castingSpellAction;
-        this.castingSpellAction = null;
-        super.castComplete();
-        if (finished != null && !this.level().isClientSide) {
-            this.triggerCastFinishAnimation(finished);
-        }
-    }
-
-    private void triggerCastStartAnimation(WinefoxBossSpellAction action) {
-        this.triggerCastAnimation(action, false);
-    }
-
-    private void triggerCastFinishAnimation(WinefoxBossSpellAction action) {
-        this.triggerCastAnimation(action, true);
-    }
-
-    private void triggerCastAnimation(WinefoxBossSpellAction action, boolean finish) {
-        if (this.isTransitioning()) {
-            return;
-        }
-        String animationPath = WinefoxBossSpells.getCastAnimation(action, finish);
-        if (WinefoxBossSpells.STOP_CAST_ANIMATION.equals(animationPath)) {
-            this.stopCastAnimation();
-        } else if (animationPath != null && WinefoxCastAnimation.byKey(animationPath) != null) {
-            this.entityData.set(CAST_ANIMATION, animationPath);
-            this.beginAction(WinefoxAction.CAST);
-        }
-    }
-
-    private void stopCastAnimation() {
-        if (this.currentAction() == WinefoxAction.CAST) {
-            this.clearAction();
-        }
-        this.entityData.set(CAST_ANIMATION, "");
     }
 
     private boolean isBusyCombatAction() {
-        return this.isTransitioning();
+        return this.isTransitioning() || this.isThrowingSpear();
     }
 
     private boolean teleportAwayFrom(LivingEntity target, double distance) {
@@ -624,6 +649,19 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         return this.isDefeated() || super.isImmobile();
     }
 
+    /**
+     * 战败之后推不动。
+     *
+     * <p>{@link #isImmobile} 只掐掉 AI，管不着碰撞推挤 —— 那是另一条路：别人的
+     * {@code LivingEntity.pushEntities} 用 {@code EntitySelector.pushableBy} 收集周围实体，
+     * 而那个谓词问的是**被推者**的 {@code isPushable()}。所以不覆写这一个开关的话，
+     * 玩家能把躺在地上、AI 全停的她一路顶着走。
+     */
+    @Override
+    public boolean isPushable() {
+        return !this.isDefeated() && super.isPushable();
+    }
+
     @Override
     protected void customServerAiStep() {
         super.customServerAiStep();
@@ -634,6 +672,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         this.tickPhaseThresholds();
         if (this.isTransitioning()) {
             this.tickPhaseTransition();
+        } else {
+            this.tickSwordRing();
         }
 
         LivingEntity target = this.getTarget();
@@ -666,14 +706,19 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
      * @param toPhaseTwo 转场结束后是否处于二阶段；{@code false} 就是被治疗回血后的退形
      */
     private void startPhaseTransition(boolean toPhaseTwo) {
-        // 转阶段要独占动作层，先把在飞的吟唱掐掉，免得它在转阶段动画里跑完还触发收尾动画。
+        // 转阶段要独占动作层，先把在飞的吟唱掐掉，免得法术在转场动画里落地。
+        // 掐掉本身会让客户端算出 END 相位、想播一遍收尾动画，但转阶段这 120t 里
+        // WinefoxActionAnimationProvider 一直占着 magic_casting 通道（优先级 200），
+        // 施法 provider 挤不进来，所以看不到。
         this.cancelCast();
+        this.cancelSwordRing();
         this.phaseTransitionTicks = PHASE_TRANSITION_TICKS;
         this.phaseTransitionKnockbackReleased = false;
         this.phaseTransitionWeaponSwapped = false;
         this.phaseTransitionTarget = toPhaseTwo;
         this.entityData.set(TRANSITIONING, true);
-        this.beginAction(toPhaseTwo ? WinefoxAction.PHASE_TRANSITION : WinefoxAction.PHASE_REVERT);
+        // 两个方向共用同一项动作，方向已经记在 phaseTransitionTarget 上了。
+        this.beginAction(WinefoxAction.PHASE_TRANSITION);
     }
 
     private void tickPhaseTransition() {
@@ -728,12 +773,22 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         if (currentTarget instanceof Player player && isAttackablePlayer(player)) {
             return;
         }
-        double range = this.getAttributeValue(Attributes.FOLLOW_RANGE);
-        Player nearestPlayer = this.level().getEntitiesOfClass(Player.class,
-                        this.getBoundingBox().inflate(range), MagicalWinefoxBossEntity::isAttackablePlayer)
-                .stream()
-                .min(Comparator.comparingDouble(this::distanceToSqr))
-                .orElse(null);
+        // 直接扫 level().players()，不走 getEntitiesOfClass：后者要把 48 格立方体覆盖到的
+        // 三百来个 entity section 全走一遍，还得为结果和 stream 各分配一次，
+        // 而在线玩家本来就是一张很短的表。
+        double rangeSqr = Mth.square(this.getAttributeValue(Attributes.FOLLOW_RANGE));
+        Player nearestPlayer = null;
+        double nearestDistanceSqr = Double.MAX_VALUE;
+        for (Player player : this.level().players()) {
+            if (!isAttackablePlayer(player)) {
+                continue;
+            }
+            double distanceSqr = this.distanceToSqr(player);
+            if (distanceSqr <= rangeSqr && distanceSqr < nearestDistanceSqr) {
+                nearestPlayer = player;
+                nearestDistanceSqr = distanceSqr;
+            }
+        }
         if (nearestPlayer != null) {
             this.setTarget(nearestPlayer);
         }
@@ -831,7 +886,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         // 她倒下了，场上的召唤物没有理由继续打。
         this.recallSummons();
         this.cancelCast();
+        this.cancelSwordRing();
         this.clearAction();
+        this.dropWeaponForDefeat();
         this.entityData.set(TRANSITIONING, false);
         this.phaseTransitionTicks = 0;
         this.getNavigation().stop();
@@ -841,6 +898,60 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         this.setTarget(null);
         // 打完了，血条收掉；她本人留在场上倒着。
         this.bossEvent.setVisible(false);
+    }
+
+    /**
+     * 读档时把战败契约重新落一遍。
+     *
+     * <p>{@link #beginDefeat} 做的那些事只在"战败发生的那一刻"跑过一次，
+     * 之前版本存下来的战败个体不满足这些约束 —— 手上这个存档里就躺着一只
+     * 57 血、手里还攥着星影长剑的。幂等地补齐，免得旧档看起来像新 bug。
+     *
+     * <p>放在 {@code super.readAdditionalSaveData} 之后：
+     * {@code Mob} 那一层刚用 NBT 里的 HandItems 把武器塞回手上，
+     * {@code LivingEntity} 那一层刚把 Health 读回来，
+     * {@code Entity.load} 更早（第 45 行 vs 第 66 行调 {@code readAdditionalSaveData}）
+     * 就把 NoGravity 读回来了 —— 这里正好一并覆盖掉。
+     *
+     * <p>NoGravity 这一项尤其不能漏：{@link #isImmobile} 之后整个 {@code serverAiStep}
+     * 都不跑，那句把重力开回来的 {@code setNoGravity(false)} 只在 {@link #beginDefeat}
+     * 里执行过。存档里带着 {@code NoGravity=true} 的战败个体读回来会一直浮在空中，
+     * 而且现在 {@link #isPushable} 返回 false，连推都推不下来。
+     */
+    private void normalizeDefeatState() {
+        this.dropWeaponForDefeat();
+        this.setNoGravity(false);
+        if (this.getHealth() > SURVIVAL_HEALTH_FLOOR) {
+            this.setHealth(SURVIVAL_HEALTH_FLOOR);
+        }
+    }
+
+    /**
+     * 战败时把手里的武器收掉，否则她躺下了手上还举着剑。
+     *
+     * <p>这一条是渲染器迁移带出来的。模型包作者本来考虑过：{@code pre_parallel0} 常年把
+     * {@code Mweapon}（包里自带的那把武器几何体）{@code scale} 成 0，而 {@code death} 排在
+     * {@code magic_casting} 上、盖得过它，于是先张开 1.25s 再在 1.5s 缩回 0 ——
+     * 一套"武器随人一起消失"的编排。
+     *
+     * <p>可迁到 TLM 的女仆渲染器之后，她手里那把是真的 {@code ItemStack}，由
+     * {@code GeckoLayerMaidHeld} 画，走的是 {@code RightHandLocator} 那条定位链，
+     * 跟 {@code Mweapon} 只是**兄弟**关系 —— 作者把 {@code Mweapon} 缩成 0 对它毫无影响。
+     *
+     * <p>TLM 那边能遮住持物的只有两个口子：
+     * <ol>
+     *   <li>{@code RenderUtils.prepMatrixForLocator} 里，定位链上**除最后一根之外**任意一根
+     *       {@code scale} 恰好为 (0,0,0) 就返回 true，持物整个不画。可这条链上够得着的
+     *       （{@code rightshou} / {@code RightHand} / {@code RightForeArm}…）全都带几何体，
+     *       {@code rightshou} 那颗就有 2.7³，缩掉等于把她小臂削一块，不能用。</li>
+     *   <li>{@code mainHandItem.isEmpty()} —— 这一条干净。</li>
+     * </ol>
+     *
+     * <p>所以走第二条。清掉之后，作者给 {@code death} 编的那套武器消失动画反而正好显出来：
+     * 手上的真武器立刻没了，包里那把在 0~1.25s 张开、1.5s 缩掉。掉落率本来就是 0，不用管。
+     */
+    private void dropWeaponForDefeat() {
+        this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
     }
 
     /** 战败演出已经开始（含已放完等待移除）。客户端也要能判，动画靠它切 {@code defeat}。 */
@@ -921,22 +1032,28 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
 
         /** 伤害是否出自酒狐：直接打的、她的弹体、或她发的法术。 */
         private static boolean isWinefoxDamage(DamageSource source) {
-            if (source.getEntity() instanceof MagicalWinefoxBossEntity
-                    || source.getDirectEntity() instanceof MagicalWinefoxBossEntity) {
-                return true;
-            }
-            return source.getDirectEntity() instanceof Projectile projectile
-                    && projectile.getOwner() instanceof MagicalWinefoxBossEntity;
+            return damageFrom(source, MagicalWinefoxBossEntity.class);
         }
     }
 
     private static boolean isMaidDamage(DamageSource source) {
+        return damageFrom(source, EntityMaid.class);
+    }
+
+    /**
+     * 伤害是否出自某一类实体：它直接打的、或它射出去的弹体。
+     *
+     * <p>只往回走一层 owner，不用 {@code MaidSpellAllyResolver.resolveResponsibleEntity} ——
+     * 那个会把整条 owner 链连同铁魔法的 {@code IMagicSummon} 一起认下来，
+     * 归属范围会连她召出来的剑一并算进去，比这两处想要的宽。
+     */
+    private static boolean damageFrom(DamageSource source, Class<?> type) {
         Entity causingEntity = source.getEntity();
         Entity directEntity = source.getDirectEntity();
-        if (causingEntity instanceof EntityMaid || directEntity instanceof EntityMaid) {
+        if (type.isInstance(causingEntity) || type.isInstance(directEntity)) {
             return true;
         }
-        return directEntity instanceof Projectile projectile && projectile.getOwner() instanceof EntityMaid;
+        return directEntity instanceof Projectile projectile && type.isInstance(projectile.getOwner());
     }
 
     @Override
@@ -958,6 +1075,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         if (this.isDefeated()) {
             this.setInvulnerable(true);
             this.bossEvent.setVisible(false);
+            this.normalizeDefeatState();
             return;
         }
         this.phaseTransitionTicks = tag.getInt("WinefoxTransitionTicks");
@@ -973,9 +1091,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
                 ? tag.getBoolean("WinefoxTransitionToPhaseTwo")
                 : !this.isPhaseTwo();
         if (transitioning && !this.level().isClientSide) {
-            this.beginAction(this.phaseTransitionTarget
-                    ? WinefoxAction.PHASE_TRANSITION
-                    : WinefoxAction.PHASE_REVERT);
+            this.beginAction(WinefoxAction.PHASE_TRANSITION);
         }
     }
 
@@ -1016,6 +1132,58 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
     public void startSeenByPlayer(ServerPlayer player) {
         super.startSeenByPlayer(player);
         this.bossEvent.addPlayer(player);
+        this.resendCastingStateTo(player);
+        this.resendHealthTo(player);
+    }
+
+    /**
+     * 给刚进入追踪范围的玩家补一份血量。
+     *
+     * <p>{@code LivingEntity.defineSynchedData} 把 {@code DATA_HEALTH_ID} 的默认值定成了
+     * 正好 {@code 1.0F}，而 {@code SynchedEntityData.getNonDefaultValues()} 会跳过
+     * "当前值 equals 初始值"的项（{@code DataItem.isSetToDefault}）。战败后她被
+     * {@link #SURVIVAL_HEALTH_FLOOR} 钉在 1.0F —— 不多不少正是那个默认值 ——
+     * 于是血量根本不进 {@code ServerEntity} 的配对包，客户端那侧的实体一直停在
+     * {@code LivingEntity} 构造函数里 {@code setHealth(getMaxHealth())} 给的 600，
+     * 而且此后再不会变：她无敌又不动，血量不会有第二次 set 去触发同步。
+     *
+     * <p>后果不止是血条数字。{@code query.health} 是客户端求值的，作者写在
+     * {@code parallel4} 里的血量门 {@code (query.health/query.max_health) < 0.25} 因此判假，
+     * 躺在地上的她显示的是满血形态的九尾，还跟着 {@code pre_parallel2} 一起摆。
+     * 一个成因，两个症状。
+     *
+     * <p>{@code ServerEntity.addPairing} 先发配对包（内含 {@code getNonDefaultValues}
+     * 的快照）、再调 {@code startSeenByPlayer}，所以这一发必定盖在后面。
+     * 不加战败判断：任何时候血量恰好落在 1.0F 都会踩到，无条件补发才是对的。
+     */
+    private void resendHealthTo(ServerPlayer player) {
+        if (this.level().isClientSide) {
+            return;
+        }
+        player.connection.send(new ClientboundSetEntityDataPacket(this.getId(),
+                List.of(SynchedEntityData.DataValue.create(
+                        LivingEntityHealthAccessor.maidspell$getHealthAccessor(), this.getHealth()))));
+    }
+
+    /**
+     * 给刚进入追踪范围的玩家补一份施法状态。
+     *
+     * <p>施法动画改由铁魔法的 {@code SyncedSpellData} 驱动之后丢了一样东西：那份数据只在
+     * <b>变化时</b>下发（{@code SyncedSpellData.doSync()}，唯一的发送点），不像
+     * {@code entityData} 那样对新追踪者自动补发。而 {@code AbstractSpellCastingMob} 没有
+     * 覆写 {@code startSeenByPlayer}（已核字节码），铁魔法自己也不补。
+     *
+     * <p>于是中途进场的人在她放 {@code long_cast} / {@code charge_black_hole} 这类
+     * 十几秒的循环施法时什么都收不到，只能看她站着发呆 —— 正是旧设计里
+     * {@code CAST_ANIMATION}（{@code entityData}，天然会补发）挡住的那个场景。
+     * 这一发把它补回来。
+     */
+    private void resendCastingStateTo(ServerPlayer player) {
+        if (this.level().isClientSide || !this.isCasting()) {
+            return;
+        }
+        PacketDistributor.sendToPlayer(player,
+                new SyncEntityDataPacket(this.getMagicData().getSyncedData(), this));
     }
 
     @Override
@@ -1029,212 +1197,84 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         return NetworkHooks.getEntitySpawningPacket(this);
     }
 
-    private PlayState mainAnimation(AnimationState<MagicalWinefoxBossEntity> state) {
-        // 判 isDefeated() 而不是 isDeadOrDying()：她战败时血量停在 1，后者永远为假。
-        if (this.isDefeated()) {
-            return state.setAndContinue(DEFEAT);
-        }
-        if (this.hurtTime > 0) {
-            return state.setAndContinue(this.isPhaseTwo() ? PHASE_TWO_IDLE : PHASE_ONE_IDLE);
-        }
-        if (!this.onGround()) {
-            if (this.isNoGravity() && !state.isMoving()) {
-                // 悬停但没有水平位移，仍然算待机。
-                // 一锁定目标就 setNoGravity(true)，酒狐从此再没有 onGround() 为真的时候；
-                // 少了这一条，刷出来的瞬间就卡在 fly 上，待机姿势（含持杖）永远播不到。
-                return state.setAndContinue(this.isPhaseTwo() ? PHASE_TWO_IDLE : PHASE_ONE_IDLE);
-            }
-            return state.setAndContinue(this.isNoGravity() ? FLY : JUMP);
-        }
-        if (state.isMoving()) {
-            return state.setAndContinue(this.getDeltaMovement().horizontalDistanceSqr() > 0.08 ? RUN : WALK);
-        }
-        return state.setAndContinue(this.isPhaseTwo() ? PHASE_TWO_IDLE : PHASE_ONE_IDLE);
-    }
-
     /**
-     * 自制武器的形变。
+     * {@code IMaid.convert} 第一句就是 {@code mob instanceof IMaid}，直接实现接口即可，
+     * 不必走 {@code ConvertMaidEvent}；客户端的 {@code CapabilityEvent} 随后会自动
+     * 给她挂上 gecko 动画能力。
      *
-     * <p>这两条动画写的是 {@code StarShadowSword} 子树里那些骨骼（{@code handle} 拉长、
-     * {@code style1} 归零之类），只对自家那把武器有意义。主手拿着别的东西时必须 STOP ——
-     * 否则它会去形变一把当前根本没渲染的剑，而那些骨骼正被装备层同步给玩家的剑用着（见 #2）。
+     * <p>{@code asStrictMaid()} 保持默认的 {@code null} 不覆写：本项目三个
+     * {@code GeckoLayer*Halo} 与 TLM 的聊天气泡都靠它判定，覆写了就会一并挂到 boss 身上。
      */
-    private PlayState weaponFormAnimation(AnimationState<MagicalWinefoxBossEntity> state) {
-        if (this.isHoldingLongsword()) {
-            return state.setAndContinue(SWORD_FORM);
-        }
-        if (this.isHoldingStaff()) {
-            return state.setAndContinue(STAFF_FORM);
-        }
-        return PlayState.STOP;
-    }
-
-    /**
-     * 一阶段飞行时展开背后的法阵，其余时候交回 {@code ambient_parts} 的 0。
-     *
-     * <p>二阶段不放：那时候她的排面是长剑与剑气特效，法阵是一阶段的招牌。
-     */
-    /**
-     * 战败之后所有并行的循环动画一律停摆：不眨眼、不摆尾、法阵不转。
-     *
-     * <p>{@code defeat} 只画倒地那一套骨骼，眨眼与尾巴挂在**另外的控制器**上，
-     * 不主动停的话她会一边躺着一边眨眼摇尾巴。
-     *
-     * <p>唯独 {@code ambient_parts} 不能停 —— 它名义上是"环境动画"，
-     * 实际干的是把一堆特效网格（长枪、剑气、若干法阵）常年压成 {@code scale=0}。
-     * 停掉它，那些网格会全部弹回原尺寸冒出来。它那两条耳朵的抽动改由
-     * {@code defeat} 自己写死同名骨骼盖住 —— {@code main} 注册在它之后，压得住。
-     */
-    private PlayState blinkAnimation(AnimationState<MagicalWinefoxBossEntity> state) {
-        if (this.isDefeated()) {
-            return PlayState.STOP;
-        }
-        return state.setAndContinue(BLINK);
-    }
-
-    private PlayState magicRingsAnimation(AnimationState<MagicalWinefoxBossEntity> state) {
-        if (this.isDefeated()) {
-            return PlayState.STOP;
-        }
-        return state.setAndContinue(MAGIC_RINGS);
-    }
-
-    private PlayState flightCircleAnimation(AnimationState<MagicalWinefoxBossEntity> state) {
-        if (this.isPhaseTwo() || this.isDefeated() || this.onGround()) {
-            return PlayState.STOP;
-        }
-        return state.setAndContinue(FLIGHT_CIRCLE);
-    }
-
-    private PlayState tailAnimation(AnimationState<MagicalWinefoxBossEntity> state) {
-        if (this.isDefeated()) {
-            return PlayState.STOP;
-        }
-        if (!this.onGround()) {
-            return state.setAndContinue(TAIL_JUMP);
-        }
-        if (state.isMoving()) {
-            return state.setAndContinue(this.getDeltaMovement().horizontalDistanceSqr() > 0.08
-                    ? TAIL_RUN : TAIL_WALK);
-        }
-        return state.setAndContinue(TAIL_IDLE);
-    }
-
-    /**
-     * 持杖姿势。判的是主手物品**类别**而不是阶段，拿法杖、弓、弩都摆这个。
-     *
-     * <p>转阶段中途换手时它自然交棒给 sword_hold。转阶段期间不整段 STOP：
-     * {@code phase_transition} 在 {@code action} 控制器上，注册顺序排在两个 hold 之后，
-     * 握剑骨骼写成什么本来就是它说了算。
-     */
-    private PlayState staffHoldAnimation(AnimationState<MagicalWinefoxBossEntity> state) {
-        if (!this.usesStaffHoldPose() || this.isDefeated() || this.hurtTime > 0
-                || (this.onGround() && !state.isMoving())) {
-            return PlayState.STOP;
-        }
-        return state.setAndContinue(HOLD_BOW);
-    }
-
-    /** 持剑姿势：任何剑类武器都摆这个，不限于星影长剑。 */
-    private PlayState swordHoldAnimation(AnimationState<MagicalWinefoxBossEntity> state) {
-        if (!this.usesSwordHoldPose() || this.isDefeated() || this.hurtTime > 0) {
-            return PlayState.STOP;
-        }
-        return state.setAndContinue(HOLD_SWORD);
-    }
-
-    private PlayState actionAnimation(AnimationState<MagicalWinefoxBossEntity> state) {
-        if (this.isDefeated()) {
-            this.actionAnimationPlaying = false;
-            return PlayState.STOP;
-        }
-        WinefoxAction action = this.currentAction();
-        if (action == WinefoxAction.NONE) {
-            this.lastHandledActionSerial = this.entityData.get(ACTION_SERIAL);
-            this.actionAnimationPlaying = false;
-            return PlayState.STOP;
-        }
-        int serial = this.entityData.get(ACTION_SERIAL);
-        if (serial != this.lastHandledActionSerial) {
-            state.getController().forceAnimationReset();
-            this.lastHandledActionSerial = serial;
-        } else if (state.getController().hasAnimationFinished()) {
-            this.actionAnimationPlaying = false;
-            return PlayState.STOP;
-        }
-        this.actionAnimationPlaying = true;
-        if (action == WinefoxAction.CAST) {
-            WinefoxCastAnimation cast = WinefoxCastAnimation.byKey(this.entityData.get(CAST_ANIMATION));
-            if (cast == null) {
-                this.actionAnimationPlaying = false;
-                return PlayState.STOP;
-            }
-            return state.setAndContinue(WinefoxAnimations.of(cast));
-        }
-        RawAnimation animation = WinefoxAnimations.of(action);
-        if (animation == null) {
-            // NONE / CAST 上面已经拦掉，DEFEAT 走的是 main 控制器，剩下的都该有动画。
-            animation = WinefoxAnimations.of(WinefoxAction.STAFF_ATTACK_1);
-        }
-        return state.setAndContinue(animation);
-    }
-
-    public boolean isActionAnimationPlaying() {
-        return this.actionAnimationPlaying;
+    @Override
+    public String getModelId() {
+        return MODEL_ID;
     }
 
     @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        AnimationController<MagicalWinefoxBossEntity> mainController =
-                new AnimationController<>(this, "main", 2, this::mainAnimation)
-                        .setSoundKeyframeHandler(this::handleSoundKeyframe);
-        AnimationController<MagicalWinefoxBossEntity> actionController =
-                new AnimationController<>(this, "action", 0, this::actionAnimation)
-                        .setSoundKeyframeHandler(this::handleSoundKeyframe);
-        // 注册顺序就是优先级：同一根骨骼的同一通道，后注册的控制器直接覆盖先注册的。
-        // action 必须排在 weapon_form / staff_hold / sword_hold 之后：
-        // 转阶段那段隐藏武器的 scale 才压得住两个 hold 写的 scale=1。别重排。
-        controllers.add(
-                new AnimationController<>(this, "ambient_parts", 0, state -> state.setAndContinue(AMBIENT_PARTS)),
-                new AnimationController<>(this, "blink", 0, this::blinkAnimation),
-                new AnimationController<>(this, "weapon_form", 0, this::weaponFormAnimation),
-                mainController,
-                new AnimationController<>(this, "tail", 2, this::tailAnimation),
-                new AnimationController<>(this, "staff_hold", 2, this::staffHoldAnimation),
-                new AnimationController<>(this, "sword_hold", 2, this::swordHoldAnimation),
-                actionController,
-                new AnimationController<>(this, "magic_rings", 0, this::magicRingsAnimation),
-                // 排在 ambient_parts 之后才压得住它那几条 scale=0。
-                new AnimationController<>(this, "flight_circle", 0, this::flightCircleAnimation));
+    public Mob asEntity() {
+        return this;
+    }
+
+    @Override
+    public ItemStack[] getHandItemsForAnimation() {
+        return this.handItemsForAnimation;
+    }
+
+    /**
+     * 动作动画的两个只读入口，给 {@code WinefoxActionAnimationProvider} 用。
+     *
+     * <p>迁移前这些状态由实体自己的 gecko4 {@code action} 控制器读；换成 TLM 的女仆渲染器
+     * 之后 gecko4 那条路整条不再运行，判读挪到了 TLM 的 {@code magic_casting} 通道上，
+     * 于是得开出来。两个都是同步值，客户端读得到。
+     */
+    public WinefoxAction animationAction() {
+        return this.currentAction();
+    }
+
+    /** 序号一变就是「新动作开始了」，provider 靠它决定哪一帧报 INSTANT 让动画从头播。 */
+    public int animationActionSerial() {
+        return this.entityData.get(ACTION_SERIAL);
+    }
+
+    public WinefoxCastingAnimateState castingAnimateState() {
+        return this.castingAnimateState;
+    }
+
+    @Override
+    public MagicCastingAnimateState maidspell$getCastingAnimateState() {
+        return this.issCastingAnimateState;
     }
 
     /**
      * 战败之后她**留在场上**，不再走任何移除流程。
      *
-     * <p>{@code defeat} 是 {@code HOLD_LAST_FRAME}，播完就定在倒地那一帧，
+     * <p>{@code death} 是 {@code HOLD_LAST_FRAME} 且被加长到 10000 秒，播不完，
      * 于是她会一直躺在原地。原版的 {@code tickDeath} 本来就只在
      * {@code isDeadOrDying()} 时被调，而她的血永远是 1，那个回调根本不会触发 ——
      * 这里覆写成空是为了挡住别处（比如别的模组）主动调它把她计时移除。
      *
-     * <p>{@code deathTime} 一并保持为 0：它没有同步给客户端，
-     * 但 {@code GeoEntityRenderer.applyRotations} 会照着它把实体侧翻，
+     * <p>{@code deathTime} 一并保持为 0：它没有同步给客户端，但渲染那边
+     * （原先是 {@code GeoEntityRenderer.applyRotations}）会照着它把实体侧翻，
      * 万一哪天有人把它同步出去，非零值会让倒地姿势再被扭一次。
+     *
+     * <p><b>但血真的掉到 0 时必须放行。</b>{@link #hurt} 与 {@link #actuallyHurt}
+     * 都特意给 {@code BYPASSES_INVULNERABILITY}（{@code /kill}、虚空伤害那一类）
+     * 开了口子，就是为了留一条把她清掉的路。而原版**唯一**的移除路径正是
+     * {@code tickDeath()} 里的 {@code ++deathTime} 到 20 之后那句
+     * {@code remove(RemovalReason.KILLED)} —— 这里整个覆写成空，等于把自己
+     * 特意留的那条口子又堵死了：{@code /kill} 把血打到 0，她照样躺着不走。
+     *
+     * <p>所以只在「战败演出」那种血还剩 1 的状态下空转（挡住别的模组主动调它
+     * 提前把她计时移除），真死了就老老实实走原版流程。
      */
     @Override
     protected void tickDeath() {
-    }
-
-    private void handleSoundKeyframe(SoundKeyframeEvent<MagicalWinefoxBossEntity> event) {
-        if (!this.level().isClientSide) {
-            return;
-        }
-        var sound = MaidSpellSounds.getWinefoxSound(event.getKeyframeData().getSound());
-        if (sound != null) {
-            this.level().playLocalSound(this.getX(), this.getY(), this.getZ(), sound, SoundSource.HOSTILE,
-                    1.0F, 1.0F, false);
+        if (this.getHealth() <= 0.0F) {
+            super.tickDeath();
         }
     }
 
+    // TODO 移到外面去
     private static final class WinefoxCombatGoal extends Goal {
         /** 连续这么多 tick 想走却没挪窝，就认定卡住了。 */
         private static final int STUCK_TICKS_BEFORE_HOP = 20;
@@ -1264,6 +1304,20 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
                 WinefoxBossSpellAction.MODIFIED_TELEPORT,
                 WinefoxBossSpellAction.SWORD_PRISON);
 
+        /**
+         * 各项「隔多久再考虑一次」的间隔。注意它们和 {@code spellCooldowns} 不是一回事：
+         * 这几个是**试过就重置**（够不够条件都算试过），冷却表那份是施法成功才重置。
+         *
+         * <p>每一项的重置点都分散在 {@code start()} / 对应的 tick 方法 / {@code onPhaseChanged()}
+         * 里，原先各写一遍字面量，改一处漏一处。
+         */
+        private static final int SPELL_DECISION_INTERVAL = 20;
+        private static final int ESCAPE_TELEPORT_CHECK_INTERVAL = 80;
+        private static final int MODIFIED_TELEPORT_CHECK_INTERVAL = 120;
+        private static final int COUNTERSPELL_CHECK_INTERVAL = 20;
+        private static final int SWORD_PRISON_CHECK_INTERVAL = 400;
+        private static final int VOID_PHASE_CHECK_INTERVAL = 400;
+
         private final MagicalWinefoxBossEntity boss;
         private final EnumMap<WinefoxBossSpellAction, Integer> spellCooldowns =
                 new EnumMap<>(WinefoxBossSpellAction.class);
@@ -1287,7 +1341,6 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         private int burstShots;
         private int burstDelay;
         private int burstSpellLevel;
-        @Nullable
 
         private WinefoxCombatGoal(MagicalWinefoxBossEntity boss) {
             this.boss = boss;
@@ -1312,11 +1365,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         public void start() {
             this.phaseTwo = this.boss.isPhaseTwo();
             this.spellDecisionCooldown = 0;
-            this.escapeTeleportCheckCooldown = 80;
-            this.modifiedTeleportCheckCooldown = 120;
-            this.counterspellCheckCooldown = 20;
-            this.swordPrisonCheckCooldown = 400;
-            this.voidPhaseCheckCooldown = 400;
+            this.escapeTeleportCheckCooldown = ESCAPE_TELEPORT_CHECK_INTERVAL;
+            this.modifiedTeleportCheckCooldown = MODIFIED_TELEPORT_CHECK_INTERVAL;
+            this.counterspellCheckCooldown = COUNTERSPELL_CHECK_INTERVAL;
+            this.swordPrisonCheckCooldown = SWORD_PRISON_CHECK_INTERVAL;
+            this.voidPhaseCheckCooldown = VOID_PHASE_CHECK_INTERVAL;
             this.refreshMovementPattern();
 
             LivingEntity target = this.boss.getTarget();
@@ -1336,10 +1389,12 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
             this.boss.getNavigation().stop();
             this.burstAction = null;
             this.burstShots = 0;
-            // cancelCast() 内部会走到 castComplete()，那儿可能触发收尾动画；
-            // 目标丢了属于"打断"而不是"施完"，所以随后再把动画停掉。
+            // cancelCast() 会把 isCasting 同步成 false，客户端那边照样算出 END 相位、
+            // 把该法术的收尾动画播出来。迁移前这里紧跟一句 stopCastAnimation() 压掉它
+            // （"打断"不该有收尾），现在压不了了 —— 施法动画整条归铁魔法的同步数据管。
+            // 这与普通女仆、以及铁魔法自己所有怪物的表现一致，见 §6.2 偏差四。
             this.boss.cancelCast();
-            this.boss.stopCastAnimation();
+            this.boss.cancelSwordRing();
             this.closeRangeTicks = 0;
             // 她收手了，剑也该收回来：召唤物本身有 12000 tick 的存活时间，
             // 不主动解散的话会在她脱战之后继续追着人砍十分钟。
@@ -1388,11 +1443,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
 
             boolean shouldTeleport = false;
             if (this.modifiedTeleportCheckCooldown <= 0) {
-                this.modifiedTeleportCheckCooldown = 120;
+                this.modifiedTeleportCheckCooldown = MODIFIED_TELEPORT_CHECK_INTERVAL;
                 shouldTeleport = this.boss.random.nextFloat() < 0.2F;
             }
             if (this.escapeTeleportCheckCooldown <= 0 && horizontalDistance < 5.0D) {
-                this.escapeTeleportCheckCooldown = 80;
+                this.escapeTeleportCheckCooldown = ESCAPE_TELEPORT_CHECK_INTERVAL;
                 boolean closeRangeTeleport = this.boss.random.nextFloat() < 0.25F;
                 shouldTeleport = shouldTeleport || closeRangeTeleport;
             }
@@ -1407,7 +1462,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
             }
 
             if (this.counterspellCheckCooldown <= 0) {
-                this.counterspellCheckCooldown = 20;
+                this.counterspellCheckCooldown = COUNTERSPELL_CHECK_INTERVAL;
                 if (WinefoxBossSpells.isCasting(target)
                         && this.isSpellReady(WinefoxBossSpellAction.COUNTERSPELL)
                         && this.boss.random.nextFloat() < 0.25F) {
@@ -1454,10 +1509,12 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
             }
 
             // 原先这里是"投枪动作"：一个自己计时的 64t 动作，末尾偷偷放一发剑牢的弹体。
-            // 现在它就是剑牢法术本身，起手动画由 WinefoxBossSpells 指定成举枪，
+            // 现在它就是剑牢法术本身，起手动画 iss:spear_throw 由法术指定，
             // 时长/收尾/打断一律归铁魔法管，与其余法术同一条路径。
+            // 只有"剑什么时候落"是她自己的事：动画 2.1s 才把枪甩出去，
+            // 所以 onCast 把剑交给 scheduleSwordRing 延后到那一帧。
             if (this.swordPrisonCheckCooldown <= 0) {
-                this.swordPrisonCheckCooldown = 400;
+                this.swordPrisonCheckCooldown = SWORD_PRISON_CHECK_INTERVAL;
                 if (this.boss.random.nextFloat() < 0.5F) {
                     this.boss.teleportAwayFrom(target, COMBAT_TELEPORT_DISTANCE);
                     if (this.castAction(target, WinefoxBossSpellAction.SWORD_PRISON, 1)) {
@@ -1468,7 +1525,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
                 }
             }
             if (this.voidPhaseCheckCooldown <= 0) {
-                this.voidPhaseCheckCooldown = 400;
+                this.voidPhaseCheckCooldown = VOID_PHASE_CHECK_INTERVAL;
                 if (!WinefoxBossSpells.hasVoidPhase(this.boss)
                         && this.boss.random.nextFloat() < 0.5F
                         && this.castAction(target, WinefoxBossSpellAction.VOID_PHASE, 1)) {
@@ -1485,7 +1542,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
             if (this.tickBurst(target) || this.spellDecisionCooldown > 0) {
                 return;
             }
-            this.spellDecisionCooldown = 20;
+            this.spellDecisionCooldown = SPELL_DECISION_INTERVAL;
             if (!this.boss.getSensing().hasLineOfSight(target)) {
                 return;
             }
@@ -1677,8 +1734,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
         /**
          * 发起一次施法，失败时退化成传送 / 普通远程攻击。
          *
-         * <p>起手动画由 {@code WinefoxBossSpells.cast} 在确认吟唱起来之后触发，
-         * 收尾动画由 {@link MagicalWinefoxBossEntity#castComplete()} 触发——两头都不在这儿了。
+         * <p>起手与收尾动画都不在这儿：客户端从铁魔法的 {@code SyncedSpellData} 自己算相位，
+         * 由 {@code ISSCastingAnimationProvider} 播（第 6 步之前是实体这边另开一条同步字段自己播）。
          * 冷却统一在"发起成功"时记，而不是原来那样瞬发的记在发起、长吟唱的记在结束。
          */
         private boolean castAction(LivingEntity target, WinefoxBossSpellAction action, int spellLevel) {
@@ -1778,10 +1835,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob implements
             this.burstShots = 0;
             this.boss.cancelCast();
             this.closeRangeTicks = 0;
-            this.spellDecisionCooldown = 20;
+            this.spellDecisionCooldown = SPELL_DECISION_INTERVAL;
             this.meleeCooldown = 0;
-            this.swordPrisonCheckCooldown = 400;
-            this.voidPhaseCheckCooldown = 400;
+            this.swordPrisonCheckCooldown = SWORD_PRISON_CHECK_INTERVAL;
+            this.voidPhaseCheckCooldown = VOID_PHASE_CHECK_INTERVAL;
             this.refreshMovementPattern();
         }
 

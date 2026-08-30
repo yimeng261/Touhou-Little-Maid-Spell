@@ -41,4 +41,12 @@ public final class IronsSpellbooksCompat {
         }
         IronsSpellbooksCompatClient.onRegisterEntityRenderers(event);
     }
+
+    /** 客户端 setup 阶段要做的铁魔法相关注册，从通用的 {@code ClientSetup} 里调进来。 */
+    public static void initClientSetup() {
+        if (!isLoaded()) {
+            return;
+        }
+        IronsSpellbooksCompatClient.onClientSetup();
+    }
 }

@@ -2,14 +2,11 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.MagicalWinefoxBossEntity;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.WinefoxBossSpellAction;
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
-import io.redspace.ironsspellbooks.api.util.AnimationHolder;
 import io.redspace.ironsspellbooks.capabilities.magic.TargetEntityCastData;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
@@ -22,9 +19,6 @@ import org.jetbrains.annotations.Nullable;
  * 万法酒狐的铁魔法法术行为。boss 本身只在装了铁魔法时注册，所以这里直接调用铁魔法 API。
  */
 public final class WinefoxBossSpells {
-
-    /** 表示该动作只需要停止当前吟唱动画。 */
-    public static final String STOP_CAST_ANIMATION = "#stop";
 
     private WinefoxBossSpells() {
     }
@@ -85,11 +79,7 @@ public final class WinefoxBossSpells {
         boss.initiateCastSpell(spell, clampedLevel);
         // initiateCastSpell 是 void 的：法术为 none、或 checkPreCastConditions 不通过时会静默放弃。
         // 上面已确保进来时不在施法，所以这里为 true 就说明这一发确实起来了。
-        if (!boss.isCasting()) {
-            return false;
-        }
-        boss.onSpellCastStarted(action);
-        return true;
+        return boss.isCasting();
     }
 
     /** 这两个法术要在施法数据里带上目标实体，没有目标就没法施。 */
@@ -115,32 +105,6 @@ public final class WinefoxBossSpells {
         return spell == null
                 ? fallbackTicks
                 : Math.max(1, Mth.ceil(spell.getSpellCooldown() * multiplier));
-    }
-
-    /**
-     * 法术那边指定的动画名要能对上酒狐这边的一条轨道。
-     *
-     * <p>{@code SwordPrisonSpell.getCastStartAnimation()} 返回的是
-     * {@code touhou_little_maid_spell:spear_throw}，取 path 得到 {@code spear_throw}，
-     * 正好命中 {@link WinefoxCastAnimation#SPEAR_THROW}，
-     * 于是酒狐播 {@code iss:spear_throw}、玩家播自己那份 player_animation ——
-     * 同一个 key，两套骨骼各播各的。
-     */
-    @Nullable
-    public static String getCastAnimation(WinefoxBossSpellAction action, boolean finish) {
-        AbstractSpell spell = getSpell(action);
-        if (spell == null) {
-            return null;
-        }
-        AnimationHolder animation = finish
-                ? spell.getCastFinishAnimation()
-                : spell.getCastStartAnimation();
-        if (animation.isPass) {
-            return null;
-        }
-        return animation.getForPlayer()
-                .map(resource -> resource.getPath())
-                .orElse(finish ? STOP_CAST_ANIMATION : null);
     }
 
     @Nullable

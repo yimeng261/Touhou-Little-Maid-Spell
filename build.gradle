@@ -358,6 +358,18 @@ tasks.register('validateResources', Test) {
 mixin {
     add sourceSets.main, "maidspell.refmap.json"
 
+    // 开发环境里必须显式登记这份 config，否则我们的 mixin 一条都不会生效。
+    //
+    // 打包出去的 jar 靠的是清单里那句 "MixinConfigs": "maidspell.mixins.json"（见上面 jar 任务），
+    // 但 runClient / runServer 是直接从 sourceSets.main 的 classes + resources 目录加载的，
+    // 根本没有 jar、也就没有清单可读 —— 于是 mixin 子系统压根不知道有这份 config。
+    // 表现极隐蔽：不报错、不崩，所有 @Inject 静默失效，只有纯 Java 那部分照常跑。
+    // （实测：日志里每个模组的 refmap 都有 "Remapping refMap xxx.refmap.json"，唯独没有我们的。）
+    //
+    // 这一行让 MixinGradle 给开发运行配置补上 --mixin.config 参数，只影响开发环境；
+    // 正式包仍走清单那条路，不会重复登记。
+    config "maidspell.mixins.json"
+
     // 确保 refmap 文件被正确处理
     dumpTargetOnFailure true
 }
