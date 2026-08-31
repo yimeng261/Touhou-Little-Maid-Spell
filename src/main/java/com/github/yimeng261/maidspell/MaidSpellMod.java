@@ -13,6 +13,7 @@ import com.github.yimeng261.maidspell.effect.MaidSpellEffects;
 import com.github.yimeng261.maidspell.event.FoxLeafOwnerWaterWalking;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.event.StaranchorPearlEvents;
+import com.github.yimeng261.maidspell.event.WinefoxStructureMusicEvents;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -67,6 +68,9 @@ public class MaidSpellMod {
         NeoForge.EVENT_BUS.register(MaidSpellEventHandler.class);
         NeoForge.EVENT_BUS.register(FoxLeafOwnerWaterWalking.class);
         NeoForge.EVENT_BUS.register(StaranchorPearlEvents.class);
+        if (IronsSpellbooksCompat.isLoaded()) {
+            NeoForge.EVENT_BUS.register(WinefoxStructureMusicEvents.class);
+        }
         MaidSpellBlocks.register(modEventBus);
         MaidSpellBlockEntities.register(modEventBus);
         MaidSpellItems.register(modEventBus);

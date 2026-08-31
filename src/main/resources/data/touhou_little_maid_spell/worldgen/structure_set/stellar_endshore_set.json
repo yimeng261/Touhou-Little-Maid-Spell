@@ -1,0 +1,20 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:stellar_endshore",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 512,
+    "separation": 448,
+    "salt": 826719453
+  }
+}

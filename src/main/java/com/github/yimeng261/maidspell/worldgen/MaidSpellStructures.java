@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.worldgen.structure.FallenSanctumStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.LandJigsawStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.RelicSanctumStructure;
+import com.github.yimeng261.maidspell.worldgen.structure.StellarEndshoreStructure;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -29,4 +30,8 @@ public class MaidSpellStructures {
     // 堕天圣堂结构（基于拼图系统，下界绯红森林地表生成）
     public static final DeferredHolder<StructureType<?>, StructureType<FallenSanctumStructure>> FALLEN_SANCTUM
             = STRUCTURE_TYPES.register("fallen_sanctum", () -> () -> FallenSanctumStructure.CODEC);
+
+    // 星途终岸结构（基于拼图系统，悬在末地外岛上空的固定高度）
+    public static final DeferredHolder<StructureType<?>, StructureType<StellarEndshoreStructure>> STELLAR_ENDSHORE
+            = STRUCTURE_TYPES.register("stellar_endshore", () -> () -> StellarEndshoreStructure.CODEC);
 }
