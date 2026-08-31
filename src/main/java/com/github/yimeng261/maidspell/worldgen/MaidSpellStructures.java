@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.worldgen.structure.FairyMaidCafeStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenCherryTreeStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.RelicSanctumStructure;
+import com.github.yimeng261.maidspell.worldgen.structure.StellarEndshoreStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.YinYangAltarStructure;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.structure.StructureType;
@@ -49,5 +50,11 @@ public class MaidSpellStructures {
     public static final RegistryObject<StructureType<FallenSanctumStructure>> FALLEN_SANCTUM = STRUCTURE_TYPES.register(
             "fallen_sanctum",
             () -> () -> FallenSanctumStructure.CODEC
+    );
+
+    // 星途终岸结构（基于拼图系统，悬在末地外岛上空的固定高度）
+    public static final RegistryObject<StructureType<StellarEndshoreStructure>> STELLAR_ENDSHORE = STRUCTURE_TYPES.register(
+            "stellar_endshore",
+            () -> () -> StellarEndshoreStructure.CODEC
     );
 }
