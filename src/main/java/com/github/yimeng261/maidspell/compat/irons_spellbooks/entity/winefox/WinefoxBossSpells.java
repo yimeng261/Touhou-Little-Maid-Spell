@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
+package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;

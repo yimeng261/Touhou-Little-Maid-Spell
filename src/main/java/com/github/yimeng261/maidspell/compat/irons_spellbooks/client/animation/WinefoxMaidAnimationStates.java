@@ -5,7 +5,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.Animation
 import com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.AnimationState;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.builder.ILoopType;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.event.predicate.AnimationEvent;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.MagicalWinefoxBossEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
 
 import java.util.function.BiPredicate;
 

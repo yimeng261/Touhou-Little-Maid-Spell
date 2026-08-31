@@ -1,4 +1,4 @@
-package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
+package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 
 public enum WinefoxBossSpellAction {
     MAGIC_MISSILE,

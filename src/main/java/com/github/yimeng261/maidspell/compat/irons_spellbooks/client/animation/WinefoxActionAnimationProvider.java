@@ -5,10 +5,10 @@ import com.github.tartaricacid.touhoulittlemaid.api.animation.IMagicCastingState
 import com.github.tartaricacid.touhoulittlemaid.api.entity.IMaid;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.builder.AnimationBuilder;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.builder.ILoopType;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.MagicalWinefoxBossEntity;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.WinefoxAction;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.WinefoxCastingAnimateState;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.WinefoxTermination;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxAction;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxCastingAnimateState;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxTermination;
 import org.jetbrains.annotations.Nullable;
 
 /**
