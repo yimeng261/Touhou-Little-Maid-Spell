@@ -1,0 +1,21 @@
+{
+  "forge:conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:starwatch_tower",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 23,
+    "separation": 12,
+    "spread_type": "triangular",
+    "salt": 1472905386
+  }
+}

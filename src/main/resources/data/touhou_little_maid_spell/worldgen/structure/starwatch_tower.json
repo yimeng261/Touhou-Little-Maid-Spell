@@ -1,0 +1,18 @@
+{
+  "forge:conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
+  "type": "touhou_little_maid_spell:starwatch_tower",
+  "start_pool": "touhou_little_maid_spell:starwatch_tower_start_pool",
+  "max_distance_from_center": 256,
+  "size": 4,
+  "min_surface_y": 60,
+  "vertical_offset": 0,
+  "biomes": "#touhou_little_maid_spell:has_structure/starwatch_tower",
+  "spawn_overrides": {},
+  "step": "surface_structures",
+  "terrain_adaptation": "beard_thin"
+}
