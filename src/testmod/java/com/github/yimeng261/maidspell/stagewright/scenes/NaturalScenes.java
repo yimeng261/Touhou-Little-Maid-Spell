@@ -91,6 +91,8 @@ public final class NaturalScenes {
                     "hidden_retreat_set", 10, 2, 1492837521, 1.0F, ""),
             new Reg("relic_sanctum", NS + "relic_sanctum", List.of("minecraft:windswept_forest"), "beard_box",
                     "relic_sanctum_set", 28, 14, 1735687904, 1.0F, ""),
+            new Reg("starwatch_tower", NS + "starwatch_tower", List.of("minecraft:end_highlands"), "beard_thin",
+                    "starwatch_tower_set", 23, 12, 1472905386, 1.0F, ""),
             new Reg("stellar_endshore", NS + "stellar_endshore", List.of("minecraft:small_end_islands"), "none",
                     "stellar_endshore_set", 512, 448, 826719453, 1.0F, ""),
             new Reg("woods_perch", "minecraft:jigsaw", List.of("minecraft:forest", "minecraft:flower_forest"),
@@ -104,7 +106,7 @@ public final class NaturalScenes {
                     "enchantress_footsteps_mushroom_fields", "enchantress_footsteps_oasis", "enchantress_footsteps_outpost", "fairy_maid_cafe_set",
                     "hidden_cherry_tree_set", "hidden_retreat_set", "relic_sanctum_set", "woods_perch", "yin_yang_altar_set"),
             NETHER, Set.of("fallen_sanctum_set"),
-            END, Set.of("stellar_endshore_set"),
+            END, Set.of("starwatch_tower_set", "stellar_endshore_set"),
             // #minecraft:is_mountain 含樱花林，前哨的结构集也在归隐之地的候选里（由白名单挡住）
             RETREAT, Set.of("enchantress_footsteps_outpost", "fairy_maid_cafe_set", "hidden_cherry_tree_set", "hidden_retreat_set"));
 
