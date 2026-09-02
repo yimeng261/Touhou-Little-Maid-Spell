@@ -75,7 +75,8 @@ public final class MaidSuppressionZone {
      * <p>顺手清掉过期区域——没有别的地方会定时来扫，就着查询做最省事。
      */
     public static boolean suppresses(Entity entity) {
-        if (entity == null || entity.level().isClientSide) {
+        // 绝大多数时候表是空的，而这个方法挂在索敌/受击事件上，每 tick 要问很多遍。
+        if (ZONES.isEmpty() || entity == null || entity.level().isClientSide) {
             return false;
         }
         long now = entity.level().getGameTime();

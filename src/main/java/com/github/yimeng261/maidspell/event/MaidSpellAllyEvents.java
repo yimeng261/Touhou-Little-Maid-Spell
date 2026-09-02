@@ -1,7 +1,9 @@
 package com.github.yimeng261.maidspell.event;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
+import com.github.yimeng261.maidspell.utils.MaidSuppressionZone;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -26,9 +28,32 @@ public class MaidSpellAllyEvents {
             return;
         }
         LivingEntity attacker = event.getEntity();
+        if (attacker instanceof EntityMaid && MaidSuppressionZone.suppresses(attacker)) {
+            event.setCanceled(true);
+            attacker.setLastHurtByMob(null);
+            return;
+        }
         if (MaidSpellAllyResolver.areFriendly(attacker, newTarget)) {
             event.setCanceled(true);
             clearFriendlyTarget(attacker, newTarget);
+        }
+    }
+
+    /**
+     * 压制区里的女仆一律打不出伤害。
+     *
+     * <p>光拦索敌不够：飞在半空的箭、已经抬起的刀、别的模组直接调 {@code hurt} 的路径，
+     * 都不经过 {@link LivingChangeTargetEvent}。这一条是兜底。
+     *
+     * <p>拦的是"女仆造成的伤害"，不分对象——擂台是玩家一个人的，
+     * 圈里的女仆连顺手清个小怪都不该做。区域只在驯服挑战期间存在，见
+     * {@link MaidSuppressionZone}。
+     */
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onSuppressedMaidAttack(LivingAttackEvent event) {
+        if (event.getSource().getEntity() instanceof EntityMaid maid
+                && MaidSuppressionZone.suppresses(maid)) {
+            event.setCanceled(true);
         }
     }
 
