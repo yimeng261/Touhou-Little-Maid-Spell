@@ -73,6 +73,8 @@ public final class NaturalScenes {
                     "beard_thin", "enchantress_footsteps_igloo", 36, 16, 1647382910, 1.0F, ""),
             new Reg("enchantress_footsteps_mushroom_fields", "minecraft:jigsaw", List.of("minecraft:mushroom_fields"),
                     "beard_thin", "enchantress_footsteps_mushroom_fields", 36, 16, 1248316571, 1.0F, ""),
+            new Reg("enchantress_footsteps_oasis", "minecraft:jigsaw", List.of("minecraft:desert"),
+                    "beard_thin", "enchantress_footsteps_oasis", 36, 16, 1248316574, 1.0F, ""),
             new Reg("enchantress_footsteps_outpost", "minecraft:jigsaw",
                     List.of("minecraft:desert", "minecraft:plains", "minecraft:savanna", "minecraft:snowy_plains",
                             "minecraft:taiga", "#minecraft:is_mountain", "minecraft:grove"),
@@ -97,7 +99,7 @@ public final class NaturalScenes {
     /** 各维度可能生成的本模组结构集（群系源与结构群系有交集的集合）。 */
     private static final Map<String, Set<String>> DIMENSION_SETS = Map.of(
             OVERWORLD, Set.of("elven_realm_set", "enchantress_footsteps_graveyard", "enchantress_footsteps_igloo",
-                    "enchantress_footsteps_mushroom_fields", "enchantress_footsteps_outpost", "fairy_maid_cafe_set",
+                    "enchantress_footsteps_mushroom_fields", "enchantress_footsteps_oasis", "enchantress_footsteps_outpost", "fairy_maid_cafe_set",
                     "hidden_cherry_tree_set", "hidden_retreat_set", "relic_sanctum_set", "woods_perch", "yin_yang_altar_set"),
             NETHER, Set.of("fallen_sanctum_set"),
             END, Set.of(),
@@ -125,7 +127,8 @@ public final class NaturalScenes {
             new Natural("enchantress_footsteps_mushroom_fields", OVERWORLD, Dry.NONE),
             new Natural("enchantress_footsteps_igloo", OVERWORLD, Dry.NONE),
             new Natural("enchantress_footsteps_outpost", OVERWORLD, Dry.NONE),
-            new Natural("enchantress_footsteps_graveyard", OVERWORLD, Dry.NONE));
+            new Natural("enchantress_footsteps_graveyard", OVERWORLD, Dry.NONE),
+            new Natural("enchantress_footsteps_oasis", OVERWORLD, Dry.NONE));
 
     /** "不在水里"检查抽样的起点数。 */
     private static final int DRY_STARTS = 4;

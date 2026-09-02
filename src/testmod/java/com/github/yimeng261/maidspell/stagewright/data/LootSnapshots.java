@@ -26,6 +26,7 @@ public final class LootSnapshots {
         GROUPS.put("fallen_sanctum", List.of("touhou_little_maid_spell:chests/fallen_sanctum", "minecraft:chests/ancient_city"));
         GROUPS.put("elven_realm", List.of("touhou_little_maid_spell:chests/elven_realm_1", "touhou_little_maid_spell:chests/elven_realm_2", "minecraft:chests/jungle_temple"));
         GROUPS.put("enchantress_footsteps_igloo", List.of("touhou_little_maid_spell:chests/enchantress_footsteps_igloo"));
+        GROUPS.put("enchantress_footsteps_oasis", List.of("touhou_little_maid_spell:chests/enchantress_footsteps_oasis"));
         GROUPS.put("enchantress_footsteps_mushroom_fields", List.of("touhou_little_maid_spell:chests/enchantress_footsteps_mushroom"));
         GROUPS.put("enchantress_footsteps_outpost", List.of("touhou_little_maid_spell:chests/enchantress_footsteps_pillager_outpost_1", "touhou_little_maid_spell:chests/enchantress_footsteps_pillager_outpost_2"));
         GROUPS.put("enchantress_footsteps_village", List.of("touhou_little_maid_spell:chests/enchantress_footsteps_village_food", "touhou_little_maid_spell:chests/enchantress_footsteps_village_asset", "touhou_little_maid_spell:chests/enchantress_footsteps_village_desert", "touhou_little_maid_spell:chests/enchantress_footsteps_village_plains", "touhou_little_maid_spell:chests/enchantress_footsteps_village_savanna", "touhou_little_maid_spell:chests/enchantress_footsteps_village_snowy", "touhou_little_maid_spell:chests/enchantress_footsteps_village_taiga"));
@@ -260,6 +261,15 @@ public final class LootSnapshots {
                 "minecraft:snowball",
                 "minecraft:sweet_berries",
                 "touhou_little_maid:power_point"));
+        REACHABLE.put("touhou_little_maid_spell:chests/enchantress_footsteps_oasis", Set.of(
+                "minecraft:glow_berries",
+                "minecraft:heart_of_the_sea",
+                "minecraft:lily_pad",
+                "minecraft:nautilus_shell",
+                "minecraft:tropical_fish",
+                "touhou_little_maid:drown_protect_bauble",
+                "touhou_little_maid:magic_protect_bauble",
+                "touhou_little_maid_spell:floating_fox_leaf"));
         REACHABLE.put("touhou_little_maid_spell:chests/enchantress_footsteps_mushroom", Set.of(
                 "minecraft:bowl",
                 "minecraft:brown_mushroom",
