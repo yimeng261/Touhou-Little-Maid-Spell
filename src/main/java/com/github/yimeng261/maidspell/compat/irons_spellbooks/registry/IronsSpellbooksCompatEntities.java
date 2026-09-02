@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.StarShadowS
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.CorruptedKnightEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ElfTemplarEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.GuardianWitchEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.HolyConstructEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ShadowAssassinEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.CompanionBlackHoleEntity;
@@ -54,6 +55,13 @@ public final class IronsSpellbooksCompatEntities {
                             .sized(0.6F, 1.95F)
                             .clientTrackingRange(8)
                             .build("elf_templar"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<GuardianWitchEntity>> GUARDIAN_WITCH =
+            ENTITY_TYPES.register("astro_mancer",
+                    () -> EntityType.Builder.of(GuardianWitchEntity::new, MobCategory.CREATURE)
+                            .sized(0.6F, 1.95F)
+                            .clientTrackingRange(10)
+                            .build("astro_mancer"));
 
     public static final DeferredHolder<EntityType<?>, EntityType<HolyConstructEntity>> HOLY_CONSTRUCT =
             ENTITY_TYPES.register("holy_construct",
@@ -147,6 +155,7 @@ public final class IronsSpellbooksCompatEntities {
         event.put(SHADOW_ASSASSIN.get(), ShadowAssassinEntity.createAttributes().build());
         event.put(ELF_TEMPLAR.get(), ElfTemplarEntity.createAttributes().build());
         event.put(HOLY_CONSTRUCT.get(), HolyConstructEntity.prepareAttributes().build());
+        event.put(GUARDIAN_WITCH.get(), GuardianWitchEntity.createAttributes().build());
         event.put(MAGICAL_WINEFOX_BOSS.get(), MagicalWinefoxBossEntity.createAttributes().build());
     }
 

@@ -35,6 +35,13 @@ public final class IronsSpellbooksCompatItems {
                             0xD9E8B5,
                             new Item.Properties()));
 
+    public static final DeferredItem<Item> GUARDIAN_WITCH_SPAWN_EGG =
+            ITEMS.register("astro_mancer_spawn_egg",
+                    () -> new DeferredSpawnEggItem(IronsSpellbooksCompatEntities.GUARDIAN_WITCH,
+                            0x2E2A55,
+                            0xF2E2A8,
+                            new Item.Properties()));
+
     public static final DeferredItem<Item> HOLY_CONSTRUCT_SPAWN_EGG =
             ITEMS.register("holy_construct_spawn_egg",
                     () -> new DeferredSpawnEggItem(IronsSpellbooksCompatEntities.HOLY_CONSTRUCT,
