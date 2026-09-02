@@ -48,10 +48,14 @@ public class StarwatchCompassItem extends CompassItem {
             Registries.STRUCTURE, new ResourceLocation(MaidSpellMod.MOD_ID, "stellar_endshore"));
 
     /**
-     * 搜索半径（区块）。星途终岸的 spacing 是 34，这个半径够扫到十几环，
-     * 正常世界里第一二环就该命中；给这么宽只是为了兜住生物群系分布特别偏的种子。
+     * 搜索半径（区块）。和原版探险家地图取同一个值。
+     *
+     * <p>{@code findNearestMapStructure} 是**同步**跑在服务端主线程上的：
+     * 半径每翻一倍要试的候选区域翻四倍，每个候选都要拿地形生成器做一次落点校验。
+     * 星途终岸的 spacing 是 34，100 已经够扫到三环开外，正常种子第一二环就命中；
+     * 而没命中时整条搜索会跑满，全服跟着卡住，所以这个数只能往小了给。
      */
-    private static final int SEARCH_RADIUS_CHUNKS = 256;
+    private static final int SEARCH_RADIUS_CHUNKS = 100;
 
     /** 右键冷却，防止连点把搜索反复跑起来。 */
     private static final int USE_COOLDOWN_TICKS = 40;

@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.item;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.renderer.item.StarEquipmentClientExtensions;
+import io.redspace.ironsspellbooks.render.StaffArmPose;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.item.CastingItem;
 import io.redspace.ironsspellbooks.item.weapons.AttributeContainer;
@@ -101,6 +102,7 @@ public class StarShadowStaffItem extends StaffItem implements GeoItem {
     /** {@code staff} 重载把 GeckoLib 渲染器和铁魔法法杖的持握姿势合在同一份扩展里。 */
     @Override
     public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(StarEquipmentClientExtensions.<StarShadowStaffItem>staff(MODEL, TEXTURE, ANIMATION, GUI_MODEL));
+        consumer.accept(StarEquipmentClientExtensions.<StarShadowStaffItem>itemWithArmPose(
+                MODEL, TEXTURE, ANIMATION, GUI_MODEL, StaffArmPose.STAFF_ARM_POS));
     }
 }

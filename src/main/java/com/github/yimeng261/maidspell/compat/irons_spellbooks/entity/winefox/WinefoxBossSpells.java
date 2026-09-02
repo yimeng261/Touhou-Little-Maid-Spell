@@ -99,15 +99,20 @@ public final class WinefoxBossSpells {
         return boss.hasEffect(IronsSpellbooksCompatEffects.VOID_PHASE.get());
     }
 
-    public static int getCooldownTicks(WinefoxBossSpellAction action, double multiplier,
-                                int fallbackTicks) {
-        AbstractSpell spell = getSpell(action);
-        return spell == null
-                ? fallbackTicks
-                : Math.max(1, Mth.ceil(spell.getSpellCooldown() * multiplier));
+    /**
+     * 她这一发法术的冷却：铁魔法给该法术定的基础冷却乘上一个倍率。
+     *
+     * <p>基础值一律从法术自己身上取，不在本模组这边另抄一张表 ——
+     * 铁魔法调平衡的时候她跟着一起变，不会悄悄跑偏。倍率是她相对普通施法者的加速。
+     */
+    public static int getCooldownTicks(WinefoxBossSpellAction action, double multiplier) {
+        return Math.max(1, Mth.ceil(getSpell(action).getSpellCooldown() * multiplier));
     }
 
-    @Nullable
+    /**
+     * 每一个 {@link WinefoxBossSpellAction} 都对得上一个已注册的法术，所以不会返回 null：
+     * switch 是穷尽的，而 {@code RegistryObject.get()} 取不到时直接抛。
+     */
     private static AbstractSpell getSpell(WinefoxBossSpellAction action) {
         return switch (action) {
             case MAGIC_MISSILE -> SpellRegistry.MAGIC_MISSILE_SPELL.get();

@@ -30,8 +30,11 @@ import java.util.function.BiPredicate;
  * {@code run}·{@code walk}(3) / {@code idle}(4)，又让得开 {@code death}·{@code sleep}·
  * {@code swim}·{@code ladder_*}(0)，与注册先后无关。
  *
- * <p>同在优先级 1 的 TLM 项（{@code sit} / {@code chair} / {@code boat} / 五种游戏）
- * 对酒狐全是 false：{@code IMaid.isMaidInSittingPose()} 默认 false，她也从不上载具。
+ * <p>同在优先级 1 的 TLM 项里，{@code chair} / {@code boat} / 五种游戏对酒狐全是 false
+ * ——她从不上载具。{@code sit} 不然：她坐在秋千上的时候
+ * {@code IMaid.isMaidInSittingPose()} 就是 true，那正是秋千姿势的来源。
+ * 同优先级里谁先命中取决于注册先后，而注册先后正是这个类不敢依赖的东西，
+ * 所以下面三条一律先排除「坐着」，把这一段让给 {@code sit}。
  *
  * <p><b>代价</b>：TLM 的 {@code attacked}(2) 对酒狐变成不可达。这与迁移前一致 ——
  * 旧的 {@code mainAnimation} 里 {@code hurtTime > 0} 走的也是待机姿势，不是受击动画。
@@ -58,9 +61,14 @@ public final class WinefoxMaidAnimationStates {
         return new AnimationState(animationName, ILoopType.EDefaultLoopTypes.LOOP, 1, predicate);
     }
 
+    /**
+     * 把谓词收窄到酒狐本人，并且排除掉「坐在秋千上」——见类注释，那一段归 TLM 的
+     * {@code sit}，两边同在优先级 1，不排除就变成谁先注册谁赢。
+     */
     private static BiPredicate<IMaid, AnimationEvent<?>> boss(
             BiPredicate<MagicalWinefoxBossEntity, AnimationEvent<?>> predicate) {
         return (maid, event) -> maid instanceof MagicalWinefoxBossEntity boss
+                && !boss.isSeated()
                 && predicate.test(boss, event);
     }
 

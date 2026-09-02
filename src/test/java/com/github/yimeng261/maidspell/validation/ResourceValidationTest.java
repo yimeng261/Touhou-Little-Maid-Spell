@@ -45,6 +45,7 @@ class ResourceValidationTest {
     /** SNBT 里 {@code "键":123b} 这种条目；键名带引号是因为我们的标记键含冒号。 */
     private static final Pattern SNBT_BYTE_ENTRY = Pattern.compile(
         "\"([^\"]+)\"\\s*:\\s*-?\\d+[bB]\\b");
+    private static final String OWN_NAMESPACE_PREFIX = "touhou_little_maid_spell:";
     private static final Map<String, String> OPTIONAL_LOOT_NAMESPACES = Map.of(
         "irons_spellbooks:", "irons_spellbooks",
         "youkaishomecoming:", "youkaishomecoming"
@@ -354,6 +355,96 @@ class ResourceValidationTest {
         return path.toString().endsWith(".json")
             && path.getParent() != null
             && path.toString().replace('\\', '/').contains("/recipes/");
+    }
+
+    /**
+     * 结构 NBT 里的箱子指名的战利品表必须真的存在。
+     *
+     * <p>缺了不会报错，只会安安静静地生成一屋子空箱子，外加一行服务端日志 ——
+     * 观星塔就这么带着七张不存在的表进了分支。结构文件是二进制的，
+     * 没有别的地方会替我们看一眼，只能在这儿扫。
+     */
+    @Test
+    void lootTablesNamedByStructuresExist() throws IOException {
+        List<String> failures = new ArrayList<>();
+        for (Path structure : filesUnder(RESOURCES, ResourceValidationTest::isStructureFile)) {
+            for (String id : ownLootTableIds(readPossiblyGzipped(structure))) {
+                Path table = RESOURCES.resolve("data/touhou_little_maid_spell/loot_tables/"
+                    + id.substring(OWN_NAMESPACE_PREFIX.length()) + ".json");
+                if (!Files.isRegularFile(table)) {
+                    failures.add(relative(structure) + " 指名了不存在的战利品表 " + id);
+                }
+            }
+        }
+        assertTrue(failures.isEmpty(), () -> String.join("\n", failures));
+    }
+
+    private static boolean isStructureFile(Path path) {
+        return path.getFileName().toString().endsWith(".nbt")
+            && path.toString().replace('\\', '/').contains("/structures/");
+    }
+
+    /** 结构 NBT 通常是 gzip 的，但不保证 —— 结构方块导出时两种都见过。 */
+    private static byte[] readPossiblyGzipped(Path file) throws IOException {
+        byte[] raw = Files.readAllBytes(file);
+        if (raw.length < 2 || (raw[0] & 0xFF) != 0x1F || (raw[1] & 0xFF) != 0x8B) {
+            return raw;
+        }
+        try (java.util.zip.GZIPInputStream in =
+                 new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(raw))) {
+            return in.readAllBytes();
+        }
+    }
+
+    /**
+     * 从解压后的字节里捞出本模组命名空间下的战利品表 id。
+     *
+     * <p>不解析 NBT：测试的 classpath 上没有 NBT 库。但也不能光按命名空间扫字符串 ——
+     * 拼图方块里的模板池 id 长得和战利品表一模一样，扫出来全是误报。
+     * 改为认 {@code LootTable} 这个键：NBT 字符串标签的排布是
+     * {@code [类型][名字长度:2][名字][值长度:2][值]}，键名长度对上 9、
+     * 且名字正好是 {@code LootTable}（不是 {@code LootTableSeed}）时，
+     * 紧随其后的那个字符串就是要找的 id。
+     */
+    private static Set<String> ownLootTableIds(byte[] data) {
+        Set<String> ids = new TreeSet<>();
+        byte[] key = "LootTable".getBytes(StandardCharsets.UTF_8);
+        for (int start = indexOf(data, key, 0); start >= 0; start = indexOf(data, key, start + 1)) {
+            // 名字长度那两个字节必须写着 9，否则这是 LootTableSeed 之类的更长的键，或者是别的巧合。
+            if (start < 2 || readUnsignedShort(data, start - 2) != key.length) {
+                continue;
+            }
+            int valueStart = start + key.length;
+            if (valueStart + 2 > data.length) {
+                continue;
+            }
+            int valueLength = readUnsignedShort(data, valueStart);
+            if (valueLength <= 0 || valueStart + 2 + valueLength > data.length) {
+                continue;
+            }
+            String value = new String(data, valueStart + 2, valueLength, StandardCharsets.UTF_8);
+            if (value.startsWith(OWN_NAMESPACE_PREFIX)) {
+                ids.add(value);
+            }
+        }
+        return ids;
+    }
+
+    private static int readUnsignedShort(byte[] data, int offset) {
+        return ((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF);
+    }
+
+    private static int indexOf(byte[] haystack, byte[] needle, int from) {
+        outer:
+        for (int start = Math.max(from, 0); start <= haystack.length - needle.length; start++) {
+            for (int offset = 0; offset < needle.length; offset++) {
+                if (haystack[start + offset] != needle[offset]) {
+                    continue outer;
+                }
+            }
+            return start;
+        }
+        return -1;
     }
 
     private static List<Path> filesUnder(Path root, java.util.function.Predicate<Path> predicate)

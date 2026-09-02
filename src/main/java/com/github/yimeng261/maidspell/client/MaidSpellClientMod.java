@@ -5,8 +5,6 @@ import com.github.yimeng261.maidspell.client.model.SharedHaloModel;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
 import com.github.yimeng261.maidspell.client.renderer.entity.StarShadowSpearRenderer;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -85,15 +83,14 @@ public class MaidSpellClientMod {
     }
 
     /**
-     * 星影长剑/星影法杖物品栏用的平面图标模型。
+     * 需要额外烘焙的物品模型。
      *
-     * <p>两把武器的物品模型是 {@code builtin/entity}，没任何东西引用这两份平面模型，
-     * 不在这里登记就不会被烘焙，取出来就是紫黑方块。
+     * <p>转交给 {@code IronsSpellbooksCompat}：要登记的两份都挂在继承铁魔法基类的物品上，
+     * 在这儿直接读它们的静态字段会强制加载那两个类，缺铁魔法时客户端当场崩。
      */
     @SubscribeEvent
     public static void onRegisterAdditionalModels(ModelEvent.RegisterAdditional event) {
-        event.register(StarShadowLongswordItem.GUI_MODEL);
-        event.register(StarShadowStaffItem.GUI_MODEL);
+        IronsSpellbooksCompat.initClientModels(event);
     }
 
     @SubscribeEvent

@@ -1,7 +1,6 @@
 package com.github.yimeng261.maidspell.client.renderer.item;
 
 import com.github.yimeng261.maidspell.client.model.item.StarEquipmentGeoModel;
-import io.redspace.ironsspellbooks.render.StaffArmPose;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.resources.ResourceLocation;
@@ -45,18 +44,22 @@ public final class StarEquipmentClientExtensions {
     }
 
     /**
-     * 法杖用这个：除了 GeckoLib 渲染器，再接上铁魔法法杖那套持握姿势 —— 手臂微微上抬，
-     * 并跟着视角俯仰。
+     * 要顺带指定持握姿势的装备走这个 —— 比如法杖，手臂微微上抬并跟着视角俯仰。
      *
-     * <p>铁魔法是在 {@code StaffItem.initializeClient} 里单独 accept 一份只带
-     * {@code getArmPose} 的扩展；一个物品只能给一份 {@link IClientItemExtensions}，
+     * <p>一个物品只能给一份 {@link IClientItemExtensions}，而铁魔法是在
+     * {@code StaffItem.initializeClient} 里单独 accept 一份只带 {@code getArmPose} 的扩展，
      * 所以这里把姿势和渲染器合到同一份里。
+     *
+     * <p>姿势由调用方传进来，本类不认识任何一个可选模组的类型：
+     * 这个文件在核心包下，缺了那个模组照样要能加载。
      */
-    public static <T extends Item & GeoAnimatable> IClientItemExtensions staff(ResourceLocation model,
-                                                                               ResourceLocation texture,
-                                                                               ResourceLocation animation,
-                                                                               @Nullable ResourceLocation guiModel) {
-        return withArmPose(model, texture, animation, guiModel, StaffArmPose.STAFF_ARM_POS);
+    public static <T extends Item & GeoAnimatable> IClientItemExtensions itemWithArmPose(
+            ResourceLocation model,
+            ResourceLocation texture,
+            ResourceLocation animation,
+            @Nullable ResourceLocation guiModel,
+            @Nullable HumanoidModel.ArmPose armPose) {
+        return StarEquipmentClientExtensions.<T>withArmPose(model, texture, animation, guiModel, armPose);
     }
 
     /**

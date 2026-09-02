@@ -354,7 +354,8 @@ tasks.register('validateResources', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     filter {
-        includeTestsMatching 'com.github.yimeng261.maidspell.validation.ResourceValidationTest'
+        // 整个 validation 包，不是单独一个类：新加的校验测试不该还要记得回来改这一行。
+        includeTestsMatching 'com.github.yimeng261.maidspell.validation.*'
     }
 }
 

@@ -500,6 +500,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 而她恰恰在「坐着」和「战败」这两种状态下都是 immobile ——
         // 台词播报和回秋千的倒计时放那边会永远停在第一 tick。
         this.dialogue.tick(this);
+        this.tickSeatedAnchor();
         this.tickReturnHome();
         this.tickTamingArena();
         if (this.tamingWindowTicks > 0) {
@@ -842,12 +843,18 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.setTradingPlayer(player);
         OptionalInt containerId = player.openMenu(new SimpleMenuProvider(
                 (id, inventory, opener) -> new MerchantMenu(id, inventory, this), this.getDisplayName()));
-        if (containerId.isPresent()) {
-            MerchantOffers current = this.getOffers();
-            if (!current.isEmpty()) {
-                player.sendMerchantOffers(containerId.getAsInt(), current, 1,
-                        this.getVillagerXp(), this.showProgressBar(), false);
-            }
+        if (containerId.isEmpty()) {
+            // 菜单没开起来（别的模组拦了、玩家手上已经开着别的界面），
+            // 交易对象就得撤回来。它只在 MerchantMenu.removed() 里清，
+            // 而那个方法要菜单真的开过才会跑；留着的话 mobInteract 里
+            // 「getTradingPlayer() == null」永远不成立，之后再也点不开交易。
+            this.setTradingPlayer(null);
+            return;
+        }
+        MerchantOffers current = this.getOffers();
+        if (!current.isEmpty()) {
+            player.sendMerchantOffers(containerId.getAsInt(), current, 1,
+                    this.getVillagerXp(), this.showProgressBar(), false);
         }
     }
 
@@ -1061,7 +1068,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return;
         }
         LivingEntity currentTarget = this.getTarget();
-        if (currentTarget instanceof Player player && isAttackablePlayer(player)) {
+        if (currentTarget instanceof Player player && this.isViableTarget(player)) {
             return;
         }
         // 直接扫 level().players()，不走 getEntitiesOfClass：后者要把 48 格立方体覆盖到的
@@ -1071,7 +1078,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         Player nearestPlayer = null;
         double nearestDistanceSqr = Double.MAX_VALUE;
         for (Player player : this.level().players()) {
-            if (!isAttackablePlayer(player)) {
+            if (!this.isViableTarget(player)) {
                 continue;
             }
             double distanceSqr = this.distanceToSqr(player);
@@ -1083,10 +1090,6 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (nearestPlayer != null) {
             this.setTarget(nearestPlayer);
         }
-    }
-
-    private static boolean isAttackablePlayer(Player player) {
-        return player.isAlive() && !player.isCreative() && !player.isSpectator();
     }
 
     @Override
@@ -1180,11 +1183,17 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (this.level().isClientSide || amount <= 0.0F) {
             return false;
         }
-        this.trueDamageUsed = true;
         DamageSource source = attacker != null
                               ? this.damageSources().mobAttack(attacker)
                               : this.damageSources().magic();
-        return this.hurt(source, amount);
+        boolean hurt = this.hurt(source, amount);
+        // 记在 hurt 之后：坐着、战败、转场无敌这三种情况下这一击是整个被丢掉的，
+        // 一点伤害都没造成。在前面记的话，一次打空的真伤也会把这一场判成受限，
+        // 玩家白白丢掉星云核心和两条特殊交易。
+        if (hurt) {
+            this.trueDamageUsed = true;
+        }
+        return hurt;
     }
 
     /**
@@ -1321,6 +1330,29 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     /**
+     * 坐着的时候把她钉在秋千上。
+     *
+     * <p>两件事都只能在 {@code aiStep} 这一层做，理由和 {@link #tickReturnHome} 一样：
+     * {@code SEATED} 默认就是 true，于是 {@link #isImmobile} 从第一 tick 起就为真，
+     * {@code customServerAiStep}（唯一调 {@code setNoGravity} 的地方）根本不跑，
+     * 而 {@code travel()} 照跑不误 —— 秋千悬在半空，她第一 tick 就会掉下去。
+     *
+     * <p>{@code homePos} 同理要在这儿兜一次：它只在 {@code finalizeSpawn} 里赋值，
+     * 而结构生成走的是 {@code StructureTemplate.placeEntities}，那条路不调
+     * {@code finalizeSpawn}。空着的话战败之后回不了秋千。第一次坐定的位置就是她的家。
+     */
+    private void tickSeatedAnchor() {
+        if (!this.isSeated()) {
+            return;
+        }
+        if (this.homePos == null) {
+            this.homePos = this.blockPosition();
+        }
+        this.setNoGravity(true);
+        this.setDeltaMovement(Vec3.ZERO);
+    }
+
+    /**
      * 驯服挑战期间，每 tick 把擂台登记一次，让圈里的女仆闭嘴。
      *
      * <p>区域自己会过期（见 {@link MaidSuppressionZone}），所以这里只管刷新，
@@ -1441,6 +1473,19 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.setInvulnerable(false);
         this.entityData.set(DEFEATED, false);
         this.entityData.set(SEATED, true);
+        // 回满血、退回一阶段，这一场才算真的翻篇。
+        //
+        // 少了回血这一句就是一个无限刷战利品的口子：战败时她被钉在 1 点血上，
+        // 而 hurt() 里那句「血 <= 地板就 beginDefeat」是无条件判的 ——
+        // 再递一颗核心，她带着 1 点血站起来，下一击立刻又走一遍战败流程，
+        // 战利品表和星云核心跟着再发一次。
+        //
+        // 阶段标志也一并撤掉：光回血的话，tickPhaseThresholds 会在她起身那一刻
+        // 判定「被治疗回血」而立刻起一段退形转场，下一场开场就是 120t 无敌。
+        this.setHealth(this.getMaxHealth());
+        this.entityData.set(PHASE_TWO, false);
+        this.entityData.set(TRANSITIONING, false);
+        this.phaseTransitionTicks = 0;
         this.equipStarMajoGear();
         // 驯服挑战才有这个窗口：她坐下之后愿意让人靠近，这段时间里递蛋糕才作数。
         this.tamingWindowTicks = this.isTamingChallenge() ? TAMING_WINDOW_TICKS : 0;
@@ -1590,8 +1635,13 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 玩家的血只会渐近 1 而永远碰不到 1 —— 那样 {@link #isViableTarget} 就一直认为他还能打，她会追着一个永远打不服的人不放。
      *
      * <p>只保护玩家。小怪该死还是得死，否则召唤物永远清不掉。
+     *
+     * <p><b>不挂 {@code @Mod.EventBusSubscriber}</b>，由
+     * {@code IronsSpellbooksCompat.register} 在确认铁魔法在场之后手动注册。
+     * 注解是 Forge 扫描整个 jar 自动登记的，缺铁魔法时照样会挂上去；
+     * 而 {@code isWinefoxDamage} 要解析外层类的字面量，外层类的父类
+     * {@code AbstractSpellCastingMob} 不在，玩家第一次挨打就是 NoClassDefFoundError。
      */
-    @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
     public static final class NonLethalGuard {
 
         private NonLethalGuard() {

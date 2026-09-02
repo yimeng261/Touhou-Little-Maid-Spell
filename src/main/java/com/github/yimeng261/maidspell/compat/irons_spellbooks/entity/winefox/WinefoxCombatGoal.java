@@ -36,6 +36,12 @@ final class WinefoxCombatGoal extends Goal {
     private static final double HOP_VERTICAL_SPEED = 0.55D;
     private static final double HOP_HORIZONTAL_SPEED = 0.35D;
 
+    /** 一阶段的施法冷却相对法术基础值的倍率，见 {@link #getSpellCooldown}。 */
+    private static final double PHASE_ONE_COOLDOWN_SCALE = 0.2D;
+
+    /** 二阶段的施法冷却倍率。比一阶段松，节奏改由近战撑。 */
+    private static final double PHASE_TWO_COOLDOWN_SCALE = 0.5D;
+
     private static final List<WinefoxBossSpellAction> PHASE_ONE_SPELLS = List.of(
         WinefoxBossSpellAction.MAGIC_MISSILE,
         WinefoxBossSpellAction.MAGIC_ARROW,
@@ -281,7 +287,8 @@ final class WinefoxCombatGoal extends Goal {
             if (!WinefoxBossSpells.hasVoidPhase(this.boss)
                 && this.boss.getRandom().nextFloat() < 0.5F
                 && this.castAction(target, WinefoxBossSpellAction.VOID_PHASE, 1)) {
-                this.spellCooldowns.put(WinefoxBossSpellAction.VOID_PHASE, 400);
+                this.spellCooldowns.put(WinefoxBossSpellAction.VOID_PHASE,
+                        this.getSpellCooldown(WinefoxBossSpellAction.VOID_PHASE));
             }
         }
 
@@ -512,39 +519,28 @@ final class WinefoxCombatGoal extends Goal {
         };
     }
 
+    /**
+     * 一阶段的施法冷却压到基础值的 {@value #PHASE_ONE_COOLDOWN_SCALE} 倍，二阶段
+     * {@value #PHASE_TWO_COOLDOWN_SCALE} 倍。
+     *
+     * <p>一阶段更密是有意的：那时候她只有法杖，靠出手频率撑压力；
+     * 二阶段换长剑近身，节奏改由近战和位移撑，法术反而要留出间隙。
+     *
+     * <p>这里原先还各挂了一张按法术写死的 fallback 表，用于
+     * {@code getCooldownTicks} 取不到法术时兜底。但那张表永远读不到 ——
+     * 法术表是穷尽的、取不到直接抛，于是那二十来行看着像手感基线、
+     * 改了却毫无效果。删掉了。
+     */
     private int getSpellCooldown(WinefoxBossSpellAction action) {
-        int fallbackTicks;
-        if (!this.phaseTwo) {
-            fallbackTicks = switch (action) {
-                case MAGIC_MISSILE -> 40;
-                case MAGIC_ARROW -> 24;
-                case SUMMON_SWORDS -> 600;
-                case FIREBALL -> 48;
-                case LIGHTNING_LANCE -> 60;
-                case HEAL -> 120;
-                case MODIFIED_STARFALL -> 120;
-                case MAGIC_SHOTGUN -> 32;
-                case COUNTERSPELL -> 40;
-                default -> 80;
-            };
-            return this.scaleByOmen(WinefoxBossSpells.getCooldownTicks(action, 0.2D, fallbackTicks));
-        }
-        fallbackTicks = switch (action) {
-            case MAGIC_SHOTGUN -> 40;
-            case ECHOING_STRIKES, SHADOW_SLASH -> 150;
-            case MODIFIED_TELEPORT, DIVINE_SMITE -> 100;
-            case HEAL -> 300;
-            case FLAMING_STRIKE -> 160;
-            default -> 120;
-        };
-        return this.scaleByOmen(WinefoxBossSpells.getCooldownTicks(action, 0.5D, fallbackTicks));
+        double scale = this.phaseTwo ? PHASE_TWO_COOLDOWN_SCALE : PHASE_ONE_COOLDOWN_SCALE;
+        return this.scaleByOmen(WinefoxBossSpells.getCooldownTicks(action, scale));
     }
 
     /**
      * 按挑战者带的不祥之兆等级压缩冷却，也就是流程图 T2 里的「施法频率变快」。
      *
-     * <p>放在这一个出口上：上面两张 switch 表是手感基线，难度是另一个维度，
-     * 混进表里以后调任何一边都要重新对另一边。普通挑战时系数是 1，等于没这回事。
+     * <p>放在这一个出口上：上面那两个阶段系数是手感基线，难度是另一个维度，
+     * 混进去以后调任何一边都要重新对另一边。普通挑战时系数是 1，等于没这回事。
      */
     private int scaleByOmen(int cooldownTicks) {
         return Math.max(1, Mth.ceil(cooldownTicks * this.boss.spellCooldownScale()));
