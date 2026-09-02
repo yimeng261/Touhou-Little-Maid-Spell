@@ -24,6 +24,7 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -41,6 +42,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.BossEvent;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -68,6 +70,7 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
@@ -77,6 +80,7 @@ import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.NetworkHooks;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
@@ -97,6 +101,17 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 我们从不调 {@code die()}，于是客户端的 {@code deathTime} 永远是 0 —— 战败动画一帧都不会播，玩家看到的就是她原地凭空消失。
      */
     private static final EntityDataAccessor<Boolean> DEFEATED =
+        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
+
+    /**
+     * 正坐在秋千上等人来邀战。
+     *
+     * <p>必须同步：坐姿动画整条由客户端的 {@code main} 通道驱动，
+     * TLM 在 {@code AnimationRegister} 里把 {@code sit} 挂在
+     * {@code maid.isMaidInSittingPose()} 上（优先级 1，压得住 walk / idle），
+     * 所以只要 {@link #isMaidInSittingPose()} 报得出来，动画一行都不用自己写。
+     */
+    private static final EntityDataAccessor<Boolean> SEATED =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
 
     /**
@@ -177,6 +192,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private int phaseTransitionTicks;
     private boolean phaseTransitionKnockbackReleased;
     private boolean phaseTransitionWeaponSwapped;
+    /** 秋千位。纯服务端，客户端只要知道"在不在坐"，不需要知道坐在哪。 */
+    @Nullable
+    private BlockPos homePos;
+    /** 开场白的排队播报，见 {@link WinefoxDialogue}。 */
+    private final WinefoxDialogue dialogue = new WinefoxDialogue();
     /**
      * 本次转场结束后该处于二阶段还是一阶段。进二阶段为 true，退形为 false。
      */
@@ -280,7 +300,20 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         SpawnGroupData result = super.finalizeSpawn(level, difficulty, reason, spawnData, dataTag);
         // 构造器里已经装备过了，这里只是兜底：Mob.finalizeSpawn 可能按难度重置装备槽。
         this.equipStarMajoGear();
+        // 生成点即秋千位：结构里她本来就摆在秋千上，战败之后要回到这儿。
+        this.homePos = this.blockPosition();
         return result;
+    }
+
+    /**
+     * 秋千的位置。
+     *
+     * <p>没做成方块实体也没做成坐骑，就取她的生成点——结构 nbt 里她本来就摆在秋千上，
+     * 坐姿完全由动画表现。少一整套方块实体，也少一条"秋千被拆了怎么办"的边界。
+     */
+    @Nullable
+    public BlockPos homePos() {
+        return this.homePos;
     }
 
     /**
@@ -416,6 +449,23 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.entityData.define(ACTION_SERIAL, 0);
         this.entityData.define(PHASE_TWO, false);
         this.entityData.define(TRANSITIONING, false);
+        // 默认坐着：她是被邀战才起身的，不是刷出来就打。
+        this.entityData.define(SEATED, true);
+    }
+
+    /**
+     * 她还坐在秋千上，没有接受挑战。
+     */
+    public boolean isSeated() {
+        return this.entityData.get(SEATED);
+    }
+
+    /**
+     * TLM 的 {@code main} 动画通道靠这一位选 {@code sit}。
+     */
+    @Override
+    public boolean isMaidInSittingPose() {
+        return this.isSeated();
     }
 
     @Override
@@ -459,8 +509,15 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      *
      * <p>把人打到 1 点血就算赢了（见 {@link NonLethalGuard}），再追着打只会变成
      * 一个永远打不死人的骚扰循环。所以濒死的玩家直接从目标池里排除。
+     *
+     * <p>坐着的时候一律返回 false。这一条挡在<b>目标选择器的谓词</b>上，
+     * 比在 {@code customServerAiStep} 里每 tick 清目标可靠——那边清掉之后，
+     * 同一 tick 里 {@code NearestAttackableTargetGoal} 还能立刻再选一个回来。
      */
     boolean isViableTarget(@Nullable LivingEntity candidate) {
+        if (this.isSeated()) {
+            return false;
+        }
         if (candidate == null || !candidate.isAlive()) {
             return false;
         }
@@ -643,7 +700,42 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      */
     @Override
     protected boolean isImmobile() {
-        return this.isDefeated() || super.isImmobile();
+        return this.isDefeated() || this.isSeated() || super.isImmobile();
+    }
+
+    /**
+     * 递上星云核心即为邀战。
+     *
+     * <p>只认坐着的时候：打起来之后再塞一颗核心不该有任何效果，
+     * 已经战败躺下的更不该被"重新激活"。
+     */
+    @Override
+    public @NotNull InteractionResult mobInteract(@NotNull Player player, @NotNull InteractionHand hand) {
+        ItemStack held = player.getItemInHand(hand);
+        if (!this.isSeated() || this.isDefeated()
+            || !held.is(MaidSpellItems.NEBULA_CORE.get())) {
+            return super.mobInteract(player, hand);
+        }
+        if (this.level().isClientSide) {
+            return InteractionResult.SUCCESS;
+        }
+        if (!player.getAbilities().instabuild) {
+            held.shrink(1);
+        }
+        this.acceptChallenge(player);
+        return InteractionResult.CONSUME;
+    }
+
+    /**
+     * 接受挑战：起身、亮血条、放开场白、锁定挑战者。
+     */
+    private void acceptChallenge(Player challenger) {
+        this.entityData.set(SEATED, false);
+        this.bossEvent.setVisible(true);
+        this.dialogue.speak(WinefoxDialogue.challengeAccepted());
+        this.setTarget(challenger);
+        this.level().playSound(null, this.blockPosition(),
+            SoundEvents.BEACON_ACTIVATE, this.getSoundSource(), 1.0F, 1.2F);
     }
 
     /**
@@ -660,6 +752,13 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     @Override
     protected void customServerAiStep() {
         super.customServerAiStep();
+        this.dialogue.tick(this);
+        if (this.isSeated()) {
+            // 坐着的时候不索敌、不转阶段、不结算血条：这一场还没开始。
+            this.setTarget(null);
+            this.bossEvent.setVisible(false);
+            return;
+        }
         this.bossEvent.setProgress(this.getHealth() / this.getMaxHealth());
         this.prioritizePlayerTarget();
 
@@ -827,6 +926,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return super.hurt(source, amount);
         }
         if (this.isDefeated()) {
+            return false;
+        }
+        // 坐着的时候打不动她：这一场得用星云核心正式邀战，偷袭不算数。
+        if (this.isSeated()) {
             return false;
         }
         float adjustedAmount = amount;
@@ -1050,12 +1153,22 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         tag.putInt("WinefoxTransitionTicks", this.phaseTransitionTicks);
         tag.putBoolean("WinefoxTransitionToPhaseTwo", this.phaseTransitionTarget);
         tag.putBoolean("WinefoxDefeated", this.isDefeated());
+        tag.putBoolean("WinefoxSeated", this.isSeated());
+        if (this.homePos != null) {
+            tag.put("WinefoxHomePos", NbtUtils.writeBlockPos(this.homePos));
+        }
     }
 
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         this.entityData.set(PHASE_TWO, tag.getBoolean("WinefoxPhaseTwo"));
+        if (tag.contains("WinefoxHomePos")) {
+            this.homePos = NbtUtils.readBlockPos(tag.getCompound("WinefoxHomePos"));
+        }
+        // 缺键的是坐姿这套做出来之前存下的个体，那时候她们都是站着打的，
+        // getBoolean 的默认 false 正好，不必特判。
+        this.entityData.set(SEATED, tag.getBoolean("WinefoxSeated"));
         // 她战败之后是留在场上的，读档得接着躺着，不能爬起来重新开打。
         this.entityData.set(DEFEATED, tag.getBoolean("WinefoxDefeated"));
         if (this.isDefeated()) {
