@@ -70,6 +70,13 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.trading.Merchant;
+import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.trading.MerchantOffers;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.inventory.MerchantMenu;
+import net.minecraft.sounds.SoundEvent;
+import java.util.OptionalInt;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.ITrueDamageRedirect;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -86,7 +93,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
-    implements Enemy, IMaid, CastingAnimateStateAccessor, ITrueDamageRedirect {
+    implements Enemy, IMaid, CastingAnimateStateAccessor, ITrueDamageRedirect, Merchant {
     private static final EntityDataAccessor<Integer> ACTION =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> ACTION_SERIAL =
@@ -222,6 +229,13 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private int returnHomeTicks;
     /** 连续多少 tick 没有可打的目标了，见 {@link #tickBattleOver}。 */
     private int noTargetTicks;
+    /** 她输过至少一次，交易就此开放。落 NBT，不随重新挑战撤销。 */
+    private boolean tradingUnlocked;
+    /** 正在跟她做买卖的玩家；交易表现算，见 {@link #getOffers}。 */
+    @Nullable
+    private Player tradingPlayer;
+    @Nullable
+    private MerchantOffers offers;
     /**
      * 本次转场结束后该处于二阶段还是一阶段。进二阶段为 true，退形为 false。
      */
@@ -746,19 +760,114 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      */
     @Override
     public @NotNull InteractionResult mobInteract(@NotNull Player player, @NotNull InteractionHand hand) {
-        ItemStack held = player.getItemInHand(hand);
-        if (!this.isSeated() || this.isDefeated()
-            || !held.is(MaidSpellItems.NEBULA_CORE.get())) {
+        if (!this.isSeated() || this.isDefeated()) {
             return super.mobInteract(player, hand);
         }
-        if (this.level().isClientSide) {
-            return InteractionResult.SUCCESS;
+        ItemStack held = player.getItemInHand(hand);
+        if (held.is(MaidSpellItems.NEBULA_CORE.get())) {
+            if (this.level().isClientSide) {
+                return InteractionResult.SUCCESS;
+            }
+            if (!player.getAbilities().instabuild) {
+                held.shrink(1);
+            }
+            this.acceptChallenge(player);
+            return InteractionResult.CONSUME;
         }
-        if (!player.getAbilities().instabuild) {
-            held.shrink(1);
+        // 递核心是邀战，空手（或拿着别的东西）来找她就是做买卖。
+        if (this.tradingUnlocked && this.getTradingPlayer() == null) {
+            if (this.level().isClientSide) {
+                return InteractionResult.SUCCESS;
+            }
+            this.startTrading(player);
+            return InteractionResult.CONSUME;
         }
-        this.acceptChallenge(player);
-        return InteractionResult.CONSUME;
+        return super.mobInteract(player, hand);
+    }
+
+    // ==================== 交易（流程图 B10 / R2 / R3） ====================
+
+    /**
+     * 打开交易界面。
+     *
+     * <p>抄的是 {@code AbstractVillager.openTradingScreen}：那个方法在 {@code AbstractVillager}
+     * 上而不在 {@link Merchant} 接口里，实现接口拿不到，只能照着写一遍。
+     */
+    private void startTrading(Player player) {
+        this.setTradingPlayer(player);
+        OptionalInt containerId = player.openMenu(new SimpleMenuProvider(
+                (id, inventory, opener) -> new MerchantMenu(id, inventory, this), this.getDisplayName()));
+        if (containerId.isPresent()) {
+            MerchantOffers current = this.getOffers();
+            if (!current.isEmpty()) {
+                player.sendMerchantOffers(containerId.getAsInt(), current, 1,
+                        this.getVillagerXp(), this.showProgressBar(), false);
+            }
+        }
+    }
+
+    @Override
+    public void setTradingPlayer(@Nullable Player player) {
+        this.tradingPlayer = player;
+    }
+
+    @Override
+    public @Nullable Player getTradingPlayer() {
+        return this.tradingPlayer;
+    }
+
+    /**
+     * 交易表按当前的限制标志现算。
+     *
+     * <p>不缓存到字段里：{@link #isRestricted} 会随每一场重打而变，
+     * 缓存就得再写一套失效逻辑，而这张表一共五条，算一遍不值一提。
+     */
+    @Override
+    public @NotNull MerchantOffers getOffers() {
+        if (this.offers == null) {
+            this.offers = WinefoxTrades.build(this.isRestricted());
+        }
+        return this.offers;
+    }
+
+    @Override
+    public void overrideOffers(@NotNull MerchantOffers newOffers) {
+        this.offers = newOffers;
+    }
+
+    @Override
+    public void notifyTrade(@NotNull MerchantOffer offer) {
+        offer.increaseUses();
+        this.playSound(this.getNotifyTradeSound(), 1.0F, 1.0F);
+    }
+
+    @Override
+    public void notifyTradeUpdated(@NotNull ItemStack stack) {
+    }
+
+    @Override
+    public int getVillagerXp() {
+        return 0;
+    }
+
+    @Override
+    public void overrideXp(int xp) {
+    }
+
+    @Override
+    public boolean showProgressBar() {
+        // 她没有村民那套等级，进度条只会是一根永远空着的槽。
+        return false;
+    }
+
+    @Override
+    public @NotNull SoundEvent getNotifyTradeSound() {
+        return SoundEvents.AMETHYST_BLOCK_CHIME;
+    }
+
+    @Override
+    public boolean isClientSide() {
+        return this.level().isClientSide;
     }
 
     /**
@@ -770,6 +879,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.dialogue.speak(WinefoxDialogue.challengeAccepted());
         this.resetBattleTally();
         this.entityData.set(RESTRICTED, false);
+        // 限制标志刚被清零，旧表跟着作废；打起来了也不该还开着交易界面。
+        this.offers = null;
+        this.setTradingPlayer(null);
         this.setTarget(challenger);
         this.level().playSound(null, this.blockPosition(),
             SoundEvents.BEACON_ACTIVATE, this.getSoundSource(), 1.0F, 1.2F);
@@ -1080,6 +1192,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 战败那一刻把这一场的归属结算下来，之后回秋千、发战利品都读它。
         this.entityData.set(RESTRICTED, this.computeRestricted());
         this.dropDefeatRewards(source);
+        // 输过一次就开放交易；限制标志刚刚才定下来，旧的交易表作废，下次打开时按新标志现算。
+        this.tradingUnlocked = true;
+        this.offers = null;
         this.returnHomeTicks = DEFEAT_RETURN_HOME_TICKS;
     }
 
@@ -1357,6 +1472,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         tag.putFloat("WinefoxTotalDamageTaken", this.totalDamageTaken);
         tag.putFloat("WinefoxMaidDamageTaken", this.maidDamageTaken);
         tag.putBoolean("WinefoxTrueDamageUsed", this.trueDamageUsed);
+        tag.putBoolean("WinefoxTradingUnlocked", this.tradingUnlocked);
         if (this.homePos != null) {
             tag.put("WinefoxHomePos", NbtUtils.writeBlockPos(this.homePos));
         }
@@ -1377,6 +1493,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.totalDamageTaken = tag.getFloat("WinefoxTotalDamageTaken");
         this.maidDamageTaken = tag.getFloat("WinefoxMaidDamageTaken");
         this.trueDamageUsed = tag.getBoolean("WinefoxTrueDamageUsed");
+        this.tradingUnlocked = tag.getBoolean("WinefoxTradingUnlocked");
         // 她战败之后是留在场上的，读档得接着躺着，不能爬起来重新开打。
         this.entityData.set(DEFEATED, tag.getBoolean("WinefoxDefeated"));
         if (this.isDefeated()) {
