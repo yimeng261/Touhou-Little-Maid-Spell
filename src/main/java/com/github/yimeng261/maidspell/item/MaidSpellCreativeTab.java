@@ -71,6 +71,7 @@ public class MaidSpellCreativeTab {
                      output.accept(IronsSpellbooksCompatItems.SHADOW_ASSASSIN_SPAWN_EGG.get());
                      output.accept(IronsSpellbooksCompatItems.ELF_TEMPLAR_SPAWN_EGG.get());
                      output.accept(IronsSpellbooksCompatItems.HOLY_CONSTRUCT_SPAWN_EGG.get());
+                     output.accept(IronsSpellbooksCompatItems.GUARDIAN_WITCH_SPAWN_EGG.get());
                  }
             })
             .build());

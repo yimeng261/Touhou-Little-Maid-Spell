@@ -38,6 +38,10 @@ public final class IronsSpellbooksCompatClient {
                 new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
                         new ResourceLocation(MaidSpellMod.MOD_ID, "geo/elf_templar.geo.json"),
                         new ResourceLocation(MaidSpellMod.MOD_ID, "textures/entity/elf_templar.png"))));
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.GUARDIAN_WITCH.get(), context ->
+                new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
+                        new ResourceLocation(MaidSpellMod.MOD_ID, "geo/guardian_witch.geo.json"),
+                        new ResourceLocation(MaidSpellMod.MOD_ID, "textures/entity/guardian_witch.png"))));
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.HOLY_CONSTRUCT.get(), HolyConstructRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_STARFALL_CLOUD.get(), NoopRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_STARFALL_COMET.get(), context ->

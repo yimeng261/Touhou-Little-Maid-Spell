@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.registry;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.CorruptedKnightEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ElfTemplarEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.GuardianWitchEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.HolyConstructEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ShadowAssassinEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCloudEntity;
@@ -58,6 +59,13 @@ public final class IronsSpellbooksCompatEntities {
                             .clientTrackingRange(10)
                             .build("holy_construct"));
 
+    public static final RegistryObject<EntityType<GuardianWitchEntity>> GUARDIAN_WITCH =
+            ENTITY_TYPES.register("guardian_witch",
+                    () -> EntityType.Builder.of(GuardianWitchEntity::new, MobCategory.CREATURE)
+                            .sized(0.6F, 1.95F)
+                            .clientTrackingRange(10)
+                            .build("guardian_witch"));
+
     public static final RegistryObject<EntityType<ModifiedStarfallCloudEntity>> MODIFIED_STARFALL_CLOUD =
             ENTITY_TYPES.register("starfall_modified_cloud",
                     () -> EntityType.Builder.<ModifiedStarfallCloudEntity>of(ModifiedStarfallCloudEntity::new, MobCategory.MISC)
@@ -105,6 +113,7 @@ public final class IronsSpellbooksCompatEntities {
         event.put(SHADOW_ASSASSIN.get(), ShadowAssassinEntity.createAttributes().build());
         event.put(ELF_TEMPLAR.get(), ElfTemplarEntity.createAttributes().build());
         event.put(HOLY_CONSTRUCT.get(), HolyConstructEntity.prepareAttributes().build());
+        event.put(GUARDIAN_WITCH.get(), GuardianWitchEntity.createAttributes().build());
         event.put(MAGICAL_WINEFOX_BOSS.get(), MagicalWinefoxBossEntity.createAttributes().build());
     }
 

@@ -43,6 +43,13 @@ public final class IronsSpellbooksCompatItems {
                             0xFFD54F,
                             new Item.Properties()));
 
+    public static final RegistryObject<Item> GUARDIAN_WITCH_SPAWN_EGG =
+            ITEMS.register("guardian_witch_spawn_egg",
+                    () -> new ForgeSpawnEggItem(IronsSpellbooksCompatEntities.GUARDIAN_WITCH,
+                            0x2E2A55,
+                            0xF2E2A8,
+                            new Item.Properties()));
+
     // 万法酒狐佩戴的星之魔女系列装备
     public static final RegistryObject<Item> STAR_SHADOW_LONGSWORD =
             ITEMS.register("star_shadow_longsword", StarShadowLongswordItem::new);
