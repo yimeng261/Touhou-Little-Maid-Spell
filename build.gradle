@@ -129,50 +129,53 @@ dependencies {
     implementation fg.deobf("curse.maven:touhou-little-maid-355044:8061847")
 
     implementation fg.deobf("curse.maven:applied-energistics-2-223794:7148487")
-    implementation fg.deobf("curse.maven:guideme-1173950:7127447")
+    implementation fg.deobf("curse.maven:guideme-1173950:8204776")
 
 
     runtimeOnly fg.deobf("maven.modrinth:caelus:3.2.0+1.20.1-forge")
     runtimeOnly fg.deobf("maven.modrinth:playeranimator:1.0.2-rc1+1.20-forge")
     //implementation fg.deobf("maven.modrinth:irons-spells-n-spellbooks:1.20.1-3.4.0.9-forge")
-    implementation fg.deobf("curse.maven:irons-spells-n-spellbooks-855414:7402504")
+    implementation fg.deobf("curse.maven:irons-spells-n-spellbooks-855414:8680180")
+    // ISS 3.16 起把公共代码拆到独立前置 Iron's Lib，缺了它 FML 会直接中止模组加载
+    implementation fg.deobf("curse.maven:irons-lib-1492763:8364892")
 
-    implementation fg.deobf("maven.modrinth:ars-nouveau:4.12.6-forge,1.20.1")
+    implementation fg.deobf("maven.modrinth:ars-nouveau:4.12.7-forge,1.20.1")
 
     //implementation fg.deobf("maven.modrinth:goety:2.5.34.3-forge,1.20.1")3
-    implementation fg.deobf("maven.modrinth:goety:2.5.48.0-forge,1.20.1")
+    implementation fg.deobf("maven.modrinth:goety:2.5.57.3-forge,1.20.1")
 
-    runtimeOnly fg.deobf("maven.modrinth:patchouli:1.20.1-84.1-forge")
+    runtimeOnly fg.deobf("maven.modrinth:patchouli:1.20.1-85-forge")
     implementation fg.deobf("maven.modrinth:psi:1.20.1-1.20.1-102-forge")
 
-    implementation fg.deobf("maven.modrinth:youkaishomecoming:2.6.1-forge,1.20.1")
+    implementation fg.deobf("maven.modrinth:youkaishomecoming:2.7.0-forge,1.20.1")
     compileOnly files("libs/l2serial-1.2.4.jar")
-    implementation fg.deobf("maven.modrinth:farmers-delight:1.20.1-1.2.9-forge")
+    implementation fg.deobf("maven.modrinth:farmers-delight:1.20.1-1.3.4-forge")
     implementation fg.deobf("maven.modrinth:l2library:2.5.3-forge,1.20.1")
     compileOnly fg.deobf(jarJar("com.tterrag.registrate:Registrate:${registrate_version}")) {
         transitive = false
         jarJar.ranged(it, "[MC1.20-1.3.3,)")
     }
 
-    implementation fg.deobf("maven.modrinth:slashblade-resharped:1.6.54-forge,1.20.1")
+    implementation fg.deobf("maven.modrinth:slashblade-resharped:1.9.65-forge,1.20.1")
     implementation fg.deobf("maven.modrinth:curios:5.14.1+1.20.1-forge")
 
     // ElectroblobsWizardryRedux
-    implementation fg.deobf("curse.maven:electroblobs-wizardry-redux-1405790:7942282")
+    implementation fg.deobf("curse.maven:electroblobs-wizardry-redux-1405790:8757420")
 
     // Optional spell-mod compatibility targets. Keep these unbundled; they are only needed
     // for compiling and local runtime checks when their providers are present.
-    compileOnly fg.deobf("curse.maven:sweetmagic-415318:8035907")
-    runtimeOnly fg.deobf("curse.maven:sweetmagic-415318:8035907")
+    compileOnly fg.deobf("curse.maven:sweetmagic-415318:8640582")
+    runtimeOnly fg.deobf("curse.maven:sweetmagic-415318:8640582")
     compileOnly fg.deobf("curse.maven:mana-and-artifice-406360:6847805")
     runtimeOnly fg.deobf("curse.maven:mana-and-artifice-406360:6847805")
 
-    compileOnly fg.deobf("curse.maven:jei-238222:7037120")
-    runtimeOnly fg.deobf("curse.maven:jei-238222:7037120")
+    compileOnly fg.deobf("curse.maven:jei-238222:8759243")
+    runtimeOnly fg.deobf("curse.maven:jei-238222:8759243")
     runtimeOnly fg.deobf("curse.maven:mouse-tweaks-60089:5338457")
+    // 5.5.4 的 WindowMixin 注入描述符对不上 1.20.1 的 Window，会 FATAL；保持 5.1.2
     runtimeOnly fg.deobf("curse.maven:imblocker-483760:6487340")
-    runtimeOnly fg.deobf("maven.modrinth:jade:11.13.2+forge")
-    runtimeOnly fg.deobf("maven.modrinth:justenoughcharacters:4.5.16-forge,1.20.1")
+    runtimeOnly fg.deobf("maven.modrinth:jade:11.13.3+forge")
+    runtimeOnly fg.deobf("maven.modrinth:justenoughcharacters:4.6.11-forge,1.20.1")
 
     // Geckolib 动画
     implementation fg.deobf("software.bernie.geckolib:geckolib-forge-${minecraft_version}:${geckolib_version}")
