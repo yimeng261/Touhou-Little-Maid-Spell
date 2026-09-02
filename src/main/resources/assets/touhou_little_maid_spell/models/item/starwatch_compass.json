@@ -1,0 +1,86 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "touhou_little_maid_spell:item/starwatch_compass_00"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "angle": 0.0
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_00"
+    },
+    {
+      "predicate": {
+        "angle": 0.041667
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_01"
+    },
+    {
+      "predicate": {
+        "angle": 0.125
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_02"
+    },
+    {
+      "predicate": {
+        "angle": 0.208333
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_03"
+    },
+    {
+      "predicate": {
+        "angle": 0.291667
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_04"
+    },
+    {
+      "predicate": {
+        "angle": 0.375
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_05"
+    },
+    {
+      "predicate": {
+        "angle": 0.458333
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_06"
+    },
+    {
+      "predicate": {
+        "angle": 0.541667
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_07"
+    },
+    {
+      "predicate": {
+        "angle": 0.625
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_08"
+    },
+    {
+      "predicate": {
+        "angle": 0.708333
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_09"
+    },
+    {
+      "predicate": {
+        "angle": 0.791667
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_10"
+    },
+    {
+      "predicate": {
+        "angle": 0.875
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_11"
+    },
+    {
+      "predicate": {
+        "angle": 0.958333
+      },
+      "model": "touhou_little_maid_spell:item/starwatch_compass_00"
+    }
+  ]
+}

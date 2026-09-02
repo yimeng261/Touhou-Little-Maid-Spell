@@ -96,6 +96,7 @@ public class MaidSpellCreativeTab {
                     output.accept(MaidSpellItems.RITUAL_HILT.get());
                     output.accept(MaidSpellItems.RETURNING_STAR.get());
                     output.accept(MaidSpellItems.WIND_SEEKING_BELL.get());
+                    output.accept(MaidSpellItems.STARWATCH_COMPASS.get());
                 }
 
                 // 装饰方块

@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
 import com.github.yimeng261.maidspell.compat.curios.DreamCrystalCurios;
 import com.github.yimeng261.maidspell.item.bauble.staranchorPearl.StaranchorPearl;
+import com.github.yimeng261.maidspell.item.common.StarwatchCompassItem;
 import com.github.yimeng261.maidspell.item.common.NebulaCoreItem;
 import com.github.yimeng261.maidspell.item.common.StarglintMaterialItem;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
@@ -99,6 +100,9 @@ public class MaidSpellItems {
 
     // 寻风之铃
     public static final DeferredItem<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
+
+    // 观星罗盘：观星术士的战利品，在末地指向星途终岸
+    public static final DeferredItem<Item> STARWATCH_COMPASS = ITEMS.register("starwatch_compass", StarwatchCompassItem::new);
 
     public static final DeferredItem<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
         () -> new ScarletZhuhuaItem(MaidSpellBlocks.SCARLET_ZHUHUA.get()));

@@ -10,14 +10,19 @@ import com.github.yimeng261.maidspell.client.particle.VoidSpellParticle;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
 import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraft.client.renderer.item.CompassItemPropertyFunction;
+import net.minecraft.client.renderer.item.ItemProperties;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
+import net.minecraft.world.item.component.LodestoneTracker;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
@@ -34,7 +39,24 @@ public class MaidSpellClientMod {
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(IronsSpellbooksCompat::initClientSetup);
+        event.enqueueWork(() -> {
+            IronsSpellbooksCompat.initClientSetup();
+            registerCompassAngleProperty();
+        });
+    }
+
+    /**
+     * 观星罗盘的指针朝向。
+     * <p>{@code angle} 不是通用谓词，原版只给 {@code Items.COMPASS} 和 {@code Items.RECOVERY_COMPASS} 各注册了一份，所以继承 {@code CompassItem} 并不会自动带上它，必须按物品再注册一次。
+     * <p>目标取法比原版简单：观星罗盘只指结构，不存在"没绑定时指向出生点"这一档，没绑过就返回 null，
+     * {@code CompassItemPropertyFunction} 会退化成随机转圈，正好表达"还没找到目标"。
+     */
+    private static void registerCompassAngleProperty() {
+        ItemProperties.register(MaidSpellItems.STARWATCH_COMPASS.get(), ResourceLocation.withDefaultNamespace("angle"),
+                new CompassItemPropertyFunction((level, stack, entity) -> {
+                    LodestoneTracker tracker = stack.get(DataComponents.LODESTONE_TRACKER);
+                    return tracker != null ? tracker.target().orElse(null) : null;
+                }));
     }
 
     @SubscribeEvent

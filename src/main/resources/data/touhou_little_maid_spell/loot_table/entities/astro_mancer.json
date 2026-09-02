@@ -12,6 +12,21 @@
       "entries": [
         {
           "type": "minecraft:item",
+          "name": "touhou_little_maid_spell:starwatch_compass",
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
           "name": "irons_spellbooks:ender_upgrade_orb"
         }
       ]
