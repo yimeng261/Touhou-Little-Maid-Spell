@@ -358,6 +358,41 @@ class ResourceValidationTest {
     }
 
     /**
+     * 数据文件里不许出现 JSON null。
+     *
+     * <p>原版的 {@code GsonHelper} 大多不做 null 校验：一个
+     * {@code "max": null} 会安安静静地装出一个 max 为 null 的 {@code UniformGenerator}，
+     * 加载期一声不吭，等到那条 entry 被摇中才在 tick 里抛 NPE 崩服。
+     * 手写 JSON 不容易犯，脚本生成时把参数喂错位就会 —— 这张网就是为脚本准备的。
+     */
+    @Test
+    void dataFilesContainNoJsonNulls() throws IOException {
+        List<String> failures = new ArrayList<>();
+        for (Path file : filesUnder(RESOURCES, ResourceValidationTest::isJsonResource)) {
+            collectNullPaths(parseJson(file), "", failures, relative(file));
+        }
+        assertTrue(failures.isEmpty(), () -> String.join("\n", failures));
+    }
+
+    private static void collectNullPaths(JsonElement element, String path,
+                                         List<String> failures, String file) {
+        if (element == null || element.isJsonNull()) {
+            failures.add(file + " 的 " + (path.isEmpty() ? "<root>" : path) + " 是 null");
+            return;
+        }
+        if (element.isJsonObject()) {
+            for (Map.Entry<String, JsonElement> entry : element.getAsJsonObject().entrySet()) {
+                collectNullPaths(entry.getValue(), path + "." + entry.getKey(), failures, file);
+            }
+        } else if (element.isJsonArray()) {
+            JsonArray array = element.getAsJsonArray();
+            for (int index = 0; index < array.size(); index++) {
+                collectNullPaths(array.get(index), path + "[" + index + "]", failures, file);
+            }
+        }
+    }
+
+    /**
      * 结构 NBT 里的箱子指名的战利品表必须真的存在。
      *
      * <p>缺了不会报错，只会安安静静地生成一屋子空箱子，外加一行服务端日志 ——

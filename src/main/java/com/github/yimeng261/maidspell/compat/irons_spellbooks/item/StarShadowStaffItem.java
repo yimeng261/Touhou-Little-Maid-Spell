@@ -102,7 +102,7 @@ public class StarShadowStaffItem extends StaffItem implements GeoItem {
     /** {@code staff} 重载把 GeckoLib 渲染器和铁魔法法杖的持握姿势合在同一份扩展里。 */
     @Override
     public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(StarEquipmentClientExtensions.<StarShadowStaffItem>itemWithArmPose(
+        consumer.accept(StarEquipmentClientExtensions.<StarShadowStaffItem>withArmPose(
                 MODEL, TEXTURE, ANIMATION, GUI_MODEL, StaffArmPose.STAFF_ARM_POS));
     }
 }

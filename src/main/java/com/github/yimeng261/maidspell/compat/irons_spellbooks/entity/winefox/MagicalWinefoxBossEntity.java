@@ -85,6 +85,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraftforge.items.ItemHandlerHelper;
+import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.ITrueDamageRedirect;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -384,16 +385,6 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         return result;
     }
 
-    /**
-     * 秋千的位置。
-     *
-     * <p>没做成方块实体也没做成坐骑，就取她的生成点——结构 nbt 里她本来就摆在秋千上，
-     * 坐姿完全由动画表现。少一整套方块实体，也少一条"秋千被拆了怎么办"的边界。
-     */
-    @Nullable
-    public BlockPos homePos() {
-        return this.homePos;
-    }
 
     /**
      * 佩戴星之魔女法帽与当前形态对应的武器。这些装备提供外观与属性，但不会掉落。
@@ -855,8 +846,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /**
      * 打开交易界面。
      *
-     * <p>抄的是 {@code AbstractVillager.openTradingScreen}：那个方法在 {@code AbstractVillager}
-     * 上而不在 {@link Merchant} 接口里，实现接口拿不到，只能照着写一遍。
+     * <p>{@link Merchant} 本身带了一份默认的 {@code openTradingScreen}，这里没直接用，
+     * 只为多一句：菜单没开起来时把交易对象撤回来。默认实现开不起来就直接返回，
+     * 而 {@code tradingPlayer} 只在 {@code MerchantMenu.removed()} 里清 ——
+     * 菜单压根没开过，那个方法就永远不会跑，之后再也点不开交易。
+     * 除这一句外与默认实现逐行一致。
      */
     private void startTrading(Player player) {
         this.setTradingPlayer(player);
@@ -873,7 +867,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         MerchantOffers current = this.getOffers();
         if (!current.isEmpty()) {
             player.sendMerchantOffers(containerId.getAsInt(), current, 1,
-                    this.getVillagerXp(), this.showProgressBar(), false);
+                    this.getVillagerXp(), this.showProgressBar(), this.canRestock());
         }
     }
 
@@ -979,6 +973,12 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             // 坐着的时候不索敌、不转阶段、不结算血条：这一场还没开始。
             this.setTarget(null);
             this.bossEvent.setVisible(false);
+            return;
+        }
+        if (this.returnHomeTicks > 0) {
+            // 已经宣布收场、正在回秋千的路上，这 60t 里不许再锁新目标：
+            // 锁了也会在 tickReturnHome 那一刻被回满血抹掉，等于白打一场。
+            this.setTarget(null);
             return;
         }
         this.bossEvent.setProgress(this.getHealth() / this.getMaxHealth());
@@ -1109,6 +1109,22 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (nearestPlayer != null) {
             this.setTarget(nearestPlayer);
         }
+    }
+
+    /**
+     * 「还能不能打」的唯一出口，{@code targetSelector} 那两条目标 goal 都得过这一关。
+     *
+     * <p>{@code NearestAttackableTargetGoal} 收的是我们自己传的 {@code isViableTarget}，
+     * 但 {@code HurtByTargetGoal} 用的是它自带的 {@code HURT_BY_TARGETING}，够不着那个谓词。
+     * 而 {@code TargetingConditions.test} 在 {@code isCombat} 时会问一句 {@code canAttack} ——
+     * 覆在这儿两条就都盖住了。
+     *
+     * <p>不盖的话，被打到 1 点血的玩家只要继续挥刀就能一直把她拉回来：
+     * {@code tickBattleOver} 的空目标计数永远清零，她既不收场也不回秋千。
+     */
+    @Override
+    public boolean canAttack(@NotNull LivingEntity target) {
+        return super.canAttack(target) && this.isViableTarget(target);
     }
 
     @Override
@@ -1308,7 +1324,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.applyOmenModifiers();
         this.equipStarMajoGear();
         if (this.omenLevel > 0) {
-            this.dialogue.speak(WinefoxDialogue.tamingChallenge());
+            // 接在开场白后面，不能用 speak：那会把 acceptChallenge 刚排下的三句顶掉。
+            this.dialogue.continueWith(WinefoxDialogue.tamingChallenge());
         }
     }
 
@@ -1391,6 +1408,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
         this.setNoGravity(true);
         this.setDeltaMovement(Vec3.ZERO);
+        // 血条也归这儿收。customServerAiStep 里那句 setVisible(false) 是够不着的 ——
+        // 坐着就 isImmobile，那一整条 serverAiStep 都不跑。而 ServerBossEvent 默认可见，
+        // 不收的话，玩家走进刚生成的星途终岸就会看见一条满格的 Boss 血条，
+        // 而她还坐在秋千上、这一场根本没开始。
+        this.bossEvent.setVisible(false);
     }
 
     /**
@@ -1427,12 +1449,15 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return;
         }
         maid.moveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
-        maid.setModelId(MODEL_ID);
         maid.setOwnerUUID(owner.getUUID());
         maid.setTame(true);
         maid.setHealth(maid.getMaxHealth());
         maid.finalizeSpawn(serverLevel, serverLevel.getCurrentDifficultyAt(this.blockPosition()),
                 MobSpawnType.CONVERSION, null, null);
+        // 必须在 finalizeSpawn 之后：TLM 的那个方法只要服务端装着模型包
+        //（默认就装着）就会从模型池里随机挑一个 setModelId，写在前面会被它盖掉，
+        // 玩家打完整条线拿到的会是一只随机皮肤的普通女仆。
+        maid.setModelId(MODEL_ID);
         this.giveTamingLoot(maid);
         serverLevel.addFreshEntity(maid);
 
@@ -1723,13 +1748,27 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * <p>只往回走一层 owner，不用 {@code MaidSpellAllyResolver.resolveResponsibleEntity} ——
      * 那个会把整条 owner 链连同铁魔法的 {@code IMagicSummon} 一起认下来， 归属范围会连她召出来的剑一并算进去，比这两处想要的宽。
      */
+    /**
+     * 这一击是不是出自某一类实体 —— 直接打的、它的弹体、或者它召唤出来的东西。
+     *
+     * <p>召唤物这一层不能漏：伤害源上挂着的是召唤物本身，主人在 owner 链的上游。
+     * 漏掉的话，站着不动、让女仆的召唤兽把她磨死会被判成「玩家自己打赢的」，
+     * 星云核心和两条特殊交易照发 —— R1 想防的正是这个。
+     */
     private static boolean damageFrom(DamageSource source, Class<?> type) {
         Entity causingEntity = source.getEntity();
         Entity directEntity = source.getDirectEntity();
         if (type.isInstance(causingEntity) || type.isInstance(directEntity)) {
             return true;
         }
-        return directEntity instanceof Projectile projectile && type.isInstance(projectile.getOwner());
+        if (directEntity instanceof Projectile projectile && type.isInstance(projectile.getOwner())) {
+            return true;
+        }
+        return ownedBy(directEntity, type) || ownedBy(causingEntity, type);
+    }
+
+    private static boolean ownedBy(@Nullable Entity entity, Class<?> type) {
+        return MaidSpellAllyResolver.resolveResponsibleEntity(entity).filter(type::isInstance).isPresent();
     }
 
     @Override
@@ -1761,9 +1800,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (tag.contains("WinefoxHomePos")) {
             this.homePos = NbtUtils.readBlockPos(tag.getCompound("WinefoxHomePos"));
         }
-        // 缺键的是坐姿这套做出来之前存下的个体，那时候她们都是站着打的，
-        // getBoolean 的默认 false 正好，不必特判。
-        this.entityData.set(SEATED, tag.getBoolean("WinefoxSeated"));
+        // 缺键必须按 true 算，不能吃 getBoolean 的默认 false：/summon 不带 NBT 走的就是这条路，
+        // 读出 false 她会站起来主动打人，一枚星云核心都没花就能被杀了掏战利品。
+        // 这个分支上没有需要兼容的旧存档（1.9.0-alpha 还没发过）。
+        this.entityData.set(SEATED, !tag.contains("WinefoxSeated") || tag.getBoolean("WinefoxSeated"));
         this.entityData.set(RESTRICTED, tag.getBoolean("WinefoxRestricted"));
         this.returnHomeTicks = tag.getInt("WinefoxReturnHomeTicks");
         this.totalDamageTaken = tag.getFloat("WinefoxTotalDamageTaken");

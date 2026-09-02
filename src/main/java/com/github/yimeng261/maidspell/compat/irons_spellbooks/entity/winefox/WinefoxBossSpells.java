@@ -53,9 +53,6 @@ public final class WinefoxBossSpells {
         }
         int clampedLevel = Mth.clamp(spellLevel, 1, 10);
         AbstractSpell spell = getSpell(action);
-        if (spell == null) {
-            return false;
-        }
         // 上一发还没结束就不再叠一发；下面用 isCasting() 判断本次是否真的起来了，也依赖这个前置。
         if (boss.isCasting()) {
             return false;

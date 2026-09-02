@@ -44,6 +44,17 @@ public final class WinefoxDialogue {
     }
 
     /**
+     * 接着上一段说下去，不清队列。
+     *
+     * <p>{@link #speak} 是「换个话题」，会把没播完的顶掉。同一 tick 里连着调两次
+     * 就是把前一段整段吞了 —— 接受挑战那条路正好是这样：先排开场白，
+     * 紧接着 {@code applyOmenLevel} 又排驯服台词，玩家永远听不到开场那三句。
+     */
+    public void continueWith(List<Component> lines) {
+        this.pending.addAll(lines);
+    }
+
+    /**
      * 还有没有没播完的。
      */
     public boolean isSpeaking() {

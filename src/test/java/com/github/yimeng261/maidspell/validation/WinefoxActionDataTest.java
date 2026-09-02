@@ -49,6 +49,8 @@ class WinefoxActionDataTest {
         "^\\s{4}([A-Z][A-Z0-9_]*)\\(\\s*(?:\"([^\"]+)\"|null)\\s*,\\s*(\\d+)\\s*,"
             + "\\s*WinefoxTermination\\.([A-Z_]+)", Pattern.MULTILINE);
 
+    private static final Pattern EVENT_AT = Pattern.compile("Event\\.at\\((\\d+),");
+
     /** 一 tick 20 分之一秒；枚举里的时长是 {@code ceil(animation_length * 20)}。 */
     private static final double TICKS_PER_SECOND = 20.0D;
 
@@ -124,26 +126,48 @@ class WinefoxActionDataTest {
         assertTrue(failures.isEmpty(), () -> String.join("\n", failures));
     }
 
-    /** 动画中途的事件（击退、换手）必须落在这条动画自己的时长里。 */
+    /**
+     * 动画中途的事件（击退、换手）必须落在<b>它自己那一条</b>动画的时长里。
+     *
+     * <p>"它自己那一条"是重点：每个 {@code Event.at(...)} 要跟声明它的那个枚举项对上，
+     * 不能全文一把抓去跟某一条的时长比。今天只有 PHASE_TRANSITION 声明了事件，
+     * 两种写法结果一样；等哪天给 18t 的 SWORD_ATTACK_3 加一条事件，
+     * 一把抓的版本会拿它去跟 120t 比，越界了也照样绿。
+     */
     @Test
     void actionEventsFallInsideTheirAnimation() throws IOException {
         String source = Files.readString(ACTION_SOURCE, StandardCharsets.UTF_8);
-        Matcher matcher = Pattern.compile("Event\\.at\\((\\d+),").matcher(source);
-        List<Integer> eventTicks = new ArrayList<>();
-        while (matcher.find()) {
-            eventTicks.add(Integer.parseInt(matcher.group(1)));
-        }
-        assertTrue(!eventTicks.isEmpty(), "没有解析到任何 Event.at(...)，正则大概过时了");
+        List<ActionEntry> actions = parseActions();
+        List<Integer> starts = constantStarts(source);
+        assertEquals(actions.size(), starts.size(), "枚举项与它们的起始位置对不上");
 
-        int phaseTransitionTicks = parseActions().stream()
-            .filter(action -> "PHASE_TRANSITION".equals(action.constantName))
-            .map(action -> action.durationTicks)
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("WinefoxAction 里找不到 PHASE_TRANSITION"));
-        for (int tick : eventTicks) {
-            assertTrue(tick > 0 && tick < phaseTransitionTicks,
-                () -> "动画事件落在 " + tick + "t，超出了 " + phaseTransitionTicks + "t 的动画");
+        int scanned = 0;
+        List<String> failures = new ArrayList<>();
+        for (int index = 0; index < actions.size(); index++) {
+            ActionEntry action = actions.get(index);
+            int end = index + 1 < starts.size() ? starts.get(index + 1) : source.length();
+            Matcher matcher = EVENT_AT.matcher(source.substring(starts.get(index), end));
+            while (matcher.find()) {
+                ++scanned;
+                int tick = Integer.parseInt(matcher.group(1));
+                if (tick <= 0 || tick >= action.durationTicks) {
+                    failures.add(action.constantName + " 的动画事件落在 " + tick
+                        + "t，而这条动画只有 " + action.durationTicks + "t");
+                }
+            }
         }
+        assertTrue(scanned > 0, "没有扫到任何 Event.at(...)，正则大概过时了");
+        assertTrue(failures.isEmpty(), () -> String.join("\n", failures));
+    }
+
+    /** 每个枚举项声明在源码里的起始下标，用来把 {@code Event.at(...)} 归到它名下。 */
+    private static List<Integer> constantStarts(String source) {
+        List<Integer> starts = new ArrayList<>();
+        Matcher matcher = ENUM_CONSTANT.matcher(source);
+        while (matcher.find()) {
+            starts.add(matcher.start());
+        }
+        return starts;
     }
 
     /** 正则一旦跟不上源码格式，上面几个测试会集体空跑，所以先确认解析到了东西。 */

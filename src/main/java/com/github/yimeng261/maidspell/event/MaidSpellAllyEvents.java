@@ -15,6 +15,7 @@ import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Global friendly target and damage guard for maids, owners, and compatible summons.
@@ -28,7 +29,7 @@ public class MaidSpellAllyEvents {
             return;
         }
         LivingEntity attacker = event.getEntity();
-        if (attacker instanceof EntityMaid && MaidSuppressionZone.suppresses(attacker)) {
+        if (isSuppressedMaidSide(attacker) && inSuppressedFight(attacker, newTarget)) {
             event.setCanceled(true);
             attacker.setLastHurtByMob(null);
             return;
@@ -45,16 +46,44 @@ public class MaidSpellAllyEvents {
      * <p>光拦索敌不够：飞在半空的箭、已经抬起的刀、别的模组直接调 {@code hurt} 的路径，
      * 都不经过 {@link LivingChangeTargetEvent}。这一条是兜底。
      *
-     * <p>拦的是"女仆造成的伤害"，不分对象——擂台是玩家一个人的，
-     * 圈里的女仆连顺手清个小怪都不该做。区域只在驯服挑战期间存在，见
+     * <p>拦的是"女仆这一边造成的伤害"，不分对象——擂台是玩家一个人的，
+     * 圈里的女仆连顺手清个小怪都不该做。"这一边"包含她的召唤物，
+     * 而"圈里"出手方和挨打方各算一次，见 {@link #isSuppressedMaidSide}
+     * 与 {@link #inSuppressedFight}。区域只在驯服挑战期间存在，见
      * {@link MaidSuppressionZone}。
      */
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onSuppressedMaidAttack(LivingAttackEvent event) {
-        if (event.getSource().getEntity() instanceof EntityMaid maid
-                && MaidSuppressionZone.suppresses(maid)) {
+        DamageSource source = event.getSource();
+        Entity origin = source.getEntity() != null ? source.getEntity() : source.getDirectEntity();
+        if (isSuppressedMaidSide(origin) && inSuppressedFight(origin, event.getEntity())) {
             event.setCanceled(true);
         }
+    }
+
+    /**
+     * 这个实体算不算「女仆这一边」—— 女仆本人，或者顺着 owner 链能追到女仆的召唤物。
+     *
+     * <p>召唤物不算的话，把召唤兽留在场上就绕开了整条压制规则。
+     */
+    private static boolean isSuppressedMaidSide(@Nullable Entity entity) {
+        if (entity instanceof EntityMaid) {
+            return true;
+        }
+        return MaidSpellAllyResolver.resolveResponsibleEntity(entity)
+            .filter(EntityMaid.class::isInstance)
+            .isPresent();
+    }
+
+    /**
+     * 出手方或者挨打方，只要有一头站在压制区里，这一下就不算数。
+     *
+     * <p>两头都看是必要的：压制区是以 Boss 为心的 40 格球，而女仆的远程手段够得着
+     * 更远。只按出手方的位置判，站在圈外放法术的女仆照打不误 —— 而她打出的伤害
+     * 仍然会计进 {@code maidDamageTaken}，玩家反倒因为一场本该被拦住的插手挨了 R1 的罚。
+     */
+    private static boolean inSuppressedFight(@Nullable Entity attacker, @Nullable Entity victim) {
+        return MaidSuppressionZone.suppresses(attacker) || MaidSuppressionZone.suppresses(victim);
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
