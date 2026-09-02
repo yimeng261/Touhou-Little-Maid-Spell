@@ -31,6 +31,7 @@ import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomR
 import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import com.github.yimeng261.maidspell.item.common.StarShadowSpearItem;
+import com.github.yimeng261.maidspell.item.common.StarwatchCompassItem;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
 import net.minecraft.Util;
@@ -87,6 +88,9 @@ public class MaidSpellItems {
 
     // 寻风之铃
     public static final RegistryObject<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
+
+    // 观星罗盘：守塔人的战利品，在末地指向星途终岸
+    public static final RegistryObject<Item> STARWATCH_COMPASS = ITEMS.register("starwatch_compass", StarwatchCompassItem::new);
 
     public static final RegistryObject<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
         () -> new ScarletZhuhuaItem(MaidSpellBlocks.SCARLET_ZHUHUA.get()));

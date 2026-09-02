@@ -12,8 +12,10 @@ import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
 import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.client.renderer.item.CompassItemPropertyFunction;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.CompassItem;
 import net.minecraft.server.packs.PackType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
@@ -36,7 +38,27 @@ public class MaidSpellClientMod {
         event.enqueueWork(() -> {
             MenuScreens.register(MaidSpellContainers.SPELL_WHITE_LIST_CONTAINER.get(), SpellWhiteListScreen::new);
             registerSpearThrowingProperty();
+            registerCompassAngleProperty();
         });
+    }
+
+    /**
+     * 观星罗盘的指针朝向。
+     *
+     * <p>{@code angle} 不是通用谓词，原版只给 {@code Items.COMPASS} 和
+     * {@code Items.RECOVERY_COMPASS} 各注册了一份，所以继承 {@code CompassItem}
+     * 并不会自动带上它，必须按物品再注册一次。
+     *
+     * <p>目标取法比原版简单：观星罗盘只指结构，不存在"没绑定时指向出生点"这一档，
+     * 没绑过就返回 null，{@code CompassItemPropertyFunction} 会退化成随机转圈，
+     * 正好表达"还没找到目标"。
+     */
+    private static void registerCompassAngleProperty() {
+        ItemProperties.register(MaidSpellItems.STARWATCH_COMPASS.get(), new ResourceLocation("angle"),
+                new CompassItemPropertyFunction((level, stack, entity) ->
+                        CompassItem.isLodestoneCompass(stack)
+                                ? CompassItem.getLodestonePosition(stack.getOrCreateTag())
+                                : null));
     }
 
     /**
