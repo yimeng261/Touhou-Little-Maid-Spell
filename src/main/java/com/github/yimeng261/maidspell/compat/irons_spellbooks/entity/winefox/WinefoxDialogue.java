@@ -78,6 +78,15 @@ public final class WinefoxDialogue {
     }
 
     /**
+     * 玩家被打服了：她收手回秋千。
+     */
+    public static List<Component> playerSubdued() {
+        return List.of(
+                Component.translatable("dialogue.touhou_little_maid_spell.winefox.subdued_1"),
+                Component.translatable("dialogue.touhou_little_maid_spell.winefox.subdued_2"));
+    }
+
+    /**
      * 开场白：玩家递上星云核心，她起身应战。
      */
     public static List<Component> challengeAccepted() {

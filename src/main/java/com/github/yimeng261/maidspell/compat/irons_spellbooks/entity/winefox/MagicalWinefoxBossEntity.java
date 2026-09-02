@@ -70,6 +70,8 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.api.ITrueDamageRedirect;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -84,7 +86,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
-    implements Enemy, IMaid, CastingAnimateStateAccessor {
+    implements Enemy, IMaid, CastingAnimateStateAccessor, ITrueDamageRedirect {
     private static final EntityDataAccessor<Integer> ACTION =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> ACTION_SERIAL =
@@ -113,6 +115,20 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      */
     private static final EntityDataAccessor<Boolean> SEATED =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
+
+    /**
+     * 上一场被判了「女仆代打」：不掉星云核心，也不解锁特殊交易。见 {@link #computeRestricted}。
+     *
+     * <p>做成同步字段是为了让客户端也能在交易界面之外给出提示；服务端这边它同样落 NBT。
+     */
+    private static final EntityDataAccessor<Boolean> RESTRICTED =
+        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
+
+    /** 战败演出放完到回秋千坐下之间的间隔，流程图上写的是 3 秒。 */
+    private static final int DEFEAT_RETURN_HOME_TICKS = 60;
+
+    /** 场上连续这么久没有可打的目标就收场，见 {@link #tickBattleOver}。 */
+    private static final int BATTLE_OVER_GRACE_TICKS = 100;
 
     /**
      * 连段窗口是 AI 手感参数，动画文件里没有对应物，所以留在这儿。
@@ -197,6 +213,15 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private BlockPos homePos;
     /** 开场白的排队播报，见 {@link WinefoxDialogue}。 */
     private final WinefoxDialogue dialogue = new WinefoxDialogue();
+    /** 本场累计吃到的伤害，以及其中出自女仆的部分。用来算 R1 的伤害占比。 */
+    private float totalDamageTaken;
+    private float maidDamageTaken;
+    /** 本场有没有人对她用过真伤。R1 的另一个触发条件。 */
+    private boolean trueDamageUsed;
+    /** 战败演出结束后回秋千的倒计时，见 {@link #tickReturnHome}。 */
+    private int returnHomeTicks;
+    /** 连续多少 tick 没有可打的目标了，见 {@link #tickBattleOver}。 */
+    private int noTargetTicks;
     /**
      * 本次转场结束后该处于二阶段还是一阶段。进二阶段为 true，退形为 false。
      */
@@ -423,7 +448,16 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     @Override
     public void aiStep() {
         super.aiStep();
-        if (this.level().isClientSide || this.isDefeated()) {
+        if (this.level().isClientSide) {
+            return;
+        }
+        // 这两条必须挂在 aiStep 而不是 customServerAiStep 上。
+        // LivingEntity.aiStep 里 isImmobile() 为真时整条 serverAiStep 都不跑，
+        // 而她恰恰在「坐着」和「战败」这两种状态下都是 immobile ——
+        // 台词播报和回秋千的倒计时放那边会永远停在第一 tick。
+        this.dialogue.tick(this);
+        this.tickReturnHome();
+        if (this.isDefeated()) {
             return;
         }
         LivingEntity target = this.getTarget();
@@ -451,6 +485,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.entityData.define(TRANSITIONING, false);
         // 默认坐着：她是被邀战才起身的，不是刷出来就打。
         this.entityData.define(SEATED, true);
+        this.entityData.define(RESTRICTED, false);
     }
 
     /**
@@ -733,6 +768,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.entityData.set(SEATED, false);
         this.bossEvent.setVisible(true);
         this.dialogue.speak(WinefoxDialogue.challengeAccepted());
+        this.resetBattleTally();
+        this.entityData.set(RESTRICTED, false);
         this.setTarget(challenger);
         this.level().playSound(null, this.blockPosition(),
             SoundEvents.BEACON_ACTIVATE, this.getSoundSource(), 1.0F, 1.2F);
@@ -752,7 +789,6 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     @Override
     protected void customServerAiStep() {
         super.customServerAiStep();
-        this.dialogue.tick(this);
         if (this.isSeated()) {
             // 坐着的时候不索敌、不转阶段、不结算血条：这一场还没开始。
             this.setTarget(null);
@@ -761,6 +797,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
         this.bossEvent.setProgress(this.getHealth() / this.getMaxHealth());
         this.prioritizePlayerTarget();
+        this.tickBattleOver();
 
         this.releaseSubduedTarget();
         this.tickPhaseThresholds();
@@ -940,11 +977,54 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             adjustedAmount *= 0.5F;
         }
 
+        float healthBefore = this.getHealth();
         boolean hurt = super.hurt(source, adjustedAmount);
+        this.recordDamageShare(source, healthBefore - this.getHealth());
         if (this.getHealth() <= SURVIVAL_HEALTH_FLOOR && !this.level().isClientSide) {
-            this.beginDefeat();
+            this.beginDefeat(source);
         }
         return hurt;
+    }
+
+    /**
+     * 记一笔"这一场是谁打的"。
+     *
+     * <p>统计的是<b>真正扣掉的血</b>而不是入参伤害：护甲、抗性、吸收都结算过了，
+     * 也不会把无敌帧里被 {@code LivingEntity.hurt} 丢掉的那些算进来 —— 那些根本没造成伤害。
+     *
+     * <p>挂在 {@link #hurt} 里而不是另开一个事件监听，是因为这里本来就已经判过
+     * {@code isMaidDamage(source)} 了，多加两个累加器不需要任何新的拦截点。
+     */
+    private void recordDamageShare(DamageSource source, float dealt) {
+        if (dealt <= 0.0F || this.level().isClientSide) {
+            return;
+        }
+        this.totalDamageTaken += dealt;
+        if (isMaidDamage(source)) {
+            this.maidDamageTaken += dealt;
+        }
+    }
+
+    /**
+     * 真伤改道：不许直写血量，一律折回 {@link #hurt}。
+     *
+     * <p>不改道的话，真伤会一次性绕过女仆减伤、二阶段减伤、转阶段的 120t 无敌、
+     * 1 点血地板，还会让血直接归零走原版死亡 —— 战败演出、血条收起、战利品判定全部跳过。
+     *
+     * <p>顺带把"用过真伤"这一位记下来：这是流程图里 R1 的两个触发条件之一。
+     * 记在这儿而不是在饰品那边，是因为这里能看到<b>所有</b>真伤来源，
+     * 包括以后新加的饰品和调试指令。
+     */
+    @Override
+    public boolean maidspell$redirectTrueDamage(float amount, @Nullable LivingEntity attacker) {
+        if (this.level().isClientSide || amount <= 0.0F) {
+            return false;
+        }
+        this.trueDamageUsed = true;
+        DamageSource source = attacker != null
+                              ? this.damageSources().mobAttack(attacker)
+                              : this.damageSources().magic();
+        return this.hurt(source, amount);
     }
 
     /**
@@ -977,7 +1057,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * <p>{@code isDeadOrDying()} 判的是 {@code getHealth() <= 0}，我们的血永远是 1，
      * 那条判断在这儿恒为假。所有"她是不是已经败了"的地方一律问 {@link #isDefeated}。
      */
-    private void beginDefeat() {
+    private void beginDefeat(DamageSource source) {
         if (this.isDefeated()) {
             return;
         }
@@ -997,6 +1077,124 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.setTarget(null);
         // 打完了，血条收掉；她本人留在场上倒着。
         this.bossEvent.setVisible(false);
+        // 战败那一刻把这一场的归属结算下来，之后回秋千、发战利品都读它。
+        this.entityData.set(RESTRICTED, this.computeRestricted());
+        this.dropDefeatRewards(source);
+        this.returnHomeTicks = DEFEAT_RETURN_HOME_TICKS;
+    }
+
+    /**
+     * 发战败奖励。
+     *
+     * <p><b>必须自己调 {@code dropFromLootTable}。</b>原版只在 {@code LivingEntity.die()}
+     * 里发战利品，而她的血被 {@link #SURVIVAL_HEALTH_FLOOR} 钉在 1、{@code die()} 一次都不会进 ——
+     * 光把物品写进 {@code loot_tables/entities/magical_winefox_boss.json} 是发不出来的。
+     *
+     * <p>星云核心不走战利品表而是直接落地：它是 R1 的结算结果，
+     * 掉不掉取决于这一场怎么打的，不是随机项。掉的就是进场时消耗的那一枚 ——
+     * 堂堂正正赢下来她就还给你，被判代打就留下。
+     */
+    private void dropDefeatRewards(DamageSource source) {
+        this.dropFromLootTable(source, this.lastHurtByPlayerTime > 0);
+        if (!this.isRestricted()) {
+            this.spawnAtLocation(new ItemStack(MaidSpellItems.NEBULA_CORE.get()));
+        }
+    }
+
+    /**
+     * 这一场算不算「女仆代打」，也就是流程图里的 R1。
+     *
+     * <p>两个触发条件任一成立即判限制：用过真伤，或者女仆打出的伤害占比超过阈值。
+     * 前者是因为真伤本身就绕过了她全部的防御机制（见 {@link ITrueDamageRedirect}），
+     * 后者是因为流程图要求玩家自己下场，而不是站在后面看女仆刷。
+     *
+     * <p>一滴伤害都没吃到（比如被指令直接判负）时不判限制：那不是代打，是没打。
+     */
+    private boolean computeRestricted() {
+        if (this.trueDamageUsed && Config.winefoxTrueDamageRestrictsReward) {
+            return true;
+        }
+        if (this.totalDamageTaken <= 0.0F) {
+            return false;
+        }
+        return this.maidDamageTaken / this.totalDamageTaken > Config.winefoxMaidDamageShareLimit;
+    }
+
+    /**
+     * 这一场被判了限制：不掉星云核心、不解锁特殊交易。
+     */
+    public boolean isRestricted() {
+        return this.entityData.get(RESTRICTED);
+    }
+
+    /**
+     * 战败演出放完之后回到秋千坐下。
+     *
+     * <p>用传送而不是寻路：她刚被打趴下、AI 全停（{@link #isImmobile}），
+     * 而且秋千通常悬在半空，寻路根本走不过去。
+     *
+     * <p>坐下之后 {@code DEFEATED} 就撤了 —— 战败是一段演出，不是一个终态。
+     * 撤掉它 {@code magic_casting} 通道才会松手，{@code main} 通道上的 {@code sit} 才盖得住。
+     * 她仍然打不动（{@link #isSeated} 那条守卫），要再打得再递一颗核心。
+     */
+    private void tickReturnHome() {
+        if (this.returnHomeTicks <= 0 || --this.returnHomeTicks > 0) {
+            return;
+        }
+        BlockPos home = this.homePos;
+        if (home != null) {
+            this.teleportTo(home.getX() + 0.5D, home.getY(), home.getZ() + 0.5D);
+        }
+        this.setDeltaMovement(Vec3.ZERO);
+        this.setNoGravity(true);
+        this.setInvulnerable(false);
+        this.entityData.set(DEFEATED, false);
+        this.entityData.set(SEATED, true);
+        this.equipStarMajoGear();
+        this.resetBattleTally();
+    }
+
+    /**
+     * 玩家这边打完了：她收手，回秋千坐下。
+     *
+     * <p>这就是流程图里的 B6 → B7。判据不是「谁的血到 1」而是<b>场上再没有可打的目标</b> ——
+     * {@link #isViableTarget} 已经把 1 点血的玩家排除掉了，所以「把人打服」自然表现为没目标；
+     * 顺带还兜住了玩家跑掉、下线、切维度这几种同样该收场的情况。
+     *
+     * <p>要连续空 {@link #BATTLE_OVER_GRACE_TICKS} 才算数：战斗中目标短暂消失
+     * （对方传送、换目标的间隙）很常见，立刻收场会把打到一半的架判和局。
+     */
+    private void tickBattleOver() {
+        LivingEntity target = this.getTarget();
+        if (target != null && target.isAlive()) {
+            this.noTargetTicks = 0;
+            return;
+        }
+        if (++this.noTargetTicks < BATTLE_OVER_GRACE_TICKS) {
+            return;
+        }
+        this.noTargetTicks = 0;
+        this.dialogue.speak(WinefoxDialogue.playerSubdued());
+        // 走和战败一样的归位路径，只是不进战败演出、不结算战利品。
+        this.cancelCast();
+        this.cancelSwordRing();
+        this.clearAction();
+        this.recallSummons();
+        this.getNavigation().stop();
+        this.bossEvent.setVisible(false);
+        this.returnHomeTicks = DEFEAT_RETURN_HOME_TICKS;
+    }
+
+    /**
+     * 归零这一场的记账，为下一次挑战让路。
+     *
+     * <p>{@code RESTRICTED} 不在此列：它是<b>上一场的结论</b>，交易解锁要一直读它，
+     * 直到下一场重新开打（{@link #acceptChallenge}）才刷新。
+     */
+    private void resetBattleTally() {
+        this.totalDamageTaken = 0.0F;
+        this.maidDamageTaken = 0.0F;
+        this.trueDamageUsed = false;
     }
 
     /**
@@ -1154,6 +1352,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         tag.putBoolean("WinefoxTransitionToPhaseTwo", this.phaseTransitionTarget);
         tag.putBoolean("WinefoxDefeated", this.isDefeated());
         tag.putBoolean("WinefoxSeated", this.isSeated());
+        tag.putBoolean("WinefoxRestricted", this.isRestricted());
+        tag.putInt("WinefoxReturnHomeTicks", this.returnHomeTicks);
+        tag.putFloat("WinefoxTotalDamageTaken", this.totalDamageTaken);
+        tag.putFloat("WinefoxMaidDamageTaken", this.maidDamageTaken);
+        tag.putBoolean("WinefoxTrueDamageUsed", this.trueDamageUsed);
         if (this.homePos != null) {
             tag.put("WinefoxHomePos", NbtUtils.writeBlockPos(this.homePos));
         }
@@ -1169,6 +1372,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 缺键的是坐姿这套做出来之前存下的个体，那时候她们都是站着打的，
         // getBoolean 的默认 false 正好，不必特判。
         this.entityData.set(SEATED, tag.getBoolean("WinefoxSeated"));
+        this.entityData.set(RESTRICTED, tag.getBoolean("WinefoxRestricted"));
+        this.returnHomeTicks = tag.getInt("WinefoxReturnHomeTicks");
+        this.totalDamageTaken = tag.getFloat("WinefoxTotalDamageTaken");
+        this.maidDamageTaken = tag.getFloat("WinefoxMaidDamageTaken");
+        this.trueDamageUsed = tag.getBoolean("WinefoxTrueDamageUsed");
         // 她战败之后是留在场上的，读档得接着躺着，不能爬起来重新开打。
         this.entityData.set(DEFEATED, tag.getBoolean("WinefoxDefeated"));
         if (this.isDefeated()) {
