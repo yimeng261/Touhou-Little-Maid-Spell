@@ -35,6 +35,7 @@ public class MaidSpellCreativeTab {
                     output.accept(MaidSpellItems.SPELL_WHITE_LIST.get());
                     output.accept(MaidSpellItems.WIND_SEEKING_BELL.get());
                     output.accept(MaidSpellItems.STARWATCH_COMPASS.get());
+                    output.accept(MaidSpellItems.NEBULA_CORE.get());
                 }
 
                 output.accept(MaidSpellItems.BLEEDING_HEART.get());

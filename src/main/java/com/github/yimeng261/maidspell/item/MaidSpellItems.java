@@ -29,6 +29,7 @@ import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverli
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystal;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturn;
 import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
+import com.github.yimeng261.maidspell.item.common.NebulaCoreItem;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import com.github.yimeng261.maidspell.item.common.StarShadowSpearItem;
 import com.github.yimeng261.maidspell.item.common.StarwatchCompassItem;
@@ -91,6 +92,9 @@ public class MaidSpellItems {
 
     // 观星罗盘：守塔人的战利品，在末地指向星途终岸
     public static final RegistryObject<Item> STARWATCH_COMPASS = ITEMS.register("starwatch_compass", StarwatchCompassItem::new);
+
+    // 星云核心：挑战万法酒狐的信物，祭坛用 4 本旅行日记合成
+    public static final RegistryObject<Item> NEBULA_CORE = ITEMS.register("nebula_core", NebulaCoreItem::new);
 
     public static final RegistryObject<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
         () -> new ScarletZhuhuaItem(MaidSpellBlocks.SCARLET_ZHUHUA.get()));

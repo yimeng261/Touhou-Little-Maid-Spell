@@ -42,6 +42,9 @@ class ResourceValidationTest {
     private static final Set<String> EXTERNAL_TRANSLATION_PREFIXES = Set.of(
         "ui.irons_spellbooks."
     );
+    /** SNBT 里 {@code "键":123b} 这种条目；键名带引号是因为我们的标记键含冒号。 */
+    private static final Pattern SNBT_BYTE_ENTRY = Pattern.compile(
+        "\"([^\"]+)\"\\s*:\\s*-?\\d+[bB]\\b");
     private static final Map<String, String> OPTIONAL_LOOT_NAMESPACES = Map.of(
         "irons_spellbooks:", "irons_spellbooks",
         "youkaishomecoming:", "youkaishomecoming"
@@ -212,6 +215,145 @@ class ResourceValidationTest {
         assertTrue(failures.isEmpty(), () -> "GeckoLib 按平台字符集读这些文件，"
             + "里面不能出现非 ASCII 字符（在 Blockbench 里把轨道名/骨骼名改成英文再导出）：\n"
             + String.join("\n", failures));
+    }
+
+    /**
+     * {@code forge:partial_nbt} 的 nbt 字段必须写成 SNBT 字符串，不能写成 JSON 对象。
+     *
+     * <p>{@code CraftingHelper.getNBT} 对 JSON 对象走 {@code TagParser.parseTag(GSON.toJson(...))}，
+     * 于是 <code>{"k": 1}</code> 里那个 1 会解析成 <b>IntTag</b>；而我们打在旅行日记上的标记是
+     * <b>ByteTag</b>。{@code NbtUtils.compareNbt} 第一步就是
+     * {@code !tag.getClass().equals(other.getClass())} 直接返回 false ——
+     * 配方不会报错，只是<b>永远匹配不上</b>。写成字符串才能带 {@code 1b} 后缀把类型定死。
+     */
+    @Test
+    void partialNbtIngredientsSpellOutTheirTagTypesAsSnbtStrings() throws IOException {
+        List<String> failures = new ArrayList<>();
+        for (Path file : filesUnder(RESOURCES, ResourceValidationTest::isRecipe)) {
+            JsonElement root = parseJson(file);
+            if (!root.isJsonObject() || !root.getAsJsonObject().has("ingredients")) {
+                continue;
+            }
+            JsonArray ingredients = root.getAsJsonObject().getAsJsonArray("ingredients");
+            for (int i = 0; i < ingredients.size(); i++) {
+                JsonElement entry = ingredients.get(i);
+                if (!entry.isJsonObject()) {
+                    continue;
+                }
+                JsonObject ingredient = entry.getAsJsonObject();
+                if (!"forge:partial_nbt".equals(stringValue(ingredient, "type"))) {
+                    continue;
+                }
+                JsonElement nbt = ingredient.get("nbt");
+                if (nbt == null || !nbt.isJsonPrimitive() || !nbt.getAsJsonPrimitive().isString()) {
+                    failures.add(relative(file) + " ingredients[" + i + "]");
+                }
+            }
+        }
+
+        assertTrue(failures.isEmpty(), () -> "forge:partial_nbt 的 nbt 必须是 SNBT 字符串（如 "
+            + "\"{\\\"ns:key\\\":1b}\"）而不是 JSON 对象，否则 1 会变成 IntTag、匹配 ByteTag 标记时静默失败：\n"
+            + String.join("\n", failures));
+    }
+
+    /**
+     * 配方里点名的 NBT 标记键，必须真的存在于结构 nbt 里，且类型对得上。
+     *
+     * <p>旅行日记的标记不是靠战利品表发的，而是写死在 11 个结构文件里 ——
+     * 改名、漏打、类型写错都不会有任何报错，只会让星云核心永远合不出来。
+     * 这里不解析整棵 NBT 树，只在解压后的字节流里按 <b>命名标签的二进制布局</b>
+     * （{@code [类型:1][名长:2][名字:N]}）找那个键，顺带校验它前面那个类型字节是不是 TAG_Byte。
+     */
+    @Test
+    void nbtMarkersNamedByRecipesExistInStructuresWithTheRightTagType() throws IOException {
+        Map<String, Integer> requiredCounts = new java.util.TreeMap<>();
+        for (Path file : filesUnder(RESOURCES, ResourceValidationTest::isRecipe)) {
+            JsonElement root = parseJson(file);
+            if (!root.isJsonObject() || !root.getAsJsonObject().has("ingredients")) {
+                continue;
+            }
+            for (JsonElement entry : root.getAsJsonObject().getAsJsonArray("ingredients")) {
+                if (!entry.isJsonObject()) {
+                    continue;
+                }
+                JsonObject ingredient = entry.getAsJsonObject();
+                if (!"forge:partial_nbt".equals(stringValue(ingredient, "type"))) {
+                    continue;
+                }
+                for (String key : snbtByteKeys(stringValue(ingredient, "nbt"))) {
+                    requiredCounts.merge(key, 1, Integer::sum);
+                }
+            }
+        }
+
+        List<Path> structures = filesUnder(RESOURCES, path -> path.toString().endsWith(".nbt"));
+        List<String> failures = new ArrayList<>();
+        for (Map.Entry<String, Integer> required : requiredCounts.entrySet()) {
+            int carriers = 0;
+            for (Path structure : structures) {
+                if (containsNamedByteTag(Files.readAllBytes(structure), required.getKey())) {
+                    carriers++;
+                }
+            }
+            if (carriers < required.getValue()) {
+                failures.add("标记 " + required.getKey() + " 配方需要 " + required.getValue()
+                    + " 份，但只有 " + carriers + " 个结构文件带着它");
+            }
+        }
+
+        assertTrue(failures.isEmpty(), () -> "配方点名的 NBT 标记在结构里找不到（或不是 TAG_Byte）：\n"
+            + String.join("\n", failures));
+    }
+
+    /**
+     * 从一段 SNBT 里挑出所有 {@code "键":<数字>b} 形式的键名。
+     *
+     * <p>只认带 {@code b} 后缀的，因为这个断言专门盯 ByteTag 标记；
+     * 别的类型有别的比对方式，不在这条测试的射程内。
+     */
+    private static Set<String> snbtByteKeys(String snbt) {
+        Set<String> keys = new TreeSet<>();
+        if (snbt == null) {
+            return keys;
+        }
+        Matcher matcher = SNBT_BYTE_ENTRY.matcher(snbt);
+        while (matcher.find()) {
+            keys.add(matcher.group(1));
+        }
+        return keys;
+    }
+
+    /**
+     * 在 nbt 文件（gzip 或裸流）里找一个 TAG_Byte 的命名标签。
+     *
+     * <p>命名标签的二进制布局是 {@code [类型:1][名长:2][名字:N][负载]}，
+     * 所以名字出现的位置往前数三个字节就是类型，往前两个字节是大端的名字长度。
+     * 两处都对上才算数——只搜名字的话，别的地方偶然出现同样的字符串也会误判。
+     */
+    private static boolean containsNamedByteTag(byte[] file, String name) throws IOException {
+        byte[] data = file.length > 1 && (file[0] & 0xFF) == 0x1F && (file[1] & 0xFF) == 0x8B
+            ? new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(file)).readAllBytes()
+            : file;
+        byte[] needle = name.getBytes(StandardCharsets.UTF_8);
+        outer:
+        for (int start = 3; start + needle.length <= data.length; start++) {
+            for (int i = 0; i < needle.length; i++) {
+                if (data[start + i] != needle[i]) {
+                    continue outer;
+                }
+            }
+            int declaredLength = ((data[start - 2] & 0xFF) << 8) | (data[start - 1] & 0xFF);
+            if (data[start - 3] == 1 && declaredLength == needle.length) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isRecipe(Path path) {
+        return path.toString().endsWith(".json")
+            && path.getParent() != null
+            && path.toString().replace('\\', '/').contains("/recipes/");
     }
 
     private static List<Path> filesUnder(Path root, java.util.function.Predicate<Path> predicate)
