@@ -379,6 +379,39 @@ class ResourceValidationTest {
         assertTrue(failures.isEmpty(), () -> String.join("\n", failures));
     }
 
+    /**
+     * 这条线上两个「必须在世界里找得到」的实体，得真的躺在各自的结构模板里。
+     *
+     * <p>两个都没有自然生成规则，唯一的入世方式就是被烤进结构 NBT。
+     * 一旦哪次重新导出结构把它们弄丢了，表现是整条链在生存模式里静默断掉 ——
+     * 守塔人不生成 → 观星罗盘拿不到 → 星途终岸找不到 → 见不着酒狐，
+     * 而游戏里不会有任何报错。
+     */
+    @Test
+    void structuresStillCarryTheEntitiesThatGateTheStarWitchLine() throws IOException {
+        Map<String, String> required = Map.of(
+            "data/touhou_little_maid_spell/structures/starwatch_tower/starwatch_tower_1.nbt",
+            "touhou_little_maid_spell:guardian_witch",
+            "data/touhou_little_maid_spell/structures/stellar_endshore/stellar_endshore_1.nbt",
+            "touhou_little_maid_spell:magical_winefox_boss");
+
+        List<String> failures = new ArrayList<>();
+        for (Map.Entry<String, String> entry : required.entrySet()) {
+            Path structure = RESOURCES.resolve(entry.getKey());
+            if (!Files.isRegularFile(structure)) {
+                failures.add("结构文件不存在：" + entry.getKey());
+                continue;
+            }
+            byte[] data = readPossiblyGzipped(structure);
+            byte[] id = entry.getValue().getBytes(StandardCharsets.UTF_8);
+            if (indexOf(data, id, 0) < 0) {
+                failures.add(entry.getKey() + " 里没有 " + entry.getValue()
+                    + "，这条线在生存模式下就断了");
+            }
+        }
+        assertTrue(failures.isEmpty(), () -> String.join("\n", failures));
+    }
+
     private static boolean isStructureFile(Path path) {
         return path.getFileName().toString().endsWith(".nbt")
             && path.toString().replace('\\', '/').contains("/structures/");

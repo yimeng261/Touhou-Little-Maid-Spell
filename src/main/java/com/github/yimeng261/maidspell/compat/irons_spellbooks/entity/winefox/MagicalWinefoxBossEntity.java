@@ -25,6 +25,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -153,8 +154,17 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /** 每一级不祥之兆加多少移速。 */
     private static final double OMEN_SPEED_BONUS_PER_LEVEL = 0.08D;
 
+    /** 每级不祥之兆给她加的护甲点数。 */
+    private static final double OMEN_ARMOR_PER_LEVEL = 2.0D;
+
+    /** 普通挑战下的近战出手间隔，见 {@link #meleeCooldownTicks}。 */
+    private static final int BASE_MELEE_COOLDOWN_TICKS = 12;
+
     /** 驯服挑战里，她战败后愿意坐着让人靠近的时长；普通挑战没有这个窗口。 */
     private static final int TAMING_WINDOW_TICKS = 600;
+
+    private static final UUID OMEN_ARMOR_MODIFIER_ID =
+        UUID.fromString("3d5c8e91-64af-4b12-9f70-8a2e6c1b40d7");
 
     private static final UUID OMEN_SPEED_MODIFIER_ID =
         UUID.fromString("6f2b1c14-9a3d-4c58-8e77-2b0f5d1a9c31");
@@ -616,9 +626,18 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      */
     private void releaseSubduedTarget() {
         LivingEntity target = this.getTarget();
-        if (target != null && !this.isViableTarget(target)) {
-            this.setTarget(null);
+        if (target == null || this.isViableTarget(target)) {
+            return;
         }
+        // 「你输了」这一句得说给玩家本人，不能只靠她那两句场面话 ——
+        // 广播是给围观的人听的，当事人需要一条明确的结论。
+        // 松手之后 prioritizePlayerTarget 不会再把濒死的他锁回来，所以这里只会发一次。
+        if (target instanceof Player player && player.getHealth() <= SURVIVAL_HEALTH_FLOOR) {
+            player.displayClientMessage(Component.translatable(
+                "entity.touhou_little_maid_spell.magical_winefox_boss.challenge_lost")
+                .withStyle(ChatFormatting.RED), false);
+        }
+        this.setTarget(null);
     }
 
     private void beginAction(WinefoxAction action) {
@@ -1286,7 +1305,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private void applyOmenLevel(Player challenger) {
         MobEffectInstance omen = challenger.getEffect(MobEffects.BAD_OMEN);
         this.omenLevel = omen == null ? 0 : omen.getAmplifier() + 1;
-        this.applyOmenSpeedModifier();
+        this.applyOmenModifiers();
         this.equipStarMajoGear();
         if (this.omenLevel > 0) {
             this.dialogue.speak(WinefoxDialogue.tamingChallenge());
@@ -1294,22 +1313,44 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     /**
-     * 把不祥之兆的移速加成挂上（等级为 0 时等同于摘掉）。
+     * 把不祥之兆的属性加成挂上（等级为 0 时等同于全摘掉）。
      *
-     * <p>用的是 transient 修饰符，不会写进 NBT —— 所以读档时得照着 {@code omenLevel} 补挂一遍，
-     * 否则存过档的那一场会突然慢下来。
+     * <p>移速按比例加，护甲按点数加 —— 护甲是加算属性，乘算在基础值为 0 时没有意义。
+     *
+     * <p>两个都用 transient 修饰符，不会写进 NBT，所以读档时得照着 {@code omenLevel}
+     * 补挂一遍，否则存过档的那一场会突然软下来。
      */
-    private void applyOmenSpeedModifier() {
-        AttributeInstance speed = this.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (speed == null) {
+    private void applyOmenModifiers() {
+        applyOmenModifier(this.getAttribute(Attributes.MOVEMENT_SPEED), OMEN_SPEED_MODIFIER_ID,
+                "Winefox omen speed", this.omenLevel * OMEN_SPEED_BONUS_PER_LEVEL,
+                AttributeModifier.Operation.MULTIPLY_TOTAL);
+        applyOmenModifier(this.getAttribute(Attributes.ARMOR), OMEN_ARMOR_MODIFIER_ID,
+                "Winefox omen armor", this.omenLevel * OMEN_ARMOR_PER_LEVEL,
+                AttributeModifier.Operation.ADDITION);
+    }
+
+    private void applyOmenModifier(@Nullable AttributeInstance attribute, UUID modifierId,
+                                   String name, double amount,
+                                   AttributeModifier.Operation operation) {
+        if (attribute == null) {
             return;
         }
-        speed.removeModifier(OMEN_SPEED_MODIFIER_ID);
+        attribute.removeModifier(modifierId);
         if (this.omenLevel > 0) {
-            speed.addTransientModifier(new AttributeModifier(OMEN_SPEED_MODIFIER_ID,
-                    "Winefox omen speed", this.omenLevel * OMEN_SPEED_BONUS_PER_LEVEL,
-                    AttributeModifier.Operation.MULTIPLY_TOTAL));
+            attribute.addTransientModifier(new AttributeModifier(modifierId, name, amount, operation));
         }
+    }
+
+    /**
+     * 近战出手间隔，也是 T2 的第四项。
+     *
+     * <p>难度旋钮挂在出手间隔上而不是 {@code SWORD_COMBO_RESET_TICKS}：
+     * 那是「多久没挥刀就把连段重置回第一式」的窗口，40t，而她的近战间隔本来就是 12t ——
+     * 持续贴身时那个窗口根本到不了，改它是个不产生任何效果的旋钮。
+     * 刚删过一张这样的表，不再添第二张。
+     */
+    public int meleeCooldownTicks() {
+        return Math.max(1, Mth.ceil(BASE_MELEE_COOLDOWN_TICKS * this.spellCooldownScale()));
     }
 
     /**
@@ -1731,7 +1772,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.tradingUnlocked = tag.getBoolean("WinefoxTradingUnlocked");
         this.omenLevel = tag.getInt("WinefoxOmenLevel");
         this.tamingWindowTicks = tag.getInt("WinefoxTamingWindowTicks");
-        this.applyOmenSpeedModifier();
+        this.applyOmenModifiers();
         // 她战败之后是留在场上的，读档得接着躺着，不能爬起来重新开打。
         this.entityData.set(DEFEATED, tag.getBoolean("WinefoxDefeated"));
         if (this.isDefeated()) {

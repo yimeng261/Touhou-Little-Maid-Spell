@@ -333,5 +333,6 @@
   "dialogue.touhou_little_maid_spell.winefox.taming_2": "Then come yourself. I don't fight people who hide behind their maids.",
   "dialogue.touhou_little_maid_spell.winefox.taming_window_1": "Enough, enough — I yield. That was a clean win.",
   "dialogue.touhou_little_maid_spell.winefox.taming_window_2": "Bring me a cake and I'll come along. Make up your mind; I won't wait forever.",
-  "dialogue.touhou_little_maid_spell.winefox.tamed": "Then from here on, we walk this road together."
+  "dialogue.touhou_little_maid_spell.winefox.tamed": "Then from here on, we walk this road together.",
+  "entity.touhou_little_maid_spell.magical_winefox_boss.challenge_lost": "You are beaten. The Magical Winefox stays her hand and returns to her swing."
 }

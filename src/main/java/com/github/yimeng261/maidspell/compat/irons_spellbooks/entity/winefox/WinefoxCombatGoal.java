@@ -295,7 +295,7 @@ final class WinefoxCombatGoal extends Goal {
         if (this.meleeCooldown <= 0 && this.boss.distanceToSqr(target) <= 9.0D) {
             this.boss.swing(InteractionHand.MAIN_HAND);
             this.boss.doHurtTarget(target);
-            this.meleeCooldown = 12;
+            this.meleeCooldown = this.boss.meleeCooldownTicks();
         }
 
         if (this.tickBurst(target) || this.spellDecisionCooldown > 0) {
