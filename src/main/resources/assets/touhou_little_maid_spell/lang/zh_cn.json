@@ -328,5 +328,10 @@
   "item.touhou_little_maid_spell.magical_winefox_boss_spawn_egg": "星之魔女刷怪蛋",
   "item.touhou_little_maid_spell.star_shadow_longsword": "星影长剑",
   "item.touhou_little_maid_spell.star_shadow_staff": "星影法杖",
-  "item.touhou_little_maid_spell.star_witch_hat": "星之魔女法帽"
+  "item.touhou_little_maid_spell.star_witch_hat": "星之魔女法帽",
+  "dialogue.touhou_little_maid_spell.winefox.taming_1": "……你身上带着不祥之兆。这次求的不是酒，是人吧？",
+  "dialogue.touhou_little_maid_spell.winefox.taming_2": "那就自己上。让女仆代你出手的，我不跟。",
+  "dialogue.touhou_little_maid_spell.winefox.taming_window_1": "行了行了，我认输——你赢得干干净净。",
+  "dialogue.touhou_little_maid_spell.winefox.taming_window_2": "拿块蛋糕来，我就跟你走。想清楚了，我可不等太久。",
+  "dialogue.touhou_little_maid_spell.winefox.tamed": "那这条路，接下来就一起走吧。"
 }

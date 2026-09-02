@@ -87,6 +87,31 @@ public final class WinefoxDialogue {
     }
 
     /**
+     * 带着不祥之兆来的：她听出了弦外之音（T1）。
+     */
+    public static List<Component> tamingChallenge() {
+        return List.of(
+                Component.translatable("dialogue.touhou_little_maid_spell.winefox.taming_1"),
+                Component.translatable("dialogue.touhou_little_maid_spell.winefox.taming_2"));
+    }
+
+    /**
+     * 战败坐下、驯服窗口打开（T4）。
+     */
+    public static List<Component> tamingWindowOpen() {
+        return List.of(
+                Component.translatable("dialogue.touhou_little_maid_spell.winefox.taming_window_1"),
+                Component.translatable("dialogue.touhou_little_maid_spell.winefox.taming_window_2"));
+    }
+
+    /**
+     * 驯服成功（T6）。
+     */
+    public static List<Component> tamed() {
+        return List.of(Component.translatable("dialogue.touhou_little_maid_spell.winefox.tamed"));
+    }
+
+    /**
      * 开场白：玩家递上星云核心，她起身应战。
      */
     public static List<Component> challengeAccepted() {

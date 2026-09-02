@@ -77,6 +77,13 @@ import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.sounds.SoundEvent;
 import java.util.OptionalInt;
+import com.github.tartaricacid.touhoulittlemaid.init.InitEntities;
+import com.github.yimeng261.maidspell.utils.MaidSuppressionZone;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraftforge.items.ItemHandlerHelper;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.ITrueDamageRedirect;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -136,6 +143,21 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     /** 场上连续这么久没有可打的目标就收场，见 {@link #tickBattleOver}。 */
     private static final int BATTLE_OVER_GRACE_TICKS = 100;
+
+    /** 驯服挑战的擂台半径：这一圈里的女仆一律不出手，见 {@link MaidSuppressionZone}。 */
+    private static final double TAMING_ARENA_RADIUS = 40.0D;
+
+    /** 每一级不祥之兆把施法冷却压掉多少。4 级时约为原来的一半。 */
+    private static final double OMEN_COOLDOWN_CUT_PER_LEVEL = 0.12D;
+
+    /** 每一级不祥之兆加多少移速。 */
+    private static final double OMEN_SPEED_BONUS_PER_LEVEL = 0.08D;
+
+    /** 驯服挑战里，她战败后愿意坐着让人靠近的时长；普通挑战没有这个窗口。 */
+    private static final int TAMING_WINDOW_TICKS = 600;
+
+    private static final UUID OMEN_SPEED_MODIFIER_ID =
+        UUID.fromString("6f2b1c14-9a3d-4c58-8e77-2b0f5d1a9c31");
 
     /**
      * 连段窗口是 AI 手感参数，动画文件里没有对应物，所以留在这儿。
@@ -236,6 +258,14 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private Player tradingPlayer;
     @Nullable
     private MerchantOffers offers;
+    /**
+     * 挑战者带着的不祥之兆等级；0 表示普通挑战。
+     *
+     * <p>非 0 即为驯服挑战：难度按级放大，女仆被擂台压制，战败后多坐一会儿等蛋糕。
+     */
+    private int omenLevel;
+    /** 驯服窗口的剩余时间，见 {@link #TAMING_WINDOW_TICKS}。 */
+    private int tamingWindowTicks;
     /**
      * 本次转场结束后该处于二阶段还是一阶段。进二阶段为 true，退形为 false。
      */
@@ -471,6 +501,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 台词播报和回秋千的倒计时放那边会永远停在第一 tick。
         this.dialogue.tick(this);
         this.tickReturnHome();
+        this.tickTamingArena();
+        if (this.tamingWindowTicks > 0) {
+            --this.tamingWindowTicks;
+        }
         if (this.isDefeated()) {
             return;
         }
@@ -774,6 +808,17 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             this.acceptChallenge(player);
             return InteractionResult.CONSUME;
         }
+        // 驯服窗口里递上蛋糕：这是 T5，优先于交易。
+        if (this.tamingWindowTicks > 0 && held.is(Items.CAKE)) {
+            if (this.level().isClientSide) {
+                return InteractionResult.SUCCESS;
+            }
+            if (!player.getAbilities().instabuild) {
+                held.shrink(1);
+            }
+            this.tameIntoMaid(player);
+            return InteractionResult.CONSUME;
+        }
         // 递核心是邀战，空手（或拿着别的东西）来找她就是做买卖。
         if (this.tradingUnlocked && this.getTradingPlayer() == null) {
             if (this.level().isClientSide) {
@@ -819,8 +864,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /**
      * 交易表按当前的限制标志现算。
      *
-     * <p>不缓存到字段里：{@link #isRestricted} 会随每一场重打而变，
-     * 缓存就得再写一套失效逻辑，而这张表一共五条，算一遍不值一提。
+     * <p>算一次就存在字段里，两个改变限制标志的时刻（{@link #acceptChallenge} 开打、
+     * {@link #beginDefeat} 定案）各自把它置空，下次打开时按新标志重算。
+     * 不每次现算是因为 {@link MerchantOffers} 是有状态的：
+     * {@code MerchantOffer} 自己记着用了多少次，每次交互换一张新表等于把交易次数抹掉。
      */
     @Override
     public @NotNull MerchantOffers getOffers() {
@@ -882,6 +929,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 限制标志刚被清零，旧表跟着作废；打起来了也不该还开着交易界面。
         this.offers = null;
         this.setTradingPlayer(null);
+        this.applyOmenLevel(challenger);
         this.setTarget(challenger);
         this.level().playSound(null, this.blockPosition(),
             SoundEvents.BEACON_ACTIVATE, this.getSoundSource(), 1.0F, 1.2F);
@@ -1216,6 +1264,134 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
     }
 
+    // ==================== 驯服挑战（流程图 T0 ~ T8） ====================
+
+    /**
+     * 读挑战者身上的不祥之兆，定下这一场的难度。
+     *
+     * <p>带着不祥之兆来找她，就是在说「我要的不只是战利品」——
+     * 于是她认真起来：出手更密、跑得更快，而且不许女仆插手。
+     *
+     * <p>等级取 {@code amplifier + 1}，和原版袭击的表述一致（不祥之兆 I 是 amplifier 0）。
+     */
+    private void applyOmenLevel(Player challenger) {
+        MobEffectInstance omen = challenger.getEffect(MobEffects.BAD_OMEN);
+        this.omenLevel = omen == null ? 0 : omen.getAmplifier() + 1;
+        this.applyOmenSpeedModifier();
+        this.equipStarMajoGear();
+        if (this.omenLevel > 0) {
+            this.dialogue.speak(WinefoxDialogue.tamingChallenge());
+        }
+    }
+
+    /**
+     * 把不祥之兆的移速加成挂上（等级为 0 时等同于摘掉）。
+     *
+     * <p>用的是 transient 修饰符，不会写进 NBT —— 所以读档时得照着 {@code omenLevel} 补挂一遍，
+     * 否则存过档的那一场会突然慢下来。
+     */
+    private void applyOmenSpeedModifier() {
+        AttributeInstance speed = this.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (speed == null) {
+            return;
+        }
+        speed.removeModifier(OMEN_SPEED_MODIFIER_ID);
+        if (this.omenLevel > 0) {
+            speed.addTransientModifier(new AttributeModifier(OMEN_SPEED_MODIFIER_ID,
+                    "Winefox omen speed", this.omenLevel * OMEN_SPEED_BONUS_PER_LEVEL,
+                    AttributeModifier.Operation.MULTIPLY_TOTAL));
+        }
+    }
+
+    /**
+     * 这一场是不是驯服挑战。
+     */
+    public boolean isTamingChallenge() {
+        return this.omenLevel > 0;
+    }
+
+    /**
+     * 施法冷却的缩放系数，由 {@code WinefoxCombatGoal} 乘在每一项冷却上。
+     *
+     * <p>缩放放在这儿而不是散在 goal 的两张 switch 表里：那两张表是手感基线，
+     * 难度是另一个维度，混在一起以后调任何一边都要重新对另一边。
+     */
+    public double spellCooldownScale() {
+        return Math.max(0.35D, 1.0D - this.omenLevel * OMEN_COOLDOWN_CUT_PER_LEVEL);
+    }
+
+    /**
+     * 驯服挑战期间，每 tick 把擂台登记一次，让圈里的女仆闭嘴。
+     *
+     * <p>区域自己会过期（见 {@link MaidSuppressionZone}），所以这里只管刷新，
+     * 崩溃或区块卸载不会留下一片永久压制区。
+     */
+    private void tickTamingArena() {
+        if (this.isTamingChallenge() && !this.isSeated() && !this.isDefeated()) {
+            MaidSuppressionZone.refresh(this, TAMING_ARENA_RADIUS);
+        } else {
+            MaidSuppressionZone.release(this);
+        }
+    }
+
+    /**
+     * 驯服成功：她不再流浪，变成这位玩家的女仆。
+     *
+     * <p><b>不能用 {@code convertTo}。</b>两条原因：她不是女仆类型，转换语义对不上；
+     * 而且本模组的 {@code MobMixin} 专门拦了 {@code convertTo}，防止女仆被别的模组转走。
+     * 所以手动生成一只 {@link EntityMaid}，把模型换成她自己那一套，再把本体 discard 掉。
+     *
+     * <p>战利品直接塞进新女仆的物品栏而不是落地：这是 T7，
+     * 她把随身的东西一并带过来，不是"掉了一地让你捡"。
+     */
+    private void tameIntoMaid(Player owner) {
+        if (!(this.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        // 构造器是 protected 的，走 EntityType.create 这条公开入口。
+        EntityMaid maid = InitEntities.MAID.get().create(serverLevel);
+        if (maid == null) {
+            return;
+        }
+        maid.moveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
+        maid.setModelId(MODEL_ID);
+        maid.setOwnerUUID(owner.getUUID());
+        maid.setTame(true);
+        maid.setHealth(maid.getMaxHealth());
+        maid.finalizeSpawn(serverLevel, serverLevel.getCurrentDifficultyAt(this.blockPosition()),
+                MobSpawnType.CONVERSION, null, null);
+        this.giveTamingLoot(maid);
+        serverLevel.addFreshEntity(maid);
+
+        this.dialogue.speak(WinefoxDialogue.tamed());
+        // 台词要接着播，所以把队列交给新女仆是没用的（她不是播报者）——
+        // 直接在原地播完最后一句，本体这一 tick 之后才移除。
+        this.dialogue.tick(this);
+        MaidSuppressionZone.release(this);
+        serverLevel.playSound(null, this.blockPosition(),
+            SoundEvents.PLAYER_LEVELUP, this.getSoundSource(), 1.0F, 1.0F);
+        this.discard();
+    }
+
+    /**
+     * 把她随身那几件塞进新女仆的物品栏。
+     */
+    private void giveTamingLoot(EntityMaid maid) {
+        List<ItemStack> loot = List.of(
+                new ItemStack(IronsSpellbooksCompatItems.STAR_SHADOW_LONGSWORD.get()),
+                new ItemStack(IronsSpellbooksCompatItems.STAR_SHADOW_STAFF.get()),
+                new ItemStack(IronsSpellbooksCompatItems.STAR_WITCH_HAT.get()),
+                new ItemStack(MaidSpellItems.NEBULA_CORE.get()));
+        for (ItemStack stack : loot) {
+            ItemStack remainder = ItemHandlerHelper.insertItemStacked(
+                    maid.getAvailableInv(false), stack.copy(), false);
+            if (!remainder.isEmpty()) {
+                // 物品栏塞不下就落地，总比凭空消失强。
+                maid.spawnAtLocation(remainder);
+            }
+        }
+    }
+
     /**
      * 这一场算不算「女仆代打」，也就是流程图里的 R1。
      *
@@ -1266,6 +1442,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.entityData.set(DEFEATED, false);
         this.entityData.set(SEATED, true);
         this.equipStarMajoGear();
+        // 驯服挑战才有这个窗口：她坐下之后愿意让人靠近，这段时间里递蛋糕才作数。
+        this.tamingWindowTicks = this.isTamingChallenge() ? TAMING_WINDOW_TICKS : 0;
+        if (this.tamingWindowTicks > 0) {
+            this.dialogue.speak(WinefoxDialogue.tamingWindowOpen());
+        }
         this.resetBattleTally();
     }
 
@@ -1310,6 +1491,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.totalDamageTaken = 0.0F;
         this.maidDamageTaken = 0.0F;
         this.trueDamageUsed = false;
+        // omenLevel 不在此列：驯服窗口还开着的时候要靠它判「这一场是不是驯服挑战」，
+        // 下一场由 applyOmenLevel 重新读取覆盖。
     }
 
     /**
@@ -1473,6 +1656,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         tag.putFloat("WinefoxMaidDamageTaken", this.maidDamageTaken);
         tag.putBoolean("WinefoxTrueDamageUsed", this.trueDamageUsed);
         tag.putBoolean("WinefoxTradingUnlocked", this.tradingUnlocked);
+        tag.putInt("WinefoxOmenLevel", this.omenLevel);
+        tag.putInt("WinefoxTamingWindowTicks", this.tamingWindowTicks);
         if (this.homePos != null) {
             tag.put("WinefoxHomePos", NbtUtils.writeBlockPos(this.homePos));
         }
@@ -1494,6 +1679,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.maidDamageTaken = tag.getFloat("WinefoxMaidDamageTaken");
         this.trueDamageUsed = tag.getBoolean("WinefoxTrueDamageUsed");
         this.tradingUnlocked = tag.getBoolean("WinefoxTradingUnlocked");
+        this.omenLevel = tag.getInt("WinefoxOmenLevel");
+        this.tamingWindowTicks = tag.getInt("WinefoxTamingWindowTicks");
+        this.applyOmenSpeedModifier();
         // 她战败之后是留在场上的，读档得接着躺着，不能爬起来重新开打。
         this.entityData.set(DEFEATED, tag.getBoolean("WinefoxDefeated"));
         if (this.isDefeated()) {

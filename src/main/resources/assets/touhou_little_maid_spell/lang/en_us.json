@@ -328,5 +328,10 @@
   "item.touhou_little_maid_spell.magical_winefox_boss_spawn_egg": "Star Witch Spawn Egg",
   "item.touhou_little_maid_spell.star_shadow_longsword": "Starshadow Longsword",
   "item.touhou_little_maid_spell.star_shadow_staff": "Starshadow Staff",
-  "item.touhou_little_maid_spell.star_witch_hat": "Star Witch's Hat"
+  "item.touhou_little_maid_spell.star_witch_hat": "Star Witch's Hat",
+  "dialogue.touhou_little_maid_spell.winefox.taming_1": "...You reek of an ill omen. It isn't wine you came for this time, is it?",
+  "dialogue.touhou_little_maid_spell.winefox.taming_2": "Then come yourself. I don't fight people who hide behind their maids.",
+  "dialogue.touhou_little_maid_spell.winefox.taming_window_1": "Enough, enough — I yield. That was a clean win.",
+  "dialogue.touhou_little_maid_spell.winefox.taming_window_2": "Bring me a cake and I'll come along. Make up your mind; I won't wait forever.",
+  "dialogue.touhou_little_maid_spell.winefox.tamed": "Then from here on, we walk this road together."
 }

@@ -60,6 +60,7 @@ import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
+import com.github.yimeng261.maidspell.utils.MaidSuppressionZone;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 
 import net.minecraft.ChatFormatting;
@@ -653,6 +654,8 @@ public class MaidSpellEventHandler {
         EnderPocketService.clearRemoteSessions(event.getServer());
         clearBaubleRuntimeState();
         SpellBookManager.clearAll();
+        // 静态区域表跨存档存活会把上一个世界的压制区带到下一个世界去。
+        MaidSuppressionZone.clear();
     }
 
     private static void cleanupMaidBaubleRuntimeState(UUID maidId) {

@@ -527,7 +527,7 @@ final class WinefoxCombatGoal extends Goal {
                 case COUNTERSPELL -> 40;
                 default -> 80;
             };
-            return WinefoxBossSpells.getCooldownTicks(action, 0.2D, fallbackTicks);
+            return this.scaleByOmen(WinefoxBossSpells.getCooldownTicks(action, 0.2D, fallbackTicks));
         }
         fallbackTicks = switch (action) {
             case MAGIC_SHOTGUN -> 40;
@@ -537,7 +537,17 @@ final class WinefoxCombatGoal extends Goal {
             case FLAMING_STRIKE -> 160;
             default -> 120;
         };
-        return WinefoxBossSpells.getCooldownTicks(action, 0.5D, fallbackTicks);
+        return this.scaleByOmen(WinefoxBossSpells.getCooldownTicks(action, 0.5D, fallbackTicks));
+    }
+
+    /**
+     * 按挑战者带的不祥之兆等级压缩冷却，也就是流程图 T2 里的「施法频率变快」。
+     *
+     * <p>放在这一个出口上：上面两张 switch 表是手感基线，难度是另一个维度，
+     * 混进表里以后调任何一边都要重新对另一边。普通挑战时系数是 1，等于没这回事。
+     */
+    private int scaleByOmen(int cooldownTicks) {
+        return Math.max(1, Mth.ceil(cooldownTicks * this.boss.spellCooldownScale()));
     }
 
     private boolean isSpellReady(WinefoxBossSpellAction action) {
