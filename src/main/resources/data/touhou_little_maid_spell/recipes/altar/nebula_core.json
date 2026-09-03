@@ -1,0 +1,48 @@
+{
+  "forge:conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
+  "type": "touhou_little_maid:altar_crafting",
+  "output": {
+    "type": "minecraft:item",
+    "nbt": {
+      "Item": {
+        "id": "touhou_little_maid_spell:nebula_core",
+        "Count": 1
+      }
+    }
+  },
+  "power": 0.6,
+  "_comment": "四份旅行日记按标记键匹配。nbt 必须写成 SNBT 字符串而不是 JSON 对象：对象形式里的 1 会解析成 IntTag，而书上的标记是 ByteTag，NbtUtils.compareNbt 第一步就比 getClass()，类型不同直接不匹配。键名含冒号，SNBT 里必须加引号。",
+  "ingredients": [
+    {
+      "type": "forge:partial_nbt",
+      "item": "minecraft:written_book",
+      "nbt": "{\"touhou_little_maid_spell:travel_diary\":1b}"
+    },
+    {
+      "type": "forge:partial_nbt",
+      "item": "minecraft:written_book",
+      "nbt": "{\"touhou_little_maid_spell:travel_diary\":1b}"
+    },
+    {
+      "type": "forge:partial_nbt",
+      "item": "minecraft:written_book",
+      "nbt": "{\"touhou_little_maid_spell:travel_diary\":1b}"
+    },
+    {
+      "type": "forge:partial_nbt",
+      "item": "minecraft:written_book",
+      "nbt": "{\"touhou_little_maid_spell:travel_diary\":1b}"
+    },
+    {
+      "item": "touhou_little_maid_spell:star_glow_flower_cluster"
+    },
+    {
+      "item": "minecraft:amethyst_block"
+    }
+  ]
+}

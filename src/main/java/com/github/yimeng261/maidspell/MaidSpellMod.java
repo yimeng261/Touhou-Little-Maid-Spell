@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.client.EnderPocketClientConfig;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidLegacyModelPackCleaner;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
 import com.github.yimeng261.maidspell.crafting.OptionalModIngredientSerializer;
 import com.github.yimeng261.maidspell.event.FoxLeafOwnerWaterWalking;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
@@ -86,6 +87,12 @@ public class MaidSpellMod {
             // 注册网络消息
             NetworkHandler.registerMessages();
             
+            // 内置女仆模型包自解压：TLM 只从 gameDir/tlm_custom_pack 读模型包。
+            // 装完后强制刷一次服务端包列表，因为 TLM 自己的 initPacks 也挂在 setup 上，顺序无保证。
+            if (TouhouLittleMaidModelPackInstaller.installIfNeeded()) {
+                TouhouLittleMaidModelPackInstaller.reloadServerPacks();
+            }
+
             if (checkDependencies()) {
                 LOGGER.info("Dependencies verified - initialization complete");
             }

@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.client;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraftforge.api.distmarker.Dist;
@@ -31,6 +32,10 @@ public class ClientSetup {
             ItemBlockRenderTypes.setRenderLayer(MaidSpellBlocks.MOLTEN_FOX_LEAF_TRAIL.get(), RenderType.cutout());
             ItemBlockRenderTypes.setRenderLayer(MaidSpellBlocks.MOLTEN_FOX_LEAF_TRAIL_BIG.get(), RenderType.cutout());
             ItemBlockRenderTypes.setRenderLayer(MaidSpellBlocks.MOLTEN_FOX_LEAF_TRAIL_SMALL.get(), RenderType.cutout());
+
+            // 放在 enqueueWork 里：FMLClientSetupEvent 是并行派发的，而
+            // AnimationManager.getInstance() 是无锁懒加载，和 TLM 自己的注册抢起来会丢注册。
+            IronsSpellbooksCompat.initClientSetup();
         });
     }
 }

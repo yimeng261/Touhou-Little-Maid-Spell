@@ -210,7 +210,7 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
         }
 
         SpellModifiers modifiers = createModifiers();
-        if (WizardryEventBus.getInstance().fire(new SpellCastEvent.Pre(SpellCastEvent.Source.NPC, spell, maid, modifiers))) {
+        if (WizardryEventBus.getInstance().fire(new SpellCastEvent.Pre(SpellCastEvent.Sources.NPC, spell, maid, modifiers))) {
             LOGGER.debug("法术 {} 的预施法事件被取消", spell.getLocation());
             return;
         }
@@ -245,7 +245,7 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
 
         try {
             if (!spell.isInstantCast() && WizardryEventBus.getInstance().fire(
-                    new SpellCastEvent.Tick(SpellCastEvent.Source.NPC, spell, maid, modifiers, ctx.castingTicks()))) {
+                    new SpellCastEvent.Tick(SpellCastEvent.Sources.NPC, spell, maid, modifiers, ctx.castingTicks()))) {
                 LOGGER.debug("法术 {} 的持续施法事件被取消", spell.getLocation());
                 finishCasting(maid, data, false);
                 return;
@@ -260,7 +260,7 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
             }
 
             if (spell.isInstantCast() || ctx.castingTicks() == 1) {
-                WizardryEventBus.getInstance().fire(new SpellCastEvent.Post(SpellCastEvent.Source.NPC, spell, maid, modifiers));
+                WizardryEventBus.getInstance().fire(new SpellCastEvent.Post(SpellCastEvent.Sources.NPC, spell, maid, modifiers));
                 sendSpellCastPacket(maid, data, modifiers);
             }
 
@@ -582,7 +582,7 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
         if (!spell.isInstantCast() && maid.level() instanceof ServerLevel) {
             SpellModifiers modifiers = ctx == null ? createModifiers() : ctx.modifiers();
             WizardryEventBus.getInstance().fire(new SpellCastEvent.Finish(
-                    SpellCastEvent.Source.NPC, spell, maid, modifiers,
+                    SpellCastEvent.Sources.NPC, spell, maid, modifiers,
                     Math.max(0, data.getCastingTime() - data.getChargeupTime())));
         }
 

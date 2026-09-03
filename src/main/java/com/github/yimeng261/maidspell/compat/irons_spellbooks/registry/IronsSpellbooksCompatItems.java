@@ -1,6 +1,9 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.registry;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarWitchHatItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -38,6 +41,30 @@ public final class IronsSpellbooksCompatItems {
                     () -> new ForgeSpawnEggItem(IronsSpellbooksCompatEntities.HOLY_CONSTRUCT,
                             0xF5EBC7,
                             0xFFD54F,
+                            new Item.Properties()));
+
+    public static final RegistryObject<Item> GUARDIAN_WITCH_SPAWN_EGG =
+            ITEMS.register("guardian_witch_spawn_egg",
+                    () -> new ForgeSpawnEggItem(IronsSpellbooksCompatEntities.GUARDIAN_WITCH,
+                            0x2E2A55,
+                            0xF2E2A8,
+                            new Item.Properties()));
+
+    // 万法酒狐佩戴的星之魔女系列装备
+    public static final RegistryObject<Item> STAR_SHADOW_LONGSWORD =
+            ITEMS.register("star_shadow_longsword", StarShadowLongswordItem::new);
+
+    public static final RegistryObject<Item> STAR_SHADOW_STAFF =
+            ITEMS.register("star_shadow_staff", StarShadowStaffItem::new);
+
+    public static final RegistryObject<Item> STAR_WITCH_HAT =
+            ITEMS.register("star_witch_hat", StarWitchHatItem::new);
+
+    public static final RegistryObject<Item> MAGICAL_WINEFOX_BOSS_SPAWN_EGG =
+            ITEMS.register("magical_winefox_boss_spawn_egg",
+                    () -> new ForgeSpawnEggItem(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS,
+                            0x5B3B87,
+                            0xE8D8FF,
                             new Item.Properties()));
 
     private IronsSpellbooksCompatItems() {
