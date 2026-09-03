@@ -1,7 +1,7 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.IronsSpellbooksCompatClient;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxNonLethalGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.VoidPhaseDamageHandler;
@@ -37,8 +37,7 @@ public final class IronsSpellbooksCompat {
         IronsSpellbooksCompatSpells.register(eventBus);
         MinecraftForge.EVENT_BUS.register(VoidPhaseDamageHandler.class);
         MinecraftForge.EVENT_BUS.register(WinefoxBossSleepGuard.class);
-        // 这个类嵌在 Boss 里，但同样不能靠注解自动注册：它的处理器要解析外层类的字面量。
-        MinecraftForge.EVENT_BUS.register(MagicalWinefoxBossEntity.NonLethalGuard.class);
+        MinecraftForge.EVENT_BUS.register(WinefoxNonLethalGuard.class);
     }
 
     public static void initClient(EntityRenderersEvent.RegisterRenderers event) {

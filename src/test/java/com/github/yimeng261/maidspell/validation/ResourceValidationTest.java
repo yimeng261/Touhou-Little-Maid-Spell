@@ -4,33 +4,37 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 
+import static com.github.yimeng261.maidspell.validation.ValidationFixtures.JAVA_SOURCES;
+import static com.github.yimeng261.maidspell.validation.ValidationFixtures.RESOURCES;
+import static com.github.yimeng261.maidspell.validation.ValidationFixtures.filesUnder;
+import static com.github.yimeng261.maidspell.validation.ValidationFixtures.gunzipIfNeeded;
+import static com.github.yimeng261.maidspell.validation.ValidationFixtures.indexOf;
+import static com.github.yimeng261.maidspell.validation.ValidationFixtures.parseJson;
+import static com.github.yimeng261.maidspell.validation.ValidationFixtures.parseObject;
+import static com.github.yimeng261.maidspell.validation.ValidationFixtures.readPossiblyGzipped;
+import static com.github.yimeng261.maidspell.validation.ValidationFixtures.readUnsignedShort;
+import static com.github.yimeng261.maidspell.validation.ValidationFixtures.relative;
+import static com.github.yimeng261.maidspell.validation.ValidationFixtures.withoutJavaComments;
+
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ResourceValidationTest {
-    private static final Path PROJECT_ROOT = Path.of(System.getProperty(
-        "maidspell.projectDir", System.getProperty("user.dir"))).toAbsolutePath().normalize();
-    private static final Path RESOURCES = PROJECT_ROOT.resolve("src/main/resources");
-    private static final Path JAVA_SOURCES = PROJECT_ROOT.resolve("src/main/java");
     private static final Path EN_US = RESOURCES.resolve(
         "assets/touhou_little_maid_spell/lang/en_us.json");
     private static final Path ZH_CN = RESOURCES.resolve(
@@ -331,20 +335,18 @@ class ResourceValidationTest {
      * 所以名字出现的位置往前数三个字节就是类型，往前两个字节是大端的名字长度。
      * 两处都对上才算数——只搜名字的话，别的地方偶然出现同样的字符串也会误判。
      */
+    /**
+     * 解压后的字节里有没有一个名为 {@code name} 的 TAG_Byte。
+     *
+     * <p>NBT 标签的排布是 {@code [类型][名字长度:2][名字]}，所以命中处往前三个字节
+     * 就是类型（1 = TAG_Byte）与名字长度，两个都对上才算数。
+     */
     private static boolean containsNamedByteTag(byte[] file, String name) throws IOException {
-        byte[] data = file.length > 1 && (file[0] & 0xFF) == 0x1F && (file[1] & 0xFF) == 0x8B
-            ? new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(file)).readAllBytes()
-            : file;
+        byte[] data = gunzipIfNeeded(file);
         byte[] needle = name.getBytes(StandardCharsets.UTF_8);
-        outer:
-        for (int start = 3; start + needle.length <= data.length; start++) {
-            for (int i = 0; i < needle.length; i++) {
-                if (data[start + i] != needle[i]) {
-                    continue outer;
-                }
-            }
-            int declaredLength = ((data[start - 2] & 0xFF) << 8) | (data[start - 1] & 0xFF);
-            if (data[start - 3] == 1 && declaredLength == needle.length) {
+        for (int start = indexOf(data, needle, 3); start >= 3;
+             start = indexOf(data, needle, start + 1)) {
+            if (data[start - 3] == 1 && readUnsignedShort(data, start - 2) == needle.length) {
                 return true;
             }
         }
@@ -452,17 +454,6 @@ class ResourceValidationTest {
             && path.toString().replace('\\', '/').contains("/structures/");
     }
 
-    /** 结构 NBT 通常是 gzip 的，但不保证 —— 结构方块导出时两种都见过。 */
-    private static byte[] readPossiblyGzipped(Path file) throws IOException {
-        byte[] raw = Files.readAllBytes(file);
-        if (raw.length < 2 || (raw[0] & 0xFF) != 0x1F || (raw[1] & 0xFF) != 0x8B) {
-            return raw;
-        }
-        try (java.util.zip.GZIPInputStream in =
-                 new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(raw))) {
-            return in.readAllBytes();
-        }
-    }
 
     /**
      * 从解压后的字节里捞出本模组命名空间下的战利品表 id。
@@ -498,32 +489,8 @@ class ResourceValidationTest {
         return ids;
     }
 
-    private static int readUnsignedShort(byte[] data, int offset) {
-        return ((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF);
-    }
 
-    private static int indexOf(byte[] haystack, byte[] needle, int from) {
-        outer:
-        for (int start = Math.max(from, 0); start <= haystack.length - needle.length; start++) {
-            for (int offset = 0; offset < needle.length; offset++) {
-                if (haystack[start + offset] != needle[offset]) {
-                    continue outer;
-                }
-            }
-            return start;
-        }
-        return -1;
-    }
 
-    private static List<Path> filesUnder(Path root, java.util.function.Predicate<Path> predicate)
-        throws IOException {
-        try (Stream<Path> paths = Files.walk(root)) {
-            return paths.filter(Files::isRegularFile)
-                .filter(predicate)
-                .sorted(Comparator.comparing(Path::toString))
-                .toList();
-        }
-    }
 
     private static boolean isJsonResource(Path path) {
         String fileName = path.getFileName().toString();
@@ -559,17 +526,7 @@ class ResourceValidationTest {
         return normalized.endsWith(".json") && normalized.contains("/loot_tables/");
     }
 
-    private static JsonElement parseJson(Path file) throws IOException {
-        try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
-            return JsonParser.parseReader(reader);
-        }
-    }
 
-    private static JsonObject parseObject(Path file) throws IOException {
-        JsonElement root = parseJson(file);
-        assertTrue(root.isJsonObject(), () -> relative(file) + " must contain a JSON object");
-        return root.getAsJsonObject();
-    }
 
     private static boolean containsStringPrefix(JsonElement element, String prefix) {
         if (element == null || element.isJsonNull()) {
@@ -623,68 +580,5 @@ class ResourceValidationTest {
             : null;
     }
 
-    private static String withoutJavaComments(String source) {
-        StringBuilder result = new StringBuilder(source.length());
-        boolean inString = false;
-        boolean inCharacter = false;
-        boolean inLineComment = false;
-        boolean inBlockComment = false;
-        boolean escaped = false;
 
-        for (int i = 0; i < source.length(); i++) {
-            char current = source.charAt(i);
-            char next = i + 1 < source.length() ? source.charAt(i + 1) : '\0';
-
-            if (inLineComment) {
-                if (current == '\n' || current == '\r') {
-                    inLineComment = false;
-                    result.append(current);
-                } else {
-                    result.append(' ');
-                }
-                continue;
-            }
-            if (inBlockComment) {
-                if (current == '*' && next == '/') {
-                    result.append("  ");
-                    i++;
-                    inBlockComment = false;
-                } else {
-                    result.append(current == '\n' || current == '\r' ? current : ' ');
-                }
-                continue;
-            }
-            if (!inString && !inCharacter && current == '/' && next == '/') {
-                result.append("  ");
-                i++;
-                inLineComment = true;
-                continue;
-            }
-            if (!inString && !inCharacter && current == '/' && next == '*') {
-                result.append("  ");
-                i++;
-                inBlockComment = true;
-                continue;
-            }
-
-            result.append(current);
-            if (escaped) {
-                escaped = false;
-            } else if ((inString || inCharacter) && current == '\\') {
-                escaped = true;
-            } else if (!inCharacter && current == '"') {
-                inString = !inString;
-            } else if (!inString && current == '\'') {
-                inCharacter = !inCharacter;
-            }
-        }
-        return result.toString();
-    }
-
-    private static String relative(Path path) {
-        Path absolute = path.toAbsolutePath().normalize();
-        return absolute.startsWith(PROJECT_ROOT)
-            ? PROJECT_ROOT.relativize(absolute).toString().replace('\\', '/')
-            : absolute.toString();
-    }
 }

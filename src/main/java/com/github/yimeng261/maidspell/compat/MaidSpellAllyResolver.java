@@ -83,6 +83,27 @@ public final class MaidSpellAllyResolver {
                 || resolveResponsibleEntity(direct).map(owner -> areFriendly(target, owner)).orElse(false);
     }
 
+    /**
+     * owner 链上（含它自己）有没有哪一节是 {@code type}。
+     *
+     * <p>和 {@link #resolveResponsibleEntity} 的区别是"看整条链"而不是"只要链尾"：
+     * 后者一路走到没有主人为止，所以女仆的召唤物解出来的是**女仆的主人那个玩家**，
+     * 拿它去问「这是不是女仆打的」永远得到否。要判「某一节是不是女仆」只能逐节看。
+     *
+     * <p>不分配集合：{@link #OWNER_TRACE_LIMIT} 已经把深度封死了，环也就多走几步，
+     * 而这个方法挂在受击事件上，每次伤害都要问。
+     */
+    public static boolean isOwnedBy(@Nullable Entity entity, Class<?> type) {
+        Entity current = entity;
+        for (int depth = 0; depth < OWNER_TRACE_LIMIT && current != null; depth++) {
+            if (type.isInstance(current)) {
+                return true;
+            }
+            current = getDirectOwner(current);
+        }
+        return false;
+    }
+
     public static Optional<Entity> resolveResponsibleEntity(@Nullable Entity entity) {
         if (entity == null) {
             return Optional.empty();

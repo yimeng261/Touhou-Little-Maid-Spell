@@ -533,7 +533,21 @@ public class MaidSpellEventHandler {
         }
     }
 
+    /**
+     * 压制区里的女仆连饰品效果都不生效——这是「不支援」那一条。
+     *
+     * <p>堵在这两个分发口而不是逐个饰品加判断：饰品是一张会长的表，
+     * 挨个加必然漏掉下一件。碎血之心给主人回血、春回给主人减伤，
+     * 都是从这儿发出去的，不堵就等于把玩家单挑的要求架空。
+     */
+    private static boolean suppressed(EntityMaid maid) {
+        return MaidSuppressionZone.suppresses(maid);
+    }
+
     private static void processorAft(LivingDamageEvent event, EntityMaid maid) {
+        if (suppressed(maid)) {
+            return;
+        }
         Global.baubleDamageHandlers.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(event, maid);
@@ -542,6 +556,9 @@ public class MaidSpellEventHandler {
     }
 
     private static void processor_pre(LivingHurtEvent event, EntityMaid maid) {
+        if (suppressed(maid)) {
+            return;
+        }
         Global.commonHurtHandlers.forEach(function -> function.apply(event, maid));
 
         Global.baubleHurtHandlers.forEach((item, func) -> {

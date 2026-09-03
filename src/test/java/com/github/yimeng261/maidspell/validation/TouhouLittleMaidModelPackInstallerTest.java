@@ -28,26 +28,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class TouhouLittleMaidModelPackInstallerTest {
 
-    private static final Path PROJECT_ROOT = Path.of(System.getProperty(
-        "maidspell.projectDir", System.getProperty("user.dir"))).toAbsolutePath().normalize();
-    private static final Path INSTALLER_SOURCE = PROJECT_ROOT.resolve(
+    private static final Path INSTALLER_SOURCE = ValidationFixtures.PROJECT_ROOT.resolve(
         "src/main/java/com/github/yimeng261/maidspell/compat/touhou_little_maid/"
             + "TouhouLittleMaidModelPackInstaller.java");
-    private static final Path PACK_ROOT = PROJECT_ROOT.resolve(
-        "src/main/resources/assets/touhou_little_maid_spell/tlm_custom_pack");
+    private static final Path PACK_ROOT = ValidationFixtures.RESOURCES.resolve(
+        "assets/touhou_little_maid_spell/tlm_custom_pack");
 
     private static final Pattern PACK_NAME = Pattern.compile(
         "static\\s+final\\s+String\\s+PACK_NAME\\s*=\\s*\"([^\"]+)\"");
     private static final Pattern PACK_FILES_BLOCK = Pattern.compile(
         "PACK_FILES\\s*=\\s*List\\.of\\((.*?)\\);", Pattern.DOTALL);
     private static final Pattern QUOTED = Pattern.compile("\"([^\"]+)\"");
+    private static final Pattern CUSTOM_PACK_DIR = Pattern.compile(
+        "CUSTOM_PACK_DIR\\s*=\\s*\"([^\"]+)\"");
 
     @Test
     void packFileListMatchesTheDirectoryOnDisk() throws IOException {
-        String source = Files.readString(INSTALLER_SOURCE, StandardCharsets.UTF_8);
+        String source = installerSource();
         Path packDir = PACK_ROOT.resolve(packName(source));
         assertTrue(Files.isDirectory(packDir),
-            () -> "模型包目录不存在：" + PROJECT_ROOT.relativize(packDir));
+            () -> "模型包目录不存在：" + ValidationFixtures.relative(packDir));
 
         TreeSet<String> declared = new TreeSet<>(declaredFiles(source));
         assertTrue(declared.size() >= 5,
@@ -80,12 +80,19 @@ class TouhouLittleMaidModelPackInstallerTest {
      */
     @Test
     void customPackDirMatchesTheResourceFolder() throws IOException {
-        String source = Files.readString(INSTALLER_SOURCE, StandardCharsets.UTF_8);
-        Matcher matcher = Pattern.compile(
-            "CUSTOM_PACK_DIR\\s*=\\s*\"([^\"]+)\"").matcher(source);
+        Matcher matcher = CUSTOM_PACK_DIR.matcher(installerSource());
         assertTrue(matcher.find(), "在安装器源码里找不到 CUSTOM_PACK_DIR");
         assertEquals(PACK_ROOT.getFileName().toString(), matcher.group(1),
             "CUSTOM_PACK_DIR 与 src/main/resources 下的目录名对不上");
+    }
+
+    /**
+     * 读安装器源码，并且先把 Java 注释抹掉：注释里被划掉的一行清单项
+     * 长得和活的声明一模一样，不剥的话会被当成还在册。
+     */
+    private static String installerSource() throws IOException {
+        return ValidationFixtures.withoutJavaComments(
+            Files.readString(INSTALLER_SOURCE, StandardCharsets.UTF_8));
     }
 
     private static String packName(String source) {

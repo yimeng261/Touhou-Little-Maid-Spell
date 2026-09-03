@@ -32,6 +32,9 @@ public final class MaidSuppressionZone {
 
     private static final List<Zone> ZONES = new ArrayList<>();
 
+    /** 上一次清过期是哪一 tick。同一 tick 里被问很多遍，扫一次就够。 */
+    private static long lastSweepTick = Long.MIN_VALUE;
+
     private MaidSuppressionZone() {
     }
 
@@ -63,7 +66,8 @@ public final class MaidSuppressionZone {
      * 撤销某个登记者的压制区。过期机制之外的主动出口，用于"挑战结束"这种明确时刻。
      */
     public static void release(Entity owner) {
-        if (owner.level().isClientSide) {
+        // 登记方每 tick 都会调一次这个方法来"确认自己没在登记"，而表通常是空的。
+        if (ZONES.isEmpty() || owner.level().isClientSide) {
             return;
         }
         ResourceKey<Level> dimension = owner.level().dimension();
@@ -76,18 +80,22 @@ public final class MaidSuppressionZone {
      * <p>顺手清掉过期区域——没有别的地方会定时来扫，就着查询做最省事。
      */
     public static boolean suppresses(@Nullable Entity entity) {
-        // 绝大多数时候表是空的，而这个方法挂在索敌/受击事件上，每 tick 要问很多遍。
-        if (ZONES.isEmpty() || entity == null || entity.level().isClientSide) {
+        if (!isActive() || entity == null || entity.level().isClientSide) {
             return false;
         }
         long now = entity.level().getGameTime();
-        ZONES.removeIf(zone -> now - zone.lastRefresh > EXPIRY_TICKS);
-        if (ZONES.isEmpty()) {
-            return false;
+        if (now != lastSweepTick) {
+            // 登记方每 tick 刷新一次，所以过期最多也就一 tick 扫一遍。
+            lastSweepTick = now;
+            ZONES.removeIf(zone -> now - zone.lastRefresh > EXPIRY_TICKS);
+            if (ZONES.isEmpty()) {
+                return false;
+            }
         }
         ResourceKey<Level> dimension = entity.level().dimension();
         Vec3 position = entity.position();
-        for (Zone zone : ZONES) {
+        for (int index = 0; index < ZONES.size(); index++) {
+            Zone zone = ZONES.get(index);
             if (zone.dimension.equals(dimension) && zone.center.distanceToSqr(position) <= zone.radiusSqr) {
                 return true;
             }
@@ -96,10 +104,21 @@ public final class MaidSuppressionZone {
     }
 
     /**
+     * 现在世上有没有压制区。
+     *
+     * <p>调用方该拿它当第一道闸：这套东西挂在全服每一次伤害和每一次换目标上，
+     * 而绝大多数存档里一片区域都没有。先问这一句，等于一次静态字段读。
+     */
+    public static boolean isActive() {
+        return !ZONES.isEmpty();
+    }
+
+    /**
      * 服务端停止时清空。静态表跨存档存活会把上一个世界的区域带到下一个。
      */
     public static void clear() {
         ZONES.clear();
+        lastSweepTick = Long.MIN_VALUE;
     }
 
     private static final class Zone {

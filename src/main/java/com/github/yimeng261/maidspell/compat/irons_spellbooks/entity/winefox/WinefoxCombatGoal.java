@@ -42,6 +42,9 @@ final class WinefoxCombatGoal extends Goal {
     /** 二阶段的施法冷却倍率。比一阶段松，节奏改由近战撑。 */
     private static final double PHASE_TWO_COOLDOWN_SCALE = 0.5D;
 
+    /** 普通挑战下的近战出手间隔，同样过 {@link #scaleByOmen}。 */
+    private static final int BASE_MELEE_COOLDOWN_TICKS = 12;
+
     private static final List<WinefoxBossSpellAction> PHASE_ONE_SPELLS = List.of(
         WinefoxBossSpellAction.MAGIC_MISSILE,
         WinefoxBossSpellAction.MAGIC_ARROW,
@@ -295,7 +298,7 @@ final class WinefoxCombatGoal extends Goal {
         if (this.meleeCooldown <= 0 && this.boss.distanceToSqr(target) <= 9.0D) {
             this.boss.swing(InteractionHand.MAIN_HAND);
             this.boss.doHurtTarget(target);
-            this.meleeCooldown = this.boss.meleeCooldownTicks();
+            this.meleeCooldown = this.scaleByOmen(BASE_MELEE_COOLDOWN_TICKS);
         }
 
         if (this.tickBurst(target) || this.spellDecisionCooldown > 0) {
@@ -539,8 +542,13 @@ final class WinefoxCombatGoal extends Goal {
     /**
      * 按挑战者带的不祥之兆等级压缩冷却：兆越重，她出手越密。
      *
-     * <p>放在这一个出口上：上面那两个阶段系数是手感基线，难度是另一个维度，
-     * 混进去以后调任何一边都要重新对另一边。普通挑战时系数是 1，等于没这回事。
+     * <p>放在这一个出口上：施法冷却和近战间隔都从这儿过。上面那几个系数是手感基线，
+     * 难度是另一个维度，混进去以后调任何一边都要重新对另一边。
+     * 普通挑战时系数是 1，等于没这回事。
+     *
+     * <p>难度旋钮挂在出手间隔而不是 {@code SWORD_COMBO_RESET_TICKS} 上：
+     * 那是「多久没挥刀就把连段重置回第一式」的窗口，40t，而近战间隔本来就是 12t——
+     * 持续贴身时那个窗口根本到不了，改它不产生任何效果。
      */
     private int scaleByOmen(int cooldownTicks) {
         return Math.max(1, Mth.ceil(cooldownTicks * this.boss.spellCooldownScale()));

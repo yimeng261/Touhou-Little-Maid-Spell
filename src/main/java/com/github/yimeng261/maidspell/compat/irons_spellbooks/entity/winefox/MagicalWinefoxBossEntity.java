@@ -3,7 +3,6 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 import com.github.tartaricacid.touhoulittlemaid.api.animation.IMagicCastingState;
 import com.github.tartaricacid.touhoulittlemaid.api.entity.IMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.animation.MagicCastingAnimateState;
 import com.github.yimeng261.maidspell.client.spell.CastingAnimateStateAccessor;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
@@ -20,6 +19,7 @@ import io.redspace.ironsspellbooks.entity.mobs.abstract_spell_casting_mob.Abstra
 import io.redspace.ironsspellbooks.network.casting.SyncEntityDataPacket;
 import io.redspace.ironsspellbooks.setup.PacketDistributor;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -94,9 +94,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -158,9 +155,6 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /** 每级不祥之兆给她加的护甲点数。 */
     private static final double OMEN_ARMOR_PER_LEVEL = 2.0D;
 
-    /** 普通挑战下的近战出手间隔，见 {@link #meleeCooldownTicks}。 */
-    private static final int BASE_MELEE_COOLDOWN_TICKS = 12;
-
     /** 驯服挑战里，她战败后愿意坐着让人靠近的时长；普通挑战没有这个窗口。 */
     private static final int TAMING_WINDOW_TICKS = 600;
 
@@ -197,7 +191,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      *
      * <p>两边都用同一个下限，读起来是一条规则而不是两条巧合。
      */
-    private static final float SURVIVAL_HEALTH_FLOOR = 1.0F;
+    static final float SURVIVAL_HEALTH_FLOOR = 1.0F;
 
     /**
      * 投掷动画真正把枪甩出去的那一帧。
@@ -592,7 +586,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /**
      * 这个目标还值不值得打。
      *
-     * <p>把人打到 1 点血就算赢了（见 {@link NonLethalGuard}），再追着打只会变成
+     * <p>把人打到 1 点血就算赢了（见 {@link WinefoxNonLethalGuard}），再追着打只会变成
      * 一个永远打不死人的骚扰循环。所以濒死的玩家直接从目标池里排除。
      *
      * <p>坐着的时候一律返回 false。这一条挡在<b>目标选择器的谓词</b>上，
@@ -810,25 +804,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
         ItemStack held = player.getItemInHand(hand);
         if (held.is(MaidSpellItems.NEBULA_CORE.get())) {
-            if (this.level().isClientSide) {
-                return InteractionResult.SUCCESS;
-            }
-            if (!player.getAbilities().instabuild) {
-                held.shrink(1);
-            }
-            this.acceptChallenge(player);
-            return InteractionResult.CONSUME;
+            return this.consumeOffering(player, held, this::acceptChallenge);
         }
         // 驯服窗口里递上蛋糕：优先于交易。
         if (this.tamingWindowTicks > 0 && held.is(Items.CAKE)) {
-            if (this.level().isClientSide) {
-                return InteractionResult.SUCCESS;
-            }
-            if (!player.getAbilities().instabuild) {
-                held.shrink(1);
-            }
-            this.tameIntoMaid(player);
-            return InteractionResult.CONSUME;
+            return this.consumeOffering(player, held, this::tameIntoMaid);
         }
         // 递核心是邀战，空手（或拿着别的东西）来找她就是做买卖。
         if (this.tradingUnlocked && this.getTradingPlayer() == null) {
@@ -839,6 +819,22 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return InteractionResult.CONSUME;
         }
         return super.mobInteract(player, hand);
+    }
+
+    /**
+     * 「递过去一件东西」这个动作：客户端放行让手臂挥一下，服务端扣掉一个再干事。
+     *
+     * <p>创造模式不扣——和原版所有喂食、驯服的口径一致。
+     */
+    private InteractionResult consumeOffering(Player player, ItemStack held, Consumer<Player> action) {
+        if (this.level().isClientSide) {
+            return InteractionResult.SUCCESS;
+        }
+        if (!player.getAbilities().instabuild) {
+            held.shrink(1);
+        }
+        action.accept(player);
+        return InteractionResult.CONSUME;
     }
 
     // ==================== 战败之后的交易 ====================
@@ -969,12 +965,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     @Override
     protected void customServerAiStep() {
         super.customServerAiStep();
-        if (this.isSeated()) {
-            // 坐着的时候不索敌、不转阶段、不结算血条：这一场还没开始。
-            this.setTarget(null);
-            this.bossEvent.setVisible(false);
-            return;
-        }
+        // 坐着的情况不在这儿处理：isImmobile() 为真时整条 serverAiStep 都不跑，
+        // 写在这里的分支永远到不了。那一段归 tickSeatedAnchor。
         if (this.returnHomeTicks > 0) {
             // 已经宣布收场、正在回秋千的路上，这 60t 里不许再锁新目标：
             // 锁了也会在 tickReturnHome 那一刻被回满血抹掉，等于白打一场。
@@ -1167,8 +1159,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (this.isSeated()) {
             return false;
         }
+        // 算一次带着走：判归属要顺 owner 链上溯，一次受击问两遍是白跑一趟。
+        boolean maidDamage = isMaidDamage(source);
         float adjustedAmount = amount;
-        if (isMaidDamage(source)) {
+        if (maidDamage) {
             adjustedAmount *= 0.5F;
         }
         if (this.isPhaseTwo()) {
@@ -1177,7 +1171,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
         float healthBefore = this.getHealth();
         boolean hurt = super.hurt(source, adjustedAmount);
-        this.recordDamageShare(source, healthBefore - this.getHealth());
+        this.recordDamageShare(maidDamage, healthBefore - this.getHealth());
         if (this.getHealth() <= SURVIVAL_HEALTH_FLOOR && !this.level().isClientSide) {
             this.beginDefeat(source);
         }
@@ -1193,12 +1187,12 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * <p>挂在 {@link #hurt} 里而不是另开一个事件监听，是因为这里本来就已经判过
      * {@code isMaidDamage(source)} 了，多加两个累加器不需要任何新的拦截点。
      */
-    private void recordDamageShare(DamageSource source, float dealt) {
+    private void recordDamageShare(boolean maidDamage, float dealt) {
         if (dealt <= 0.0F || this.level().isClientSide) {
             return;
         }
         this.totalDamageTaken += dealt;
-        if (isMaidDamage(source)) {
+        if (maidDamage) {
             this.maidDamageTaken += dealt;
         }
     }
@@ -1358,17 +1352,6 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
     }
 
-    /**
-     * 近战出手间隔，不祥之兆难度缩放的一项。
-     *
-     * <p>难度旋钮挂在出手间隔上而不是 {@code SWORD_COMBO_RESET_TICKS}：
-     * 那是「多久没挥刀就把连段重置回第一式」的窗口，40t，而她的近战间隔本来就是 12t ——
-     * 持续贴身时那个窗口根本到不了，改它是个不产生任何效果的旋钮。
-     * 刚删过一张这样的表，不再添第二张。
-     */
-    public int meleeCooldownTicks() {
-        return Math.max(1, Mth.ceil(BASE_MELEE_COOLDOWN_TICKS * this.spellCooldownScale()));
-    }
 
     /**
      * 这一场是不是驯服挑战。
@@ -1602,8 +1585,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.totalDamageTaken = 0.0F;
         this.maidDamageTaken = 0.0F;
         this.trueDamageUsed = false;
-        // omenLevel 不在此列：驯服窗口还开着的时候要靠它判「这一场是不是驯服挑战」，
-        // 下一场由 applyOmenLevel 重新读取覆盖。
+        // omenLevel 不在此列：移速与护甲那两个 transient 修饰符是照着它挂上去的，
+        // 在这儿清零就再也摘不掉了。下一场由 applyOmenLevel 连同修饰符一起重设。
     }
 
     /**
@@ -1690,85 +1673,24 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
     }
 
-    /**
-     * 她的攻击不会真的打死人：把目标留在 1 点血。
-     *
-     * <p>盖住所有出伤口径 —— 近战、法术、弹体，只要伤害源头能追溯到她。
-     * 法术伤害由铁魔法自己发，我们插不进它的计算，所以拦在**承伤方**这一侧。
-     *
-     * <p>挂 {@code LivingDamageEvent} 而不是 {@code LivingHurtEvent}：前者拿到的是
-     * 护甲、抗性、吸收全部结算完、马上就要扣到血条上的那个数， 后者是结算**之前**的原始伤害。按原始伤害去削，护甲会再砍一刀，
-     * 玩家的血只会渐近 1 而永远碰不到 1 —— 那样 {@link #isViableTarget} 就一直认为他还能打，她会追着一个永远打不服的人不放。
-     *
-     * <p>只保护玩家。小怪该死还是得死，否则召唤物永远清不掉。
-     *
-     * <p><b>不挂 {@code @Mod.EventBusSubscriber}</b>，由
-     * {@code IronsSpellbooksCompat.register} 在确认铁魔法在场之后手动注册。
-     * 注解是 Forge 扫描整个 jar 自动登记的，缺铁魔法时照样会挂上去；
-     * 而 {@code isWinefoxDamage} 要解析外层类的字面量，外层类的父类
-     * {@code AbstractSpellCastingMob} 不在，玩家第一次挨打就是 NoClassDefFoundError。
-     */
-    public static final class NonLethalGuard {
-
-        private NonLethalGuard() {
-        }
-
-        @SubscribeEvent
-        public static void onLivingDamage(LivingDamageEvent event) {
-            if (!(event.getEntity() instanceof Player player) || player.level().isClientSide) {
-                return;
-            }
-            if (player.isCreative() || player.isSpectator()) {
-                return;
-            }
-            if (!isWinefoxDamage(event.getSource())) {
-                return;
-            }
-            float survivable = Math.max(0.0F, player.getHealth() - SURVIVAL_HEALTH_FLOOR);
-            if (event.getAmount() >= survivable) {
-                event.setAmount(survivable);
-            }
-        }
-
-        /**
-         * 伤害是否出自酒狐：直接打的、她的弹体、或她发的法术。
-         */
-        private static boolean isWinefoxDamage(DamageSource source) {
-            return damageFrom(source, MagicalWinefoxBossEntity.class);
-        }
-    }
 
     private static boolean isMaidDamage(DamageSource source) {
         return damageFrom(source, EntityMaid.class);
     }
 
     /**
-     * 伤害是否出自某一类实体：它直接打的、或它射出去的弹体。
-     *
-     * <p>只往回走一层 owner，不用 {@code MaidSpellAllyResolver.resolveResponsibleEntity} ——
-     * 那个会把整条 owner 链连同铁魔法的 {@code IMagicSummon} 一起认下来， 归属范围会连她召出来的剑一并算进去，比这两处想要的宽。
-     */
-    /**
      * 这一击是不是出自某一类实体 —— 直接打的、它的弹体、或者它召唤出来的东西。
      *
      * <p>召唤物这一层不能漏：伤害源上挂着的是召唤物本身，主人在 owner 链的上游。
      * 漏掉的话，站着不动、让女仆的召唤兽把她磨死会被判成「玩家自己打赢的」，
      * 星云核心和两条特殊交易照发 —— 「女仆代打」判定想防的正是这个。
+     *
+     * <p>弹体也不必单列：{@code isOwnedBy} 走的那条链本来就把
+     * {@code Projectile.getOwner()} 算作一节。
      */
-    private static boolean damageFrom(DamageSource source, Class<?> type) {
-        Entity causingEntity = source.getEntity();
-        Entity directEntity = source.getDirectEntity();
-        if (type.isInstance(causingEntity) || type.isInstance(directEntity)) {
-            return true;
-        }
-        if (directEntity instanceof Projectile projectile && type.isInstance(projectile.getOwner())) {
-            return true;
-        }
-        return ownedBy(directEntity, type) || ownedBy(causingEntity, type);
-    }
-
-    private static boolean ownedBy(@Nullable Entity entity, Class<?> type) {
-        return MaidSpellAllyResolver.resolveResponsibleEntity(entity).filter(type::isInstance).isPresent();
+    static boolean damageFrom(DamageSource source, Class<?> type) {
+        return MaidSpellAllyResolver.isOwnedBy(source.getDirectEntity(), type)
+            || MaidSpellAllyResolver.isOwnedBy(source.getEntity(), type);
     }
 
     @Override

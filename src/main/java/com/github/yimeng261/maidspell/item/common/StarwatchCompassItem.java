@@ -60,6 +60,9 @@ public class StarwatchCompassItem extends CompassItem {
     /** 右键冷却，防止连点把搜索反复跑起来。 */
     private static final int USE_COOLDOWN_TICKS = 40;
 
+    /** 没找到时的冷却。命中一次就够，落空却要把半径扫满，不能让人两秒一次地扫。 */
+    private static final int MISS_COOLDOWN_TICKS = 400;
+
     public StarwatchCompassItem() {
         super(new Properties().stacksTo(1).rarity(Rarity.RARE));
     }
@@ -87,6 +90,9 @@ public class StarwatchCompassItem extends CompassItem {
         BlockPos found = serverLevel.findNearestMapStructure(
                 STELLAR_ENDSHORE, player.blockPosition(), SEARCH_RADIUS_CHUNKS, false);
         if (found == null) {
+            // 没找到那一次是把整个半径扫满了才得出的结论，而这个结论两秒内不会变。
+            // 冷却按未命中另算，免得有人在末地空地上一直点、一直卡服。
+            player.getCooldowns().addCooldown(this, MISS_COOLDOWN_TICKS);
             player.displayClientMessage(
                     Component.translatable("item.touhou_little_maid_spell.starwatch_compass.not_found")
                             .withStyle(ChatFormatting.RED), true);
