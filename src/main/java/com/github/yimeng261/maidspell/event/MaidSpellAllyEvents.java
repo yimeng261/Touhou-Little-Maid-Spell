@@ -80,7 +80,7 @@ public class MaidSpellAllyEvents {
      *
      * <p>两头都看是必要的：压制区是以 Boss 为心的 40 格球，而女仆的远程手段够得着
      * 更远。只按出手方的位置判，站在圈外放法术的女仆照打不误 —— 而她打出的伤害
-     * 仍然会计进 {@code maidDamageTaken}，玩家反倒因为一场本该被拦住的插手挨了 R1 的罚。
+     * 仍然会计进 {@code maidDamageTaken}，玩家反倒因为一场本该被拦住的插手被判了代打。
      */
     private static boolean inSuppressedFight(@Nullable Entity attacker, @Nullable Entity victim) {
         return MaidSuppressionZone.suppresses(attacker) || MaidSuppressionZone.suppresses(victim);

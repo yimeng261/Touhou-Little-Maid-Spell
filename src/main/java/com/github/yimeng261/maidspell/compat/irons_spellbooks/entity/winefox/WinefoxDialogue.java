@@ -98,7 +98,7 @@ public final class WinefoxDialogue {
     }
 
     /**
-     * 带着不祥之兆来的：她听出了弦外之音（T1）。
+     * 带着不祥之兆来的：她听出了弦外之音。
      */
     public static List<Component> tamingChallenge() {
         return List.of(
@@ -107,7 +107,7 @@ public final class WinefoxDialogue {
     }
 
     /**
-     * 战败坐下、驯服窗口打开（T4）。
+     * 战败坐下、驯服窗口打开。
      */
     public static List<Component> tamingWindowOpen() {
         return List.of(
@@ -116,7 +116,7 @@ public final class WinefoxDialogue {
     }
 
     /**
-     * 驯服成功（T6）。
+     * 驯服成功。
      */
     public static List<Component> tamed() {
         return List.of(Component.translatable("dialogue.touhou_little_maid_spell.winefox.tamed"));

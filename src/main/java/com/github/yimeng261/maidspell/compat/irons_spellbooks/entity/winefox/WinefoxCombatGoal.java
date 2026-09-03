@@ -150,7 +150,7 @@ final class WinefoxCombatGoal extends Goal {
         // cancelCast() 会把 isCasting 同步成 false，客户端那边照样算出 END 相位、
         // 把该法术的收尾动画播出来。迁移前这里紧跟一句 stopCastAnimation() 压掉它
         // （"打断"不该有收尾），现在压不了了 —— 施法动画整条归铁魔法的同步数据管。
-        // 这与普通女仆、以及铁魔法自己所有怪物的表现一致，见 §6.2 偏差四。
+        // 这与普通女仆、以及铁魔法自己所有怪物的表现一致。
         this.boss.cancelCast();
         this.boss.cancelSwordRing();
         this.closeRangeTicks = 0;
@@ -537,7 +537,7 @@ final class WinefoxCombatGoal extends Goal {
     }
 
     /**
-     * 按挑战者带的不祥之兆等级压缩冷却，也就是流程图 T2 里的「施法频率变快」。
+     * 按挑战者带的不祥之兆等级压缩冷却：兆越重，她出手越密。
      *
      * <p>放在这一个出口上：上面那两个阶段系数是手感基线，难度是另一个维度，
      * 混进去以后调任何一边都要重新对另一边。普通挑战时系数是 1，等于没这回事。

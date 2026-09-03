@@ -140,7 +140,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private static final EntityDataAccessor<Boolean> RESTRICTED =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
 
-    /** 战败演出放完到回秋千坐下之间的间隔，流程图上写的是 3 秒。 */
+    /** 战败演出放完到回秋千坐下之间的间隔。 */
     private static final int DEFEAT_RETURN_HOME_TICKS = 60;
 
     /** 场上连续这么久没有可打的目标就收场，见 {@link #tickBattleOver}。 */
@@ -253,10 +253,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private BlockPos homePos;
     /** 开场白的排队播报，见 {@link WinefoxDialogue}。 */
     private final WinefoxDialogue dialogue = new WinefoxDialogue();
-    /** 本场累计吃到的伤害，以及其中出自女仆的部分。用来算 R1 的伤害占比。 */
+    /** 本场累计吃到的伤害，以及其中出自女仆的部分。用来算「女仆代打」的伤害占比。 */
     private float totalDamageTaken;
     private float maidDamageTaken;
-    /** 本场有没有人对她用过真伤。R1 的另一个触发条件。 */
+    /** 本场有没有人对她用过真伤。「女仆代打」的另一个触发条件。 */
     private boolean trueDamageUsed;
     /** 战败演出结束后回秋千的倒计时，见 {@link #tickReturnHome}。 */
     private int returnHomeTicks;
@@ -819,7 +819,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             this.acceptChallenge(player);
             return InteractionResult.CONSUME;
         }
-        // 驯服窗口里递上蛋糕：这是 T5，优先于交易。
+        // 驯服窗口里递上蛋糕：优先于交易。
         if (this.tamingWindowTicks > 0 && held.is(Items.CAKE)) {
             if (this.level().isClientSide) {
                 return InteractionResult.SUCCESS;
@@ -841,7 +841,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         return super.mobInteract(player, hand);
     }
 
-    // ==================== 交易（流程图 B10 / R2 / R3） ====================
+    // ==================== 战败之后的交易 ====================
 
     /**
      * 打开交易界面。
@@ -1209,7 +1209,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * <p>不改道的话，真伤会一次性绕过女仆减伤、二阶段减伤、转阶段的 120t 无敌、
      * 1 点血地板，还会让血直接归零走原版死亡 —— 战败演出、血条收起、战利品判定全部跳过。
      *
-     * <p>顺带把"用过真伤"这一位记下来：这是流程图里 R1 的两个触发条件之一。
+     * <p>顺带把"用过真伤"这一位记下来：这是判「女仆代打」的两个触发条件之一。
      * 记在这儿而不是在饰品那边，是因为这里能看到<b>所有</b>真伤来源，
      * 包括以后新加的饰品和调试指令。
      */
@@ -1297,7 +1297,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 里发战利品，而她的血被 {@link #SURVIVAL_HEALTH_FLOOR} 钉在 1、{@code die()} 一次都不会进 ——
      * 光把物品写进 {@code loot_tables/entities/magical_winefox_boss.json} 是发不出来的。
      *
-     * <p>星云核心不走战利品表而是直接落地：它是 R1 的结算结果，
+     * <p>星云核心不走战利品表而是直接落地：它是「女仆代打」判定的结算结果，
      * 掉不掉取决于这一场怎么打的，不是随机项。掉的就是进场时消耗的那一枚 ——
      * 堂堂正正赢下来她就还给你，被判代打就留下。
      */
@@ -1308,7 +1308,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
     }
 
-    // ==================== 驯服挑战（流程图 T0 ~ T8） ====================
+    // ==================== 驯服挑战 ====================
 
     /**
      * 读挑战者身上的不祥之兆，定下这一场的难度。
@@ -1359,7 +1359,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     /**
-     * 近战出手间隔，也是 T2 的第四项。
+     * 近战出手间隔，不祥之兆难度缩放的一项。
      *
      * <p>难度旋钮挂在出手间隔上而不是 {@code SWORD_COMBO_RESET_TICKS}：
      * 那是「多久没挥刀就把连段重置回第一式」的窗口，40t，而她的近战间隔本来就是 12t ——
@@ -1436,7 +1436,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 而且本模组的 {@code MobMixin} 专门拦了 {@code convertTo}，防止女仆被别的模组转走。
      * 所以手动生成一只 {@link EntityMaid}，把模型换成她自己那一套，再把本体 discard 掉。
      *
-     * <p>战利品直接塞进新女仆的物品栏而不是落地：这是 T7，
+     * <p>战利品直接塞进新女仆的物品栏而不是落地：
      * 她把随身的东西一并带过来，不是"掉了一地让你捡"。
      */
     private void tameIntoMaid(Player owner) {
@@ -1491,11 +1491,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     /**
-     * 这一场算不算「女仆代打」，也就是流程图里的 R1。
+     * 这一场算不算「女仆代打」。
      *
      * <p>两个触发条件任一成立即判限制：用过真伤，或者女仆打出的伤害占比超过阈值。
      * 前者是因为真伤本身就绕过了她全部的防御机制（见 {@link ITrueDamageRedirect}），
-     * 后者是因为流程图要求玩家自己下场，而不是站在后面看女仆刷。
+     * 后者是因为这一场要求玩家自己下场，而不是站在后面看女仆刷。
      *
      * <p>一滴伤害都没吃到（比如被指令直接判负）时不判限制：那不是代打，是没打。
      */
@@ -1564,7 +1564,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /**
      * 玩家这边打完了：她收手，回秋千坐下。
      *
-     * <p>这就是流程图里的 B6 → B7。判据不是「谁的血到 1」而是<b>场上再没有可打的目标</b> ——
+     * <p>判据不是「谁的血到 1」而是<b>场上再没有可打的目标</b> ——
      * {@link #isViableTarget} 已经把 1 点血的玩家排除掉了，所以「把人打服」自然表现为没目标；
      * 顺带还兜住了玩家跑掉、下线、切维度这几种同样该收场的情况。
      *
@@ -1753,7 +1753,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      *
      * <p>召唤物这一层不能漏：伤害源上挂着的是召唤物本身，主人在 owner 链的上游。
      * 漏掉的话，站着不动、让女仆的召唤兽把她磨死会被判成「玩家自己打赢的」，
-     * 星云核心和两条特殊交易照发 —— R1 想防的正是这个。
+     * 星云核心和两条特殊交易照发 —— 「女仆代打」判定想防的正是这个。
      */
     private static boolean damageFrom(DamageSource source, Class<?> type) {
         Entity causingEntity = source.getEntity();
