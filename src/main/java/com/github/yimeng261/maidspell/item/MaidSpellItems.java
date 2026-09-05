@@ -29,16 +29,17 @@ import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverli
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystal;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturn;
 import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
+import com.github.yimeng261.maidspell.item.common.NebulaCoreItem;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
+import com.github.yimeng261.maidspell.item.common.StarShadowSpearItem;
+import com.github.yimeng261.maidspell.item.common.StarwatchCompassItem;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
-import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import net.minecraft.Util;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -89,6 +90,12 @@ public class MaidSpellItems {
     // 寻风之铃
     public static final RegistryObject<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
 
+    // 观星罗盘：守塔人的战利品，在末地指向星途终岸
+    public static final RegistryObject<Item> STARWATCH_COMPASS = ITEMS.register("starwatch_compass", StarwatchCompassItem::new);
+
+    // 星云核心：挑战万法酒狐的信物，祭坛用 4 本旅行日记合成
+    public static final RegistryObject<Item> NEBULA_CORE = ITEMS.register("nebula_core", NebulaCoreItem::new);
+
     public static final RegistryObject<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
         () -> new ScarletZhuhuaItem(MaidSpellBlocks.SCARLET_ZHUHUA.get()));
     public static final RegistryObject<Item> YUE_LINGLAN = ITEMS.register("yue_linglan",
@@ -100,19 +107,15 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> SUPPRESSION_STONE = ITEMS.register("suppression_stone",
         () -> new BlockItem(MaidSpellBlocks.SUPPRESSION_STONE.get(), new Item.Properties()));
 
+    // 星影投枪：万法酒狐的投枪，不进创造模式物品栏，也没有 lang 条目，只能 /give
+    public static final RegistryObject<Item> STAR_SHADOW_SPEAR = ITEMS.register("star_shadow_spear", StarShadowSpearItem::new);
+
     // 管理员工具
     public static final RegistryObject<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);
 
     // 任务图标物品
     public static final RegistryObject<Item> MELEE_TASK_ICON = ITEMS.register("melee_task_icon", MeleeTaskIcon::new);
     public static final RegistryObject<Item> FAR_TASK_ICON = ITEMS.register("far_task_icon", FarTaskIcon::new);
-
-    public static final RegistryObject<Item> MAGICAL_WINEFOX_BOSS_SPAWN_EGG =
-        ITEMS.register("magical_winefox_boss_spawn_egg",
-            () -> new ForgeSpawnEggItem(MaidSpellEntities.MAGICAL_WINEFOX_BOSS,
-                0x5B3B87,
-                0xE8D8FF,
-                new Item.Properties()));
 
     /**
      * 注册物品

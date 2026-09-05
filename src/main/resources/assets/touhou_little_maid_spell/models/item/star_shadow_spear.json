@@ -1,0 +1,150 @@
+{
+  "parent": "builtin/entity",
+  "gui_light": "front",
+  "display": {
+    "thirdperson_righthand": {
+      "rotation": [
+        90.0,
+        0.0,
+        -60.0
+      ],
+      "translation": [
+        -0.07,
+        9.0,
+        0.85
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        90.0,
+        0.0,
+        -60.0
+      ],
+      "translation": [
+        -0.07,
+        9.0,
+        0.99
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        65.0,
+        0.0,
+        90.0
+      ],
+      "translation": [
+        5.16,
+        6.37,
+        -2.87
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        65.0,
+        0.0,
+        -90.0
+      ],
+      "translation": [
+        4.84,
+        6.37,
+        -2.87
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "gui": {
+      "rotation": [
+        90,
+        -45,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.61,
+        0.61,
+        0.61
+      ]
+    },
+    "head": {
+      "rotation": [
+        -147.75,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        8.25,
+        -14
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "ground": {
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        18.5,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        90,
+        0,
+        90
+      ],
+      "translation": [
+        0,
+        0.75,
+        0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    }
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "throwing": 1
+      },
+      "model": "touhou_little_maid_spell:item/star_shadow_spear_throwing"
+    }
+  ]
+}

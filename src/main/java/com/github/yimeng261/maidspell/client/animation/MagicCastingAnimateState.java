@@ -1,12 +1,12 @@
 package com.github.yimeng261.maidspell.client.animation;
 
 import com.github.tartaricacid.touhoulittlemaid.api.animation.IMagicCastingState;
-import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.CastType;
 import io.redspace.ironsspellbooks.api.spells.SpellData;
 import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
+import net.minecraft.world.entity.LivingEntity;
 
 /**
  * 简单的魔法咏唱状态实现
@@ -80,8 +80,14 @@ public class MagicCastingAnimateState implements IMagicCastingState {
         return castingSpell;
     }
 
-    public void updateState(EntityMaid maid, SyncedSpellData syncedSpellData) {
-        if (!maid.level().isClientSide) {
+    /**
+     * @param caster 施法者。形参原先是 {@code EntityMaid}，但方法体只用了它的
+     *               {@code level().isClientSide} —— 放宽到 {@code LivingEntity}
+     *               之后万法酒狐（{@code AbstractSpellCastingMob}，不是女仆）
+     *               也能用同一份状态机。
+     */
+    public void updateState(LivingEntity caster, SyncedSpellData syncedSpellData) {
+        if (!caster.level().isClientSide) {
             return;
         }
 
@@ -105,7 +111,7 @@ public class MagicCastingAnimateState implements IMagicCastingState {
             phase = CastingPhase.START;
             if (castingSpell.getSpell().getCastType() == CastType.INSTANT) {
                 instantCastSpellType = castingSpell.getSpell();
-                // castingSpell.getSpell().onClientPreCast(maid.level(), castingSpell.getLevel(), maid, InteractionHand.MAIN_HAND, data.getMagicData());
+                // castingSpell.getSpell().onClientPreCast(caster.level(), castingSpell.getLevel(), caster, InteractionHand.MAIN_HAND, data.getMagicData());
                 castingSpell = SpellData.EMPTY;
                 phase = CastingPhase.INSTANT;
             } else  {

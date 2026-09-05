@@ -616,6 +616,42 @@ public class Config {
 
     static {
         BUILDER.pop(); // retreat_dimension
+        BUILDER.push("compat");
+    }
+
+    private static final ForgeConfigSpec.BooleanValue AUTO_INSTALL_TLM_MODEL_PACK = BUILDER
+            .comment("是否在启动时自动安装/更新内置的车万女仆模型包 (默认: true)")
+            .comment("true: 每次启动都会把 jar 内置的 tlm_custom_pack 模型包写入游戏目录（覆盖同名文件），以确保模型/动画为最新修复版")
+            .comment("false: 不自动安装，整合包作者或玩家可自行管理 tlm_custom_pack 目录下的模型包")
+            .comment("Whether to auto-install/update the bundled Touhou Little Maid model pack on startup (default: true)")
+            .comment("true: The bundled pack is written into the game directory on every launch (overwriting same-named files), keeping models/animations up to date")
+            .comment("false: No auto-install; pack authors or players manage the tlm_custom_pack directory themselves")
+            .define("autoInstallTlmModelPack", true);
+
+    static {
+        BUILDER.pop(); // compat
+        BUILDER.comment("万法酒狐 Boss 战配置")
+               .comment("Magical Winefox boss fight configuration")
+               .push("winefox");
+    }
+
+    private static final ForgeConfigSpec.DoubleValue WINEFOX_MAID_DAMAGE_SHARE_LIMIT = BUILDER
+            .comment("女仆伤害占比超过这个值就判为「代打」，不掉落星云核心、不解锁特殊交易 (默认: 0.6)")
+            .comment("Maid damage share above this fraction counts as the maid carrying the fight:")
+            .comment("no Nebula Core drop and no special trades")
+            .defineInRange("winefoxMaidDamageShareLimit", 0.6, 0.0, 1.0);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ForgeConfigSpec.BooleanValue WINEFOX_TRUE_DAMAGE_RESTRICTS_REWARD = BUILDER
+            .comment("对万法酒狐使用真实伤害是否同样触发上述限制 (默认: true)")
+            .comment("Whether using true damage on the Magical Winefox also triggers the restriction above")
+            .define("winefoxTrueDamageRestrictsReward", true);
+
+    static {
+        BUILDER.pop(); // winefox
     }
 
     public static final ForgeConfigSpec SPEC = BUILDER.build();
@@ -698,6 +734,13 @@ public class Config {
     public static boolean allowMobSpawnsInRetreat;
     public static boolean allowHostileMobSpawnsInRetreat;
     public static int retreatRecordRetentionDays;
+
+    // 兼容性相关
+    public static boolean autoInstallTlmModelPack;
+
+    // 万法酒狐 Boss 战
+    public static double winefoxMaidDamageShareLimit;
+    public static boolean winefoxTrueDamageRestrictsReward;
 
 
     @SubscribeEvent
@@ -785,6 +828,13 @@ public class Config {
         allowMobSpawnsInRetreat = ALLOW_MOB_SPAWNS_IN_RETREAT.get();
         allowHostileMobSpawnsInRetreat = ALLOW_HOSTILE_MOB_SPAWNS_IN_RETREAT.get();
         retreatRecordRetentionDays = RETREAT_RECORD_RETENTION_DAYS.get();
+
+        // 兼容性相关
+        autoInstallTlmModelPack = AUTO_INSTALL_TLM_MODEL_PACK.get();
+
+        // 万法酒狐 Boss 战
+        winefoxMaidDamageShareLimit = WINEFOX_MAID_DAMAGE_SHARE_LIMIT.get();
+        winefoxTrueDamageRestrictsReward = WINEFOX_TRUE_DAMAGE_RESTRICTS_REWARD.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

@@ -1,0 +1,24 @@
+{
+  "pack_name": "{maid_pack.touhou_little_maid_spell.name}",
+  "model_list": [
+    {
+      "model_id": "touhou_little_maid_spell:sea_witch_winefox",
+      "is_gecko": true,
+      "render_entity_scale": 0.7,
+      "animation": [
+        "touhou_little_maid_spell:animation/touhou_little_maid_spell.sea_witch_winefox.main.animation.json",
+        "touhou_little_maid_spell:animation/touhou_little_maid_spell.sea_witch_winefox.arm.animation.json",
+        "touhou_little_maid_spell:animation/touhou_little_maid_spell.sea_witch_winefox.tlm.animation.json",
+        "touhou_little_maid_spell:animation/touhou_little_maid_spell.sea_witch_winefox.iss.animation.json"
+      ]
+    }
+  ],
+  "version": "1.0.0",
+  "author": [
+    "星海境"
+  ],
+  "icon": "touhou_little_maid_spell:textures/maid_icon.png",
+  "description": [
+    "{maid_pack.touhou_little_maid_spell.desc}"
+  ]
+}

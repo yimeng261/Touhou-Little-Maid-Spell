@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.utils;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.ITrueDamageRedirect;
 import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityInvoker;
 import com.github.yimeng261.maidspell.mixin.accessor.SynchedEntityDataMixin;
 import com.mojang.logging.LogUtils;
@@ -76,6 +77,11 @@ public class TrueDamageUtil {
             if (canNotBeApllied(target) || !target.isAlive() || target.isRemoved()) {
                 return;
             }
+            if (target instanceof ITrueDamageRedirect redirect) {
+                // 见 ITrueDamageRedirect：这一类实体的关键契约挂在 hurt() 上，直写血量会静默跳过。
+                redirect.maidspell$redirectTrueDamage(damage.amount, damage.attacker);
+                return;
+            }
             float currentHealth = target.getHealth();
             float newHealth = Math.max(0.0f, currentHealth - damage.amount);
             LOGGER.info("[TrueDamage] queued apply merged target={} requests={} damage={} healthBefore={} healthAfter={}",
@@ -139,6 +145,11 @@ public class TrueDamageUtil {
      */
     public static boolean setNewHealth(LivingEntity target, float newHealth, LivingEntity attacker) {
         if(canNotBeApllied(target)){
+            return false;
+        }
+        if (target instanceof ITrueDamageRedirect) {
+            // 直写这条路对它们永远关着——包括创伤霜刃那种"把血量回滚到记录值"的用法：
+            // 回滚同样是直写，同样会绕过 hurt()，在 Boss 身上等于凭空撤销已造成的伤害。
             return false;
         }
         float healthGap = FAILED_ATTEMPT_GAP;

@@ -32,6 +32,7 @@ public class MaidSpellAllyEvents {
         }
     }
 
+
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onLivingAttack(LivingAttackEvent event) {
         if (isFriendlyDamage(event.getEntity(), event.getSource())) {

@@ -26,10 +26,16 @@ public class MaidSpellCreativeTab {
             .icon(() -> new ItemStack(MaidSpellItems.FLOW_CORE.get()))
             .displayItems((parameters, output) -> {
                 if (IronsSpellbooksCompat.isLoaded()) {
+                    output.accept(IronsSpellbooksCompatItems.STAR_SHADOW_LONGSWORD.get());
+                    output.accept(IronsSpellbooksCompatItems.STAR_SHADOW_STAFF.get());
+                    output.accept(IronsSpellbooksCompatItems.STAR_WITCH_HAT.get());
+                    output.accept(IronsSpellbooksCompatItems.MAGICAL_WINEFOX_BOSS_SPAWN_EGG.get());
                     output.accept(MaidSpellItems.SPELL_ENHANCEMENT_CORE.get());
                     output.accept(MaidSpellItems.ARC_CROSS.get());
                     output.accept(MaidSpellItems.SPELL_WHITE_LIST.get());
                     output.accept(MaidSpellItems.WIND_SEEKING_BELL.get());
+                    output.accept(MaidSpellItems.STARWATCH_COMPASS.get());
+                    output.accept(MaidSpellItems.NEBULA_CORE.get());
                 }
 
                 output.accept(MaidSpellItems.BLEEDING_HEART.get());
@@ -57,7 +63,6 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.JINGXU_YOULAN.get());
                 output.accept(MaidSpellItems.STAR_GLOW_FLOWER_CLUSTER.get());
                 output.accept(MaidSpellItems.SUPPRESSION_STONE.get());
-                output.accept(MaidSpellItems.MAGICAL_WINEFOX_BOSS_SPAWN_EGG.get());
 
                 // 管理员工具
                 output.accept(MaidSpellItems.OWNER_CLEAR_TOOL.get());
@@ -68,6 +73,7 @@ public class MaidSpellCreativeTab {
                      output.accept(IronsSpellbooksCompatItems.SHADOW_ASSASSIN_SPAWN_EGG.get());
                      output.accept(IronsSpellbooksCompatItems.ELF_TEMPLAR_SPAWN_EGG.get());
                      output.accept(IronsSpellbooksCompatItems.HOLY_CONSTRUCT_SPAWN_EGG.get());
+                     output.accept(IronsSpellbooksCompatItems.GUARDIAN_WITCH_SPAWN_EGG.get());
                  }
             })
             .build());

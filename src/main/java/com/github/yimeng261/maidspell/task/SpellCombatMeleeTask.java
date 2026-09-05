@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.task;
 
+import com.github.yimeng261.maidspell.utils.MaidSuppressionZone;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
@@ -119,6 +120,10 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     protected static boolean isValidSpellCombatTarget(EntityMaid maid, LivingEntity target) {
         if (maid == null || target == null || target instanceof Player) {
+            return false;
+        }
+        // 驯服万法酒狐要求玩家单挑，挑战期间站在擂台里的女仆一概不出手。
+        if (MaidSuppressionZone.suppresses(maid)) {
             return false;
         }
         return !MaidSpellAllyResolver.areFriendly(maid, target);
