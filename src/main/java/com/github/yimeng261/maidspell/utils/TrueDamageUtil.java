@@ -331,8 +331,12 @@ public class TrueDamageUtil {
         DamageSource damageSource = createDamageSource(target, attacker);
         target.die(damageSource);
 
-        if (!target.isRemoved() && target.isDeadOrDying()) {
-            ((LivingEntityInvoker) target).maidspell$invokeTickDeath();
+        if (!target.isRemoved() && target.isDeadOrDying()
+                && target instanceof LivingEntityInvoker invoker) {
+            // The accessor mixin is attached to LivingEntity itself, but Java
+            // subclasses do not inherit the injected interface. Let vanilla
+            // tickDeath handle entities that do not expose the invoker.
+            invoker.maidspell$invokeTickDeath();
         }
     }
 

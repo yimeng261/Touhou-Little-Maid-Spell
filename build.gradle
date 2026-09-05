@@ -217,6 +217,24 @@ tasks.named('jar', Jar).configure {
 
 def bundledModJar = tasks.named('jar').flatMap { it.archiveFile }
 
+tasks.register('devTransformerJar', Jar) {
+    dependsOn tasks.named('transformerClasses')
+    archiveClassifier = 'transformer-dev'
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    from(sourceSets.transformer.output) {
+        exclude 'META-INF/services/net.minecraftforge.forgespi.locating.IModLocator'
+        exclude 'com/github/yimeng261/maidspell/bootstrap/MaidSpellNestedModLocator.class'
+    }
+    manifest {
+        attributes([
+                "Implementation-Title": "${project.name} development transformer",
+                "Implementation-Version": "${version}",
+                "Automatic-Module-Name": "touhou_little_maid_spell.dev_transformer",
+                "FMLModType": "LIBRARY"
+        ])
+    }
+}
+
 tasks.register('bundleJar', Jar) {
     dependsOn tasks.named('reobfJar'), tasks.named('transformerClasses')
     archiveClassifier = ''
@@ -236,28 +254,19 @@ tasks.register('bundleJar', Jar) {
     }
 }
 
-tasks.register('transformerDevJar', Jar) {
-    dependsOn tasks.named('transformerClasses')
-    archiveClassifier = 'transformer-dev'
-    duplicatesStrategy = DuplicatesStrategy.FAIL
-    from sourceSets.transformer.output
-    exclude 'META-INF/services/net.minecraftforge.forgespi.locating.IModLocator'
-    manifest {
-        attributes([
-                "Implementation-Title": "${project.name} development bootstrap",
-                "Implementation-Version": "${version}",
-                "Automatic-Module-Name": "touhou_little_maid_spell.bootstrap"
-        ])
-    }
-}
-
-// The exploded development mod is already supplied through MOD_CLASSES. Loading the
-// nested-mod locator here would make Forge discover this jar once per service entry.
-def maidSpellEarlyServiceRuntime = files(tasks.named('transformerDevJar').flatMap { it.archiveFile })
-maidSpellEarlyServiceRuntime.builtBy tasks.named('transformerDevJar')
+def devTransformerJarFile = tasks.named('devTransformerJar').get().archiveFile.get().asFile
+def maidSpellEarlyServiceRuntime = files(devTransformerJarFile)
 
 dependencies {
-    runtimeOnly maidSpellEarlyServiceRuntime
+    // ForgeGradle places transformation services on the legacy game library path.
+    // Using runtimeOnly also puts the same module on the service layer twice.
+    minecraftLibrary maidSpellEarlyServiceRuntime
+}
+
+tasks.configureEach {
+    if (name == 'runClient') {
+        dependsOn tasks.named('devTransformerJar')
+    }
 }
 
 tasks.named('assemble') {
