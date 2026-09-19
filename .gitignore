@@ -13,6 +13,7 @@ out
 *.iws
 *.iml
 .idea
+.vscode
 *.txt
 
 # gradle
@@ -52,7 +53,10 @@ maid-affection
 # other
 eclipse
 run
+run-data
 /logs/
+*.TMP
+*.tmp
 *.md
 AGENTS.md
 # Files from Forge MDK
@@ -60,6 +64,10 @@ forge*changelog.txt
 .claude
 .cursor
 lll
+tools
+.codex_tmp
+model_sources
+
 
 # SlashBlade addon source checkouts
 slashblade-addon-sources/
