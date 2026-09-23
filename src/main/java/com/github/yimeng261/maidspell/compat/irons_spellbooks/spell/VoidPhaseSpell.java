@@ -73,8 +73,9 @@ public class VoidPhaseSpell extends AbstractSpell {
     public void onCast(Level level, int spellLevel, LivingEntity caster,
                        CastSource castSource, MagicData magicData) {
         if (!level.isClientSide) {
+            // visible=false：关掉原版水泡粒子，虚空法术粒子由 VoidPhaseEffect 自己播。
             caster.addEffect(new MobEffectInstance(IronsSpellbooksCompatEffects.VOID_PHASE.get(),
-                    getDurationTicks(spellLevel), spellLevel - 1, false, true, true));
+                    getDurationTicks(spellLevel), spellLevel - 1, false, false, true));
         }
         super.onCast(level, spellLevel, caster, castSource, magicData);
     }

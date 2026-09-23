@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.HolyConstru
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ShadowAssassinEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCloudEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCometEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.StarShadowStrikeEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.WinefoxSwordProjectileEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
 import net.minecraft.core.BlockPos;
@@ -91,13 +92,22 @@ public final class IronsSpellbooksCompatEntities {
                             .updateInterval(1)
                             .build("winefox_sword_projectile"));
 
+    public static final RegistryObject<EntityType<StarShadowStrikeEntity>> STAR_SHADOW_STRIKE =
+            ENTITY_TYPES.register("star_shadow_strike",
+                    () -> EntityType.Builder.<StarShadowStrikeEntity>of(
+                                    StarShadowStrikeEntity::new, MobCategory.MISC)
+                            .sized(5.0F, 1.0F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("star_shadow_strike"));
+
     public static final RegistryObject<EntityType<MagicalWinefoxBossEntity>> MAGICAL_WINEFOX_BOSS =
             ENTITY_TYPES.register("magical_winefox_boss",
                     () -> EntityType.Builder.of(MagicalWinefoxBossEntity::new, MobCategory.MONSTER)
                             .sized(0.8F, 2.4F)
                             .clientTrackingRange(10)
                             .updateInterval(2)
-                            .build("magical_winefox_boss"));
+                            .build("stellar_witch"));
 
     private IronsSpellbooksCompatEntities() {
     }

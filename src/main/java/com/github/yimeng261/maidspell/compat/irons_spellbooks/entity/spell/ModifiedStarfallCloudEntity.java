@@ -28,7 +28,7 @@ public class ModifiedStarfallCloudEntity extends Entity {
     private static final int DURATION_TICKS = 160;
     private static final int VOLLEY_INTERVAL_TICKS = 4;
     private static final int COMETS_PER_VOLLEY = 2;
-    private static final double TARGET_RANGE = 40.0D;
+    private static final double TARGET_RANGE = 20.0D;
     private static final double TARGET_RANGE_SQR = TARGET_RANGE * TARGET_RANGE;
     private static final double CONE_DOT_THRESHOLD = Math.cos(30.0D * Mth.DEG_TO_RAD);
     private static final float STORM_RADIUS = 6.0F;
@@ -61,6 +61,11 @@ public class ModifiedStarfallCloudEntity extends Entity {
         }
 
         LivingEntity caster = getCaster();
+        if (caster instanceof com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity boss
+            && !boss.isBattleActive()) {
+            discard();
+            return;
+        }
         if (caster == null || !caster.isAlive() || caster.level() != level() || tickCount > DURATION_TICKS) {
             discard();
             return;

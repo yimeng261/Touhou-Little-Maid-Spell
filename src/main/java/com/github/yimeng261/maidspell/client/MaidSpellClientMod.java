@@ -3,11 +3,13 @@ package com.github.yimeng261.maidspell.client;
 import com.github.yimeng261.maidspell.client.gui.SpellWhiteListScreen;
 import com.github.yimeng261.maidspell.client.model.SharedHaloModel;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
+import com.github.yimeng261.maidspell.client.particle.VoidSpellParticle;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.client.renderer.entity.StarShadowSpearRenderer;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.renderer.item.CompassItemPropertyFunction;
@@ -19,6 +21,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
@@ -38,6 +41,11 @@ public class MaidSpellClientMod {
             registerSpearThrowingProperty();
             registerCompassAngleProperty();
         });
+    }
+
+    @SubscribeEvent
+    public static void onRegisterParticleProviders(RegisterParticleProvidersEvent event) {
+        event.registerSpriteSet(MaidSpellParticles.VOID_SPELL.get(), VoidSpellParticle.Provider::new);
     }
 
     /**

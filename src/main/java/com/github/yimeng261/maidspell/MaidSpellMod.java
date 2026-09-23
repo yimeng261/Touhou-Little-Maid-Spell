@@ -16,6 +16,7 @@ import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidS
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.painting.MaidSpellPaintings;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
+import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import net.minecraft.resources.ResourceLocation;
@@ -61,6 +62,7 @@ public class MaidSpellMod {
         MaidSpellCreativeTab.register(modBus);
         MaidSpellContainers.register(modBus);
         MaidSpellSounds.SOUNDS.register(modBus);
+        MaidSpellParticles.PARTICLES.register(modBus);
         MaidSpellEntities.register(modBus);
         MaidSpellPaintings.register(modBus);
         IronsSpellbooksCompat.init(modBus);

@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.animation.WinefoxMaidAnimationStates;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model.GenericSpellHumanoidModel;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.WinefoxSwordProjectileRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.StarShadowStrikeRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.HolyConstructRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.GenericSpellHumanoidRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.MagicalWinefoxBossRenderer;
@@ -48,6 +49,8 @@ public final class IronsSpellbooksCompatClient {
                 new CometRenderer(context, 0.75F));
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.WINEFOX_SWORD_PROJECTILE.get(),
                 WinefoxSwordProjectileRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.STAR_SHADOW_STRIKE.get(),
+                StarShadowStrikeRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(),
                 MagicalWinefoxBossRenderer::new);
     }

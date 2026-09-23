@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.MagicShotgunSpell;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.ModifiedStarfallSpell;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.ModifiedTeleportSpell;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.StarShadowStrikeSpell;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.SwordPrisonSpell;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.VoidPhaseSpell;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
@@ -26,6 +27,8 @@ public final class IronsSpellbooksCompatSpells {
             SPELLS.register("sword_prison", SwordPrisonSpell::new);
     public static final RegistryObject<AbstractSpell> MODIFIED_TELEPORT =
             SPELLS.register("teleport_modified", ModifiedTeleportSpell::new);
+    public static final RegistryObject<AbstractSpell> STAR_SHADOW_STRIKE =
+            SPELLS.register("star_shadow_strike", StarShadowStrikeSpell::new);
 
     private IronsSpellbooksCompatSpells() {
     }
