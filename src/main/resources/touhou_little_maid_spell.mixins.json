@@ -71,7 +71,8 @@
     "ClientPacketListenerMixin",
     "iss.ClientMagicDataMixin",
     "iss.MaidEntityAnimateStateMixin",
-    "tlm.RemoteMaidClientPackageMixin"
+    "tlm.RemoteMaidClientPackageMixin",
+    "tlm.SlabClickEventMixin"
   ],
   "injectors": {
     "defaultRequire": 1
