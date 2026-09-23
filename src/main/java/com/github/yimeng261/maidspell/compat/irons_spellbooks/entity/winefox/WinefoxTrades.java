@@ -9,21 +9,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.items.ItemHandlerHelper;
 
-/**
- * 战败之后万法酒狐开出的交易。
- *
- * <p>分两档：
- * <ul>
- *   <li><b>基础档</b>——只要她输过一次就有。卖装备和法术卷轴，这些东西日记里都提到过，
- *       算是把她留在路上的那些东西正式交到玩家手上。</li>
- *   <li><b>特殊档</b>——只在这一场没被判「女仆代打」时追加。星影长剑与星影法杖是她本人的武器，
- *       要拿得自己下场赢她。价码里那枚星云核心正是打赢时还回来的那一枚：
- *       <b>留着重挑战，还是换她的武器，二选一。</b></li>
- * </ul>
- *
- * <p>价格与货品是可调的默认值，不是什么平衡结论。真要动，动这一个文件就够。
- */
+/** 初始供应补给和日记兑换；合格胜利后永久解锁装备与卷轴。 */
 public final class WinefoxTrades {
 
     /** 卷轴上那一发星陨的等级。她自己放的就是这个法术。 */
@@ -33,18 +23,22 @@ public final class WinefoxTrades {
     }
 
     /**
-     * @param restricted 这一场被判了限制（女仆代打 / 用过真伤），只给基础档
+     * @param equipmentUnlocked 是否曾经取得过合格的胜利
      */
-    public static MerchantOffers build(boolean restricted) {
+    public static MerchantOffers build(boolean equipmentUnlocked) {
         MerchantOffers offers = new MerchantOffers();
 
         offers.add(offer(new ItemStack(Items.EMERALD, 24),
                 new ItemStack(MaidSpellItems.STAR_GLOW_FLOWER_CLUSTER.get(), 4)));
-        offers.add(offer(new ItemStack(Items.EMERALD, 32), new ItemStack(Items.AMETHYST_SHARD, 8),
-                new ItemStack(IronsSpellbooksCompatItems.STAR_WITCH_HAT.get())));
-        offers.add(offer(new ItemStack(Items.EMERALD, 40), starfallScroll()));
+        offers.add(offer(new ItemStack(Items.EMERALD, 4), new ItemStack(Items.ENDER_PEARL, 4)));
+        offers.add(offer(new ItemStack(Items.EMERALD, 2), new ItemStack(Items.GOLDEN_CARROT, 8)));
 
-        if (!restricted) {
+        if (equipmentUnlocked) {
+            offers.add(offer(new ItemStack(Items.EMERALD, 32), new ItemStack(Items.AMETHYST_SHARD, 8),
+                new ItemStack(IronsSpellbooksCompatItems.STAR_WITCH_HAT.get())));
+            offers.add(offer(new ItemStack(Items.EMERALD, 40), starfallScroll()));
+            offers.add(offer(new ItemStack(Items.EMERALD, 40), scroll(IronsSpellbooksCompatSpells.MODIFIED_TELEPORT.get())));
+            offers.add(offer(new ItemStack(Items.EMERALD, 40), scroll(IronsSpellbooksCompatSpells.SWORD_PRISON.get())));
             offers.add(offer(new ItemStack(MaidSpellItems.NEBULA_CORE.get()),
                     new ItemStack(Items.EMERALD, 16),
                     new ItemStack(IronsSpellbooksCompatItems.STAR_SHADOW_LONGSWORD.get())));
@@ -62,9 +56,13 @@ public final class WinefoxTrades {
      * 玩家在擂台上挨的就是这一发，拿到手的自然也该是同一发。
      */
     private static ItemStack starfallScroll() {
+        return scroll(IronsSpellbooksCompatSpells.MODIFIED_STARFALL.get());
+    }
+
+    private static ItemStack scroll(io.redspace.ironsspellbooks.api.spells.AbstractSpell spell) {
         ItemStack scroll = new ItemStack(ItemRegistry.SCROLL.get());
         ISpellContainer.createScrollContainer(
-                IronsSpellbooksCompatSpells.MODIFIED_STARFALL.get(), STARFALL_SCROLL_LEVEL, scroll);
+                spell, STARFALL_SCROLL_LEVEL, scroll);
         return scroll;
     }
 
@@ -77,6 +75,38 @@ public final class WinefoxTrades {
      * 交易表整个由 {@link #build} 按限制标志重算，不该出现"卖光了"这种状态。
      */
     private static MerchantOffer offer(ItemStack costA, ItemStack costB, ItemStack result) {
-        return new MerchantOffer(costA, costB, result, Integer.MAX_VALUE, 0, 1.0F);
+        return new MerchantOffer(costA, costB, result, Integer.MAX_VALUE, 0, 0.0F);
+    }
+
+    public static boolean isTravelDiary(ItemStack stack) {
+        return stack.is(Items.WRITTEN_BOOK) && stack.hasTag()
+            && stack.getTag().getBoolean("touhou_little_maid_spell:travel_diary");
+    }
+
+    // Different chapters cannot stack in merchant input slots; accept any four carried diaries.
+    public static void exchangeDiaries(Player player) {
+        int count = 0;
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
+            if (isTravelDiary(stack)) count += stack.getCount();
+        }
+        if (count < 4) {
+            player.displayClientMessage(Component.translatable(
+                "dialogue.touhou_little_maid_spell.winefox.diaries_missing"), false);
+            return;
+        }
+        int remaining = 4;
+        for (int slot = 0; slot < player.getInventory().getContainerSize() && remaining > 0; slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
+            if (isTravelDiary(stack)) {
+                int consumed = Math.min(remaining, stack.getCount());
+                stack.shrink(consumed);
+                remaining -= consumed;
+            }
+        }
+        player.getInventory().setChanged();
+        ItemHandlerHelper.giveItemToPlayer(player, new ItemStack(MaidSpellItems.STAR_METEORITE.get()));
+        player.displayClientMessage(Component.translatable(
+            "dialogue.touhou_little_maid_spell.winefox.diaries_exchanged"), false);
     }
 }

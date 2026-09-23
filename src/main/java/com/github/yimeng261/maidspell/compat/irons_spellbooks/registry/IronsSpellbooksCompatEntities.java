@@ -61,11 +61,11 @@ public final class IronsSpellbooksCompatEntities {
                             .build("holy_construct"));
 
     public static final RegistryObject<EntityType<GuardianWitchEntity>> GUARDIAN_WITCH =
-            ENTITY_TYPES.register("guardian_witch",
+            ENTITY_TYPES.register("astro_mancer",
                     () -> EntityType.Builder.of(GuardianWitchEntity::new, MobCategory.CREATURE)
                             .sized(0.6F, 1.95F)
                             .clientTrackingRange(10)
-                            .build("guardian_witch"));
+                            .build("astro_mancer"));
 
     public static final RegistryObject<EntityType<ModifiedStarfallCloudEntity>> MODIFIED_STARFALL_CLOUD =
             ENTITY_TYPES.register("starfall_modified_cloud",
@@ -102,9 +102,9 @@ public final class IronsSpellbooksCompatEntities {
                             .build("star_shadow_strike"));
 
     public static final RegistryObject<EntityType<MagicalWinefoxBossEntity>> MAGICAL_WINEFOX_BOSS =
-            ENTITY_TYPES.register("magical_winefox_boss",
+            ENTITY_TYPES.register("stellar_witch",
                     () -> EntityType.Builder.of(MagicalWinefoxBossEntity::new, MobCategory.MONSTER)
-                            .sized(0.8F, 2.4F)
+                            .sized(0.9F, 2.0F)
                             .clientTrackingRange(10)
                             .updateInterval(2)
                             .build("stellar_witch"));

@@ -20,6 +20,9 @@ import org.jetbrains.annotations.Nullable;
  * {@code NoClassDefFoundError}。接口在这儿，{@code instanceof} 就够了。
  */
 public interface ITrueDamageRedirect {
+    /** Record an accepted true-damage attack before deferred processing or a simultaneous defeat. */
+    default void maidspell$onTrueDamageQueued() {
+    }
 
     /**
      * 吃下一份本该以直写血量方式落下的真伤。

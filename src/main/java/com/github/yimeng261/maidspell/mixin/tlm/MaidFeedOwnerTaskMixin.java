@@ -18,9 +18,8 @@ public class MaidFeedOwnerTaskMixin {
     /**
      * 压制区里的女仆不给主人喂食。
      *
-     * <p>万法酒狐的驯服擂台要求玩家单挑，"不攻击"由
-     * {@code MaidSpellAllyEvents} 拦住了，"不喂食"得堵在这儿——喂食是任务层的行为，
-     * 不经过索敌也不产生伤害，两个事件谁都拦不到。
+     * <p>压制区要求女仆暂停支援，"不攻击"由事件层拦住了，"不喂食"得堵在这儿——
+     * 喂食是任务层的行为，不经过索敌也不产生伤害，两个事件谁都拦不到。
      */
     @Inject(
             method = "checkExtraStartConditions(Lnet/minecraft/server/level/ServerLevel;Lcom/github/tartaricacid/touhoulittlemaid/entity/passive/EntityMaid;)Z",

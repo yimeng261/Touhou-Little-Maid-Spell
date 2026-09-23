@@ -63,8 +63,8 @@ public class WinefoxActionAnimationProvider implements IMagicCastingAnimationPro
 
     /**
      * <ul>
-     *   <li><b>战败</b>：一直报 CASTING。{@code death} 被加长到 10000 秒，靠「最后一帧之后
-     *       没有下一帧」定格；持续占着通道才压得住 {@code main} 通道上的待机。
+     *   <li><b>战败</b>：一直报 CASTING。{@code death} 是 5 秒的 {@code hold_on_last_frame}
+     *       动画；持续占着通道才压得住 {@code main} 通道上的待机。
      *       报 CASTING 而不是 INSTANT，是因为 CASTING 每 tick 都重新 {@code setAnimation}
      *       却不会 reload，姿势稳稳地钉着；也顺带把施法 provider 挡在门外
      *       —— 她已经倒下了，不该再有施法动作。</li>

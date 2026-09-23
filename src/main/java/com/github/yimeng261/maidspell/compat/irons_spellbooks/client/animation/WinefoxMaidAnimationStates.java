@@ -10,10 +10,10 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.Mag
 import java.util.function.BiPredicate;
 
 /**
- * 把酒狐要的三条 {@code main} 通道动画补进 TLM 的全局动画状态表。
+ * 把酒狐要的四条 {@code main} 通道动画补进 TLM 的全局动画状态表。
  *
  * <p>TLM 自带的那 20 条（{@code death} / {@code jump} / {@code walk} / {@code idle} …）里
- * 没有「飞」，也没有分阶段的待机 —— 这三条得自己补。
+ * 没有「飞」、分阶段的待机或行礼 —— 这四条得自己补。
  *
  * <h2>那张表是全局的</h2>
  * {@code AnimationManager} 的表所有女仆共用，加进去对**每一只**女仆生效，
@@ -34,7 +34,7 @@ import java.util.function.BiPredicate;
  * ——她从不上载具。{@code sit} 不然：她坐在秋千上的时候
  * {@code IMaid.isMaidInSittingPose()} 就是 true，那正是秋千姿势的来源。
  * 同优先级里谁先命中取决于注册先后，而注册先后正是这个类不敢依赖的东西，
- * 所以下面三条一律先排除「坐着」，把这一段让给 {@code sit}。
+ * 所以下面四条一律先排除「坐着」，把这一段让给 {@code sit}。
  *
  * <p><b>代价</b>：TLM 的 {@code attacked}(2) 对酒狐变成不可达。这与迁移前一致 ——
  * 旧的 {@code mainAnimation} 里 {@code hurtTime > 0} 走的也是待机姿势，不是受击动画。
@@ -49,11 +49,20 @@ public final class WinefoxMaidAnimationStates {
     /** 只能调一次。调用点在客户端 setup 的 {@code enqueueWork} 里，见类注释。 */
     public static void register() {
         AnimationManager manager = AnimationManager.getInstance();
-        manager.register(state("fly", boss((boss, event) -> isHovering(boss) && isMoving(event))));
+        manager.register(state("fly", boss((boss, event) -> !boss.isCurtsying()
+                && isHovering(boss) && isMoving(event))));
         manager.register(state("phase_one_idle",
-                boss((boss, event) -> !boss.isPhaseTwo() && isIdlePose(boss, event))));
+                boss((boss, event) -> !boss.isCurtsying() && !boss.isPhaseTwo()
+                        && isIdlePose(boss, event))));
         manager.register(state("phase_two_idle",
-                boss((boss, event) -> boss.isPhaseTwo() && isIdlePose(boss, event))));
+                boss((boss, event) -> !boss.isCurtsying() && boss.isPhaseTwo()
+                        && isIdlePose(boss, event))));
+        manager.register(new AnimationState(
+            "curtsy",
+            ILoopType.EDefaultLoopTypes.PLAY_ONCE,
+            1,
+            boss((boss, event) -> boss.isCurtsying())
+        ));
     }
 
     private static AnimationState state(String animationName,

@@ -39,15 +39,15 @@ public final class TouhouLittleMaidModelPackInstaller {
     static final List<String> PACK_FILES = List.of(
             "pack.mcmeta",
             "assets/touhou_little_maid_spell/maid_model.json",
-            "assets/touhou_little_maid_spell/models/entity/sea_witch_winefox.json",
-            "assets/touhou_little_maid_spell/textures/entity/sea_witch_winefox.png",
+            "assets/touhou_little_maid_spell/models/entity/stellar_witch.json",
+            "assets/touhou_little_maid_spell/textures/entity/stellar_witch.png",
             "assets/touhou_little_maid_spell/textures/maid_icon.png",
             "assets/touhou_little_maid_spell/lang/zh_cn.lang",
             "assets/touhou_little_maid_spell/lang/en_us.lang",
-            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.sea_witch_winefox.main.animation.json",
-            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.sea_witch_winefox.arm.animation.json",
-            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.sea_witch_winefox.tlm.animation.json",
-            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.sea_witch_winefox.iss.animation.json");
+            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.stellar_witch.main.animation.json",
+            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.stellar_witch.arm.animation.json",
+            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.stellar_witch.tlm.animation.json",
+            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.stellar_witch.iss.animation.json");
 
     private TouhouLittleMaidModelPackInstaller() {
     }

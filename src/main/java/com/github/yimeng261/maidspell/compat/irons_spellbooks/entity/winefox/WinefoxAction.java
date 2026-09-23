@@ -21,10 +21,10 @@ public enum WinefoxAction {
     STAFF_ATTACK_1("staff_attack_1", 20, WinefoxTermination.ONE_SHOT),
     STAFF_ATTACK_2("staff_attack_2", 20, WinefoxTermination.ONE_SHOT),
 
-    SWORD_ATTACK_1("sword_attack_1", 30, WinefoxTermination.ONE_SHOT),
-    SWORD_ATTACK_2("sword_attack_2", 20, WinefoxTermination.ONE_SHOT),
-    SWORD_ATTACK_3("sword_attack_3", 18, WinefoxTermination.ONE_SHOT),
-    SWORD_ATTACK_4("sword_attack_4", 19, WinefoxTermination.ONE_SHOT),
+    SWORD_ATTACK_1("sword_attack_1", 30, WinefoxTermination.ONE_SHOT, Event.sound(2, "atk3")),
+    SWORD_ATTACK_2("sword_attack_2", 20, WinefoxTermination.ONE_SHOT, Event.sound(2, "atk2")),
+    SWORD_ATTACK_3("sword_attack_3", 18, WinefoxTermination.ONE_SHOT, Event.sound(1, "atk3")),
+    SWORD_ATTACK_4("sword_attack_4", 19, WinefoxTermination.ONE_SHOT, Event.sound(4, "atk3")),
 
     /**
      * 转阶段：第 55t 半径 5 格击退，同一 tick 把主手换成本阶段该拿的那把。
@@ -37,6 +37,7 @@ public enum WinefoxAction {
      * 击退两边都保留，否则贴身的人看不出她在切形态。方向本身不在这里， 而在实体的 {@code phaseTransitionTarget}（那一位才是落 NBT 的）， 所以这里一项就够。
      */
     PHASE_TRANSITION("phase_transition", 120, WinefoxTermination.ONE_SHOT,
+        Event.sound(1, "atked"), Event.sound(45, "shengyin"),
         Event.at(55, EventKind.KNOCKBACK),
         Event.at(55, EventKind.WEAPON_SWAP)),
 
@@ -47,11 +48,13 @@ public enum WinefoxAction {
      * 而是由 {@code DEFEATED} 同步标志驱动。遍历 {@code values()} 做动作逻辑时要和 {@link #NONE} 一样过滤掉。
      *
      * <p>动画名是模型包作者起的 {@code death}（我们这边原先叫 {@code defeat}）。
-     * 时长 10000s = 200000t 也是作者的手法：这个 geckolib3 分支里 {@code hold_on_last_frame} 和 {@code play_once} 行为一致，
-     * 播完控制器直接 STOP、 姿势弹回，所以「定格」只能靠把动画拉长到播不完。
-     * 作者给每条 {@code hold_mainhand:*} 用的都是这一招。这里的 200000 不是什么倒计时，只是照实抄动画时长好让对账测试成立。
+     * 新版模型包把它收束为 5 秒，服务端的归位等待也从该时长推导，确保战败演出完整播放后再回秋千。
      */
-    DEFEAT("death", 200000, WinefoxTermination.HOLD_LAST_FRAME);
+    DEFEAT("death", 100, WinefoxTermination.HOLD_LAST_FRAME),
+
+    SPEAR_THROW("iss:spear_throw", 64, WinefoxTermination.ONE_SHOT,
+        Event.sound(12, "atk2"), Event.sound(38, "magic01_shoot"),
+        Event.at(40, EventKind.PROJECTILE));
 
     private static final WinefoxAction[] BY_ID = values();
 
@@ -125,9 +128,13 @@ public enum WinefoxAction {
     /**
      * 动画播放途中的一个副作用。
      */
-    public record Event(int tick, EventKind kind) {
+    public record Event(int tick, EventKind kind, String sound) {
         public static Event at(int tick, EventKind kind) {
-            return new Event(tick, kind);
+            return new Event(tick, kind, null);
+        }
+
+        public static Event sound(int tick, String name) {
+            return new Event(tick, EventKind.SOUND, name);
         }
     }
 
@@ -139,6 +146,8 @@ public enum WinefoxAction {
         /**
          * 转阶段中途把主手武器换成本阶段该拿的那把。
          */
-        WEAPON_SWAP
+        WEAPON_SWAP,
+        PROJECTILE,
+        SOUND
     }
 }

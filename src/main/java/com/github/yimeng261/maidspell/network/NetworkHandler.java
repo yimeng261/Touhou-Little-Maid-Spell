@@ -19,7 +19,7 @@ import java.util.Optional;
  * 网络消息处理器
  */
 public class NetworkHandler {
-    private static final String PROTOCOL_VERSION = "4";
+    private static final String PROTOCOL_VERSION = "5";
     
     @SuppressWarnings("removal")
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(

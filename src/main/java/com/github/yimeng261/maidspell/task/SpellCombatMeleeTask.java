@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.task;
 
 import com.github.yimeng261.maidspell.utils.MaidSuppressionZone;
+import com.github.tartaricacid.touhoulittlemaid.api.entity.IMaid;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
@@ -122,8 +123,15 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         if (maid == null || target == null || target instanceof Player) {
             return false;
         }
-        // 驯服万法酒狐要求玩家单挑，挑战期间站在擂台里的女仆一概不出手。
+        // 压制区里的女仆不参与战斗。
         if (MaidSuppressionZone.suppresses(maid)) {
+            return false;
+        }
+        // 坐姿待机中的 IMaid（待机中的星之魔女就是这种）不是战斗目标：
+        // 待机只认玩家递来的邀战物，女仆主动索敌会把她提前叫起来。
+        // 事件那边也拦了一道（见 WinefoxNonLethalGuard）；这里挡进谓词里，
+        // 索敌才会继续去找下一个目标，而不是被最近的那一个卡住。
+        if (target instanceof IMaid sitting && sitting.isMaidInSittingPose()) {
             return false;
         }
         return !MaidSpellAllyResolver.areFriendly(maid, target);

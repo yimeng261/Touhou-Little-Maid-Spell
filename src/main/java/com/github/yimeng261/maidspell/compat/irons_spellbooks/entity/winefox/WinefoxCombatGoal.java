@@ -36,14 +36,56 @@ final class WinefoxCombatGoal extends Goal {
     private static final double HOP_VERTICAL_SPEED = 0.55D;
     private static final double HOP_HORIZONTAL_SPEED = 0.35D;
 
+    /**
+     * Ignore ordinary jumps and small steps while following a target vertically.
+     * A larger change still makes the flying boss move to the target's level.
+     */
+    private static final double COMBAT_ALTITUDE_TOLERANCE = 1.75D;
+
     /** 一阶段的施法冷却相对法术基础值的倍率，见 {@link #getSpellCooldown}。 */
     private static final double PHASE_ONE_COOLDOWN_SCALE = 0.2D;
+
+    /** 一阶段上下浮动的目标高度范围与重选间隔。 */
+    private static final double PHASE_ONE_MIN_HOVER_HEIGHT = 0.5D;
+    private static final double PHASE_ONE_FLOAT_MIN_DISTANCE = 1.0D;
+    private static final double PHASE_ONE_FLOAT_MAX_DISTANCE = 2.0D;
+    private static final int PHASE_ONE_FLOAT_MIN_INTERVAL = 80;
+    private static final int PHASE_ONE_FLOAT_MAX_INTERVAL = 140;
 
     /** 二阶段的施法冷却倍率。比一阶段松，节奏改由近战撑。 */
     private static final double PHASE_TWO_COOLDOWN_SCALE = 0.5D;
 
-    /** 普通挑战下的近战出手间隔，同样过 {@link #scaleByOmen}。 */
+    /**
+     * 二阶段跟目标保持的水平距离。
+     *
+     * <p>原先二阶段直接把目标所在的那一格当成目标点，她会一路顶到人身上：碰撞箱互相推挤，
+     * 画面里是她贴着玩家来回挤。改成站定在这个距离上出刀 —— 仍在近战判定
+     * （{@code distanceToSqr <= 9}，即 3 格）之内，但不会贴脸。
+     */
+    private static final double PHASE_TWO_STANDOFF_DISTANCE = 2.0D;
+
+    /**
+     * 二阶段站定时允许的高度差。
+     *
+     * <p>近战那条判定用的是三维距离（{@code distanceToSqr(target) <= 9}），
+     * 所以水平拉到 2 格之后垂直只剩很少的余量：她要是悬在目标上方两格多，
+     * 水平再近也够不着 —— 表现为二阶段一刀都不砍。站定前必须把高度也收进这个带里。
+     */
+    private static final double PHASE_TWO_MELEE_VERTICAL_TOLERANCE = 1.0D;
+
+    /** 近战出手间隔。 */
     private static final int BASE_MELEE_COOLDOWN_TICKS = 12;
+
+    /**
+     * 「深渊庇佑」的血量档位：每跌 10% 记一档，每档掷一次 50%。
+     *
+     * <p>第一档落在 90%（100% − 10%），不是 100% —— 满血时 {@code health <= max} 恒真，
+     * 档位放在 1.0 会让她一开打就白掷一次。往下一直排到 10%，再往下的 0% 那一档
+     * 永远用不到：她有 1 点血的锁血，血量比例到不了 0。
+     */
+    private static final double ABYSSAL_SHROUD_FIRST_HEALTH_THRESHOLD = 0.9D;
+    private static final double ABYSSAL_SHROUD_HEALTH_THRESHOLD_STEP = 0.1D;
+    private static final float ABYSSAL_SHROUD_CAST_CHANCE = 0.5F;
 
     private static final List<WinefoxBossSpellAction> PHASE_ONE_SPELLS = List.of(
         WinefoxBossSpellAction.MAGIC_MISSILE,
@@ -51,6 +93,10 @@ final class WinefoxCombatGoal extends Goal {
         WinefoxBossSpellAction.SUMMON_SWORDS,
         WinefoxBossSpellAction.FIREBALL,
         WinefoxBossSpellAction.LIGHTNING_LANCE,
+        WinefoxBossSpellAction.LIGHTNING_BOLT,
+        WinefoxBossSpellAction.ARROW_VOLLEY,
+        WinefoxBossSpellAction.EVASION,
+        WinefoxBossSpellAction.ARCANE_SHACKLE,
         WinefoxBossSpellAction.HEAL,
         WinefoxBossSpellAction.MODIFIED_STARFALL,
         WinefoxBossSpellAction.MAGIC_SHOTGUN);
@@ -58,9 +104,8 @@ final class WinefoxCombatGoal extends Goal {
         WinefoxBossSpellAction.ECHOING_STRIKES,
         WinefoxBossSpellAction.SHADOW_SLASH,
         WinefoxBossSpellAction.MODIFIED_TELEPORT,
-        WinefoxBossSpellAction.HEAL,
-        WinefoxBossSpellAction.FLAMING_STRIKE,
-        WinefoxBossSpellAction.DIVINE_SMITE);
+        WinefoxBossSpellAction.STAR_SHADOW_STRIKE,
+        WinefoxBossSpellAction.SHOCKWAVE);
     private static final List<WinefoxBossSpellAction> PHASE_TWO_FAR_SPELLS = List.of(
         WinefoxBossSpellAction.SHADOW_SLASH,
         WinefoxBossSpellAction.MODIFIED_TELEPORT,
@@ -73,11 +118,11 @@ final class WinefoxCombatGoal extends Goal {
      * 里，原先各写一遍字面量，改一处漏一处。
      */
     private static final int SPELL_DECISION_INTERVAL = 20;
-    private static final int ESCAPE_TELEPORT_CHECK_INTERVAL = 80;
-    private static final int MODIFIED_TELEPORT_CHECK_INTERVAL = 120;
+    private static final int ESCAPE_TELEPORT_CHECK_INTERVAL = 200;
     private static final int COUNTERSPELL_CHECK_INTERVAL = 20;
-    private static final int SWORD_PRISON_CHECK_INTERVAL = 400;
-    private static final int VOID_PHASE_CHECK_INTERVAL = 400;
+    private static final int SPEAR_CHECK_INTERVAL = 400;
+    private static final int VOID_PHASE_CHECK_INTERVAL = 200;
+    private static final int HEAL_CHECK_INTERVAL = 200;
 
     private final MagicalWinefoxBossEntity boss;
     private final EnumMap<WinefoxBossSpellAction, Integer> spellCooldowns =
@@ -86,16 +131,21 @@ final class WinefoxCombatGoal extends Goal {
     private int meleeCooldown;
     private int closeRangeTicks;
     private int escapeTeleportCheckCooldown;
-    private int modifiedTeleportCheckCooldown;
     private int counterspellCheckCooldown;
-    private int swordPrisonCheckCooldown;
+    private int spearCheckCooldown;
     private int voidPhaseCheckCooldown;
+    private int healCheckCooldown;
+    private int meleeComboRemaining;
     private int movementRefreshCooldown;
     private double orbitDirection = 1.0D;
     @Nullable
     private Vec3 lastPosition;
     private int stuckTicks;
     private double preferredHeight;
+    private int phaseOneFloatRefreshCooldown;
+    private boolean phaseOneFloatHigh;
+    private double starfallHealthThreshold;
+    private double abyssalShroudHealthThreshold = ABYSSAL_SHROUD_FIRST_HEALTH_THRESHOLD;
     private boolean phaseTwo;
     @Nullable
     private WinefoxBossSpellAction burstAction;
@@ -123,15 +173,34 @@ final class WinefoxCombatGoal extends Goal {
     }
 
     @Override
+    public boolean requiresUpdateEveryTick() {
+        return true;
+    }
+
+    @Override
     public void start() {
         this.phaseTwo = this.boss.isPhaseTwo();
         this.spellDecisionCooldown = 0;
         this.escapeTeleportCheckCooldown = ESCAPE_TELEPORT_CHECK_INTERVAL;
-        this.modifiedTeleportCheckCooldown = MODIFIED_TELEPORT_CHECK_INTERVAL;
         this.counterspellCheckCooldown = COUNTERSPELL_CHECK_INTERVAL;
-        this.swordPrisonCheckCooldown = SWORD_PRISON_CHECK_INTERVAL;
+        this.spearCheckCooldown = SPEAR_CHECK_INTERVAL;
         this.voidPhaseCheckCooldown = VOID_PHASE_CHECK_INTERVAL;
+        this.healCheckCooldown = HEAL_CHECK_INTERVAL;
+        this.spellCooldowns.clear();
+        this.meleeCooldown = 0;
+        this.meleeComboRemaining = 0;
+        this.closeRangeTicks = 0;
+        this.stuckTicks = 0;
+        this.lastPosition = null;
         this.refreshMovementPattern();
+        this.resetPhaseOneFloat();
+        this.starfallHealthThreshold = 0.75D;
+        // 只有她血还高过第一档（90%）时，才把「深渊庇佑」的档位拨回去重新数：
+        // 目标是"一档一次"，战斗中途 goal 重启（换目标、卡住重选）不该把数过的档位再掷一遍。
+        // 反过来，被自己的治疗抬回 90% 以上就算重新武装，与天降之星那份 75% 的写法同源。
+        if (this.boss.getHealth() > this.boss.getMaxHealth() * ABYSSAL_SHROUD_FIRST_HEALTH_THRESHOLD) {
+            this.abyssalShroudHealthThreshold = ABYSSAL_SHROUD_FIRST_HEALTH_THRESHOLD;
+        }
 
         LivingEntity target = this.boss.getTarget();
         if (!this.phaseTwo && target != null) {
@@ -155,7 +224,7 @@ final class WinefoxCombatGoal extends Goal {
         // （"打断"不该有收尾），现在压不了了 —— 施法动画整条归铁魔法的同步数据管。
         // 这与普通女仆、以及铁魔法自己所有怪物的表现一致。
         this.boss.cancelCast();
-        this.boss.cancelSwordRing();
+        this.boss.cancelSpearThrow();
         this.closeRangeTicks = 0;
         // 她收手了，剑也该收回来：召唤物本身有 12000 tick 的存活时间，
         // 不主动解散的话会在她脱战之后继续追着人砍十分钟。
@@ -196,30 +265,38 @@ final class WinefoxCombatGoal extends Goal {
         this.movePhaseOne(target, horizontalDistance);
 
         if (this.boss.isCasting()) {
+            this.spellDecisionCooldown = 8;
             // 吟唱中：时长、收尾、CONTINUOUS 复发都归铁魔法管，这里不插手。
             // 必须挡在下面任何 castAction 之前——否则吟唱途中 cast() 返回 false，
             // 会被兜底逻辑当成"施法失败"而改去传送或射箭。
             return;
         }
 
-        boolean shouldTeleport = false;
-        if (this.modifiedTeleportCheckCooldown <= 0) {
-            this.modifiedTeleportCheckCooldown = MODIFIED_TELEPORT_CHECK_INTERVAL;
-            shouldTeleport = this.boss.getRandom().nextFloat() < 0.2F;
-        }
-        if (this.escapeTeleportCheckCooldown <= 0 && horizontalDistance < 5.0D) {
-            this.escapeTeleportCheckCooldown = ESCAPE_TELEPORT_CHECK_INTERVAL;
-            boolean closeRangeTeleport = this.boss.getRandom().nextFloat() < 0.25F;
-            shouldTeleport = shouldTeleport || closeRangeTeleport;
-        }
-        if (shouldTeleport
-            && this.isSpellReady(WinefoxBossSpellAction.MODIFIED_TELEPORT)
-            && this.castAction(target, WinefoxBossSpellAction.MODIFIED_TELEPORT, 4)) {
-            this.spellCooldowns.put(WinefoxBossSpellAction.MODIFIED_TELEPORT,
-                this.getSpellCooldown(WinefoxBossSpellAction.MODIFIED_TELEPORT));
-            this.spellDecisionCooldown = 8;
-            this.closeRangeTicks = 0;
+        if (this.tickAbyssalShroud(target)) {
             return;
+        }
+
+        if (this.starfallHealthThreshold > 0.0D
+            && this.boss.getHealth() / this.boss.getMaxHealth() <= this.starfallHealthThreshold) {
+            double threshold = this.starfallHealthThreshold;
+            this.starfallHealthThreshold = Math.max(0.0D, threshold - 0.10D);
+            if (this.boss.getRandom().nextFloat() < (threshold >= 0.75D ? 1.0F : 0.5F)
+                && this.isSpellReady(WinefoxBossSpellAction.MODIFIED_STARFALL)
+                && this.castAction(target, WinefoxBossSpellAction.MODIFIED_STARFALL, 5)) {
+                this.spellCooldowns.put(WinefoxBossSpellAction.MODIFIED_STARFALL,
+                    this.getSpellCooldown(WinefoxBossSpellAction.MODIFIED_STARFALL));
+                return;
+            }
+        }
+
+        if (this.escapeTeleportCheckCooldown <= 0) {
+            this.escapeTeleportCheckCooldown = ESCAPE_TELEPORT_CHECK_INTERVAL;
+            if (horizontalDistance < 3.0D && this.boss.getRandom().nextFloat() < 0.25F
+                && this.boss.teleportAwayFrom(target, COMBAT_TELEPORT_DISTANCE)) {
+                this.spellDecisionCooldown = 8;
+                this.closeRangeTicks = 0;
+                return;
+            }
         }
 
         if (this.counterspellCheckCooldown <= 0) {
@@ -261,6 +338,28 @@ final class WinefoxCombatGoal extends Goal {
         }
     }
 
+    /**
+     * 「深渊庇佑」：血量每跌 10% 掷一次 50%，中了就放。
+     *
+     * <p>档位在掷之前就先往下走一格：这一档不论中没中、法术起没起来，都只掷这一次。
+     * 反过来说，一次掉血跨过好几档时，接下来几 tick 会连着各掷一次 —— 这是要的，
+     * 那几档本来就各自欠她一次机会；而且这里只在没在吟唱时被调到，跨档连着放不会插队。
+     *
+     * <p>两个阶段共用这一处判定：10% 那一档落在二阶段里，不能只挂在一阶段的循环上。
+     */
+    private boolean tickAbyssalShroud(LivingEntity target) {
+        if (this.abyssalShroudHealthThreshold <= 0.0D
+            || this.boss.getHealth() / this.boss.getMaxHealth() > this.abyssalShroudHealthThreshold) {
+            return false;
+        }
+        this.abyssalShroudHealthThreshold = Math.max(0.0D,
+            this.abyssalShroudHealthThreshold - ABYSSAL_SHROUD_HEALTH_THRESHOLD_STEP);
+        if (this.boss.getRandom().nextFloat() >= ABYSSAL_SHROUD_CAST_CHANCE) {
+            return false;
+        }
+        return this.castAction(target, WinefoxBossSpellAction.ABYSSAL_SHROUD, 1);
+    }
+
     private void tickPhaseTwo(LivingEntity target, double horizontalDistance) {
         this.movePhaseTwo(target, horizontalDistance);
 
@@ -269,20 +368,16 @@ final class WinefoxCombatGoal extends Goal {
             return;
         }
 
-        // 原先这里是"投枪动作"：一个自己计时的 64t 动作，末尾偷偷放一发剑牢的弹体。
-        // 现在它就是剑牢法术本身，起手动画 iss:spear_throw 由法术指定，
-        // 时长/收尾/打断一律归铁魔法管，与其余法术同一条路径。
-        // 只有"剑什么时候落"是她自己的事：动画 2.1s 才把枪甩出去，
-        // 所以 onCast 把剑交给 scheduleSwordRing 延后到那一帧。
-        if (this.swordPrisonCheckCooldown <= 0) {
-            this.swordPrisonCheckCooldown = SWORD_PRISON_CHECK_INTERVAL;
+        if (this.tickAbyssalShroud(target)) {
+            return;
+        }
+
+        if (this.spearCheckCooldown <= 0) {
+            this.spearCheckCooldown = SPEAR_CHECK_INTERVAL;
             if (this.boss.getRandom().nextFloat() < 0.5F) {
                 this.boss.teleportAwayFrom(target, COMBAT_TELEPORT_DISTANCE);
-                if (this.castAction(target, WinefoxBossSpellAction.SWORD_PRISON, 1)) {
-                    this.spellCooldowns.put(WinefoxBossSpellAction.SWORD_PRISON,
-                        this.getSpellCooldown(WinefoxBossSpellAction.SWORD_PRISON));
-                    return;
-                }
+                this.boss.startSpearThrow(target);
+                return;
             }
         }
         if (this.voidPhaseCheckCooldown <= 0) {
@@ -292,13 +387,42 @@ final class WinefoxCombatGoal extends Goal {
                 && this.castAction(target, WinefoxBossSpellAction.VOID_PHASE, 1)) {
                 this.spellCooldowns.put(WinefoxBossSpellAction.VOID_PHASE,
                         this.getSpellCooldown(WinefoxBossSpellAction.VOID_PHASE));
+                return;
+            }
+        }
+        if (this.healCheckCooldown <= 0) {
+            this.healCheckCooldown = HEAL_CHECK_INTERVAL;
+            if (this.boss.getHealth() < this.boss.getMaxHealth()
+                && this.boss.getRandom().nextFloat() < 0.5F
+                && this.castAction(target, WinefoxBossSpellAction.HEAL, 5)) {
+                this.spellCooldowns.put(WinefoxBossSpellAction.HEAL,
+                    this.getSpellCooldown(WinefoxBossSpellAction.HEAL));
+                return;
+            }
+        }
+        if (this.escapeTeleportCheckCooldown <= 0 && horizontalDistance > 8.0D) {
+            this.escapeTeleportCheckCooldown = ESCAPE_TELEPORT_CHECK_INTERVAL;
+            if (this.boss.teleportToward(target)) {
+                return;
             }
         }
 
-        if (this.meleeCooldown <= 0 && this.boss.distanceToSqr(target) <= 9.0D) {
+        if (this.meleeCooldown <= 0 && this.boss.distanceToSqr(target) <= 9.0D
+            && this.boss.getSensing().hasLineOfSight(target)) {
+            if (this.meleeComboRemaining == 0) {
+                this.meleeComboRemaining = 3 + this.boss.getRandom().nextInt(2);
+            }
             this.boss.swing(InteractionHand.MAIN_HAND);
             this.boss.doHurtTarget(target);
-            this.meleeCooldown = this.scaleByOmen(BASE_MELEE_COOLDOWN_TICKS);
+            --this.meleeComboRemaining;
+            this.meleeCooldown = this.meleeComboRemaining > 0
+                ? BASE_MELEE_COOLDOWN_TICKS : this.boss.animationAction().durationTicks() + SPELL_DECISION_INTERVAL;
+            if (this.meleeComboRemaining == 0) {
+                this.spellDecisionCooldown = this.boss.animationAction().durationTicks();
+            }
+            return;
+        } else if (this.meleeComboRemaining > 0 && this.boss.distanceToSqr(target) <= 9.0D) {
+            return;
         }
 
         if (this.tickBurst(target) || this.spellDecisionCooldown > 0) {
@@ -348,16 +472,84 @@ final class WinefoxCombatGoal extends Goal {
             speedModifier = 0.7D;
         }
 
-        double desiredY = retreating ? this.boss.getY() : target.getY() + this.preferredHeight;
+        double desiredY = this.phaseOneFlightY(target.getY());
         Vec3 desired = this.boss.position().add(movementDirection.scale(3.0D));
         desired = new Vec3(desired.x, desiredY, desired.z);
         this.moveTowardClearPosition(desired, speedModifier, retreating ? 0.0D : 4.0D);
     }
 
     private void movePhaseTwo(LivingEntity target, double horizontalDistance) {
-        Vec3 desired = new Vec3(target.getX(), target.getY(), target.getZ());
-        double speedModifier = horizontalDistance <= 8.0D ? 0.7D : 1.5D;
+        // 二阶段把驻留高度锚到目标脚下，而不是沿用 COMBAT_ALTITUDE_TOLERANCE 那套"离得近就
+        // 保持当前高度"。一阶段她是悬在目标上方 0.5~2.5 格飞行的，那点温和的容忍带在这里是
+        // 个陷阱：转阶段那一刻要是正好悬在最高档，当前高度已经超出容忍带，返回的就是"保持当前
+        // 高度"，于是高度被永久冻在上方两格多 —— 三维距离永远进不了近战窗口，她一刀都砍不到人。
+        // 所以水平收进站定距离之后一律压到目标高度；还在远处水平飞过来时，容忍带只用来
+        // 忽略普通跳跃与台阶，免得每 tick 追着目标的垂直速度抖动。
+        double desiredY = horizontalDistance > PHASE_TWO_STANDOFF_DISTANCE
+                          ? targetFlightY(target.getY(), target.getY())
+                          : target.getY();
+        // 站定要同时满足水平与垂直：水平进了 2 格、高度也收进近战余量，才算真的站到位。
+        if (horizontalDistance <= PHASE_TWO_STANDOFF_DISTANCE * 1.5D
+            && horizontalDistance >= PHASE_TWO_STANDOFF_DISTANCE * 0.5D
+            && Math.abs(target.getY() - this.boss.getY()) <= PHASE_TWO_MELEE_VERTICAL_TOLERANCE) {
+            this.holdPosition();
+            return;
+        }
+        Vec3 away = horizontalDirection(target.position(), this.boss.position());
+        // 站定点取在目标背面 PHASE_TWO_STANDOFF_DISTANCE 格处，而不是目标本身那一格。
+        // 当前位置距离为零（同一格，比如刚传送落进去）时方向是常量 (1,0,0)，
+        // 站定点自然就落在她当前所在的一侧，不会把她从目标身上穿过去。
+        Vec3 desired = new Vec3(
+            target.getX() + away.x * PHASE_TWO_STANDOFF_DISTANCE,
+            desiredY,
+            target.getZ() + away.z * PHASE_TWO_STANDOFF_DISTANCE);
+        double speedModifier = horizontalDistance > PHASE_TWO_STANDOFF_DISTANCE
+                               ? 1.5D
+                               : horizontalDistance < PHASE_TWO_STANDOFF_DISTANCE * 0.5D ? 0.35D : 0.7D;
         this.moveTowardClearPosition(desired, speedModifier, 1.5D);
+    }
+
+    /**
+     * 二阶段远距离接近时的高度命令：当前高度还在容忍带里就原地保持，否则收到目标高度。
+     *
+     * <p>只在 {@code horizontalDistance > PHASE_TWO_STANDOFF_DISTANCE} 的接近段用得到 ——
+     * 站定段的垂直余量是另一个常量（见 {@link #PHASE_TWO_MELEE_VERTICAL_TOLERANCE}）。
+     */
+    private double targetFlightY(double targetY, double requestedY) {
+        double currentY = this.boss.getY();
+        return Math.abs(targetY - currentY) <= COMBAT_ALTITUDE_TOLERANCE ? currentY : requestedY;
+    }
+
+    /**
+     * 停在原地，并把已经算好的高度挂住。
+     *
+     * <p>不复用 {@code moveTowardClearPosition(action, 0.0)}：那条路会把"没挪窝"记进
+     * {@link #trackProgress}，站定连段二十 tick 之后就会被判成卡死、白白弹一下
+     * {@link #breakDeadlock} —— 她这会儿是有意不动的。
+     */
+    private void holdPosition() {
+        this.boss.getNavigation().stop();
+        this.boss.setFlightDestination(
+            this.boss.position().add(0.0D, this.boss.flightTargetY() - this.boss.getY(), 0.0D), 0.0D);
+        this.stuckTicks = 0;
+        this.lastPosition = this.boss.position();
+    }
+
+    /**
+     * 一阶段保持缓慢的上下浮动。每次只改变 1～2 格目标高度，
+     * 并把目标高度限制在目标脚下半格以上，避免贴地飞行。
+     */
+    private double phaseOneFlightY(double targetY) {
+        if (--this.phaseOneFloatRefreshCooldown <= 0) {
+            this.phaseOneFloatRefreshCooldown = PHASE_ONE_FLOAT_MIN_INTERVAL
+                + this.boss.getRandom().nextInt(
+                    PHASE_ONE_FLOAT_MAX_INTERVAL - PHASE_ONE_FLOAT_MIN_INTERVAL + 1);
+            this.phaseOneFloatHigh = !this.phaseOneFloatHigh;
+            this.preferredHeight = this.phaseOneFloatHigh
+                ? PHASE_ONE_MIN_HOVER_HEIGHT + this.randomPhaseOneFloatDistance()
+                : PHASE_ONE_MIN_HOVER_HEIGHT;
+        }
+        return targetY + this.preferredHeight;
     }
 
     /**
@@ -384,7 +576,7 @@ final class WinefoxCombatGoal extends Goal {
             }
         }
         this.boss.getNavigation().stop();
-        this.boss.getMoveControl().setWantedPosition(desired.x, desired.y, desired.z, speedModifier);
+        this.boss.setFlightDestination(desired, speedModifier);
         this.trackProgress(blocked);
     }
 
@@ -449,11 +641,14 @@ final class WinefoxCombatGoal extends Goal {
                                                LivingEntity target, double horizontalDistance) {
         List<WinefoxBossSpellAction> eligible = new ArrayList<>();
         for (WinefoxBossSpellAction action : pool) {
+            if (!WinefoxBossSpells.isSpellAvailable(action)) {
+                continue;
+            }
             if (!this.isSpellReady(action)) {
                 continue;
             }
             if (action == WinefoxBossSpellAction.HEAL
-                && this.boss.getHealth() > this.boss.getMaxHealth() * 0.8F) {
+                && this.boss.getHealth() >= this.boss.getMaxHealth()) {
                 continue;
             }
             if (action == WinefoxBossSpellAction.SWORD_PRISON && horizontalDistance < 3.0D) {
@@ -475,9 +670,11 @@ final class WinefoxCombatGoal extends Goal {
             --this.burstDelay;
             return true;
         }
-        this.castAction(target, this.burstAction, this.burstSpellLevel);
+        if (!this.castAction(target, this.burstAction, this.burstSpellLevel)) {
+            return true;
+        }
         --this.burstShots;
-        this.burstDelay = this.burstAction == WinefoxBossSpellAction.MAGIC_MISSILE ? 3 : 6;
+        this.burstDelay = this.phaseTwo ? 6 : 8;
         if (this.burstShots <= 0) {
             this.burstAction = null;
         }
@@ -505,7 +702,9 @@ final class WinefoxCombatGoal extends Goal {
             } else if (action != WinefoxBossSpellAction.HEAL
                 && action != WinefoxBossSpellAction.COUNTERSPELL
                 && action != WinefoxBossSpellAction.VOID_PHASE
-                && action != WinefoxBossSpellAction.ECHOING_STRIKES) {
+                && action != WinefoxBossSpellAction.ECHOING_STRIKES
+                && action != WinefoxBossSpellAction.ABYSSAL_SHROUD
+                && action != WinefoxBossSpellAction.SHOCKWAVE) {
                 this.boss.performRangedAttack(target, 1.0F);
                 return true;
             }
@@ -515,9 +714,9 @@ final class WinefoxCombatGoal extends Goal {
 
     private int randomSpellLevel(WinefoxBossSpellAction action) {
         return switch (action) {
-            case COUNTERSPELL, VOID_PHASE -> 1;
+            case ABYSSAL_SHROUD, COUNTERSPELL, VOID_PHASE, EVASION -> 1;
             case MAGIC_SHOTGUN -> 1 + this.boss.getRandom().nextInt(5);
-            case SUMMON_SWORDS, MODIFIED_TELEPORT -> 4;
+            case SUMMON_SWORDS, MODIFIED_TELEPORT, ARROW_VOLLEY, ARCANE_SHACKLE -> 4;
             default -> 5;
         };
     }
@@ -536,22 +735,7 @@ final class WinefoxCombatGoal extends Goal {
      */
     private int getSpellCooldown(WinefoxBossSpellAction action) {
         double scale = this.phaseTwo ? PHASE_TWO_COOLDOWN_SCALE : PHASE_ONE_COOLDOWN_SCALE;
-        return this.scaleByOmen(WinefoxBossSpells.getCooldownTicks(action, scale));
-    }
-
-    /**
-     * 按挑战者带的不祥之兆等级压缩冷却：兆越重，她出手越密。
-     *
-     * <p>放在这一个出口上：施法冷却和近战间隔都从这儿过。上面那几个系数是手感基线，
-     * 难度是另一个维度，混进去以后调任何一边都要重新对另一边。
-     * 普通挑战时系数是 1，等于没这回事。
-     *
-     * <p>难度旋钮挂在出手间隔而不是 {@code SWORD_COMBO_RESET_TICKS} 上：
-     * 那是「多久没挥刀就把连段重置回第一式」的窗口，40t，而近战间隔本来就是 12t——
-     * 持续贴身时那个窗口根本到不了，改它不产生任何效果。
-     */
-    private int scaleByOmen(int cooldownTicks) {
-        return Math.max(1, Mth.ceil(cooldownTicks * this.boss.spellCooldownScale()));
+        return Math.max(1, Mth.ceil(WinefoxBossSpells.getCooldownTicks(action, scale)));
     }
 
     private boolean isSpellReady(WinefoxBossSpellAction action) {
@@ -570,17 +754,17 @@ final class WinefoxCombatGoal extends Goal {
         if (this.escapeTeleportCheckCooldown > 0) {
             --this.escapeTeleportCheckCooldown;
         }
-        if (this.modifiedTeleportCheckCooldown > 0) {
-            --this.modifiedTeleportCheckCooldown;
-        }
         if (this.counterspellCheckCooldown > 0) {
             --this.counterspellCheckCooldown;
         }
-        if (this.swordPrisonCheckCooldown > 0) {
-            --this.swordPrisonCheckCooldown;
+        if (this.spearCheckCooldown > 0) {
+            --this.spearCheckCooldown;
         }
         if (this.voidPhaseCheckCooldown > 0) {
             --this.voidPhaseCheckCooldown;
+        }
+        if (this.healCheckCooldown > 0) {
+            --this.healCheckCooldown;
         }
     }
 
@@ -594,19 +778,36 @@ final class WinefoxCombatGoal extends Goal {
         this.phaseTwo = this.boss.isPhaseTwo();
         this.burstAction = null;
         this.burstShots = 0;
-        this.boss.cancelCast();
         this.closeRangeTicks = 0;
         this.spellDecisionCooldown = SPELL_DECISION_INTERVAL;
         this.meleeCooldown = 0;
-        this.swordPrisonCheckCooldown = SWORD_PRISON_CHECK_INTERVAL;
+        this.meleeComboRemaining = 0;
+        this.escapeTeleportCheckCooldown = 0;
+        this.spearCheckCooldown = SPEAR_CHECK_INTERVAL;
         this.voidPhaseCheckCooldown = VOID_PHASE_CHECK_INTERVAL;
+        this.healCheckCooldown = HEAL_CHECK_INTERVAL;
+        this.resetPhaseOneFloat();
         this.refreshMovementPattern();
+    }
+
+    private void resetPhaseOneFloat() {
+        this.phaseOneFloatHigh = this.boss.getRandom().nextBoolean();
+        this.preferredHeight = this.phaseOneFloatHigh
+            ? PHASE_ONE_MIN_HOVER_HEIGHT + this.randomPhaseOneFloatDistance()
+            : PHASE_ONE_MIN_HOVER_HEIGHT;
+        this.phaseOneFloatRefreshCooldown = PHASE_ONE_FLOAT_MIN_INTERVAL
+            + this.boss.getRandom().nextInt(
+                PHASE_ONE_FLOAT_MAX_INTERVAL - PHASE_ONE_FLOAT_MIN_INTERVAL + 1);
+    }
+
+    private double randomPhaseOneFloatDistance() {
+        return PHASE_ONE_FLOAT_MIN_DISTANCE + this.boss.getRandom().nextDouble()
+            * (PHASE_ONE_FLOAT_MAX_DISTANCE - PHASE_ONE_FLOAT_MIN_DISTANCE);
     }
 
     private void refreshMovementPattern() {
         this.movementRefreshCooldown = 40 + this.boss.getRandom().nextInt(41);
         this.orbitDirection = this.boss.getRandom().nextBoolean() ? 1.0D : -1.0D;
-        this.preferredHeight = this.boss.getRandom().nextDouble() * 3.0D;
     }
 
     private static double horizontalDistance(Entity first, Entity second) {

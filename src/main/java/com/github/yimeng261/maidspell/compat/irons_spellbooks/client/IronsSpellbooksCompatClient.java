@@ -24,6 +24,7 @@ public final class IronsSpellbooksCompatClient {
      */
     public static void onClientSetup() {
         WinefoxMaidAnimationStates.register();
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(WinefoxBossMusicController.class);
     }
 
     public static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
@@ -41,8 +42,8 @@ public final class IronsSpellbooksCompatClient {
                         new ResourceLocation(MaidSpellMod.MOD_ID, "textures/entity/elf_templar.png"))));
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.GUARDIAN_WITCH.get(), context ->
                 new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
-                        new ResourceLocation(MaidSpellMod.MOD_ID, "geo/guardian_witch.geo.json"),
-                        new ResourceLocation(MaidSpellMod.MOD_ID, "textures/entity/guardian_witch.png"))));
+                        new ResourceLocation(MaidSpellMod.MOD_ID, "geo/astro_mancer.geo.json"),
+                        new ResourceLocation(MaidSpellMod.MOD_ID, "textures/entity/astro_mancer.png"))));
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.HOLY_CONSTRUCT.get(), HolyConstructRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_STARFALL_CLOUD.get(), NoopRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_STARFALL_COMET.get(), context ->

@@ -5,10 +5,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 万法酒狐的台词排队播报。
@@ -22,14 +25,19 @@ import java.util.List;
  */
 public final class WinefoxDialogue {
 
-    /** 两句之间隔多久。2 秒，够读完一行又不至于让开场白拖成过场动画。 */
-    private static final int LINE_INTERVAL_TICKS = 40;
+    /** 普通连续台词之间的间隔。 */
+    private static final int LINE_INTERVAL_TICKS = 140;
+
+    /** 初次见面台词按设计每隔三秒发送一句。 */
+    private static final int GREETING_LINE_INTERVAL_TICKS = 60;
 
     /** 播报半径。比擂台大一圈，站在边上看的人也听得到。 */
     private static final double BROADCAST_RADIUS = 48.0D;
 
     private final Deque<Component> pending = new ArrayDeque<>();
     private int delayTicks;
+    private int lineIntervalTicks = LINE_INTERVAL_TICKS;
+    private UUID targetPlayerId;
 
     /**
      * 排入一组台词，替换掉还没播完的上一组。
@@ -38,20 +46,24 @@ public final class WinefoxDialogue {
      * 上一组要是还没播完，说明状态已经变了，接着播反而错乱。
      */
     public void speak(List<Component> lines) {
+        this.begin(lines, LINE_INTERVAL_TICKS, null);
+    }
+
+    /** 排入只发送给指定玩家的一组台词。 */
+    public boolean speakTo(Player player, List<Component> lines, int intervalTicks) {
+        if (!(player instanceof ServerPlayer) || this.isSpeaking()) {
+            return false;
+        }
+        this.begin(lines, intervalTicks, player.getUUID());
+        return true;
+    }
+
+    private void begin(List<Component> lines, int intervalTicks, UUID targetPlayerId) {
         this.pending.clear();
         this.pending.addAll(lines);
         this.delayTicks = 0;
-    }
-
-    /**
-     * 接着上一段说下去，不清队列。
-     *
-     * <p>{@link #speak} 是「换个话题」，会把没播完的顶掉。同一 tick 里连着调两次
-     * 就是把前一段整段吞了 —— 接受挑战那条路正好是这样：先排开场白，
-     * 紧接着 {@code applyOmenLevel} 又排驯服台词，玩家永远听不到开场那三句。
-     */
-    public void continueWith(List<Component> lines) {
-        this.pending.addAll(lines);
+        this.lineIntervalTicks = Math.max(1, intervalTicks);
+        this.targetPlayerId = targetPlayerId;
     }
 
     /**
@@ -64,6 +76,7 @@ public final class WinefoxDialogue {
     public void clear() {
         this.pending.clear();
         this.delayTicks = 0;
+        this.targetPlayerId = null;
     }
 
     /**
@@ -78,57 +91,115 @@ public final class WinefoxDialogue {
             return;
         }
         Component line = this.pending.poll();
-        this.delayTicks = LINE_INTERVAL_TICKS;
-        Component prefixed = Component.translatable(
-                "entity.touhou_little_maid_spell.magical_winefox_boss.say", line);
+        this.delayTicks = this.lineIntervalTicks;
+        if (this.targetPlayerId != null) {
+            Player target = level.getPlayerByUUID(this.targetPlayerId);
+            if (target instanceof ServerPlayer serverPlayer) {
+                send(serverPlayer, line);
+            }
+        } else {
+            sendToNearby(speaker, line, BROADCAST_RADIUS);
+        }
+        if (this.pending.isEmpty()) {
+            this.targetPlayerId = null;
+        }
+    }
+
+    /** 将一行台词发送给实体附近指定半径内的玩家。 */
+    public static void sendToNearby(Entity speaker, Component line, double radius) {
+        if (!(speaker.level() instanceof ServerLevel level)) {
+            return;
+        }
+        double radiusSqr = radius * radius;
         for (ServerPlayer player : level.players()) {
-            if (player.distanceToSqr(speaker) <= BROADCAST_RADIUS * BROADCAST_RADIUS) {
-                player.sendSystemMessage(prefixed.copy().withStyle(ChatFormatting.LIGHT_PURPLE));
+            if (player.distanceToSqr(speaker) <= radiusSqr) {
+                send(player, line);
             }
         }
+    }
+
+    /** 将一行普通聊天发送给指定玩家。 */
+    public static void sendToPlayer(Player player, Component line) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            send(serverPlayer, line);
+        }
+    }
+
+    private static void send(ServerPlayer player, Component line) {
+        player.sendSystemMessage(Component.translatable(
+                "entity.touhou_little_maid_spell.stellar_witch.say", line)
+            .withStyle(ChatFormatting.LIGHT_PURPLE));
     }
 
     /**
      * 玩家被打服了：她收手回秋千。
      */
     public static List<Component> playerSubdued() {
-        return List.of(
-                Component.translatable("dialogue.touhou_little_maid_spell.winefox.subdued_1"),
-                Component.translatable("dialogue.touhou_little_maid_spell.winefox.subdued_2"));
+        return List.of(randomTranslation("dialogue.touhou_little_maid_spell.winefox.challenge_lost_", 3));
     }
 
     /**
-     * 带着不祥之兆来的：她听出了弦外之音。
+     * 开场白：玩家出示星芒短剑，三秒后开始切磋。
      */
-    public static List<Component> tamingChallenge() {
-        return List.of(
-                Component.translatable("dialogue.touhou_little_maid_spell.winefox.taming_1"),
-                Component.translatable("dialogue.touhou_little_maid_spell.winefox.taming_2"));
+    public static List<Component> challengeAccepted(boolean firstChallenge) {
+        return List.of(Component.translatable(firstChallenge
+                ? "dialogue.touhou_little_maid_spell.winefox.challenge_1"
+                : randomKey("dialogue.touhou_little_maid_spell.winefox.challenge_repeat_", 2)));
     }
 
-    /**
-     * 战败坐下、驯服窗口打开。
-     */
-    public static List<Component> tamingWindowOpen() {
-        return List.of(
-                Component.translatable("dialogue.touhou_little_maid_spell.winefox.taming_window_1"),
-                Component.translatable("dialogue.touhou_little_maid_spell.winefox.taming_window_2"));
+    public static List<Component> victory(boolean restricted, boolean trueDamage) {
+        return List.of(trueDamage
+            ? Component.translatable("dialogue.touhou_little_maid_spell.winefox.victory_true_damage")
+            : restricted
+                ? randomTranslation("dialogue.touhou_little_maid_spell.winefox.victory_maids_", 3)
+                : randomTranslation("dialogue.touhou_little_maid_spell.winefox.victory_normal_", 3));
     }
 
-    /**
-     * 驯服成功。
-     */
-    public static List<Component> tamed() {
-        return List.of(Component.translatable("dialogue.touhou_little_maid_spell.winefox.tamed"));
+    /** 初次靠近时发送三句开场白，句间间隔三秒。 */
+    public boolean greet(Entity speaker, Player player) {
+        return this.speakTo(player, List.of(
+            Component.translatable("dialogue.touhou_little_maid_spell.winefox.greeting_1"),
+            Component.translatable("dialogue.touhou_little_maid_spell.winefox.greeting_2"),
+            Component.translatable("dialogue.touhou_little_maid_spell.winefox.greeting_3")),
+            GREETING_LINE_INTERVAL_TICKS);
     }
 
-    /**
-     * 开场白：玩家递上星云核心，她起身应战。
-     */
-    public static List<Component> challengeAccepted() {
-        return List.of(
-                Component.translatable("dialogue.touhou_little_maid_spell.winefox.challenge_1"),
-                Component.translatable("dialogue.touhou_little_maid_spell.winefox.challenge_2"),
-                Component.translatable("dialogue.touhou_little_maid_spell.winefox.challenge_3"));
+    public static Component randomAmbientLine() {
+        return randomTranslation("dialogue.touhou_little_maid_spell.winefox.ambient_", 5);
+    }
+
+    public static Component randomChatLine(boolean nearbyMaid) {
+        int index = ThreadLocalRandom.current().nextInt(nearbyMaid ? 17 : 15);
+        return index < 15
+            ? translationAt("dialogue.touhou_little_maid_spell.winefox.chat_", index + 1)
+            : translationAt("dialogue.touhou_little_maid_spell.winefox.chat_maid_", index - 14);
+    }
+
+    public static Component postVictoryChatLine() {
+        return Component.translatable("dialogue.touhou_little_maid_spell.winefox.post_victory_chat");
+    }
+
+    public static Component tradeLine() {
+        return Component.translatable("dialogue.touhou_little_maid_spell.winefox.trade");
+    }
+
+    public static List<Component> phaseTransition() {
+        return List.of(randomTranslation("dialogue.touhou_little_maid_spell.winefox.phase_transition_", 4));
+    }
+
+    public static List<Component> maidDefeated() {
+        return List.of(randomTranslation("dialogue.touhou_little_maid_spell.winefox.maid_defeated_", 5));
+    }
+
+    private static Component randomTranslation(String prefix, int count) {
+        return Component.translatable(randomKey(prefix, count));
+    }
+
+    private static Component translationAt(String prefix, int index) {
+        return Component.translatable(prefix + index);
+    }
+
+    private static String randomKey(String prefix, int count) {
+        return prefix + (1 + ThreadLocalRandom.current().nextInt(count));
     }
 }

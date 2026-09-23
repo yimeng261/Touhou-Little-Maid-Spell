@@ -8,6 +8,7 @@ import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.capabilities.magic.TargetEntityCastData;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -19,6 +20,9 @@ import org.jetbrains.annotations.Nullable;
  * 万法酒狐的铁魔法法术行为。boss 本身只在装了铁魔法时注册，所以这里直接调用铁魔法 API。
  */
 public final class WinefoxBossSpells {
+
+    private static final ResourceLocation ARCANE_SHACKLE_ID =
+            new ResourceLocation("irons_spellbooks", "arcane_shackle");
 
     private WinefoxBossSpells() {
     }
@@ -49,6 +53,9 @@ public final class WinefoxBossSpells {
     public static boolean cast(MagicalWinefoxBossEntity boss, @Nullable LivingEntity target,
                         WinefoxBossSpellAction action, int spellLevel) {
         if (boss.level().isClientSide) {
+            return false;
+        }
+        if (!isSpellAvailable(action)) {
             return false;
         }
         int clampedLevel = Mth.clamp(spellLevel, 1, 10);
@@ -82,7 +89,9 @@ public final class WinefoxBossSpells {
     /** 这两个法术要在施法数据里带上目标实体，没有目标就没法施。 */
     private static boolean needsTargetData(WinefoxBossSpellAction action) {
         return action == WinefoxBossSpellAction.MODIFIED_TELEPORT
-                || action == WinefoxBossSpellAction.SWORD_PRISON;
+                || action == WinefoxBossSpellAction.SWORD_PRISON
+                || action == WinefoxBossSpellAction.ARROW_VOLLEY
+                || action == WinefoxBossSpellAction.ARCANE_SHACKLE;
     }
 
     public static boolean isCasting(LivingEntity entity) {
@@ -107,8 +116,17 @@ public final class WinefoxBossSpells {
     }
 
     /**
-     * 每一个 {@link WinefoxBossSpellAction} 都对得上一个已注册的法术，所以不会返回 null：
-     * switch 是穷尽的，而 {@code RegistryObject.get()} 取不到时直接抛。
+     * 检查法术是否存在于当前加载的铁魔法版本中。
+     * 奥术镣铐在 3.16 才加入，旧版注册表会返回 {@code none()}。
+     */
+    public static boolean isSpellAvailable(WinefoxBossSpellAction action) {
+        return action != WinefoxBossSpellAction.ARCANE_SHACKLE
+                || SpellRegistry.getSpell(ARCANE_SHACKLE_ID) != SpellRegistry.none();
+    }
+
+    /**
+     * 普通法术通过稳定的 {@link RegistryObject} 字段获取；奥术镣铐使用注册 ID 查询，
+     * 避免旧版铁魔法没有该字段时触发 {@link NoSuchFieldError}。
      */
     private static AbstractSpell getSpell(WinefoxBossSpellAction action) {
         return switch (action) {
@@ -118,14 +136,20 @@ public final class WinefoxBossSpells {
             case SUMMON_SWORDS -> SpellRegistry.SUMMON_SWORDS.get();
             case FIREBALL -> SpellRegistry.FIREBALL_SPELL.get();
             case LIGHTNING_LANCE -> SpellRegistry.LIGHTNING_LANCE_SPELL.get();
+            case LIGHTNING_BOLT -> SpellRegistry.LIGHTNING_BOLT_SPELL.get();
+            case ARROW_VOLLEY -> SpellRegistry.ARROW_VOLLEY_SPELL.get();
+            case EVASION -> SpellRegistry.EVASION_SPELL.get();
+            case ARCANE_SHACKLE -> SpellRegistry.getSpell(ARCANE_SHACKLE_ID);
             case HEAL -> SpellRegistry.HEAL_SPELL.get();
+            case ABYSSAL_SHROUD -> SpellRegistry.ABYSSAL_SHROUD_SPELL.get();
             case MODIFIED_STARFALL -> IronsSpellbooksCompatSpells.MODIFIED_STARFALL.get();
             case MAGIC_SHOTGUN -> IronsSpellbooksCompatSpells.MAGIC_SHOTGUN.get();
             case VOID_PHASE -> IronsSpellbooksCompatSpells.VOID_PHASE.get();
             case ECHOING_STRIKES -> SpellRegistry.ECHOING_STRIKES_SPELL.get();
             case SHADOW_SLASH -> SpellRegistry.SHADOW_SLASH.get();
             case MODIFIED_TELEPORT -> IronsSpellbooksCompatSpells.MODIFIED_TELEPORT.get();
-            case FLAMING_STRIKE -> SpellRegistry.FLAMING_STRIKE_SPELL.get();
+            case STAR_SHADOW_STRIKE -> IronsSpellbooksCompatSpells.STAR_SHADOW_STRIKE.get();
+            case SHOCKWAVE -> SpellRegistry.SHOCKWAVE_SPELL.get();
             case DIVINE_SMITE -> SpellRegistry.DIVINE_SMITE_SPELL.get();
             case SWORD_PRISON -> IronsSpellbooksCompatSpells.SWORD_PRISON.get();
         };

@@ -33,6 +33,11 @@ public class TrueDamageUtil {
     private static final float FAILED_ATTEMPT_GAP = Float.POSITIVE_INFINITY;
     private static final Queue<TrueDamageRequest> TRUE_DAMAGE_QUEUE = new ConcurrentLinkedQueue<>();
     private static final int MAX_QUEUED_DAMAGE_PER_TICK = 2048;
+    private static boolean applyingQueuedDamage;
+
+    public static boolean isApplyingQueuedDamage() {
+        return applyingQueuedDamage;
+    }
     
     private static final Map<String, List<Integer>> healthIdMap = new HashMap<>();
 
@@ -47,6 +52,9 @@ public class TrueDamageUtil {
     public static boolean dealTrueDamage(LivingEntity target, float damage, LivingEntity attacker) {
         if (canNotBeApllied(target) || damage <= 0.0f || target.level().isClientSide()) {
             return false;
+        }
+        if (target instanceof ITrueDamageRedirect redirect) {
+            redirect.maidspell$onTrueDamageQueued();
         }
         TRUE_DAMAGE_QUEUE.offer(new TrueDamageRequest(target, damage, attacker));
         return true;
@@ -79,7 +87,12 @@ public class TrueDamageUtil {
             }
             if (target instanceof ITrueDamageRedirect redirect) {
                 // 见 ITrueDamageRedirect：这一类实体的关键契约挂在 hurt() 上，直写血量会静默跳过。
-                redirect.maidspell$redirectTrueDamage(damage.amount, damage.attacker);
+                applyingQueuedDamage = true;
+                try {
+                    redirect.maidspell$redirectTrueDamage(damage.amount, damage.attacker);
+                } finally {
+                    applyingQueuedDamage = false;
+                }
                 return;
             }
             float currentHealth = target.getHealth();

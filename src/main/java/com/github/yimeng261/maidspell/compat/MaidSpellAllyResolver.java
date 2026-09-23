@@ -104,6 +104,37 @@ public final class MaidSpellAllyResolver {
         return false;
     }
 
+    /**
+     * 主人链上有女仆、且链上有一位在线玩家时，返回那位玩家；否则返回 {@code null}。
+     *
+     * <p>给「玩家派出来的东西先动手」这类判定用：女仆本人、她的召唤物与弹体都算，
+     * 它们的主人是同一位玩家。链上先遇到玩家的那一节就算数。
+     *
+     * <p>与 {@link #collectAffinityIds} 的区别是这里只要玩家本人、而且**必须在线**：
+     * 主人离线时链走不到底，返回 {@code null}，这种女仆算不算普通生物由调用方决定。
+     */
+    @Nullable
+    public static Player maidOwningPlayer(@Nullable Entity entity) {
+        EntityMaid maid = null;
+        Entity current = entity;
+        for (int depth = 0; depth < OWNER_TRACE_LIMIT && current != null; depth++) {
+            if (current instanceof EntityMaid found) {
+                maid = found;
+            } else if (current instanceof Player player) {
+                return player;
+            }
+            current = getDirectOwner(current);
+        }
+        if (maid == null) {
+            return null;
+        }
+        UUID ownerId = maid.getOwnerUUID();
+        // 女仆那边的 getOwner() 走的是 PlayerList，与关卡自己那份玩家表并不总是同一份
+        // （测试用的假玩家、以及别的模组手搓的玩家都只在后者里）。回到 UUID 再找一遍，
+        // 只有主人真的不在线时才返回 null。
+        return ownerId == null ? null : maid.level().getPlayerByUUID(ownerId);
+    }
+
     public static Optional<Entity> resolveResponsibleEntity(@Nullable Entity entity) {
         if (entity == null) {
             return Optional.empty();

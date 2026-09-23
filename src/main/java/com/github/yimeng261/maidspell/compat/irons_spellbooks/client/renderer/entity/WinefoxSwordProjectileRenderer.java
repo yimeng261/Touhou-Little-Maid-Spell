@@ -2,44 +2,56 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.e
 
 import com.github.yimeng261.maidspell.client.model.item.StarEquipmentGeoModel;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.WinefoxSwordProjectileEntity;
-import com.github.yimeng261.maidspell.item.common.StarShadowSpearItem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import io.redspace.ironsspellbooks.render.RenderHelper;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import software.bernie.geckolib.cache.object.BakedGeoModel;
+import software.bernie.geckolib.core.object.Color;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
-/**
- * 剑牢法术召出来的星影投枪，飞行中与钉在地上都用它。
- *
- * <p>几何体与贴图就是手持那一份 {@link StarShadowSpearItem#MODEL} ——
- * 原先另有一份 {@code winefox_spear_projectile.geo.json}，是同一把枪的另一次导出，
- * 只是根骨骼旋转不同（长轴在 X 而不是 Z）。同一件东西留两份模型，
- * 在 Blockbench 里改了一份另一份就悄悄对不上了，所以合并成一份。
- *
- * <p>渲染也回到常规实体渲染：原先套着铁魔法的 {@code RenderHelper.magic()} 加
- * {@code Color.LIGHT_GRAY}，把枪画成半透明的灰色发光体，贴图上的配色全丢了。
- */
+/** 剑牢沿用铁魔法召唤利剑的模型与贴图，落地后保持入射朝向。 */
 public class WinefoxSwordProjectileRenderer extends GeoEntityRenderer<WinefoxSwordProjectileEntity> {
 
-    /**
-     * 模型里枪柄朝 +Z、枪头朝 −Z，所以"枪尖朝前"在模型局部就是 −Z。
-     *
-     * <p>实测：整份模型在实体渲染空间里 z ∈ [−2.0245, +2.4233]，
-     * 最长的一根轴就是 Z，而 −Z 那一端正是枪尖
-     * （{@link StarShadowSpearItem#TIP_TO_ORIGIN} 与它对得上）。
-     */
     private static final Vector3f MODEL_FORWARD = new Vector3f(0.0F, 0.0F, -1.0F);
 
     public WinefoxSwordProjectileRenderer(EntityRendererProvider.Context context) {
-        super(context, new StarEquipmentGeoModel<>(StarShadowSpearItem.MODEL, StarShadowSpearItem.TEXTURE));
+        super(context, new StarEquipmentGeoModel<>(
+            new ResourceLocation("irons_spellbooks", "geo/summoned_sword.geo.json"),
+            new ResourceLocation("irons_spellbooks", "textures/entity/summoned_weapons/summoned_sword.png")));
         this.shadowRadius = 0.0F;
     }
 
+    @Override
+    public void preRender(PoseStack poseStack, WinefoxSwordProjectileEntity entity, BakedGeoModel model,
+                          MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender,
+                          float partialTick, int packedLight, int packedOverlay, float red, float green,
+                          float blue, float alpha) {
+        super.preRender(poseStack, entity, model, bufferSource, buffer, isReRender, partialTick,
+                packedLight, packedOverlay, red, green, blue, alpha);
+        poseStack.translate(0.0F, entity.getBbHeight() * 0.5F, 0.0F);
+    }
+
+    @Override
+    public RenderType getRenderType(WinefoxSwordProjectileEntity entity, ResourceLocation texture,
+                                    MultiBufferSource buffer, float partialTick) {
+        return RenderHelper.CustomerRenderType.magic(texture);
+    }
+
+    @Override
+    public Color getRenderColor(WinefoxSwordProjectileEntity entity, float partialTick, int packedLight) {
+        return Color.LIGHT_GRAY;
+    }
+
     /**
-     * 让枪尖朝着实际运动方向。
+     * 让剑尖朝着实际运动方向。
      *
      * <p>这里**不能**照抄箭矢那套 {@code yRot/xRot}：{@code AbstractArrow} 会维护这两个角，
      * 而本实体继承的是 {@code AbstractMagicProjectile}，它们一直是 0 ——
@@ -63,6 +75,5 @@ public class WinefoxSwordProjectileRenderer extends GeoEntityRenderer<WinefoxSwo
         poseStack.mulPose(new Quaternionf().rotationTo(MODEL_FORWARD, target));
         // 绕自身长轴的滚转，让一圈剑不是齐刷刷同一个面朝外。
         poseStack.mulPose(Axis.ZP.rotationDegrees(entity.getRoll()));
-        poseStack.translate(0.0F, 0.0F, StarShadowSpearItem.TIP_TO_ORIGIN);
     }
 }

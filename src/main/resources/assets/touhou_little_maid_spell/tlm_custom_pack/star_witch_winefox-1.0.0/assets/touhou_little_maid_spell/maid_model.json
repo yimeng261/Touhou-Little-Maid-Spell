@@ -2,14 +2,14 @@
   "pack_name": "{maid_pack.touhou_little_maid_spell.name}",
   "model_list": [
     {
-      "model_id": "touhou_little_maid_spell:sea_witch_winefox",
+      "model_id": "touhou_little_maid_spell:stellar_witch",
       "is_gecko": true,
       "render_entity_scale": 0.7,
       "animation": [
-        "touhou_little_maid_spell:animation/touhou_little_maid_spell.sea_witch_winefox.main.animation.json",
-        "touhou_little_maid_spell:animation/touhou_little_maid_spell.sea_witch_winefox.arm.animation.json",
-        "touhou_little_maid_spell:animation/touhou_little_maid_spell.sea_witch_winefox.tlm.animation.json",
-        "touhou_little_maid_spell:animation/touhou_little_maid_spell.sea_witch_winefox.iss.animation.json"
+        "touhou_little_maid_spell:animation/touhou_little_maid_spell.stellar_witch.main.animation.json",
+        "touhou_little_maid_spell:animation/touhou_little_maid_spell.stellar_witch.arm.animation.json",
+        "touhou_little_maid_spell:animation/touhou_little_maid_spell.stellar_witch.tlm.animation.json",
+        "touhou_little_maid_spell:animation/touhou_little_maid_spell.stellar_witch.iss.animation.json"
       ]
     }
   ],

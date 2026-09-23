@@ -21,6 +21,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -45,6 +46,8 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
     private static final EntityDataAccessor<Float> DATA_PLANTED_DIRECTION_Y =
             SynchedEntityData.defineId(WinefoxSwordProjectileEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_PLANTED_DIRECTION_Z =
+            SynchedEntityData.defineId(WinefoxSwordProjectileEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_LANDING_Y =
             SynchedEntityData.defineId(WinefoxSwordProjectileEntity.class, EntityDataSerializers.FLOAT);
     private static final int PLANTED_LIFETIME = 80;
     private static final int DAMAGE_INTERVAL = 4;
@@ -71,6 +74,7 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
         entityData.define(DATA_PLANTED_DIRECTION_X, 0.0F);
         entityData.define(DATA_PLANTED_DIRECTION_Y, -1.0F);
         entityData.define(DATA_PLANTED_DIRECTION_Z, 0.0F);
+        entityData.define(DATA_LANDING_Y, Float.NaN);
     }
 
     @Override
@@ -116,6 +120,19 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
                 entityData.get(DATA_PLANTED_DIRECTION_Z));
     }
 
+    /** Sets the horizontal plane at which this sword should land instead of stopping at a block. */
+    public void setLandingY(double landingY) {
+        entityData.set(DATA_LANDING_Y, (float) landingY);
+    }
+
+    private boolean hasLandingPlane() {
+        return !Float.isNaN(entityData.get(DATA_LANDING_Y));
+    }
+
+    private double getLandingY() {
+        return entityData.get(DATA_LANDING_Y);
+    }
+
     @Override
     protected boolean canHitEntity(Entity entity) {
         Entity owner = getOwner();
@@ -135,7 +152,67 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
     protected void onHit(@NotNull HitResult hitResult) {
         super.onHit(hitResult);
         if (!level().isClientSide && hitResult.getType() == HitResult.Type.BLOCK && !isPlanted()) {
-            plantAt(hitResult);
+            plantAt(hitResult.getLocation());
+        }
+    }
+
+    /**
+     * Sword Prison projectiles are intentionally allowed to pass through blocks on their way to
+     * the target plane. Entity hit detection is retained, so a target under a low ceiling can
+     * still be hit before the sword reaches the plane.
+     */
+    @Override
+    public void handleHitDetection() {
+        if (!hasLandingPlane()) {
+            super.handleHitDetection();
+            return;
+        }
+
+        Vec3 movement = getDeltaMovement();
+        if (movement.lengthSqr() < 1.0E-8D) {
+            return;
+        }
+
+        Vec3 start = position();
+        Vec3 end = start.add(movement);
+        EntityHitResult hitResult = ProjectileUtil.getEntityHitResult(
+                level(), this, start, end,
+                getBoundingBox().expandTowards(movement).inflate(1.0D), this::canHitEntity);
+        if (hitResult != null
+                && !net.minecraftforge.event.ForgeEventFactory.onProjectileImpact(this, hitResult)) {
+            onHit(hitResult);
+        }
+    }
+
+    /** Move normally, but stop exactly at the configured target plane instead of a ceiling block. */
+    @Override
+    public void travel() {
+        Vec3 movement = getDeltaMovement();
+        Vec3 start = position();
+        Vec3 end = start.add(movement);
+
+        if (hasLandingPlane() && movement.y < 0.0D
+                && start.y >= getLandingY() && end.y <= getLandingY()) {
+            double fraction = (start.y - getLandingY()) / (start.y - end.y);
+            Vec3 landing = start.add(movement.scale(fraction));
+            setPos(landing.x, getLandingY(), landing.z);
+            if (!level().isClientSide) {
+                impactParticles(getX(), getY(), getZ());
+                getImpactSound().ifPresent(this::doImpactSound);
+            }
+            plantAt(landing);
+            return;
+        }
+
+        if (!hasLandingPlane()) {
+            super.travel();
+            return;
+        }
+
+        setPos(end);
+        ProjectileUtil.rotateTowardsMovement(this, 1.0F);
+        if (!isNoGravity()) {
+            setDeltaMovement(movement.x, movement.y - 0.05D, movement.z);
         }
     }
 
@@ -175,7 +252,7 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
         }
     }
 
-    private void plantAt(HitResult hitResult) {
+    private void plantAt(Vec3 location) {
         Vec3 motion = getDeltaMovement();
         if (motion.lengthSqr() > 1.0E-6D) {
             Vec3 direction = motion.normalize();
@@ -183,7 +260,7 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
             entityData.set(DATA_PLANTED_DIRECTION_Y, (float) direction.y);
             entityData.set(DATA_PLANTED_DIRECTION_Z, (float) direction.z);
         }
-        setPos(hitResult.getLocation());
+        setPos(location);
         setDeltaMovement(Vec3.ZERO);
         setNoGravity(true);
         plantedTicks = 0;
@@ -199,6 +276,9 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
         tag.putFloat("PlantedDirectionY", entityData.get(DATA_PLANTED_DIRECTION_Y));
         tag.putFloat("PlantedDirectionZ", entityData.get(DATA_PLANTED_DIRECTION_Z));
         tag.putInt("PlantedTicks", plantedTicks);
+        if (hasLandingPlane()) {
+            tag.putDouble("LandingY", getLandingY());
+        }
     }
 
     @Override
@@ -211,6 +291,9 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
             entityData.set(DATA_PLANTED_DIRECTION_X, tag.getFloat("PlantedDirectionX"));
             entityData.set(DATA_PLANTED_DIRECTION_Y, tag.getFloat("PlantedDirectionY"));
             entityData.set(DATA_PLANTED_DIRECTION_Z, tag.getFloat("PlantedDirectionZ"));
+        }
+        if (tag.contains("LandingY")) {
+            entityData.set(DATA_LANDING_Y, (float) tag.getDouble("LandingY"));
         }
         plantedTicks = tag.getInt("PlantedTicks");
         setNoGravity(planted);

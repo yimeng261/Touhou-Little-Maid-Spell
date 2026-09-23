@@ -30,7 +30,7 @@ public class MaidSpellEntities {
             () -> EntityType.Builder.<StarShadowSpearEntity>of(StarShadowSpearEntity::new, MobCategory.MISC)
                 .sized(0.5F, 0.5F)
                 .clientTrackingRange(4)
-                .updateInterval(20)
+                .updateInterval(5)
                 .build("star_shadow_spear"));
 
     /**
