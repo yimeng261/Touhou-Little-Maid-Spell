@@ -68,13 +68,13 @@ public enum StarWitchArmorMaterial implements IronsExtendedArmorMaterial {
     public Map<Attribute, AttributeModifier> getAdditionalAttributes() {
         return Map.of(
                 AttributeRegistry.MAX_MANA.get(),
-                new AttributeModifier(MANA_MODIFIER, "Star witch max mana", 200.0D,
+                new AttributeModifier(MANA_MODIFIER, "Stellar witch max mana", 200.0D,
                         AttributeModifier.Operation.ADDITION),
                 AttributeRegistry.SPELL_POWER.get(),
-                new AttributeModifier(SPELL_POWER_MODIFIER, "Star witch spell power", 0.15D,
+                new AttributeModifier(SPELL_POWER_MODIFIER, "Stellar witch spell power", 0.15D,
                         AttributeModifier.Operation.MULTIPLY_BASE),
                 AttributeRegistry.COOLDOWN_REDUCTION.get(),
-                new AttributeModifier(COOLDOWN_MODIFIER, "Star witch cooldown reduction", 0.10D,
+                new AttributeModifier(COOLDOWN_MODIFIER, "Stellar witch cooldown reduction", 0.10D,
                         AttributeModifier.Operation.MULTIPLY_BASE));
     }
 }

@@ -39,6 +39,9 @@ public class StarWitchHatItem extends ExtendedArmorItem {
             new ResourceLocation(MaidSpellMod.MOD_ID, "geo/star_witch_hat_item.geo.json");
     public static final ResourceLocation TEXTURE =
             new ResourceLocation(MaidSpellMod.MOD_ID, "textures/item/star_witch_hat.png");
+    /** 仅用于物品栏的平面图标；模型贴图仍由 {@link #TEXTURE} 提供。 */
+    public static final ResourceLocation GUI_MODEL =
+            new ResourceLocation(MaidSpellMod.MOD_ID, "item/star_witch_hat_gui");
 
     public StarWitchHatItem() {
         super(StarWitchArmorMaterial.STAR_WITCH, ArmorItem.Type.HELMET,
@@ -59,6 +62,7 @@ public class StarWitchHatItem extends ExtendedArmorItem {
 
     @Override
     public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(StarEquipmentClientExtensions.armor(ITEM_MODEL, TEXTURE, this::supplyRenderer));
+        consumer.accept(StarEquipmentClientExtensions.armor(
+            ITEM_MODEL, TEXTURE, GUI_MODEL, this::supplyRenderer));
     }
 }

@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCross;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
 import com.github.yimeng261.maidspell.item.block.JingxuYoulanItem;
 import com.github.yimeng261.maidspell.item.block.ScarletZhuhuaItem;
+import com.github.yimeng261.maidspell.item.block.StarGlowFlowerClusterItem;
 import com.github.yimeng261.maidspell.item.block.YueLinglanItem;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.SpellWhiteList;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChain;
@@ -32,6 +33,8 @@ import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBel
 import com.github.yimeng261.maidspell.item.common.NebulaCoreItem;
 import com.github.yimeng261.maidspell.item.common.OwnerClearTool;
 import com.github.yimeng261.maidspell.item.common.StarShadowSpearItem;
+import com.github.yimeng261.maidspell.item.common.StarglintDaggerItem;
+import com.github.yimeng261.maidspell.item.common.StarglintMaterialItem;
 import com.github.yimeng261.maidspell.item.common.StarwatchCompassItem;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
@@ -93,8 +96,14 @@ public class MaidSpellItems {
     // 观星罗盘：守塔人的战利品，在末地指向星途终岸
     public static final RegistryObject<Item> STARWATCH_COMPASS = ITEMS.register("starwatch_compass", StarwatchCompassItem::new);
 
-    // 星云核心：挑战万法酒狐的信物，祭坛用 4 本旅行日记合成
+    // 星云核心仅由合格的魔女挑战发放。
     public static final RegistryObject<Item> NEBULA_CORE = ITEMS.register("nebula_core", NebulaCoreItem::new);
+    public static final RegistryObject<Item> STAR_METEORITE = ITEMS.register("star_meteorite",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.star_meteorite.desc"));
+    public static final RegistryObject<Item> RITUAL_HILT = ITEMS.register("ritual_hilt",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.ritual_hilt.desc"));
+    public static final RegistryObject<Item> STARGLINT_DAGGER = ITEMS.register("starglint_dagger",
+        StarglintDaggerItem::new);
 
     public static final RegistryObject<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
         () -> new ScarletZhuhuaItem(MaidSpellBlocks.SCARLET_ZHUHUA.get()));
@@ -103,7 +112,7 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> JINGXU_YOULAN = ITEMS.register("jingxu_youlan",
         () -> new JingxuYoulanItem(MaidSpellBlocks.JINGXU_YOULAN.get()));
     public static final RegistryObject<Item> STAR_GLOW_FLOWER_CLUSTER = ITEMS.register("star_glow_flower_cluster",
-        () -> new BlockItem(MaidSpellBlocks.STAR_GLOW_FLOWER_CLUSTER.get(), new Item.Properties()));
+        () -> new StarGlowFlowerClusterItem(MaidSpellBlocks.STAR_GLOW_FLOWER_CLUSTER.get()));
     public static final RegistryObject<Item> SUPPRESSION_STONE = ITEMS.register("suppression_stone",
         () -> new BlockItem(MaidSpellBlocks.SUPPRESSION_STONE.get(), new Item.Properties()));
 

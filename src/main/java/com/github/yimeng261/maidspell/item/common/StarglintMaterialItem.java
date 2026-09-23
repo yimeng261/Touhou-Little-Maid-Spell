@@ -13,20 +13,23 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * 星云核心：合格挑战的奖励，用于梦云水晶合成与装备交易。
+ * 打造星芒短剑的两件材料：星陨石与仪式剑柄。
+ *
+ * <p>两者都只是带描述的普通材料，没有任何行为；共用一个类、各自给出描述 key，
+ * 免得为两行字各开一个文件。
  */
-public class NebulaCoreItem extends Item {
+public class StarglintMaterialItem extends Item {
+    private final String descriptionKey;
 
-    public NebulaCoreItem() {
-        super(new Properties().stacksTo(16).rarity(Rarity.EPIC).fireResistant());
+    public StarglintMaterialItem(String descriptionKey) {
+        super(new Properties().rarity(Rarity.RARE));
+        this.descriptionKey = descriptionKey;
     }
 
     @Override
     public void appendHoverText(@NotNull ItemStack stack, @Nullable Level level,
                                 @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.nebula_core.desc1")
-                .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.nebula_core.desc2")
-                .withStyle(ChatFormatting.DARK_GRAY));
+        super.appendHoverText(stack, level, tooltip, flag);
+        tooltip.add(Component.translatable(descriptionKey).withStyle(ChatFormatting.GRAY));
     }
 }

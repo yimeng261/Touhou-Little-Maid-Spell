@@ -1,5 +1,6 @@
 {
   "forge:conditions": [
+    { "type": "forge:mod_loaded", "modid": "irons_spellbooks" },
     {
       "type": "forge:or",
       "values": [
@@ -43,11 +44,7 @@
   "power": 1.0,
   "ingredients": [
     {
-      "type": "touhou_little_maid_spell:optional_mod_item",
-      "modid": "irons_spellbooks",
-      "ingredient": {
-        "item": "irons_spellbooks:dragonskin_spell_book"
-      }
+      "item": "touhou_little_maid_spell:nebula_core"
     },
     {
       "type": "touhou_little_maid_spell:optional_mod_item",

@@ -172,6 +172,12 @@ public final class EnderPocketHudOverlay implements IGuiOverlay {
 
         String name = trimToWidth(mc, info.maidName(), 92);
         graphics.drawString(mc.font, name, x + 42, y + 4, 0xFFFFFFFF, true);
+        graphics.pose().pushPose();
+        graphics.pose().translate(x + ROW_WIDTH - 13, y + 2, 0);
+        graphics.pose().scale(0.625F, 0.625F, 1.0F);
+        graphics.renderItem(new net.minecraft.world.item.ItemStack(
+            com.github.yimeng261.maidspell.item.MaidSpellItems.ENDER_POCKET.get()), 0, 0);
+        graphics.pose().popPose();
 
         int barX = x + 42;
         int barY = y + 17;

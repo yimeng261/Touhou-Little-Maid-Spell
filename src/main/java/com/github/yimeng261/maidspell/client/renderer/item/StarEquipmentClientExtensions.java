@@ -54,7 +54,18 @@ public final class StarEquipmentClientExtensions {
     public static IClientItemExtensions armor(ResourceLocation itemModel,
                                               ResourceLocation texture,
                                               Supplier<GeoArmorRenderer<?>> armorRendererFactory) {
-        IClientItemExtensions itemExtensions = item(itemModel, texture);
+        return armor(itemModel, texture, null, armorRendererFactory);
+    }
+
+    /**
+     * 护甲物品栏使用平面图标，其他物品形态仍保持 GeckoLib 模型。
+     */
+    public static IClientItemExtensions armor(ResourceLocation itemModel,
+                                              ResourceLocation texture,
+                                              @Nullable ResourceLocation guiModel,
+                                              Supplier<GeoArmorRenderer<?>> armorRendererFactory) {
+        IClientItemExtensions itemExtensions = item(itemModel, texture,
+            StarEquipmentGeoModel.SHARED_ANIMATION, guiModel);
         return new IClientItemExtensions() {
             private GeoArmorRenderer<?> armorRenderer;
 

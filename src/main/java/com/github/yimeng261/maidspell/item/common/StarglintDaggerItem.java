@@ -13,20 +13,20 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * 星云核心：合格挑战的奖励，用于梦云水晶合成与装备交易。
+ * 星芒短剑：递给星之魔女后开启切磋。
  */
-public class NebulaCoreItem extends Item {
-
-    public NebulaCoreItem() {
-        super(new Properties().stacksTo(16).rarity(Rarity.EPIC).fireResistant());
+public class StarglintDaggerItem extends Item {
+    public StarglintDaggerItem() {
+        super(new Properties().stacksTo(1).rarity(Rarity.EPIC).fireResistant());
     }
 
     @Override
     public void appendHoverText(@NotNull ItemStack stack, @Nullable Level level,
                                 @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.nebula_core.desc1")
+        super.appendHoverText(stack, level, tooltip, flag);
+        tooltip.add(Component.translatable("item.touhou_little_maid_spell.starglint_dagger.desc1")
                 .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.touhou_little_maid_spell.nebula_core.desc2")
-                .withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.translatable("item.touhou_little_maid_spell.starglint_dagger.desc2")
+                .withStyle(ChatFormatting.LIGHT_PURPLE));
     }
 }

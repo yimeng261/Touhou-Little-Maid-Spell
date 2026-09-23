@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.IronsSpellb
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxNonLethalGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarWitchHatItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.VoidPhaseDamageHandler;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxBossSleepGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
@@ -48,7 +49,7 @@ public final class IronsSpellbooksCompat {
     }
 
     /**
-     * 星影长剑/星影法杖物品栏用的平面图标模型。
+     * 星影长剑、星影法杖和星之魔女法帽物品栏用的平面图标模型。
      *
      * <p>两把武器的物品模型是 {@code builtin/entity}，没任何东西引用这两份平面模型，
      * 不登记就不会被烘焙，取出来是紫黑方块。放在这儿而不是通用客户端类里，
@@ -60,6 +61,7 @@ public final class IronsSpellbooksCompat {
         }
         event.register(StarShadowLongswordItem.GUI_MODEL);
         event.register(StarShadowStaffItem.GUI_MODEL);
+        event.register(StarWitchHatItem.GUI_MODEL);
     }
 
     /** 客户端 setup 阶段要做的铁魔法相关注册，从通用的 {@code ClientSetup} 里调进来。 */
