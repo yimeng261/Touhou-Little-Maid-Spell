@@ -26,6 +26,10 @@ public class MaidSpellSounds {
     public static final RegistryObject<SoundEvent> SILENT_MERCHANT_FEEDBACK = SOUNDS.register("silent_merchant_feedback",
         () -> SoundEvent.createVariableRangeEvent(new ResourceLocation(MaidSpellMod.MOD_ID, "silent_merchant_feedback")));
 
+    @SuppressWarnings("removal")
+    public static final RegistryObject<SoundEvent> STAR_SHADOW_STRIKE = SOUNDS.register("star_shadow_strike",
+        () -> SoundEvent.createVariableRangeEvent(new ResourceLocation(MaidSpellMod.MOD_ID, "star_shadow_strike")));
+
     public static final RegistryObject<SoundEvent> WINEFOX_ATK_1 = registerWinefoxSound("atk1");
     public static final RegistryObject<SoundEvent> WINEFOX_ATK_2 = registerWinefoxSound("atk2");
     public static final RegistryObject<SoundEvent> WINEFOX_ATK_3 = registerWinefoxSound("atk3");
@@ -35,9 +39,12 @@ public class MaidSpellSounds {
     public static final RegistryObject<SoundEvent> WINEFOX_MAGIC_SHOOT = registerWinefoxSound("magic01_shoot");
     public static final RegistryObject<SoundEvent> WINEFOX_MAGIC_BOW = registerWinefoxSound("magicbow");
     public static final RegistryObject<SoundEvent> WINEFOX_VOICE = registerWinefoxSound("shengyin");
+    public static final RegistryObject<SoundEvent> WINEFOX_BGM = SOUNDS.register("music.stellar_witch",
+            () -> SoundEvent.createVariableRangeEvent(
+                    new ResourceLocation(MaidSpellMod.MOD_ID, "music.stellar_witch")));
 
     private static RegistryObject<SoundEvent> registerWinefoxSound(String name) {
-        String id = "entity.magical_winefox_boss." + name;
+        String id = "entity.stellar_witch." + name;
         return SOUNDS.register(id,
                 () -> SoundEvent.createVariableRangeEvent(new ResourceLocation(MaidSpellMod.MOD_ID, id)));
     }

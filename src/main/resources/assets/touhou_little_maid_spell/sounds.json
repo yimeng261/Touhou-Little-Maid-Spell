@@ -19,40 +19,60 @@
       }
     ]
   },
-  "entity.magical_winefox_boss.atk1": {
-    "category": "hostile",
-    "sounds": ["touhou_little_maid_spell:entity/magical_winefox_boss/atk1"]
+  "star_shadow_strike": {
+    "category": "players",
+    "subtitle": "subtitle.touhou_little_maid_spell.star_shadow_strike",
+    "sounds": [
+      {
+        "name": "touhou_little_maid_spell:spell/star_shadow_strike",
+        "volume": 1.0
+      }
+    ]
   },
-  "entity.magical_winefox_boss.atk2": {
+  "entity.stellar_witch.atk1": {
     "category": "hostile",
-    "sounds": ["touhou_little_maid_spell:entity/magical_winefox_boss/atk2"]
+    "sounds": ["touhou_little_maid_spell:entity/stellar_witch/atk1"]
   },
-  "entity.magical_winefox_boss.atk3": {
+  "entity.stellar_witch.atk2": {
     "category": "hostile",
-    "sounds": ["touhou_little_maid_spell:entity/magical_winefox_boss/atk3"]
+    "sounds": ["touhou_little_maid_spell:entity/stellar_witch/atk2"]
   },
-  "entity.magical_winefox_boss.atk3ready": {
+  "entity.stellar_witch.atk3": {
     "category": "hostile",
-    "sounds": ["touhou_little_maid_spell:entity/magical_winefox_boss/atk3ready"]
+    "sounds": ["touhou_little_maid_spell:entity/stellar_witch/atk3"]
   },
-  "entity.magical_winefox_boss.atked": {
+  "entity.stellar_witch.atk3ready": {
     "category": "hostile",
-    "sounds": ["touhou_little_maid_spell:entity/magical_winefox_boss/atked"]
+    "sounds": ["touhou_little_maid_spell:entity/stellar_witch/atk3ready"]
   },
-  "entity.magical_winefox_boss.magic01": {
+  "entity.stellar_witch.atked": {
     "category": "hostile",
-    "sounds": ["touhou_little_maid_spell:entity/magical_winefox_boss/magic01"]
+    "sounds": ["touhou_little_maid_spell:entity/stellar_witch/atked"]
   },
-  "entity.magical_winefox_boss.magic01_shoot": {
+  "entity.stellar_witch.magic01": {
     "category": "hostile",
-    "sounds": ["touhou_little_maid_spell:entity/magical_winefox_boss/magic01_shoot"]
+    "sounds": ["touhou_little_maid_spell:entity/stellar_witch/magic01"]
   },
-  "entity.magical_winefox_boss.magicbow": {
+  "entity.stellar_witch.magic01_shoot": {
     "category": "hostile",
-    "sounds": ["touhou_little_maid_spell:entity/magical_winefox_boss/magicbow"]
+    "sounds": ["touhou_little_maid_spell:entity/stellar_witch/magic01_shoot"]
   },
-  "entity.magical_winefox_boss.shengyin": {
+  "entity.stellar_witch.magicbow": {
     "category": "hostile",
-    "sounds": ["touhou_little_maid_spell:entity/magical_winefox_boss/shengyin"]
+    "sounds": ["touhou_little_maid_spell:entity/stellar_witch/magicbow"]
+  },
+  "entity.stellar_witch.shengyin": {
+    "category": "hostile",
+    "sounds": ["touhou_little_maid_spell:entity/stellar_witch/shengyin"]
+  },
+  "music.stellar_witch": {
+    "category": "music",
+    "sounds": [
+      {
+        "name": "touhou_little_maid_spell:music/stellar_witch",
+        "stream": true,
+        "volume": 0.7
+      }
+    ]
   }
 }
