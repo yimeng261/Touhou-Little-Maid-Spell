@@ -1,0 +1,33 @@
+{
+  "display": {
+    "icon": {
+      "item": "minecraft:written_book"
+    },
+    "title": {
+      "translate": "advancements.touhou_little_maid_spell.star_journey.departure_place.title"
+    },
+    "description": {
+      "translate": "advancements.touhou_little_maid_spell.star_journey.departure_place.description"
+    },
+    "frame": "task",
+    "background": "minecraft:textures/gui/advancements/backgrounds/end.png",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "enter_starfall_garden": {
+      "trigger": "minecraft:location",
+      "conditions": {
+        "player": {
+          "location": {
+            "structure": "touhou_little_maid_spell:starfall_garden"
+          }
+        }
+      }
+    }
+  },
+  "requirements": [
+    ["enter_starfall_garden"]
+  ]
+}

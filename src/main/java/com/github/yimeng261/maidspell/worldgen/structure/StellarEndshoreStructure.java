@@ -48,6 +48,7 @@ public class StellarEndshoreStructure extends Structure {
      * 拿它把落点夹在世界上界以内，抖动才不会把塔顶顶出去。
      */
     private static final int MAX_STRUCTURE_HEIGHT = 80;
+    private static final int ARENA_FLOOR_OFFSET = 27;
 
     private final Holder<StructureTemplatePool> startPool;
     private final int size;
@@ -70,7 +71,8 @@ public class StellarEndshoreStructure extends Structure {
         int x = context.chunkPos().getMinBlockX() + 8;
         int z = context.chunkPos().getMinBlockZ() + 8;
 
-        int y = this.baseHeight;
+        // The template's arena is 28 blocks above its bottom; jigsaw lowers that bottom by one.
+        int y = this.baseHeight - ARENA_FLOOR_OFFSET;
         if (this.heightJitter > 0) {
             y += context.random().nextInt(this.heightJitter * 2 + 1) - this.heightJitter;
         }

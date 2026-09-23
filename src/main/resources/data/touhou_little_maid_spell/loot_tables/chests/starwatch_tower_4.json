@@ -1,55 +1,89 @@
 {
+  "forge:conditions": [{ "type": "forge:mod_loaded", "modid": "irons_spellbooks" }],
   "type": "minecraft:chest",
   "pools": [
     {
-      "rolls": 3,
+      "rolls": 10,
       "entries": [
         {
-          "type": "item",
-          "name": "minecraft:amethyst_shard",
-          "weight": 7,
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:arcane_essence",
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:paper",
           "functions": [
             {
-              "function": "set_count",
+              "function": "minecraft:set_count",
               "count": {
+                "type": "minecraft:uniform",
                 "min": 2,
-                "max": 6
+                "max": 5
               }
             }
-          ]
-        },
-        {
-          "type": "item",
-          "name": "minecraft:amethyst_block",
-          "weight": 3,
-          "functions": [
+          ],
+          "conditions": [
             {
-              "function": "set_count",
-              "count": {
-                "min": 1,
-                "max": 2
-              }
+              "condition": "minecraft:random_chance",
+              "chance": 0.5
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
         {
-          "type": "item",
-          "name": "minecraft:calcite",
-          "weight": 4,
-          "functions": [
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:rare_ink",
+          "conditions": [
             {
-              "function": "set_count",
-              "count": {
-                "min": 2,
-                "max": 6
-              }
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
         {
-          "type": "item",
-          "name": "minecraft:air",
-          "weight": 2
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:uncommon_ink",
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 5,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:common_ink",
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.5
+            }
+          ]
         }
       ]
     },
@@ -58,13 +92,187 @@
       "entries": [
         {
           "type": "item",
-          "name": "minecraft:budding_amethyst",
-          "weight": 1
+          "name": "irons_spellbooks:scroll",
+          "weight": 15,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:black_hole\",locked:1b,level:1}],spellWheel:0b}}"
+            }
+          ]
         },
         {
           "type": "item",
           "name": "minecraft:air",
-          "weight": 7
+          "weight": 85
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 15,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:teleport\",locked:1b,level:4}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 85
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 15,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:starfall\",locked:1b,level:6}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 85
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 10,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:summon_ender_chest\",locked:1b,level:1}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 90
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 15,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:recall\",locked:1b,level:1}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 85
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 15,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:evasion\",locked:1b,level:3}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 85
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 15,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:magic_arrow\",locked:1b,level:7}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 85
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 15,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:dragon_breath\",locked:1b,level:8}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 85
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 15,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:planar_sight\",locked:1b,level:1}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 85
         }
       ]
     }

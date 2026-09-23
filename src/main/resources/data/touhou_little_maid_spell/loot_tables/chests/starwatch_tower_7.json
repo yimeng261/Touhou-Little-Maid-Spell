@@ -1,55 +1,58 @@
 {
+  "forge:conditions": [{ "type": "forge:mod_loaded", "modid": "irons_spellbooks" }],
   "type": "minecraft:chest",
   "pools": [
     {
-      "rolls": 2,
+      "rolls": 3,
       "entries": [
         {
-          "type": "item",
-          "name": "minecraft:ender_pearl",
-          "weight": 6,
-          "functions": [
+          "type": "minecraft:item",
+          "name": "minecraft:end_rod",
+          "conditions": [
             {
-              "function": "set_count",
-              "count": {
-                "min": 2,
-                "max": 5
-              }
+              "condition": "minecraft:random_chance",
+              "chance": 0.8
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "rolls": 6,
+      "entries": [
         {
-          "type": "item",
-          "name": "minecraft:diamond",
-          "weight": 3,
-          "functions": [
+          "type": "minecraft:item",
+          "name": "minecraft:paper"
+        }
+      ]
+    },
+    {
+      "rolls": 4,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:book",
+          "conditions": [
             {
-              "function": "set_count",
-              "count": {
-                "min": 1,
-                "max": 3
-              }
+              "condition": "minecraft:random_chance",
+              "chance": 0.8
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
         {
-          "type": "item",
-          "name": "minecraft:amethyst_shard",
-          "weight": 5,
-          "functions": [
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:ancient_knowledge_fragment",
+          "conditions": [
             {
-              "function": "set_count",
-              "count": {
-                "min": 3,
-                "max": 8
-              }
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
             }
           ]
-        },
-        {
-          "type": "item",
-          "name": "minecraft:air",
-          "weight": 2
         }
       ]
     },
@@ -58,18 +61,187 @@
       "entries": [
         {
           "type": "item",
-          "name": "minecraft:enchanted_golden_apple",
-          "weight": 1
-        },
-        {
-          "type": "item",
-          "name": "minecraft:diamond_block",
-          "weight": 2
+          "name": "irons_spellbooks:scroll",
+          "weight": 10,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:teleport\",locked:1b,level:2}],spellWheel:0b}}"
+            }
+          ]
         },
         {
           "type": "item",
           "name": "minecraft:air",
-          "weight": 7
+          "weight": 90
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 10,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:starfall\",locked:1b,level:3}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 90
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 10,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:summon_ender_chest\",locked:1b,level:1}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 90
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 10,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:recall\",locked:1b,level:1}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 90
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 10,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:evasion\",locked:1b,level:1}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 90
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 10,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:magic_arrow\",locked:1b,level:3}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 90
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 10,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:dragon_breath\",locked:1b,level:3}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 90
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 5,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:planar_sight\",locked:1b,level:1}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 95
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "irons_spellbooks:scroll",
+          "weight": 10,
+          "functions": [
+            {
+              "function": "minecraft:set_nbt",
+              "tag": "{\"irons_spellbooks:spell_container\":{maxSpells:1,mustEquip:0b,data:[{index:0,id:\"irons_spellbooks:magic_missile\",locked:1b,level:6}],spellWheel:0b}}"
+            }
+          ]
+        },
+        {
+          "type": "item",
+          "name": "minecraft:air",
+          "weight": 90
         }
       ]
     }

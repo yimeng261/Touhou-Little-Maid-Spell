@@ -1,71 +1,106 @@
 {
+  "forge:conditions": [{ "type": "forge:mod_loaded", "modid": "irons_spellbooks" }],
   "type": "minecraft:chest",
   "pools": [
     {
-      "rolls": 2,
+      "rolls": 20,
       "entries": [
         {
-          "type": "item",
-          "name": "minecraft:spyglass",
-          "weight": 3
-        },
-        {
-          "type": "item",
-          "name": "minecraft:compass",
-          "weight": 3
-        },
-        {
-          "type": "item",
-          "name": "minecraft:clock",
-          "weight": 2
-        },
-        {
-          "type": "item",
-          "name": "minecraft:air",
-          "weight": 4
+          "type": "minecraft:item",
+          "name": "minecraft:amethyst_shard",
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.8
+            }
+          ]
         }
       ]
     },
     {
-      "rolls": 3,
+      "rolls": 4,
       "entries": [
         {
-          "type": "item",
-          "name": "minecraft:amethyst_shard",
-          "weight": 6,
-          "functions": [
+          "type": "minecraft:item",
+          "name": "minecraft:amethyst_cluster"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:amethyst_resonance_charm"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:ender_upgrade_orb"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:ender_upgrade_orb",
+          "conditions": [
             {
-              "function": "set_count",
-              "count": {
-                "min": 1,
-                "max": 4
-              }
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
         {
-          "type": "item",
-          "name": "minecraft:copper_ingot",
-          "weight": 5,
-          "functions": [
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:cooldown_upgrade_orb",
+          "conditions": [
             {
-              "function": "set_count",
-              "count": {
-                "min": 2,
-                "max": 6
-              }
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
         {
-          "type": "item",
-          "name": "minecraft:map",
-          "weight": 3
-        },
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:mana_upgrade_orb",
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
         {
-          "type": "item",
-          "name": "minecraft:air",
-          "weight": 3
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:protection_upgrade_orb",
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.3
+            }
+          ]
         }
       ]
     }

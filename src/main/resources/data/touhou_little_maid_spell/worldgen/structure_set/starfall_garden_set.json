@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:starfall_garden",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 24,
+    "separation": 12,
+    "salt": 20130426
+  }
+}
