@@ -1,8 +1,6 @@
 package com.github.yimeng261.maidspell.compat.curios;
 
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
@@ -35,6 +33,10 @@ public final class CuriosCompat {
             return;
         }
         NeoForge.EVENT_BUS.register(CuriosEventHandler.class);
+        NeoForge.EVENT_BUS.register(DreamCrystalPlayerEvents.class);
+        if (ModList.get().isLoaded("irons_spellbooks")) {
+            NeoForge.EVENT_BUS.register(DreamCrystalSpellEvents.class);
+        }
     }
 
     /**
@@ -52,34 +54,6 @@ public final class CuriosCompat {
                         action.accept(stack);
                     }
                 })
-        );
-    }
-
-    /**
-     * 为实体的所有 curios 槽位类型各注册一个 transient slot modifier。
-     */
-    public static void addTransientSlotForAllTypes(LivingEntity entity, ResourceLocation id, double amount, AttributeModifier.Operation operation) {
-        if (!LOADED) {
-            return;
-        }
-        CuriosApi.getCuriosInventory(entity).ifPresent(handler ->
-                handler.getCurios().keySet().forEach(slotType -> {
-                    handler.removeSlotModifier(slotType, id);
-                    handler.addTransientSlotModifier(slotType, id, amount, operation);
-                })
-        );
-    }
-
-    /**
-     * 移除实体所有 curios 槽位类型上指定 id 的 slot modifier。
-     */
-    public static void removeSlotModifierForAllTypes(LivingEntity entity, ResourceLocation id) {
-        if (!LOADED) {
-            return;
-        }
-        CuriosApi.getCuriosInventory(entity).ifPresent(handler ->
-                handler.getCurios().keySet().forEach(slotType ->
-                        handler.removeSlotModifier(slotType, id))
         );
     }
 }

@@ -3,6 +3,8 @@ package com.github.yimeng261.maidspell.item;
 import com.Polarice3.Goety.common.items.ModItems;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
+import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
+import com.github.yimeng261.maidspell.compat.curios.DreamCrystalCurios;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCross;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
@@ -74,7 +76,8 @@ public class MaidSpellItems {
     public static final DeferredItem<Item> FRAGRANT_INGENUITY = ITEMS.register("fragrant_ingenuity", FragrantIngenuity::new);
 
     // 梦云水晶
-    public static final DeferredItem<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal", DreamCatCrystal::new);
+    public static final DeferredItem<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal",
+        () -> CuriosCompat.isLoaded() ? DreamCrystalCurios.createItem() : new DreamCatCrystal());
 
     // 寻风之铃
     public static final DeferredItem<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);

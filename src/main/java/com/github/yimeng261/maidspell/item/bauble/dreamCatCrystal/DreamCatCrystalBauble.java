@@ -31,37 +31,21 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
+import com.github.yimeng261.maidspell.compat.curios.DreamCrystalCurios;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.wrapper.InvWrapper;
 import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-/**
- * 梦云水晶饰品逻辑
- * <p>
- * 主要效果：
- * - 取消法术冷却
- * - 女仆铁魔法法强翻倍（×2，MULTIPLY_TOTAL）
- * - 生命上限 +50%，全伤害抗性 30%，单次伤害上限 40
- * - 免疫：魔法、燃烧、溺水、爆炸、熔岩伤害
- * - 维度特定 Buff（主世界/下界/末地/归隐之地）
- * - 每 30 秒两种随机正面效果
- * - 直接攻击：真实伤害 + 时停 1 秒 + 弹幕溅射 10%
- * - 范围内女仆冷却降至 1/3，伤害 +50%
- * - 每秒修复整个背包物品 1 点耐久
- * - 概率复活（100% - N×10%，N 为 120s 内复活次数）
- * - 复活后 15 秒无敌
- * <p>
- * 组合效果：
- * - + 紫荆银冠：每次受伤直接反伤（不需要 N 次累计，见 LivingEntityMixin）
- * - + 混沌之书：真实伤害百分比翻倍（见 ChaosBookBauble.chaosBookProcess）
- * - + 双心之链：主人不分担伤害，女仆仅受 50%（见 DoubleHeartChainBauble）
- */
+/** 梦云水晶的战斗、支援、耐久修复与复活效果，女仆与佩戴它的玩家共用。具体数值由各处理方法维护。 */
 public class DreamCatCrystalBauble implements IMaidBauble {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -86,8 +70,6 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     private static final ResourceLocation DC_ATTACK_SPEED_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "dream_crystal_speed");
     private static final ResourceLocation DC_NEARBY_DAMAGE_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "dream_crystal_nearby_boost");
 
-    // ========== Curios 槽位修饰符 ==========
-    private static final ResourceLocation DC_CURIOS_SLOT_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "dream_crystal_slot");
 
     // ========== ISS 属性列表 ==========
     private static final List<Holder<net.minecraft.world.entity.ai.attributes.Attribute>> ISS_ATTRIBUTES = new ArrayList<>();
@@ -123,6 +105,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
         // ========== 女仆造成伤害头部处理：真实伤害 + 时停 + 弹幕溅射 ==========
         Global.registerBaubleHurtHeadHandler(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), context -> {
+            if (TrueDamageUtil.isApplyingQueuedDamage()) return;
             EntityMaid maid = context.getSourceMaid();
             if (maid == null) {
                 return;
@@ -179,49 +162,9 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 return null;
             }
 
-            MinecraftServer server = maid.getServer();
-            if (server == null) {
-                return null;
+            if (DreamCatCrystalBauble.tryRevive(maid, baubleStack)) {
+                event.setCanceled(true);
             }
-            int storedClockVersion = baubleStack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_CLOCK_VERSION, 0);
-            if (storedClockVersion > REVIVE_CLOCK_VERSION) {
-                return null;
-            }
-
-            // 获取并过滤最近 120 秒（2400 tick）内的复活时间戳
-            long currentTime = globalGameTime(server);
-            ReviveHistory history = loadReviveHistory(baubleStack, storedClockVersion, maid.level().getGameTime(), currentTime);
-            List<Long> timestamps = history.timestamps();
-
-            int n = timestamps.size();
-            // 复活概率 = 100% - N×10%
-            float reviveChance = Math.max(0.0f, 1.0f - n * 0.1f);
-            boolean revived = reviveChance > 0.0f && maid.getRandom().nextFloat() < reviveChance;
-            if (revived) {
-                timestamps.add(currentTime);
-            }
-            if (history.changed() || revived) {
-                saveReviveHistory(baubleStack, timestamps);
-            }
-            if (!revived) return null;
-
-            // 触发复活
-            event.setCanceled(true);
-
-            // 恢复到最大生命值
-            float healAmount = maid.getMaxHealth();
-            maid.setHealth(healAmount);
-
-            // 设置 15 秒无敌（300 tick）
-            setInvulnerableTicks(baubleStack, 300);
-
-            // 播放音效
-            maid.playSound(SoundEvents.TOTEM_USE, 1.0f, 1.0f);
-
-            LOGGER.info("女仆 {} 触发梦云水晶概率复活（N={}，概率={}%），恢复至 {} 生命值",
-                    maid.getCustomName() != null ? maid.getCustomName().getString() : "未命名",
-                    n, (int) (reviveChance * 100), healAmount);
-
             return null;
         });
     }
@@ -242,6 +185,10 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     @Override
     public void onTick(EntityMaid maid, ItemStack baubleItem) {
+        tickWearer(maid, baubleItem);
+    }
+
+    public void tickWearer(LivingEntity maid, ItemStack baubleItem) {
         if (maid.level().isClientSide()) return;
 
         int tick = maid.tickCount;
@@ -268,16 +215,12 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             for (Holder<net.minecraft.world.entity.ai.attributes.Attribute> attrHolder : ISS_ATTRIBUTES) {
                 ResourceLocation issId = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID,
                         "dream_crystal_iss_" + attrHolder.getRegisteredName().replace(':', '_'));
-                AttributeInstance instance = maid.getAttribute(attrHolder);
-                if (instance == null) continue;
-                instance.removeModifier(issId);
-                instance.addTransientModifier(new AttributeModifier(issId, 1.0,
-                        AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+                applyAttributeModifier(maid, attrHolder, issId, 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
             }
         }
 
         // 4. 维度特定 Buff
-        applyDimensionBuffs(maid);
+        applyDimensionBuffs(maid, baubleItem);
 
         // 5. 扫描范围内女仆并施加强化
         applyRangeMaidBoost(maid);
@@ -308,8 +251,13 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         if (maid.level().isClientSide()) return;
         // 卸下时清除无敌状态
         baubleItem.remove(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS);
+        removeWearerEffects(maid);
+    }
+
+    public void removeWearerEffects(LivingEntity maid) {
+        if (maid.level().isClientSide()) return;
         // 卸下时移除 curios 额外槽位
-        CuriosCompat.removeSlotModifierForAllTypes(maid, DC_CURIOS_SLOT_ID);
+        if (CuriosCompat.isLoaded()) DreamCrystalCurios.setExtraSlots(maid, false);
 
         // 卸下时移除属性修饰符
         removeAttributeModifier(maid, Attributes.MAX_HEALTH, DC_HP_ID);
@@ -321,6 +269,53 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 removeAttributeModifier(maid, attrHolder, issId);
             }
         }
+        maid.setHealth(Math.min(maid.getHealth(), maid.getMaxHealth()));
+    }
+
+    /**
+     * 按最近 120 秒内的复活次数 N 以 100% - N×10% 的概率复活：回满血并获得 15 秒无敌。
+     */
+    public static boolean tryRevive(LivingEntity maid, ItemStack baubleStack) {
+        MinecraftServer server = maid.getServer();
+        if (server == null) {
+            return false;
+        }
+        int storedClockVersion = baubleStack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_CLOCK_VERSION, 0);
+        if (storedClockVersion > REVIVE_CLOCK_VERSION) {
+            return false;
+        }
+
+        // 获取并过滤最近 120 秒（2400 tick）内的复活时间戳
+        long currentTime = globalGameTime(server);
+        ReviveHistory history = loadReviveHistory(baubleStack, storedClockVersion, maid.level().getGameTime(), currentTime);
+        List<Long> timestamps = history.timestamps();
+
+        int n = timestamps.size();
+        // 复活概率 = 100% - N×10%
+        float reviveChance = Math.max(0.0f, 1.0f - n * 0.1f);
+        boolean revived = reviveChance > 0.0f && maid.getRandom().nextFloat() < reviveChance;
+        if (revived) {
+            timestamps.add(currentTime);
+        }
+        if (history.changed() || revived) {
+            saveReviveHistory(baubleStack, timestamps);
+        }
+        if (!revived) {
+            return false;
+        }
+
+        // 恢复到最大生命值
+        float healAmount = maid.getMaxHealth();
+        maid.setHealth(healAmount);
+
+        // 设置 15 秒无敌（300 tick）
+        setInvulnerableTicks(baubleStack, 300);
+
+        maid.playSound(SoundEvents.TOTEM_USE, 1.0f, 1.0f);
+
+        LOGGER.info("{} 触发梦云水晶概率复活（N={}，概率={}%），恢复至 {} 生命值",
+                maid.getName().getString(), n, (int) (reviveChance * 100), healAmount);
+        return true;
     }
 
     // ========== 无敌倒计时处理 ==========
@@ -334,16 +329,17 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     }
 
     // ========== 属性修饰符辅助方法 ==========
-    private void applyAttributeModifier(EntityMaid maid, Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute,
+    private void applyAttributeModifier(LivingEntity maid, Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute,
                                         ResourceLocation id, double value,
                                         AttributeModifier.Operation operation) {
         AttributeInstance instance = maid.getAttribute(attribute);
         if (instance == null) return;
-        instance.removeModifier(id);
-        instance.addTransientModifier(new AttributeModifier(id, value, operation));
+        if (instance.getModifier(id) == null) {
+            instance.addTransientModifier(new AttributeModifier(id, value, operation));
+        }
     }
 
-    private static void removeAttributeModifier(EntityMaid maid, Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute,
+    private static void removeAttributeModifier(LivingEntity maid, Holder<net.minecraft.world.entity.ai.attributes.Attribute> attribute,
                                                 ResourceLocation id) {
         AttributeInstance instance = maid.getAttribute(attribute);
         if (instance == null) return;
@@ -351,13 +347,13 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     }
 
     // ========== 维度特定 Buff ==========
-    private void applyDimensionBuffs(EntityMaid maid) {
+    private void applyDimensionBuffs(LivingEntity maid, ItemStack baubleStack) {
         // 归隐之地：无敌
         if (TheRetreatDimension.isInRetreat(maid)) {
-            // 归隐之地期间持续刷新无敌计时（2 秒窗口，每 20tick 刷新）
-            ItemStack baubleStack = findDreamCrystalStack(maid);
+            // 归隐之地期间持续刷新无敌计时（2 秒窗口，每 20tick 刷新），不缩短复活后的无敌时间
             if (!baubleStack.isEmpty()) {
-                setInvulnerableTicks(baubleStack, 40);
+                setInvulnerableTicks(baubleStack, Math.max(40,
+                        baubleStack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS, 0)));
             }
             return;
         }
@@ -382,7 +378,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     }
 
     // ========== 范围女仆强化 ==========
-    private void applyRangeMaidBoost(EntityMaid sourceMaid) {
+    private void applyRangeMaidBoost(LivingEntity sourceMaid) {
         MinecraftServer server = sourceMaid.getServer();
         if (server == null) {
             return;
@@ -402,13 +398,23 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     }
 
     // ========== 修复背包耐久度 ==========
-    private void repairInventory(EntityMaid maid) {
-        var handler = maid.getAvailableInv(false);
+    private void repairInventory(LivingEntity wearer) {
+        IItemHandler handler;
+        if (wearer instanceof EntityMaid maid) {
+            handler = maid.getAvailableInv(false);
+        } else if (wearer instanceof Player player) {
+            handler = new InvWrapper(player.getInventory());
+        } else {
+            return;
+        }
         for (int i = 0; i < handler.getSlots(); i++) {
             ItemStack stack = handler.getStackInSlot(i);
             if (!stack.isEmpty() && stack.isDamaged()) {
                 stack.setDamageValue(stack.getDamageValue() - 1);
             }
+        }
+        if (wearer instanceof Player && CuriosCompat.isLoaded()) {
+            DreamCrystalCurios.repairEquipment(wearer);
         }
     }
 
@@ -514,7 +520,11 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     }
 
     // ========== 随机正面效果 ==========
-    private void applyRandomBeneficialEffects(EntityMaid maid) {
+    public void applyRandomBeneficialEffects(LivingEntity maid) {
+        applyRandomBeneficialEffects(maid, 600, 1200);
+    }
+
+    public void applyRandomBeneficialEffects(LivingEntity maid, int minDuration, int maxDuration) {
         // 使用缓存列表，避免重复遍历注册表
         List<Holder.Reference<MobEffect>> candidates = getBeneficialEffects();
 
@@ -532,7 +542,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         for (int index : chosen) {
             Holder.Reference<MobEffect> effectHolder = candidates.get(index);
             int amplifier = 1 + rng.nextInt(9);       // 等级 2-10（amplifier 1-9）
-            int duration = 600 + rng.nextInt(601);    // 30-60 秒（600-1200 tick）
+            int duration = minDuration + rng.nextInt(maxDuration - minDuration + 1);
             maid.addEffect(new MobEffectInstance(effectHolder, duration, amplifier, false, true));
         }
     }
@@ -599,7 +609,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         return new ReviveHistory(normalized, changed);
     }
 
-    private static void normalizeReviveHistory(EntityMaid maid, ItemStack baubleItem) {
+    private static void normalizeReviveHistory(LivingEntity maid, ItemStack baubleItem) {
         if (!baubleItem.has(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_CLOCK_VERSION)
                 && !baubleItem.has(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS)) {
             return;
@@ -654,9 +664,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     /**
      * 为女仆的所有 curios 槽位各增加 1 个额外槽位（transient，需要每 20tick 刷新以维持）
      */
-    private void applyCuriosSlots(EntityMaid maid) {
-        CuriosCompat.addTransientSlotForAllTypes(maid, DC_CURIOS_SLOT_ID,
-                1.0, AttributeModifier.Operation.ADD_VALUE);
+    private void applyCuriosSlots(LivingEntity maid) {
+        if (CuriosCompat.isLoaded()) DreamCrystalCurios.setExtraSlots(maid, true);
     }
 
     // ========== 调度器 ==========
@@ -674,7 +683,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         BOOSTED_MAID_EXPIRIES.clear();
     }
 
-    private static void freezeTarget(Mob mob, long expiry) {
+    public static void freezeTarget(Mob mob, long expiry) {
         UUID targetUUID = mob.getUUID();
         FrozenTargetState existing = FROZEN_TARGETS.get(targetUUID);
         if (existing != null && existing.expiry >= expiry) {

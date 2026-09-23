@@ -139,7 +139,7 @@ public class DreamCrystalMaidEvents {
 
     // ========== 私有辅助方法 ==========
 
-    private static boolean isImmuneTo(DamageSource source) {
+    public static boolean isImmuneTo(DamageSource source) {
         if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return false;
         return source.is(DamageTypeTags.IS_FIRE)         // 燃烧
                 || source.is(DamageTypeTags.IS_DROWNING)     // 溺水
