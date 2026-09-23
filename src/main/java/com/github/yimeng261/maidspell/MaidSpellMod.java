@@ -55,6 +55,13 @@ public class MaidSpellMod {
         // Curios 事件处理器仅在 Curios 加载时注册，避免硬依赖
         if (net.minecraftforge.fml.ModList.get().isLoaded("curios")) {
             forgeBus.register(com.github.yimeng261.maidspell.event.CuriosEventHandler.class);
+            forgeBus.register(com.github.yimeng261.maidspell.compat.curios.DreamCrystalPlayerEvents.class);
+            if (net.minecraftforge.fml.ModList.get().isLoaded("irons_spellbooks")) {
+                forgeBus.register(com.github.yimeng261.maidspell.compat.curios.DreamCrystalSpellEvents.class);
+            }
+            if (net.minecraftforge.fml.ModList.get().isLoaded("mna")) {
+                forgeBus.register(com.github.yimeng261.maidspell.compat.curios.DreamCrystalManaArtificeEvents.class);
+            }
         }
         MaidSpellBlocks.register(modBus);
         MaidSpellBlockEntities.register(modBus);

@@ -142,7 +142,7 @@ public class DreamCrystalMaidEvents {
 
     // ========== 私有辅助方法 ==========
 
-    private static boolean isImmuneTo(DamageSource source) {
+    public static boolean isImmuneTo(DamageSource source) {
         if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return false;
         return source.is(DamageTypeTags.IS_FIRE)         // 燃烧
             || source.is(DamageTypeTags.IS_DROWNING)     // 溺水
@@ -151,7 +151,7 @@ public class DreamCrystalMaidEvents {
             || source.is(DamageTypes.LAVA);              // 熔岩
     }
 
-    private static boolean isInvulnerable(ItemStack baubleItem) {
+    public static boolean isInvulnerable(ItemStack baubleItem) {
         CompoundTag tag = baubleItem.getTag();
         return tag != null
             && tag.contains(DreamCatCrystalBauble.NBT_INVULNERABLE_TIME)

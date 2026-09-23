@@ -88,7 +88,9 @@ public class MaidSpellItems {
     //public static final RegistryObject<Item> CRYSTAL_CIRCUIT = ITEMS.register("crystal_circuit", CrystalCircuit::new);
 
     // 梦云水晶
-    public static final RegistryObject<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal", DreamCatCrystal::new);
+    public static final RegistryObject<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal",
+        () -> ModList.get().isLoaded("curios")
+            ? com.github.yimeng261.maidspell.compat.curios.DreamCrystalCurios.createItem() : new DreamCatCrystal());
 
     // 寻风之铃
     public static final RegistryObject<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
