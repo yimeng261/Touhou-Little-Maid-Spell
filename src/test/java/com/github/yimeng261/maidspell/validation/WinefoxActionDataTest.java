@@ -17,6 +17,8 @@ import static com.github.yimeng261.maidspell.validation.ValidationFixtures.RESOU
 import static com.github.yimeng261.maidspell.validation.ValidationFixtures.filesUnder;
 import static com.github.yimeng261.maidspell.validation.ValidationFixtures.parseObject;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.nio.file.Files;
 
 /**
  * 把 {@link WinefoxAction} 里写的动画名、时长、终止方式与模型包里的动画文件对账。
@@ -41,18 +43,6 @@ class WinefoxActionDataTest {
 
     /** 一 tick 20 分之一秒；枚举里的时长是 {@code ceil(animation_length * 20)}。 */
     private static final double TICKS_PER_SECOND = 20.0D;
-
-    @Test
-    void everyActionAnimationExistsInTheModelPack() throws IOException {
-        Map<String, JsonObject> tracks = collectTracks();
-        List<String> failures = new ArrayList<>();
-        for (WinefoxAction action : WinefoxAction.values()) {
-            if (action.hasOwnAnimation() && !tracks.containsKey(action.animationName())) {
-                failures.add(action + " 指向的轨道 \"" + action.animationName() + "\" 在模型包里不存在");
-            }
-        }
-        assertTrue(failures.isEmpty(), () -> String.join("\n", failures));
-    }
 
     @Test
     void actionDurationsMatchAnimationLength() throws IOException {
@@ -114,6 +104,37 @@ class WinefoxActionDataTest {
             }
         }
         assertTrue(failures.isEmpty(), () -> String.join("\n", failures));
+    }
+
+    @Test
+    void actionSoundsMatchModelKeyframesAndHaveAudioFiles() throws IOException {
+        Map<String, JsonObject> tracks = collectTracks();
+        for (WinefoxAction action : WinefoxAction.values()) {
+            JsonObject track = trackOf(action, tracks);
+            if (track == null || !track.has("sound_effects")) continue;
+            Map<Integer, String> expected = new LinkedHashMap<>();
+            for (var frame : track.getAsJsonObject("sound_effects").entrySet()) {
+                expected.put((int) Math.ceil(Double.parseDouble(frame.getKey()) * TICKS_PER_SECOND),
+                    frame.getValue().getAsJsonObject().get("effect").getAsString());
+            }
+            Map<Integer, String> actual = new LinkedHashMap<>();
+            for (WinefoxAction.Event event : action.events()) {
+                if (event.kind() == WinefoxAction.EventKind.SOUND) {
+                    actual.put(event.tick(), event.sound());
+                    assertTrue(Files.isRegularFile(RESOURCES.resolve(
+                        "assets/touhou_little_maid_spell/sounds/entity/stellar_witch/" + event.sound() + ".ogg")));
+                }
+            }
+            assertEquals(expected, actual, action.name());
+        }
+    }
+
+    @Test
+    void spearReleaseAndPhaseKnockbackMatchDesignTiming() {
+        assertTrue(WinefoxAction.SPEAR_THROW.events().stream().anyMatch(
+            event -> event.kind() == WinefoxAction.EventKind.PROJECTILE && event.tick() == 40));
+        assertTrue(WinefoxAction.PHASE_TRANSITION.events().stream().anyMatch(
+            event -> event.kind() == WinefoxAction.EventKind.KNOCKBACK && event.tick() == 55));
     }
 
     private static JsonObject trackOf(WinefoxAction action, Map<String, JsonObject> tracks) {

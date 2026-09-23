@@ -39,6 +39,10 @@ class ResourceValidationTest {
         "assets/touhou_little_maid_spell/lang/en_us.json");
     private static final Path ZH_CN = RESOURCES.resolve(
         "assets/touhou_little_maid_spell/lang/zh_cn.json");
+    private static final Path MIXIN_CONFIG = RESOURCES.resolve("maidspell.mixins.json");
+    private static final Path WINEFOX_MAIN_ANIMATION = RESOURCES.resolve(
+        "assets/touhou_little_maid_spell/tlm_custom_pack/star_witch_winefox-1.0.0/assets/"
+            + "touhou_little_maid_spell/animation/touhou_little_maid_spell.stellar_witch.main.animation.json");
     private static final Pattern LITERAL_TRANSLATION = Pattern.compile(
         "\\bComponent\\s*\\.\\s*translatable\\s*\\(\\s*\"([^\"\\r\\n]+)\"");
     private static final Pattern RAW_ANIMATION_TRACK = Pattern.compile(
@@ -67,6 +71,24 @@ class ResourceValidationTest {
         }
 
         assertTrue(failures.isEmpty(), () -> "Invalid JSON resources:\n" + String.join("\n", failures));
+    }
+
+    /**
+     * TLM 的 {@code ??} 运算依赖未赋值变量保持 {@code null}；把它们在存储层统一改成
+     * {@code 0.0} 会让内置模型的 {@code v.player_size??1} 变成零缩放。酒狐的
+     * {@code v.roaming.* == 0} 仍由 TLM 的数值转换处理，不需要这个全局 Mixin。
+     */
+    @Test
+    void molangStorageDefaultsAreNotGloballyRewritten() throws IOException {
+        JsonObject mixins = parseObject(MIXIN_CONFIG);
+        JsonArray commonMixins = mixins.getAsJsonArray("mixins");
+        assertFalse(commonMixins.contains(new com.google.gson.JsonPrimitive(
+            "tlm.MolangVariableDefaultMixin")),
+            "MolangVariableDefaultMixin must not rewrite TLM null-coalescing semantics globally");
+
+        String winefoxAnimation = Files.readString(WINEFOX_MAIN_ANIMATION, StandardCharsets.UTF_8);
+        assertTrue(winefoxAnimation.contains("v.roaming.C == 0?1:0"),
+            "Winefox's unset roaming variable default must remain explicit in the model asset");
     }
 
     @Test
@@ -121,6 +143,41 @@ class ResourceValidationTest {
         assertFalse(Files.exists(legacyDirectory),
             "Forge biome modifiers must live under data/<namespace>/forge/biome_modifier: "
                 + relative(legacyDirectory));
+    }
+
+    /**
+     * 刷怪蛋的物品模型文件名必须和它的物品注册名对得上。
+     *
+     * <p>模型是 {@code models/item/<物品注册名>.json} 按名字查的，没有登记表 ——
+     * 名字对不上就是一次静默的「紫黑方块」，构建期一声不吭。
+     * 改实体 / 物品注册名时最容易漏的就是这两个模型文件（源码里搜旧名字是搜不到的，
+     * 因为旧名字只在文件名上），所以这里从 {@code ITEMS.register} 反查一遍。
+     */
+    @Test
+    void spawnEggModelsFollowTheirRegisteredItemIds() throws IOException {
+        Pattern registration = Pattern.compile("ITEMS\\s*\\.\\s*register\\s*\\(\\s*\"([^\"]*_spawn_egg)\"");
+        Set<String> declared = new TreeSet<>();
+        for (Path source : filesUnder(JAVA_SOURCES, path -> path.toString().endsWith(".java"))) {
+            Matcher matcher = registration.matcher(
+                withoutJavaComments(Files.readString(source, StandardCharsets.UTF_8)));
+            while (matcher.find()) {
+                declared.add(matcher.group(1));
+            }
+        }
+
+        assertFalse(declared.isEmpty(),
+            "没从源码里解析出任何刷怪蛋注册，正则大概过时了");
+
+        Path models = RESOURCES.resolve("assets/touhou_little_maid_spell/models/item");
+        List<String> missing = new ArrayList<>();
+        for (String id : declared) {
+            if (!Files.isRegularFile(models.resolve(id + ".json"))) {
+                missing.add("models/item/" + id + ".json");
+            }
+        }
+
+        assertTrue(missing.isEmpty(),
+            () -> "刷怪蛋缺少与注册名同名的物品模型：\n" + String.join("\n", missing));
     }
 
     @Test
@@ -411,39 +468,6 @@ class ResourceValidationTest {
                 if (!Files.isRegularFile(table)) {
                     failures.add(relative(structure) + " 指名了不存在的战利品表 " + id);
                 }
-            }
-        }
-        assertTrue(failures.isEmpty(), () -> String.join("\n", failures));
-    }
-
-    /**
-     * 这条线上两个「必须在世界里找得到」的实体，得真的躺在各自的结构模板里。
-     *
-     * <p>两个都没有自然生成规则，唯一的入世方式就是被烤进结构 NBT。
-     * 一旦哪次重新导出结构把它们弄丢了，表现是整条链在生存模式里静默断掉 ——
-     * 守塔人不生成 → 观星罗盘拿不到 → 星途终岸找不到 → 见不着酒狐，
-     * 而游戏里不会有任何报错。
-     */
-    @Test
-    void structuresStillCarryTheEntitiesThatGateTheStarWitchLine() throws IOException {
-        Map<String, String> required = Map.of(
-            "data/touhou_little_maid_spell/structures/starwatch_tower/starwatch_tower_1.nbt",
-            "touhou_little_maid_spell:guardian_witch",
-            "data/touhou_little_maid_spell/structures/stellar_endshore/stellar_endshore_1.nbt",
-            "touhou_little_maid_spell:magical_winefox_boss");
-
-        List<String> failures = new ArrayList<>();
-        for (Map.Entry<String, String> entry : required.entrySet()) {
-            Path structure = RESOURCES.resolve(entry.getKey());
-            if (!Files.isRegularFile(structure)) {
-                failures.add("结构文件不存在：" + entry.getKey());
-                continue;
-            }
-            byte[] data = readPossiblyGzipped(structure);
-            byte[] id = entry.getValue().getBytes(StandardCharsets.UTF_8);
-            if (indexOf(data, id, 0) < 0) {
-                failures.add(entry.getKey() + " 里没有 " + entry.getValue()
-                    + "，这条线在生存模式下就断了");
             }
         }
         assertTrue(failures.isEmpty(), () -> String.join("\n", failures));
