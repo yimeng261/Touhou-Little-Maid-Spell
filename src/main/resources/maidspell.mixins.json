@@ -63,7 +63,6 @@
     "tlm.SetMaidSoundIdMessageMixin",
     "tlm.YsmMaidModelMessageMixin",
     "tlm.MaidFeedOwnerTaskMixin",
-    "tlm.MolangVariableDefaultMixin",
     "psi.PieceSelectorNearbyMixin",
     "psi.PieceTrickAddMotionMixin"
   ],
