@@ -91,6 +91,12 @@ public final class NaturalScenes {
                     "hidden_retreat_set", 10, 2, 1492837521, 1.0F, ""),
             new Reg("relic_sanctum", NS + "relic_sanctum", List.of("minecraft:windswept_forest"), "beard_box",
                     "relic_sanctum_set", 28, 14, 1735687904, 1.0F, ""),
+            new Reg("starfall_garden", NS + "starfall_garden",
+                    List.of("#minecraft:is_forest", "#minecraft:is_taiga", "#minecraft:is_jungle", "#minecraft:is_savanna",
+                            "#minecraft:is_hill", "#minecraft:is_mountain", "#minecraft:is_beach", "minecraft:plains",
+                            "minecraft:sunflower_plains", "minecraft:meadow", "minecraft:cherry_grove", "minecraft:snowy_plains",
+                            "minecraft:desert", "minecraft:swamp"),
+                    "none", "starfall_garden_set", 24, 12, 20130426, 1.0F, ""),
             new Reg("starwatch_tower", NS + "starwatch_tower", List.of("minecraft:end_highlands"), "beard_thin",
                     "starwatch_tower_set", 23, 12, 1472905386, 1.0F, ""),
             new Reg("stellar_endshore", NS + "stellar_endshore", List.of("minecraft:small_end_islands"), "none",
@@ -104,11 +110,13 @@ public final class NaturalScenes {
     private static final Map<String, Set<String>> DIMENSION_SETS = Map.of(
             OVERWORLD, Set.of("elven_realm_set", "enchantress_footsteps_graveyard", "enchantress_footsteps_igloo",
                     "enchantress_footsteps_mushroom_fields", "enchantress_footsteps_oasis", "enchantress_footsteps_outpost", "fairy_maid_cafe_set",
-                    "hidden_cherry_tree_set", "hidden_retreat_set", "relic_sanctum_set", "woods_perch", "yin_yang_altar_set"),
+                    "hidden_cherry_tree_set", "hidden_retreat_set", "relic_sanctum_set", "starfall_garden_set", "woods_perch",
+                    "yin_yang_altar_set"),
             NETHER, Set.of("fallen_sanctum_set"),
             END, Set.of("starwatch_tower_set", "stellar_endshore_set"),
             // #minecraft:is_mountain 含樱花林，前哨的结构集也在归隐之地的候选里（由白名单挡住）
-            RETREAT, Set.of("enchantress_footsteps_outpost", "fairy_maid_cafe_set", "hidden_cherry_tree_set", "hidden_retreat_set"));
+            RETREAT, Set.of("enchantress_footsteps_outpost", "fairy_maid_cafe_set", "hidden_cherry_tree_set", "hidden_retreat_set",
+                    "starfall_garden_set"));
 
     /** 文档"不应生成在水面/水底"的检查：不检查、必须通过、已知缺陷（required=false）。 */
     private enum Dry { NONE, REQUIRED, KNOWN_DEFECT }
