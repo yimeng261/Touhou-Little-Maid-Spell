@@ -73,7 +73,8 @@ public class ISSCastingAnimationProvider implements IMagicCastingAnimationProvid
         Optional<RawAnimation> opRawAnimation = spell.getCastStartAnimation().getForMob();
         if (opRawAnimation.isPresent()) {
             RawAnimation rawAnimation = opRawAnimation.get();
-            AnimationBuilder builder = toTlmAnimation(animationFile, rawAnimation);
+            AnimationBuilder builder = toTlmAnimation(animationFile, rawAnimation,
+                fallbackTrack(spell.getCastType(), false));
             animateState.setCancelled(false);
             if (spell.getCastType() == CastType.INSTANT) {
                 animateState.clearInstantCastSpellType();
@@ -94,7 +95,8 @@ public class ISSCastingAnimationProvider implements IMagicCastingAnimationProvid
         Optional<RawAnimation> opRawAnimation = spell.getCastFinishAnimation().getForMob();
         if (opRawAnimation.isPresent()) {
             RawAnimation rawAnimation = opRawAnimation.get();
-            AnimationBuilder builder = toTlmAnimation(animationFile, rawAnimation);
+            AnimationBuilder builder = toTlmAnimation(animationFile, rawAnimation,
+                fallbackTrack(spell.getCastType(), true));
             animateState.setCancelled(false);
             return builder;
         } else {
@@ -103,15 +105,45 @@ public class ISSCastingAnimationProvider implements IMagicCastingAnimationProvid
         }
     }
 
-    private static AnimationBuilder toTlmAnimation(AnimationFile animationFile, RawAnimation rawAnimation) {
+    /**
+     * 模型包没给这条法术准备对应轨道时，退而求其次播的通用轨道。
+     *
+     * <p>不加这一层的话，TLM 的 {@code AnimationController} 在 {@code setAnimation}
+     * 里发现轨道不存在会写一行 warn 然后<b>整条 builder 一并放弃</b>：控制器保持原样，
+     * 于是 {@code magic_casting} 通道停在上一发法术留下的收尾姿势上，看上去像"动作错了"，
+     * 而不是"没有动作"。铁魔法的法术比模型包里那二十来条轨道多得多
+     * （比如净化的 {@code kneeling_prayer} / {@code self_cast_two_hands} 就没有），
+     * 所以这条路一定会被走到。
+     *
+     * <p>只按<b>施法类型</b>退化，不按法术名写特例表：通用轨道本来就长那样，
+     * 换成别的法术也一样成立。模型包里连通用轨道都没有（普通女仆的包基本都不带
+     * {@code iss:*}）时返回 {@code null}，保持原样 —— 那时候什么也不播才是对的。
+     */
+    @Nullable
+    private static String fallbackTrack(CastType castType, boolean finishAnimation) {
+        return switch (castType) {
+            case LONG -> finishAnimation ? "long_cast_finish" : "long_cast";
+            case CONTINUOUS -> finishAnimation ? null : "continuous_thrust";
+            case INSTANT -> finishAnimation ? null : "instant_projectile";
+            default -> null;
+        };
+    }
+
+    private static AnimationBuilder toTlmAnimation(AnimationFile animationFile, RawAnimation rawAnimation,
+                                                   @Nullable String fallbackTrack) {
         AnimationBuilder builder = new AnimationBuilder();
         for (RawAnimation.Stage animationStage : rawAnimation.getAnimationStages()) {
             String animationName = ANIMATION_NAME_PREFIX + animationStage.animationName();
-            com.github.tartaricacid.touhoulittlemaid.geckolib3.core.builder.Animation customAnimation = animationFile.getAnimation(animationName);
             ILoopType loopType = null;
+            com.github.tartaricacid.touhoulittlemaid.geckolib3.core.builder.Animation customAnimation =
+                animationFile == null ? null : animationFile.getAnimation(animationName);
             if (customAnimation != null) {
                 loopType = customAnimation.loop;
             } else {
+                if (fallbackTrack != null && animationFile != null
+                    && animationFile.getAnimation(ANIMATION_NAME_PREFIX + fallbackTrack) != null) {
+                    animationName = ANIMATION_NAME_PREFIX + fallbackTrack;
+                }
                 if (animationStage.loopType() == Animation.LoopType.LOOP) {
                     loopType = ILoopType.EDefaultLoopTypes.LOOP;
                 } else if (animationStage.loopType() == Animation.LoopType.PLAY_ONCE) {
