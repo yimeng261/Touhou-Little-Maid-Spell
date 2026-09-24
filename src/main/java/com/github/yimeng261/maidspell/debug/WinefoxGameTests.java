@@ -3,6 +3,10 @@ package com.github.yimeng261.maidspell.debug;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.curios.DreamCrystalCurios;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxEncounterState;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxRewardState;
+import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityHealthAccessor;
+import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxRetiredStateAccessor;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import com.github.yimeng261.maidspell.entity.StarShadowSpearEntity;
@@ -13,11 +17,14 @@ import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
@@ -40,6 +47,237 @@ import java.util.UUID;
 public final class WinefoxGameTests {
     private WinefoxGameTests() {}
 
+    @GameTest(template = "winefox_test_arena", timeoutTicks = 90)
+    public static void externalHealthWritesCannotEarnRewards(GameTestHelper helper) {
+        if (!ModList.get().isLoaded("irons_spellbooks")) { helper.succeed(); return; }
+        MagicalWinefoxBossEntity boss = helper.spawn(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), 16, 1, 16);
+        ServerPlayer player = player(helper, "health_writes");
+        player.moveTo(boss.position().add(6, 0, 0));
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(MaidSpellItems.STARGLINT_DAGGER.get()));
+        boss.mobInteract(player, InteractionHand.MAIN_HAND);
+        helper.runAtTickTime(63, () -> {
+            boss.setNoAi(true);
+            float half = boss.getMaxHealth() / 2.0F;
+            boss.setHealth(half);
+            helper.assertTrue(boss.getHealth() == half,
+                "External health decrease must take effect");
+            helper.assertTrue(boss.saveWithoutId(new CompoundTag()).getFloat("WinefoxTotalDamageTaken") == 0.0F,
+                "External health decrease must not count as attributed damage");
+            // 受击间隔是写入层的规则，对第三方直写同样生效：同一 tick 的第二笔写入不该落地。
+            boss.setHealth(half / 2.0F);
+            helper.assertTrue(boss.getHealth() == half,
+                "A second external write inside the hit interval must be rejected");
+            boss.getEntityData().set(LivingEntityHealthAccessor.maidspell$getHealthAccessor(), 0.0F);
+            helper.assertTrue(boss.getEntityData().get(LivingEntityHealthAccessor.maidspell$getHealthAccessor()) == 1.0F,
+                "Direct vanilla health write must be restored to compatibility value");
+            // 等到间隔过去，再把他杀式的直写放进来。
+            long wait = Math.max(1, com.github.yimeng261.maidspell.Config.winefoxHitIntervalTicks) + 1L;
+            helper.runAtTickTime(63 + wait, () -> {
+                boss.getEntityData().set(MagicalWinefoxBossEntity.BOSS_HEALTH, 0.0F);
+                helper.assertTrue(boss.getHealth() == 0.0F && boss.isDefeated() && boss.isAlive(),
+                    "Direct boss health write must cause non-vanilla defeat");
+                CompoundTag lifecycle = boss.saveWithoutId(new CompoundTag()).getCompound("MaidSpellWinefoxLifecycle");
+                helper.assertTrue(lifecycle.getByte("RewardState") == WinefoxRewardState.NOT_ELIGIBLE.ordinal(),
+                    "Unattributed defeat cannot grant rewards");
+                boss.die(boss.damageSources().generic());
+                helper.assertTrue(!boss.isDefeated() && !boss.isRemoved(),
+                    "Direct die must return without vanilla death or removal");
+                helper.getLevel().getServer().getPlayerList().remove(player);
+                boss.maidspell$destroyAuthorized();
+                helper.succeed();
+            });
+        });
+    }
+
+    /**
+     * 单次受击上限必须在<b>最终伤害</b>上生效：不能一击打掉超过配置比例的最大生命。
+     *
+     * <p>这条测试打的是一个远超上限的数，因此同时覆盖了"上限存在"与"上限可被绕过"两种失败：
+     * 若上限落在护甲结算之前、或被写血路径绕过，她的生命都会掉得远多于一份上限。
+     */
+    @GameTest(template = "winefox_test_arena", timeoutTicks = 100)
+    public static void singleHitCannotExceedDamageCap(GameTestHelper helper) {
+        if (!ModList.get().isLoaded("irons_spellbooks")) { helper.succeed(); return; }
+        double ratio = com.github.yimeng261.maidspell.Config.winefoxHitDamageCapRatio;
+        if (ratio <= 0.0D) { helper.succeed(); return; }
+        MagicalWinefoxBossEntity boss = helper.spawn(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), 16, 1, 16);
+        ServerPlayer player = player(helper, "damage_cap");
+        player.moveTo(boss.position().add(6, 0, 0));
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(MaidSpellItems.STARGLINT_DAGGER.get()));
+        boss.mobInteract(player, InteractionHand.MAIN_HAND);
+        helper.runAtTickTime(63, () -> {
+            boss.setNoAi(true);
+            float before = boss.getHealth();
+            float expectedCap = (float) (boss.getMaxHealth() * ratio);
+            boss.hurt(player.damageSources().playerAttack(player), before * 100.0F);
+            float lost = before - boss.getHealth();
+            helper.assertTrue(lost > 0.0F, "The hit must still land");
+            // 留一点浮点余量：护甲与抗性只会让实际掉血更少，绝不会更多。
+            helper.assertTrue(lost <= expectedCap + 0.01F,
+                "Single hit must not exceed the configured cap: lost=" + lost + " cap=" + expectedCap);
+            helper.getLevel().getServer().getPlayerList().remove(player);
+            boss.maidspell$destroyAuthorized();
+            helper.succeed();
+        });
+    }
+
+    /** 两次有效受击之间必须间隔配置的 tick 数，间隔内的第二击不产生任何效果。 */
+    @GameTest(template = "winefox_test_arena", timeoutTicks = 120)
+    public static void hitsInsideIntervalAreDiscarded(GameTestHelper helper) {
+        if (!ModList.get().isLoaded("irons_spellbooks")) { helper.succeed(); return; }
+        int interval = com.github.yimeng261.maidspell.Config.winefoxHitIntervalTicks;
+        if (interval <= 0) { helper.succeed(); return; }
+        MagicalWinefoxBossEntity boss = helper.spawn(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), 16, 1, 16);
+        ServerPlayer player = player(helper, "hit_interval");
+        player.moveTo(boss.position().add(6, 0, 0));
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(MaidSpellItems.STARGLINT_DAGGER.get()));
+        boss.mobInteract(player, InteractionHand.MAIN_HAND);
+        helper.runAtTickTime(63, () -> {
+            boss.setNoAi(true);
+            boss.hurt(player.damageSources().playerAttack(player), 10.0F);
+            float afterFirst = boss.getHealth();
+            // 同一 tick 再来一次：在间隔内，必须完全没有效果，且不能记进伤害归属。
+            boss.hurt(player.damageSources().playerAttack(player), 10.0F);
+            helper.assertTrue(boss.getHealth() == afterFirst,
+                "A hit inside the interval must not change health");
+            long wait = interval + 2L;
+            helper.runAtTickTime(63 + wait, () -> {
+                boss.hurt(player.damageSources().playerAttack(player), 10.0F);
+                helper.assertTrue(boss.getHealth() < afterFirst,
+                    "A hit after the interval must land again");
+                helper.getLevel().getServer().getPlayerList().remove(player);
+                boss.maidspell$destroyAuthorized();
+                helper.succeed();
+            });
+        });
+    }
+
+    @GameTest(template = "winefox_test_arena", timeoutTicks = 50)
+    public static void removalGuardAllowsOnlyAuthorizedTeardown(GameTestHelper helper) {
+        if (!ModList.get().isLoaded("irons_spellbooks")) { helper.succeed(); return; }
+        MagicalWinefoxBossEntity boss = helper.spawn(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), 16, 1, 16);
+        boss.discard();
+        boss.setRemoved(Entity.RemovalReason.KILLED);
+        helper.assertTrue(!boss.isRemoved(), "Both removal entry points must be blocked");
+        helper.assertTrue(boss.convertTo(EntityType.COW, false) == null,
+            "Conversion must not create a replacement");
+        int killed = helper.getLevel().getServer().getCommands().performPrefixedCommand(
+            helper.getLevel().getServer().createCommandSourceStack(), "kill " + boss.getUUID());
+        helper.assertTrue(killed == 1, "Vanilla /kill must target the boss");
+        helper.assertTrue(!boss.isRemoved() && !boss.isSeated(), "Kill must start a harmless return");
+        helper.assertTrue(!PersistentEntityLifecycleGuard.shouldBlockRemoval(boss, Entity.RemovalReason.UNLOADED_TO_CHUNK),
+            "Normal chunk unload must remain permitted");
+        boss.maidspell$destroyAuthorized();
+        helper.assertTrue(boss.isRemoved(), "Authorized teardown must remove the boss");
+        helper.succeed();
+    }
+
+    @GameTest(template = "winefox_test_arena", timeoutTicks = 50)
+    public static void lifecycleNbtMigratesAndPreservesRewardProgress(GameTestHelper helper) {
+        if (!ModList.get().isLoaded("irons_spellbooks")) { helper.succeed(); return; }
+        MagicalWinefoxBossEntity boss = helper.spawn(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), 16, 1, 16);
+        CompoundTag old = boss.saveWithoutId(new CompoundTag());
+        old.remove("MaidSpellWinefoxLifecycle");
+        old.putBoolean("WinefoxDefeated", true);
+        old.putFloat("Health", 1.0F);
+        MagicalWinefoxBossEntity migrated = IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get().create(helper.getLevel());
+        migrated.readAdditionalSaveData(old);
+        helper.assertTrue(migrated.isDefeated() && migrated.getHealth() == 0.0F,
+            "Legacy defeated entity must migrate to zero health");
+        CompoundTag migratedLife = migrated.saveWithoutId(new CompoundTag()).getCompound("MaidSpellWinefoxLifecycle");
+        helper.assertTrue(migratedLife.getByte("RewardState") == WinefoxRewardState.NOT_ELIGIBLE.ordinal(),
+            "Legacy defeat must never replay rewards");
+
+        CompoundTag current = boss.saveWithoutId(new CompoundTag());
+        CompoundTag lifecycle = current.getCompound("MaidSpellWinefoxLifecycle");
+        lifecycle.putFloat("BossMaxHealth", 850.0F);
+        lifecycle.putFloat("BossHealth", 320.0F);
+        lifecycle.putByte("EncounterState", (byte) WinefoxEncounterState.COMBAT.ordinal());
+        lifecycle.putByte("RewardState", (byte) WinefoxRewardState.GRANTING.ordinal());
+        lifecycle.putUUID("RewardTransaction", UUID.randomUUID());
+        MagicalWinefoxBossEntity restored = IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get().create(helper.getLevel());
+        restored.readAdditionalSaveData(current);
+        CompoundTag restoredLife = restored.saveWithoutId(new CompoundTag()).getCompound("MaidSpellWinefoxLifecycle");
+        helper.assertTrue(restored.getMaxHealth() == 850.0F && restored.getHealth() == 320.0F,
+            "Current lifecycle must restore custom health and its attribute cap");
+        helper.assertTrue(restoredLife.getByte("RewardState") == WinefoxRewardState.GRANTING.ordinal(),
+            "Interrupted grant must stay pending administrator review");
+        helper.assertTrue(restored.maidspell$resolvePendingReward(false),
+            "Administrator must be able to confirm interrupted reward without a second drop");
+        helper.assertTrue(restored.saveWithoutId(new CompoundTag())
+                .getCompound("MaidSpellWinefoxLifecycle").getByte("RewardState") == WinefoxRewardState.GRANTED.ordinal(),
+            "Confirmation must persist the final reward state");
+        boss.maidspell$destroyAuthorized();
+        helper.succeed();
+    }
+
+    @GameTest(template = "winefox_test_arena", timeoutTicks = 50)
+    public static void duplicateLoadedEncounterCannotJoin(GameTestHelper helper) {
+        if (!ModList.get().isLoaded("irons_spellbooks")) { helper.succeed(); return; }
+        MagicalWinefoxBossEntity boss = helper.spawn(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), 16, 1, 16);
+        MagicalWinefoxBossEntity duplicate = IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get().create(helper.getLevel());
+        duplicate.readAdditionalSaveData(boss.saveWithoutId(new CompoundTag()));
+        duplicate.setUUID(UUID.randomUUID());
+        helper.assertTrue(PersistentEntityLifecycleGuard.conflictsWithLoadedEncounter(duplicate, helper.getLevel()),
+            "Same encounter ID must conflict even when entity UUID differs");
+        helper.assertTrue(!helper.getLevel().addFreshEntity(duplicate),
+            "Duplicate loaded encounter must be rejected before joining the level");
+        boss.maidspell$destroyAuthorized();
+        helper.succeed();
+    }
+
+    /**
+     * 初见台词按玩家 id 记，而且这份记录得活着穿过一次存档往返。
+     *
+     * <p>她是会被卸载进区块的（{@code PersistentEntityLifecycleGuard} 放行
+     * {@code UNLOADED_TO_CHUNK}），玩家跨维度、重登、走远再回来，见到的都是从这个 NBT
+     * 重建出来的新实体。记录只留在内存里的话，那三种情况都会把「初见」再说一遍。
+     */
+    @GameTest(template = "winefox_test_arena", timeoutTicks = 60)
+    public static void greetingRecordSurvivesReload(GameTestHelper helper) {
+        if (!ModList.get().isLoaded("irons_spellbooks")) { helper.succeed(); return; }
+        MagicalWinefoxBossEntity boss = helper.spawn(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), 16, 1, 16);
+        ServerPlayer player = player(helper, "greeted_once");
+        // 初见范围是 5 格，站着不动就够。
+        player.moveTo(boss.position().add(3, 0, 0));
+        helper.runAtTickTime(20, () -> {
+            helper.assertTrue(boss.maidspell$hasGreetedPlayer(player.getUUID()),
+                "Standing next to the seated boss must register the greeting");
+            CompoundTag saved = boss.saveWithoutId(new CompoundTag());
+            helper.assertTrue(saved.contains("WinefoxGreetedPlayers", Tag.TAG_LIST),
+                "The greeting record must be written to NBT");
+            MagicalWinefoxBossEntity reloaded = IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get()
+                .create(helper.getLevel());
+            reloaded.readAdditionalSaveData(saved);
+            helper.assertTrue(reloaded.maidspell$hasGreetedPlayer(player.getUUID()),
+                "A reloaded boss must not greet the same player twice");
+            helper.getLevel().getServer().getPlayerList().remove(player);
+            boss.maidspell$destroyAuthorized();
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = "winefox_test_arena", timeoutTicks = 90)
+    public static void publicSetHealthZeroDefeatsWithoutRewards(GameTestHelper helper) {
+        if (!ModList.get().isLoaded("irons_spellbooks")) { helper.succeed(); return; }
+        MagicalWinefoxBossEntity boss = helper.spawn(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), 16, 1, 16);
+        ServerPlayer player = player(helper, "set_health_zero");
+        player.moveTo(boss.position().add(6, 0, 0));
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(MaidSpellItems.STARGLINT_DAGGER.get()));
+        boss.mobInteract(player, InteractionHand.MAIN_HAND);
+        helper.runAtTickTime(63, () -> {
+            boss.setHealth(0.0F);
+            helper.assertTrue(boss.getHealth() == 0.0F && boss.isDefeated() && boss.isAlive(),
+                "Public setHealth(0) must cause custom defeat without vanilla death");
+            CompoundTag lifecycle = boss.saveWithoutId(new CompoundTag()).getCompound("MaidSpellWinefoxLifecycle");
+            helper.assertTrue(lifecycle.getByte("RewardState") == WinefoxRewardState.NOT_ELIGIBLE.ordinal(),
+                "Public zero write must not grant challenge rewards");
+            helper.getLevel().getServer().getPlayerList().remove(player);
+            boss.maidspell$destroyAuthorized();
+            helper.succeed();
+        });
+    }
+
     @GameTest(template = "winefox_test_arena", timeoutTicks = 250)
     public static void challengeReturnsHomeAndCanRestart(GameTestHelper helper) {
         if (!ModList.get().isLoaded("irons_spellbooks")) { helper.succeed(); return; }
@@ -49,7 +287,7 @@ public final class WinefoxGameTests {
         ItemStack dagger = new ItemStack(MaidSpellItems.STARGLINT_DAGGER.get());
         player.setItemInHand(InteractionHand.MAIN_HAND, dagger);
         helper.assertTrue(boss.getMainHandItem().isEmpty(), "Seated boss must be empty-handed");
-        helper.assertTrue(boss.getOffers().size() == 3, "Initial supply trades must be available");
+        helper.assertTrue(boss.getOffers().size() == 9, "Initial supply trades must be available");
         boss.mobInteract(player, InteractionHand.MAIN_HAND);
         helper.runAtTickTime(58, () -> helper.assertTrue(boss.isSeated(), "Challenge must wait three seconds"));
         helper.runAtTickTime(63, () -> {
@@ -63,9 +301,9 @@ public final class WinefoxGameTests {
             boss.cancelCast();
             boss.setNoAi(true);
             boss.hurt(player.damageSources().playerAttack(player), 100000.0F);
-            helper.assertTrue(boss.isDefeated() && boss.getHealth() == 1.0F, "Boss must survive defeat at one health");
+            helper.assertTrue(boss.isDefeated() && boss.getHealth() == 0.0F, "Boss defeat must use zero health");
             helper.assertTrue(!boss.isBattleMusicActive(), "Boss defeat must stop battle music");
-            helper.assertTrue(!boss.isRestricted() && boss.getOffers().size() > 3, "Fair win must unlock equipment");
+            helper.assertTrue(!boss.isRestricted() && boss.getOffers().size() > 9, "Fair win must unlock equipment");
         });
         helper.runAtTickTime(167, () -> {
             helper.assertTrue(boss.isSeated() && !boss.isDefeated(), "Boss must return to idle");
@@ -76,7 +314,7 @@ public final class WinefoxGameTests {
         helper.runAtTickTime(230, () -> {
             helper.assertTrue(!boss.isSeated() && dagger.getCount() == 1, "Same dagger must start another challenge");
             helper.getLevel().getServer().getPlayerList().remove(player);
-            boss.discard();
+            boss.maidspell$destroyAuthorized();
             helper.succeed();
         });
     }
@@ -94,9 +332,9 @@ public final class WinefoxGameTests {
             boss.setNoAi(true);
             boss.maidspell$redirectTrueDamage(100000.0F, player);
             helper.assertTrue(boss.isDefeated() && boss.isRestricted(), "True damage finisher must be counted before rewards");
-            helper.assertTrue(boss.getOffers().size() == 3, "Restricted win must retain only supply trades");
+            helper.assertTrue(boss.getOffers().size() == 9, "Restricted win must retain only supply trades");
             helper.getLevel().getServer().getPlayerList().remove(player);
-            boss.discard();
+            boss.maidspell$destroyAuthorized();
             helper.succeed();
         });
     }
@@ -229,13 +467,13 @@ public final class WinefoxGameTests {
         helper.runAtTickTime(220, () -> {
             helper.assertTrue(boss.isPhaseTwo() && !boss.isTransitioning(), "Healing must not replay the transition");
             helper.getLevel().getServer().getPlayerList().remove(player);
-            boss.discard();
+            boss.maidspell$destroyAuthorized();
             helper.succeed();
         });
     }
 
     @GameTest(template = "winefox_test_arena", timeoutTicks = 100)
-    public static void lethalDuelDamageEndsBattleAndLeavesOneHealth(GameTestHelper helper) {
+    public static void lethalDuelDamageEndsBattleAndPreservesChallenger(GameTestHelper helper) {
         if (!ModList.get().isLoaded("irons_spellbooks")) { helper.succeed(); return; }
         MagicalWinefoxBossEntity boss = helper.spawn(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), 16, 1, 16);
         ServerPlayer player = player(helper, "nonlethal");
@@ -250,7 +488,7 @@ public final class WinefoxGameTests {
             helper.assertTrue(!boss.isBattleMusicActive(), "Player defeat must stop battle music before returning home");
             helper.assertTrue(!player.isOnFire(), "Duel fire must not kill the player after combat");
             helper.getLevel().getServer().getPlayerList().remove(player);
-            boss.discard();
+            boss.maidspell$destroyAuthorized();
             helper.succeed();
         });
     }
@@ -273,20 +511,20 @@ public final class WinefoxGameTests {
             helper.assertTrue(!boss.isDefeated(), "Ordinary damage must not immediately end an active duel");
             attacker.discard();
             player.getServer().getPlayerList().remove(player);
-            boss.discard();
+            boss.maidspell$destroyAuthorized();
             helper.succeed();
         });
     }
 
-    @GameTest(template = "winefox_test_arena", timeoutTicks = 100)
+    @GameTest(template = "winefox_test_arena", timeoutTicks = 130)
     public static void ordinaryMobDefeatUsesBossReturnSequence(GameTestHelper helper) {
         if (!ModList.get().isLoaded("irons_spellbooks")) { helper.succeed(); return; }
         MagicalWinefoxBossEntity boss = helper.spawn(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), 16, 1, 16);
         LivingEntity attacker = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, 22, 1, 16);
         float attackerHealth = attacker.getHealth();
         boss.hurt(attacker.damageSources().mobAttack(attacker), 100000.0F);
-        helper.assertTrue(boss.isDefeated() && boss.getHealth() == 1.0F,
-            "A non-player finisher must leave the boss at one health for the defeat sequence");
+        helper.assertTrue(boss.isDefeated() && boss.getHealth() == 0.0F,
+            "A non-player finisher must use zero boss health");
         helper.assertTrue(attacker.getHealth() == attackerHealth,
             "The non-player attacker must not receive the duel health floor");
         helper.runAtTickTime(110, () -> {
@@ -295,7 +533,7 @@ public final class WinefoxGameTests {
             helper.assertTrue(boss.getHealth() == boss.getMaxHealth(),
                 "Returning after an ordinary mob defeat must restore full boss health");
             attacker.discard();
-            boss.discard();
+            boss.maidspell$destroyAuthorized();
             helper.succeed();
         });
     }
@@ -351,7 +589,7 @@ public final class WinefoxGameTests {
                 "Releasing the maid must clear the synched retired mirror");
             helper.getLevel().getServer().getPlayerList().remove(owner);
             maid.discard();
-            boss.discard();
+            boss.maidspell$destroyAuthorized();
             helper.succeed();
         });
     }
@@ -377,7 +615,7 @@ public final class WinefoxGameTests {
         helper.runAtTickTime(115, () -> {
             helper.assertTrue(boss.isSeated() && !boss.isDefeated(), "Boss must still return to the swing");
             attacker.discard();
-            boss.discard();
+            boss.maidspell$destroyAuthorized();
             helper.succeed();
         });
     }

@@ -67,9 +67,13 @@ public final class WinefoxBossSpells {
         if (needsTargetData(action) && (target == null || !target.isAlive())) {
             return false;
         }
+        // 净化是以自己为圆心的范围法术，转不转身都一样 —— 和 HEAL 同理，别让一次
+        // 施法平白把她的朝向掰到玩家身上。黑洞则相反：它在 onCast 里沿视线射线找落点，
+        // 必须先对准目标。
         if (target != null && action != WinefoxBossSpellAction.HEAL
                 && action != WinefoxBossSpellAction.VOID_PHASE
-                && action != WinefoxBossSpellAction.ECHOING_STRIKES) {
+                && action != WinefoxBossSpellAction.ECHOING_STRIKES
+                && action != WinefoxBossSpellAction.CLEANSE) {
             faceTarget(boss, target);
         }
 
@@ -152,6 +156,8 @@ public final class WinefoxBossSpells {
             case SHOCKWAVE -> SpellRegistry.SHOCKWAVE_SPELL.get();
             case DIVINE_SMITE -> SpellRegistry.DIVINE_SMITE_SPELL.get();
             case SWORD_PRISON -> IronsSpellbooksCompatSpells.SWORD_PRISON.get();
+            case CLEANSE -> SpellRegistry.CLEANSE_SPELL.get();
+            case BLACK_HOLE -> SpellRegistry.BLACK_HOLE_SPELL.get();
         };
     }
 

@@ -22,5 +22,9 @@ public enum WinefoxBossSpellAction {
     STAR_SHADOW_STRIKE,
     SHOCKWAVE,
     DIVINE_SMITE,
-    SWORD_PRISON
+    SWORD_PRISON,
+    /** 净化：一、二阶段都会用，只在自己身上挂着负面效果时才有意义。 */
+    CLEANSE,
+    /** 黑洞：只有一阶段（法杖阶段）会放。 */
+    BLACK_HOLE
 }

@@ -6,6 +6,8 @@ import java.util.EnumSet;
 import java.util.List;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -99,7 +101,9 @@ final class WinefoxCombatGoal extends Goal {
         WinefoxBossSpellAction.ARCANE_SHACKLE,
         WinefoxBossSpellAction.HEAL,
         WinefoxBossSpellAction.MODIFIED_STARFALL,
-        WinefoxBossSpellAction.MAGIC_SHOTGUN);
+        WinefoxBossSpellAction.MAGIC_SHOTGUN,
+        WinefoxBossSpellAction.CLEANSE,
+        WinefoxBossSpellAction.BLACK_HOLE);
     private static final List<WinefoxBossSpellAction> PHASE_TWO_CLOSE_SPELLS = List.of(
         WinefoxBossSpellAction.ECHOING_STRIKES,
         WinefoxBossSpellAction.SHADOW_SLASH,
@@ -630,8 +634,10 @@ final class WinefoxCombatGoal extends Goal {
         List<WinefoxBossSpellAction> rangePool = horizontalDistance <= 3.0D
                                                  ? PHASE_TWO_CLOSE_SPELLS
                                                  : PHASE_TWO_FAR_SPELLS;
-        List<WinefoxBossSpellAction> pool = new ArrayList<>(rangePool.size() + 1);
+        // 净化两阶段都要能放，所以和 MAGIC_SHOTGUN 一样无条件进池，不跟着远近走。
+        List<WinefoxBossSpellAction> pool = new ArrayList<>(rangePool.size() + 2);
         pool.add(WinefoxBossSpellAction.MAGIC_SHOTGUN);
+        pool.add(WinefoxBossSpellAction.CLEANSE);
         pool.addAll(rangePool);
         return this.chooseSpell(pool, target, horizontalDistance);
     }
@@ -649,6 +655,12 @@ final class WinefoxCombatGoal extends Goal {
             }
             if (action == WinefoxBossSpellAction.HEAL
                 && this.boss.getHealth() >= this.boss.getMaxHealth()) {
+                continue;
+            }
+            // 净化是纯粹的解控：身上一个负面效果都没有时放它等于白站三秒。
+            // 铁魔法的净化不会回血，只清有害效果（见 {@code CleanseSpell.onCast}），
+            // 所以这一关没得放宽。
+            if (action == WinefoxBossSpellAction.CLEANSE && !this.bossHasHarmfulEffect()) {
                 continue;
             }
             if (action == WinefoxBossSpellAction.SWORD_PRISON && horizontalDistance < 3.0D) {
@@ -704,6 +716,7 @@ final class WinefoxCombatGoal extends Goal {
                 && action != WinefoxBossSpellAction.VOID_PHASE
                 && action != WinefoxBossSpellAction.ECHOING_STRIKES
                 && action != WinefoxBossSpellAction.ABYSSAL_SHROUD
+                && action != WinefoxBossSpellAction.CLEANSE
                 && action != WinefoxBossSpellAction.SHOCKWAVE) {
                 this.boss.performRangedAttack(target, 1.0F);
                 return true;
@@ -714,8 +727,12 @@ final class WinefoxCombatGoal extends Goal {
 
     private int randomSpellLevel(WinefoxBossSpellAction action) {
         return switch (action) {
-            case ABYSSAL_SHROUD, COUNTERSPELL, VOID_PHASE, EVASION -> 1;
+            case ABYSSAL_SHROUD, COUNTERSPELL, VOID_PHASE, EVASION, CLEANSE -> 1;
             case MAGIC_SHOTGUN -> 1 + this.boss.getRandom().nextInt(5);
+            // 黑洞的伤害不吃等级（{@code spellPowerPerLevel} 为 0），等级只抬半径：
+            // 一级 6 格、五级 14 格，而它自己会在场上留 32 秒。取三级（约 10 格）——
+            // 再大就是把整座擂台连人带怪一起吸住半分钟，和「一阶段的开场压迫感」不是一回事。
+            case BLACK_HOLE -> 3;
             case SUMMON_SWORDS, MODIFIED_TELEPORT, ARROW_VOLLEY, ARCANE_SHACKLE -> 4;
             default -> 5;
         };
@@ -740,6 +757,16 @@ final class WinefoxCombatGoal extends Goal {
 
     private boolean isSpellReady(WinefoxBossSpellAction action) {
         return !this.spellCooldowns.containsKey(action);
+    }
+
+    /** 她身上有没有需要净化掉的东西，见 {@code chooseSpell} 里那条净化门槛。 */
+    private boolean bossHasHarmfulEffect() {
+        for (MobEffectInstance effect : this.boss.getActiveEffects()) {
+            if (effect.getEffect().getCategory() == MobEffectCategory.HARMFUL) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void tickCooldowns() {

@@ -1,6 +1,6 @@
 package com.github.yimeng261.maidspell.mixin.goety;
 
-import com.github.yimeng261.maidspell.utils.AnchorCoreProtection;
+import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -16,7 +16,7 @@ public class EsotericTesseractMixin {
     @Inject(method = "onLeftClickEntity", at = @At("HEAD"), cancellable = true, remap = false)
     private void maidspell$blockAnchoredMaidCapture(ItemStack stack, Player player, Entity target,
                                                     CallbackInfoReturnable<Boolean> cir) {
-        if (AnchorCoreProtection.shouldBlockCapture(target)) {
+        if (PersistentEntityLifecycleGuard.shouldBlockCapture(target)) {
             cir.setReturnValue(true);
         }
     }

@@ -11,6 +11,10 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowSta
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
 import com.github.yimeng261.maidspell.entity.StarShadowSpearEntity;
 import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityHealthAccessor;
+import com.github.yimeng261.maidspell.api.IPersistentEncounterEntity;
+import com.github.yimeng261.maidspell.api.IBossSyncedDataGuard;
+import com.github.yimeng261.maidspell.utils.BossLifecycleAccess;
+import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.capabilities.magic.PlayerRecasts;
 import io.redspace.ironsspellbooks.capabilities.magic.SummonManager;
@@ -26,6 +30,7 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.ChatFormatting;
@@ -33,6 +38,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
+import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -56,6 +62,8 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.FlyingMoveControl;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
@@ -85,6 +93,7 @@ import java.util.OptionalInt;
 import net.minecraft.world.effect.MobEffectInstance;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.api.IBossDamageClamp;
 import com.github.yimeng261.maidspell.api.ITrueDamageRedirect;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import net.minecraft.world.item.Items;
@@ -98,7 +107,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
-    implements Enemy, IMaid, CastingAnimateStateAccessor, ITrueDamageRedirect, Merchant {
+    implements Enemy, IMaid, CastingAnimateStateAccessor, ITrueDamageRedirect, Merchant,
+        IPersistentEncounterEntity, IBossSyncedDataGuard, IBossDamageClamp {
     static final String RETIRED_MAID_TAG = "MaidSpellWinefoxRetired";
     static final String RETIRED_MAID_BOSS_TAG = "MaidSpellWinefoxRetiredBoss";
     private static final String RETIRED_MAID_INVULNERABLE_TAG = "MaidSpellWinefoxRetiredInvulnerable";
@@ -108,6 +118,16 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private static final String RETIRED_MAID_X_TAG = "MaidSpellWinefoxRetiredX";
     private static final String RETIRED_MAID_Y_TAG = "MaidSpellWinefoxRetiredY";
     private static final String RETIRED_MAID_Z_TAG = "MaidSpellWinefoxRetiredZ";
+
+    /**
+     * 已经听过初见台词的那几位玩家（{@link #greetedPlayers}）。
+     *
+     * <p><b>必须落 NBT。</b>她是会被卸载进区块的：{@code PersistentEntityLifecycleGuard}
+     * 明确放行 {@code UNLOADED_TO_CHUNK}，玩家一离开这个维度、附近没人了，实体就当存档写进
+     * 区块再移除；回来时从 NBT 重建。这份集合要是只留在内存里，跨维度（以及重登、走远回来）
+     * 之后她就是一张白纸，会再把「初见」那三句说一遍。
+     */
+    private static final String GREETED_PLAYERS_TAG = "WinefoxGreetedPlayers";
     private static final EntityDataAccessor<Integer> ACTION =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> ACTION_SERIAL =
@@ -116,29 +136,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> TRANSITIONING =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
-    /**
-     * 战败演出已经开始。
-     *
-     * <p>必须是同步字段，不能拿 {@code deathTime} 当标志：那是纯服务端字段，
-     * 客户端只有在收到实体事件 3（{@code LivingEntity.die()} 发的）时才会跟着动。
-     * 我们从不调 {@code die()}，于是客户端的 {@code deathTime} 永远是 0 —— 战败动画一帧都不会播，玩家看到的就是她原地凭空消失。
-     */
-    private static final EntityDataAccessor<Boolean> DEFEATED =
-        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
-
     /** 玩家挑战结束后播放的行礼主动画。 */
     private static final EntityDataAccessor<Boolean> CURTSYING =
-        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
-
-    /**
-     * 正坐在秋千上等人来邀战。
-     *
-     * <p>必须同步：坐姿动画整条由客户端的 {@code main} 通道驱动，
-     * TLM 在 {@code AnimationRegister} 里把 {@code sit} 挂在
-     * {@code maid.isMaidInSittingPose()} 上（优先级 1，压得住 walk / idle），
-     * 所以只要 {@link #isMaidInSittingPose()} 报得出来，动画一行都不用自己写。
-     */
-    private static final EntityDataAccessor<Boolean> SEATED =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
 
     /**
@@ -150,6 +149,16 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> BATTLE_MUSIC =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
+    public static final EntityDataAccessor<Float> BOSS_HEALTH =
+        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.FLOAT);
+    static final EntityDataAccessor<Float> BOSS_MAX_HEALTH =
+        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.FLOAT);
+    static final EntityDataAccessor<Byte> ENCOUNTER_STATE =
+        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BYTE);
+    static final EntityDataAccessor<Byte> REWARD_STATE =
+        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BYTE);
+    static final EntityDataAccessor<Integer> ENCOUNTER_SERIAL =
+        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.INT);
 
     /** 战败演出放完到回秋千坐下之间的间隔。 */
     private static final int DEFEAT_RETURN_HOME_TICKS = WinefoxAction.DEFEAT.durationTicks();
@@ -176,12 +185,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /** 半血进入二阶段，治疗不重置本场战斗阶段。 */
     private static final float PHASE_TWO_HEALTH_FRACTION = 0.5F;
 
-    /**
-     * 这是一场不杀人的表演赛：她把人打到只剩 1 点，自己也只掉到剩 1 点。
-     *
-     * <p>两边都用同一个下限，读起来是一条规则而不是两条巧合。
-     */
-    static final float SURVIVAL_HEALTH_FLOOR = 1.0F;
+    /** 正式表演赛中挑战者与女仆的最低生命；Boss 使用独立生命，可降至零。 */
+    static float duelSurvivalFloor() {
+        return (float) Config.winefoxDuelSurvivalFloor;
+    }
+    private static final UUID MAX_HEALTH_MODIFIER_ID = UUID.fromString("f19f26fa-fc65-4e71-a3bb-b90705c37272");
 
     /** 五稿规定动画第二秒发射直线投枪。 */
     private static final int SPEAR_RELEASE_TICKS =
@@ -219,6 +227,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      */
     private static final double CHALLENGER_MAX_DISTANCE = 48.0D;
     private static final double PHASE_ONE_VERTICAL_SPEED = 0.04D;
+    /** 二阶段的爬升/沉降上限。比一阶段宽一档，追人时不至于被高度拖住。 */
+    private static final double PHASE_TWO_VERTICAL_SPEED = 0.25D;
     /**
      * 空中丢失目标后每 tick 额外补的下降速度，见 {@link #tickDescent()}。
      *
@@ -245,6 +255,25 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private static final double DESCENT_GROUND_SNAP_DISTANCE = 0.6D;
     /** 悬停不动的判定阈值。比她现在的速度略大一档，只认得住「几乎停住」。 */
     private static final double HOVER_EPSILON = 0.05D;
+
+    /**
+     * 玩家站得比她高这么多格就判定为「被甩在下面」，立刻转成快速起飞，见 {@link #tickAscent()}。
+     * <p>只比高度差不比三维距离：她本来就常年悬在玩家上方 5 格左右，会出问题的是
+     * 玩家上了高台、站在塔顶或爬到树上之后她还在底下那一段 —— 三维距离当时可能只有几格，
+     * 光看距离根本判不出来，而她那些平飞法术也够不到头顶。
+     */
+    private static final double VERTICAL_CHASE_TRIGGER = 20.0D;
+    /** 起飞时每 tick 额外补的上升速度，叠上重力与阻尼后净上升约 5 格/秒。 */
+    private static final double VERTICAL_CHASE_CLIMB_SPEED = 0.5D;
+    /** 起飞那几 tick 里还要交出去的重力，理由与 {@link #DESCENT_GRAVITY} 相同。 */
+    private static final double ASCENT_GRAVITY = 0.08D;
+    /**
+     * 这个距离以内的创造模式玩家照样算进高度差，见 {@link #verticalChaseGap()}。
+     *
+     * <p>取 16 格的平方，约等于「同一个战场」：他递短剑就能开打，那么他也该能把她叫上去。
+     * 再远就当成围观的，不跟。
+     */
+    private static final double CREATIVE_VERTICAL_CHASE_RANGE_SQR = 16.0D * 16.0D;
     private static final double TRANSITION_KNOCKBACK_RADIUS = 5.0D;
     private static final double TRANSITION_KNOCKBACK_STRENGTH = 4.0D;
 
@@ -269,6 +298,13 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      */
     private int actionStartTick;
     private double flightTargetY;
+    /**
+     * 这一 tick 正在「快速起飞」抢高度，见 {@link #tickAscent()}。
+     *
+     * <p>{@code travel} 的垂直分支要读它，所以必须由 {@code customServerAiStep} 每 tick 重算 ——
+     * {@code LivingEntity.aiStep} 里 {@code travel} 排在 {@code serverAiStep} 后面，顺序正好。
+     */
+    private boolean fastAscending;
     /**
      * &gt;0 表示投掷动画在跑、还没到甩出去那一帧；数到 0 剑才落。
      */
@@ -300,9 +336,25 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private int returnHomeTicks;
     /** 连续多少 tick 没有可打的目标了，见 {@link #tickBattleOver}。 */
     private int noTargetTicks;
+    /**
+     * 上一次<b>有效受击</b>的 {@code tickCount}；{@link Long#MIN_VALUE} 表示这一场还没挨过打。
+     *
+     * <p>这是我们自己生命系统里的受击间隔，与原地版 {@code invulnerableTime} 无关，二者互不读写：
+     * 原版那套是"受到 >= 10 tick 的窗口内减伤"，而本模组有多处主动把 {@code invulnerableTime}
+     * 清零（法术、混沌之书、拔刀、梦云水晶），指望它来限频等于没有限频。这里的字段把
+     * <b>所有</b>会落到 {@code hurt()} 的伤害统一到同一个间隔上。
+     */
+    private long lastHitTick = Long.MIN_VALUE;
     /** 她输过至少一次，交易就此开放。落 NBT，不随重新挑战撤销。 */
     private boolean tradingUnlocked;
     private boolean hasStartedChallenge;
+    private boolean healthReady;
+    private boolean loadingLifecycle;
+    private UUID encounterId = UUID.randomUUID();
+    private UUID rewardTransaction;
+    private float unattributedDamage;
+    private long lastUnattributedLogTime = Long.MIN_VALUE;
+    private long lastBlockedRemovalSync = Long.MIN_VALUE;
     /** 正在跟她做买卖的玩家；交易表现算，见 {@link #getOffers}。 */
     @Nullable
     private Player tradingPlayer;
@@ -342,6 +394,17 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     public MagicalWinefoxBossEntity(EntityType<? extends MagicalWinefoxBossEntity> entityType, Level level) {
         super(entityType, level);
+        this.healthReady = true;
+        // 配置的上限只在新生成时生效，并且**只裁剪、不回填**：她只会被压到新上限，
+        // 绝不会因为把配置调大就凭空涨血（那等于免费治疗）。已存在的实体会把上限
+        // 连同生命一起写进存档，读档时以存档为准，因此调小配置不会追溯削弱老存档。
+        this.maidspell$setMaxHealth((float) Config.winefoxMaxHealth);
+        WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.RESET,
+            () -> WinefoxBossHealthController.write(this,
+                Math.min(super.getHealth(), this.maidspell$bossMaxHealth())));
+        if (!level.isClientSide) {
+            this.setPersistenceRequired();
+        }
         this.xpReward = 80;
         this.moveControl = new FlyingMoveControl(this, 20, true);
         // 一阶段的装备在这里就位，而不是等 finalizeSpawn：后者只有自然生成 / 刷怪蛋 / summon
@@ -355,6 +418,199 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 于是服务端头上是空的、客户端却一直画着帽子。装备一律以服务端为准。
         if (!level.isClientSide) {
             this.equipStarMajoGear();
+        }
+    }
+
+    @Override
+    public float getHealth() {
+        if (!this.healthReady) {
+            return super.getHealth();
+        }
+        float health = this.entityData.get(BOSS_HEALTH);
+        return health < 0.0F ? this.maidspell$bossMaxHealth() : health;
+    }
+
+    @Override
+    public void setHealth(float health) {
+        if (!this.healthReady) {
+            super.setHealth(health);
+            return;
+        }
+        WinefoxBossHealthController.write(this, health);
+    }
+
+    boolean maidspell$isLoadingLifecycle() {
+        return this.loadingLifecycle;
+    }
+
+    long maidspell$lastEffectiveHitTick() {
+        return this.lastHitTick;
+    }
+
+    /** 记下这一次有效受击，作为受击间隔的起点。只由 {@link WinefoxBossHealthController} 调用。 */
+    void maidspell$markEffectiveHit() {
+        this.lastHitTick = this.tickCount;
+    }
+
+    void maidspell$resetHitInterval() {
+        this.lastHitTick = Long.MIN_VALUE;
+    }
+
+    /** 供控制器判断是否叠加二阶段减伤；只有正式玩家挑战会走倍率链。 */
+    boolean maidspell$isPlayerCombatPhaseTwo() {
+        return this.isPlayerCombatActive() && this.isPhaseTwo();
+    }
+
+    /**
+     * 跑一遍原版伤害结算链。
+     *
+     * <p>只由 {@link WinefoxBossHealthController#applyDamage} 在 {@code DAMAGE} 上下文内调用。
+     * 目的是复用护甲、抗性、附魔保护、吸收与 Forge 事件，而不是复用它的落值 ——
+     * 链内的 {@code setHealth} 是虚方法，最终仍回到 {@link WinefoxBossHealthController#write}，
+     * 单次上限与受击间隔在那里执行。
+     */
+    void maidspell$runVanillaDamagePipeline(DamageSource source, float amount) {
+        super.hurt(source, amount);
+    }
+
+    /**
+     * 单次受击上限的兜底出口（{@link IBossDamageClamp}）。
+     *
+     * <p>正常伤害不走这里 —— 它在 {@code write()} 里就已经被限住了。这条路径存在的原因是
+     * 有人绕过我们的 {@code hurt()} 直接调 {@code actuallyHurt}：那种调用不经过控制器，
+     * 于是由注入在最终伤害上的 Mixin 兜住。两条路径共用同一份配置，语义一致。
+     */
+    @Override
+    public float maidspell$maxDamagePerHit(float finalDamage) {
+        if (this.maidspell$encounterState() != WinefoxEncounterState.COMBAT) {
+            return IBossDamageClamp.NO_DAMAGE_CAP;
+        }
+        return WinefoxBossHealthController.damageCap(this);
+    }
+
+    @Override
+    public boolean maidspell$protectSyncedDataWrite(EntityDataAccessor<?> accessor, Object value) {
+        if (!this.healthReady || this.level().isClientSide || BossLifecycleAccess.canWriteData(this)) {
+            return false;
+        }
+        if (accessor == BOSS_HEALTH && value instanceof Float requested) {
+            this.setHealth(requested);
+            return true;
+        }
+        if (accessor == LivingEntityHealthAccessor.maidspell$getHealthAccessor()) {
+            BossLifecycleAccess.withDataWrite(this,
+                () -> this.entityData.set(LivingEntityHealthAccessor.maidspell$getHealthAccessor(), 1.0F));
+            return true;
+        }
+        return accessor == BOSS_MAX_HEALTH || accessor == ENCOUNTER_STATE
+            || accessor == REWARD_STATE || accessor == ENCOUNTER_SERIAL;
+    }
+
+    @Override
+    public void heal(float amount) {
+        if (!Float.isFinite(amount) || amount <= 0.0F) {
+            return;
+        }
+        WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.HEAL,
+            () -> super.heal(amount));
+    }
+
+    float maidspell$bossMaxHealth() {
+        float value = this.entityData.get(BOSS_MAX_HEALTH);
+        return Float.isFinite(value) && value > 0.0F ? value : this.getMaxHealth();
+    }
+
+    void maidspell$setMaxHealth(float requested) {
+        float max = Float.isFinite(requested) && requested >= 1.0F ? requested : 600.0F;
+        AttributeInstance attribute = this.getAttribute(Attributes.MAX_HEALTH);
+        if (attribute != null) {
+            attribute.removeModifier(MAX_HEALTH_MODIFIER_ID);
+            double difference = max - attribute.getValue();
+            if (difference != 0.0D) {
+                attribute.addTransientModifier(new AttributeModifier(MAX_HEALTH_MODIFIER_ID,
+                    "Winefox encounter max health", difference, AttributeModifier.Operation.ADDITION));
+            }
+        }
+        if (!this.level().isClientSide) {
+            BossLifecycleAccess.withDataWrite(this, () -> this.entityData.set(BOSS_MAX_HEALTH, max));
+        }
+    }
+
+    WinefoxEncounterState maidspell$encounterState() {
+        return WinefoxEncounterState.fromId(this.entityData.get(ENCOUNTER_STATE));
+    }
+
+    private boolean maidspell$setEncounterState(WinefoxEncounterState state) {
+        WinefoxEncounterState previous = this.maidspell$encounterState();
+        if (!this.loadingLifecycle && !previous.canTransitionTo(state)) {
+            com.github.yimeng261.maidspell.Global.LOGGER.warn(
+                "Rejected Winefox encounter transition {} -> {} for {}", previous, state, this.getUUID());
+            return false;
+        }
+        BossLifecycleAccess.withDataWrite(this,
+            () -> this.entityData.set(ENCOUNTER_STATE, (byte) state.ordinal()));
+        return true;
+    }
+
+    private WinefoxRewardState maidspell$rewardState() {
+        return WinefoxRewardState.fromId(this.entityData.get(REWARD_STATE));
+    }
+
+    private void maidspell$setRewardState(WinefoxRewardState state) {
+        BossLifecycleAccess.withDataWrite(this,
+            () -> this.entityData.set(REWARD_STATE, (byte) state.ordinal()));
+    }
+
+    private boolean maidspell$beginEncounter(WinefoxEncounterState state) {
+        if (this.maidspell$rewardState() == WinefoxRewardState.GRANTING) {
+            com.github.yimeng261.maidspell.Global.LOGGER.warn(
+                "Winefox {} cannot start another encounter while reward {} needs review",
+                this.getUUID(), this.rewardTransaction);
+            return false;
+        }
+        if (this.maidspell$encounterState() != WinefoxEncounterState.SEATED
+                && this.maidspell$encounterState() != WinefoxEncounterState.CHALLENGE_START) {
+            return false;
+        }
+        if (!this.maidspell$setEncounterState(state)) {
+            return false;
+        }
+        BossLifecycleAccess.withDataWrite(this,
+            () -> this.entityData.set(ENCOUNTER_SERIAL, this.entityData.get(ENCOUNTER_SERIAL) + 1));
+        this.unattributedDamage = 0.0F;
+        this.rewardTransaction = null;
+        // 受击间隔按场重置：上一场残留的时间戳不该让新挑战的第一击被挡下。
+        this.maidspell$resetHitInterval();
+        this.maidspell$setRewardState(WinefoxRewardState.NONE);
+        return true;
+    }
+
+    void maidspell$recordUnattributedDamage(float amount) {
+        this.unattributedDamage += amount;
+        long now = this.level().getGameTime();
+        if (this.lastUnattributedLogTime != Long.MIN_VALUE && now - this.lastUnattributedLogTime < 100L) {
+            return;
+        }
+        this.lastUnattributedLogTime = now;
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        String caller = java.util.Arrays.stream(stack)
+            .filter(frame -> !frame.getClassName().equals(Thread.class.getName())
+                && !frame.getClassName().equals(WinefoxBossHealthController.class.getName())
+                && !frame.getClassName().equals(MagicalWinefoxBossEntity.class.getName())
+                && !frame.getClassName().contains("SynchedEntityDataHealthMixin")
+                && !frame.getClassName().equals(SynchedEntityData.class.getName()))
+            .findFirst().map(StackTraceElement::toString).orElse("unknown");
+        com.github.yimeng261.maidspell.Global.LOGGER.warn(
+            "Unattributed Winefox health write entity={} encounter={}#{} lost={} caller={}",
+            this.getUUID(), this.encounterId, this.entityData.get(ENCOUNTER_SERIAL), amount, caller);
+    }
+
+    void maidspell$handleUnattributedDefeat() {
+        if (this.maidspell$encounterState() == WinefoxEncounterState.COMBAT) {
+            this.beginDefeat(null);
+        } else if (this.maidspell$encounterState() == WinefoxEncounterState.CHALLENGE_START
+                || this.maidspell$encounterState() == WinefoxEncounterState.SEATED) {
+            this.finishCombat(false);
         }
     }
 
@@ -394,9 +650,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             this.setDeltaMovement(delta.x, 0.0D, delta.z);
             super.travel(new Vec3(travelVector.x, 0.0D, travelVector.z));
             if (!this.isBusyCombatAction()) {
-                double maxVerticalSpeed = this.isPhaseTwo() ? 0.25D : PHASE_ONE_VERTICAL_SPEED;
-                double vertical = Mth.clamp(this.flightTargetY - this.getY(),
-                    -maxVerticalSpeed, maxVerticalSpeed);
+                double vertical = this.fastAscending
+                                 // 玩家被甩在头顶时不再理那套驻留高度，直接按爬升速度飞上去。
+                                 ? VERTICAL_CHASE_CLIMB_SPEED + ASCENT_GRAVITY
+                                 : Mth.clamp(this.flightTargetY - this.getY(),
+                                     -this.maxVerticalSpeed(), this.maxVerticalSpeed());
                 this.move(net.minecraft.world.entity.MoverType.SELF, new Vec3(0.0D, vertical, 0.0D));
             }
             delta = this.getDeltaMovement();
@@ -404,6 +662,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return;
         }
         super.travel(travelVector);
+    }
+
+    /** 战斗飞行时每 tick 允许的垂直速度：二阶段比一阶段快一档。 */
+    private double maxVerticalSpeed() {
+        return this.isPhaseTwo() ? PHASE_TWO_VERTICAL_SPEED : PHASE_ONE_VERTICAL_SPEED;
     }
 
     /**
@@ -439,6 +702,62 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return;
         }
         this.setDeltaMovement(delta.x, -(LOST_TARGET_DESCENT_SPEED + DESCENT_GRAVITY), delta.z);
+    }
+
+    /**
+     * 玩家被甩到头顶 {@link #VERTICAL_CHASE_TRIGGER} 格以上时，快速起飞把高度差拉回来。
+     *
+     * <p>她的战斗高度是「目标上方 5 格左右」，而这条高度只跟着<b>当前近战/法术目标</b>走。
+     * 玩家爬上高台、站到塔顶、搭柱子上去之后，一旦目标切走（或者她自己刚被传送落地），
+     * 她就留在底下那一段：三维距离可能只有几格，所以目标选择器照样锁得住人，
+     * 战斗 AI 也照样放法术，可她那些平推的法术根本够不到头顶，玩家看到的就是
+     * 「她在脚底下转圈却打不着」。
+     *
+     * <p>判据取<b>所有玩家里的最大高度差</b>，而不是当前目标那一个 —— 多人局里
+     * 被甩在下面的往往是没在打的那个玩家，只看目标等于漏掉一半情况。
+     *
+     * <p>水平方向不动：{@code travel} 里那条爬升分支本来就把 {@code travelVector.y} 丢掉、
+     * 只走横向操控，抢高度不该顺带把她横向拽过去。
+     *
+     * <p>不写入 {@code deltaY} 而是让 {@code travel} 走 {@code move}：那条分支每次都是先把
+     * {@code deltaY} 清零再自己算，写速度会被它当场抹掉。
+     */
+    private void tickAscent() {
+        this.fastAscending = this.verticalChaseGap() > VERTICAL_CHASE_TRIGGER;
+    }
+
+    /**
+     * 附近所有可交互玩家里，站在她上方最高的那一位高出来多少格。
+     *
+     * <p>只取正值：她本来就习惯待在玩家上方，玩家在下面不算「被甩开」。
+     *
+     * <p>观众直接跳过。创造模式玩家只有在远处才跳过：近处的创造玩家仍然可以递星芒短剑
+     * 开一场正式挑战（见 {@link #mobInteract}），那种情况她该跟着上去，而不是因为
+     * 「反正他摔不死」就在底下看着。
+     *
+     * <p>判定范围复用 {@code FOLLOW_RANGE}（三维距离，和 {@code prioritizePlayerTarget} 同一个口径）。
+     * 比它更远的玩家本来就不在她的战斗范围里，为他们起飞只会让她被一个路过的观众牵走。
+     */
+    private double verticalChaseGap() {
+        double followRangeSqr = Mth.square(this.getAttributeValue(Attributes.FOLLOW_RANGE));
+        double largestGap = 0.0D;
+        for (Player player : this.level().players()) {
+            if (player.isSpectator() || player.isRemoved() || !player.isAlive()) {
+                continue;
+            }
+            double distanceSqr = this.distanceToSqr(player);
+            if (distanceSqr > followRangeSqr) {
+                continue;
+            }
+            if (player.isCreative() && distanceSqr > CREATIVE_VERTICAL_CHASE_RANGE_SQR) {
+                continue;
+            }
+            double gap = player.getY() - this.getY();
+            if (gap > largestGap) {
+                largestGap = gap;
+            }
+        }
+        return largestGap;
     }
 
     void setFlightDestination(Vec3 destination, double speed) {
@@ -708,14 +1027,16 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
-        this.entityData.define(DEFEATED, false);
+        this.entityData.define(BOSS_HEALTH, -1.0F);
+        this.entityData.define(BOSS_MAX_HEALTH, -1.0F);
+        this.entityData.define(ENCOUNTER_STATE, (byte) WinefoxEncounterState.SEATED.ordinal());
+        this.entityData.define(REWARD_STATE, (byte) WinefoxRewardState.NONE.ordinal());
+        this.entityData.define(ENCOUNTER_SERIAL, 0);
         this.entityData.define(CURTSYING, false);
         this.entityData.define(ACTION, WinefoxAction.NONE.id());
         this.entityData.define(ACTION_SERIAL, 0);
         this.entityData.define(PHASE_TWO, false);
         this.entityData.define(TRANSITIONING, false);
-        // 默认坐着：她是被邀战才起身的，不是刷出来就打。
-        this.entityData.define(SEATED, true);
         this.entityData.define(RESTRICTED, false);
         this.entityData.define(BATTLE_MUSIC, false);
     }
@@ -724,7 +1045,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 她还坐在秋千上，没有接受挑战。
      */
     public boolean isSeated() {
-        return this.entityData.get(SEATED);
+        return this.maidspell$encounterState() == WinefoxEncounterState.SEATED
+            || this.maidspell$encounterState() == WinefoxEncounterState.CHALLENGE_START;
     }
 
     /**
@@ -751,9 +1073,14 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             10, true, false, candidate -> this.challengerId != null
                 && this.isViableTarget(candidate)));
         // 非玩家生物战斗不该只会挨打还手。起身后，在当前目标阵亡或脱离时，
-        // 这条会继续从附近的普通生物中选出可打对象；正式玩家挑战仍由上面两条收口。
+        // 这条会继续从附近的普通生物中选出可打对象。
+        //
+        // 但正式玩家挑战（challengerId 非空）期间整条关掉：那一场是她和挑战者之间的事，
+        // 擂台边上路过的怪不该被她点名。被怪打仍然会还手 —— 那是下面 goal 4 的
+        // HurtByTargetGoal，走 canAttack/isViableTarget，和这条「主动挑对象」是两回事。
         this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, LivingEntity.class,
-            10, true, false, candidate -> !(candidate instanceof Player)
+            10, true, false, candidate -> this.challengerId == null
+                && !(candidate instanceof Player)
                 && candidate != this
                 && !MaidSpellAllyResolver.areFriendly(this, candidate)
                 && this.isViableTarget(candidate)));
@@ -820,7 +1147,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
                 if (!this.isChallengeParticipant(candidate)) {
                     return false;
                 }
-                return candidate.getHealth() > SURVIVAL_HEALTH_FLOOR;
+                return candidate.getHealth() > duelSurvivalFloor();
             }
             return true;
         }
@@ -838,7 +1165,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     /**
      * 非玩家生物先动手时，将坐在秋千上的她切进普通战斗，而不是走玩家的邀战契约。
-     * 攻击者不享受锁血；星之魔女自身仍保留 1 点血并走战败归位演出。
+     * 攻击者不享受锁血；星之魔女的独立生命归零后走战败归位演出。
      *
      * <p>玩家的女仆生态走另一套规则（见 {@link #beginMaidOwnerCombat}）：坐姿待机时
      * 女仆的挑衅既不叫醒她、也不掉血 —— 待机只认玩家递来的星芒短剑；
@@ -866,9 +1193,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return maidOwner != null && this.beginMaidOwnerCombat(maidOwner, attacker);
         }
         if (this.isSeated()) {
+            if (!this.maidspell$beginEncounter(WinefoxEncounterState.COMBAT)) {
+                return false;
+            }
             this.resetBattleTally();
             this.challengeStartTicks = 0;
-            this.entityData.set(SEATED, false);
             this.equipPhaseWeapon(this.isPhaseTwo());
             this.bossEvent.setVisible(true);
         }
@@ -929,7 +1258,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private boolean canStartChallengeFrom(@Nullable Player owner) {
         return owner != null && owner.level() == this.level()
             && owner.isAlive() && !owner.isRemoved() && !owner.isSpectator()
-            && (owner.isCreative() || owner.getHealth() > SURVIVAL_HEALTH_FLOOR)
+            && (owner.isCreative() || owner.getHealth() > duelSurvivalFloor())
             && this.distanceToSqr(owner) <= CHALLENGER_MAX_DISTANCE * CHALLENGER_MAX_DISTANCE;
     }
 
@@ -963,7 +1292,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 广播是给围观的人听的，当事人需要一条明确的结论。
         // 松手之后 prioritizePlayerTarget 不会再把濒死的他锁回来，所以这里只会发一次。
         if (this.challengerId != null && target instanceof Player player
-            && player.getHealth() <= SURVIVAL_HEALTH_FLOOR) {
+            && player.getHealth() <= duelSurvivalFloor()) {
             player.displayClientMessage(Component.translatable(
                 "entity.touhou_little_maid_spell.stellar_witch.challenge_lost")
                 .withStyle(ChatFormatting.RED), false);
@@ -1178,7 +1507,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
         if (held.is(MaidSpellItems.STARGLINT_DAGGER.get())) {
             if (!this.level().isClientSide && !player.isSpectator()
-                && (player.isCreative() || player.getHealth() > SURVIVAL_HEALTH_FLOOR)) {
+                && (player.isCreative() || player.getHealth() > duelSurvivalFloor())) {
                 this.acceptChallenge(player);
             }
             return InteractionResult.sidedSuccess(this.level().isClientSide);
@@ -1311,6 +1640,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 接受挑战：起身、亮血条、放开场白、锁定挑战者。
      */
     private void acceptChallenge(Player challenger) {
+        if (!this.maidspell$beginEncounter(WinefoxEncounterState.CHALLENGE_START)) {
+            return;
+        }
         this.speakDialogue(WinefoxDialogue.challengeAccepted(!this.hasStartedChallenge));
         this.hasStartedChallenge = true;
         this.resetBattleTally();
@@ -1332,11 +1664,12 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         Player challenger = this.challengerId == null ? null : this.level().getPlayerByUUID(this.challengerId);
         if (challenger == null || !challenger.isAlive() || challenger.isSpectator()
             || this.distanceToSqr(challenger) > CHALLENGER_MAX_DISTANCE * CHALLENGER_MAX_DISTANCE
-            || challenger.getHealth() <= SURVIVAL_HEALTH_FLOOR) {
+            || challenger.getHealth() <= duelSurvivalFloor()) {
             this.challengerId = null;
+            this.maidspell$setEncounterState(WinefoxEncounterState.SEATED);
             return;
         }
-        this.entityData.set(SEATED, false);
+        this.maidspell$setEncounterState(WinefoxEncounterState.COMBAT);
         this.equipPhaseWeapon(false);
         this.bossEvent.setVisible(true);
         this.entityData.set(BATTLE_MUSIC, true);
@@ -1405,6 +1738,16 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     /**
+     * 这位玩家听过初见了没有。
+     *
+     * <p>只给 {@code WinefoxGameTests} 用：初见记录是私有的，而「跨维度不再重说」这件事
+     * 只能靠「存档往返之后记录还在不在」来验，所以开一个只读出口。
+     */
+    public boolean maidspell$hasGreetedPlayer(UUID playerId) {
+        return this.greetedPlayers.contains(playerId);
+    }
+
+    /**
      * 战败之后推不动。
      *
      * <p>{@link #isImmobile} 只掐掉 AI，管不着碰撞推挤 —— 那是另一条路：别人的
@@ -1441,8 +1784,13 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         LivingEntity target = this.getTarget();
         boolean combatFlight = (target != null && target.isAlive()) || this.isBusyCombatAction();
         this.setNoGravity(combatFlight);
+        // tickAscent 必须在 setNoGravity 之后算：她只在无重力时读取 fastAscending，
+        // 而这一位是 travel 的垂直分支要用的，得在本 tick 的 travel 之前定下来。
         if (combatFlight) {
+            this.tickAscent();
             this.resetFallDistance();
+        } else {
+            this.fastAscending = false;
         }
     }
 
@@ -1570,84 +1918,136 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      */
     @Override
     public boolean canAttack(@NotNull LivingEntity target) {
-        return super.canAttack(target) && this.isViableTarget(target);
+        return this.isBattleActive() && super.canAttack(target) && this.isViableTarget(target);
+    }
+
+    @Override
+    public void setTarget(@Nullable LivingEntity target) {
+        super.setTarget(this.isBattleActive() ? target : null);
     }
 
     @Override
     public boolean isInvulnerableTo(DamageSource source) {
-        return this.isTransitioning() || super.isInvulnerableTo(source);
+        return this.maidspell$encounterState() != WinefoxEncounterState.COMBAT
+            || this.isTransitioning() || super.isInvulnerableTo(source);
     }
 
-    /**
-     * 她自己也不会真的死：血量最低留 1 点，到点转入战败演出。
-     *
-     * <p>兜血放在 {@link #actuallyHurt} 里，**不能**在这儿把伤害预先削到
-     * {@code getHealth() - 1}。两条原因，都是实打实踩过的：
-     *
-     * <ul>
-     *   <li>{@code LivingEntity.hurt} 在无敌帧内（{@code invulnerableTime > 10}）会拿这一击与
-     *       {@code lastHurt} 相比，{@code amount <= lastHurt} 直接 {@code return false}。
-     *       预削之后越接近 1 点血这一击越小，于是残血时反而**一点伤害都吃不进**——
-     *       正是"血量剩 2 时怎么砍都不掉血"的成因。</li>
-     *   <li>预削是在护甲结算**之前**，削出来的 1 点被护甲再砍一刀，落地永远差一截，
-     *       血量只会渐近 1 而碰不到 1，战败演出也就永远不触发。</li>
-     * </ul>
-     *
-     * <p>所以这里只管减伤倍率，让伤害照常走完整条结算链；
-     * {@code actuallyHurt} 在扣血之后把地板兜住，再回到这儿判断要不要转战败。
-     *
-     * <p>战败之后不再拦：{@link #beginDefeat} 会给她挂 {@code INVULNERABLE},
-     * 此时任何伤害都进不来，1 点血会一直保持到 {@code tickDeath} 把她移除。
-     */
+    @Override
+    public boolean isAlive() {
+        return !this.isRemoved();
+    }
+
+    @Override
+    public boolean isDeadOrDying() {
+        return false;
+    }
+
+    @Override
+    public boolean canBeSeenAsEnemy() {
+        return this.isBattleActive() && super.canBeSeenAsEnemy();
+    }
+
+    @Override
+    public boolean canBeAffected(MobEffectInstance effect) {
+        return this.isBattleActive() && super.canBeAffected(effect);
+    }
+
+    @Override
+    public boolean canChangeDimensions() {
+        return false;
+    }
+
+    @Override
+    @Nullable
+    public Entity changeDimension(ServerLevel destination) {
+        return null;
+    }
+
+    @Override
+    @Nullable
+    public Entity changeDimension(ServerLevel destination, net.minecraftforge.common.util.ITeleporter teleporter) {
+        return null;
+    }
+
+    @Override
+    public boolean teleportTo(ServerLevel destination, double x, double y, double z,
+                              Set<net.minecraft.world.entity.RelativeMovement> relative,
+                              float yaw, float pitch) {
+        return destination == this.level()
+            && super.teleportTo(destination, x, y, z, relative, yaw, pitch);
+    }
+
+    @Override
+    public void kill() {
+        if (!this.level().isClientSide) {
+            this.maidspell$returnAuthorized();
+        }
+    }
+
+    @Override
+    public void die(DamageSource source) {
+        if (!this.level().isClientSide) {
+            this.maidspell$returnAuthorized();
+        }
+    }
+
+    @Override
+    protected void dropAllDeathLoot(DamageSource source) {
+    }
+
+    @Override
+    protected void dropCustomDeathLoot(DamageSource source, int looting, boolean recentlyHit) {
+    }
+
+    @Override
+    protected void dropEquipment() {
+    }
+
+    @Override
+    protected void dropExperience() {
+    }
+
+    /** 正常伤害走原版结算，再用权威 Boss 生命的归零结果提交自定义战败。 */
     @Override
     public boolean hurt(DamageSource source, float amount) {
-        // BYPASSES_INVULNERABILITY 是 /kill 与虚空伤害那一类，故意放行：
-        // 战败之后她会一直躺在场上，不给这条口子就再也没有办法把她清掉。
-        if (bypassesSurvival(source)) {
-            return super.hurt(source, amount);
+        if (this.level().isClientSide || !Float.isFinite(amount) || amount <= 0.0F) {
+            return false;
+        }
+        if (source.is(net.minecraft.world.damagesource.DamageTypes.GENERIC_KILL)
+                || source.is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD)
+                || source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) && source.getEntity() == null) {
+            this.maidspell$returnAuthorized();
+            return false;
         }
         if (this.isDefeated() || this.returnHomeTicks > 0) {
             return false;
         }
-        // 玩家仍须用星芒短剑邀战；非玩家生物的攻击则唤醒普通生物战斗。
         LivingEntity attacker = mobAttacker(source);
         if (this.isSeated()) {
             if (attacker == null || !this.beginMobCombat(attacker)) {
                 return false;
             }
         } else if (attacker != null) {
-            // 直写 hurt 的法术/伤害不会经过 LivingChangeTargetEvent；正式挑战已经开场时，
-            // 也要让这类非玩家攻击者立即成为普通战斗目标。
             this.beginMobCombat(attacker);
         }
         boolean playerDuelDamage = this.isPlayerDuelDamage(source);
-        if (!playerDuelDamage) {
-            boolean hurt = super.hurt(source, amount);
-            this.beginDefeatIfSubdued(source);
-            return hurt;
-        }
-        // 算一次带着走：判归属要顺 owner 链上溯，一次受击问两遍是白跑一趟。
-        boolean maidDamage = isMaidDamage(source);
-        float adjustedAmount = amount;
-        if (maidDamage) {
-            adjustedAmount *= 0.5F;
-        }
-        if (this.isPhaseTwo()) {
-            adjustedAmount *= 0.5F;
-        }
-
+        boolean maidDamage = playerDuelDamage && isMaidDamage(source);
         float healthBefore = this.getHealth();
-        boolean hurt = super.hurt(source, adjustedAmount);
-        this.recordDamageShare(maidDamage, healthBefore - this.getHealth());
-        this.beginDefeatIfSubdued(source);
-        return hurt;
-    }
-
-    /** The boss always keeps one health for her defeat sequence; only challengers receive the same protection. */
-    private void beginDefeatIfSubdued(DamageSource source) {
-        if (this.getHealth() <= SURVIVAL_HEALTH_FLOOR && !this.level().isClientSide) {
+        // 倍率、单次上限与受击间隔都由控制器执行 —— 那是所有写血路径的汇合点，
+        // 放在这里只是上游又一道可以被绕过的检查。这里只负责开上下文与读结果。
+        final boolean[] vanillaApplied = new boolean[1];
+        WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.DAMAGE,
+            () -> vanillaApplied[0] = WinefoxBossHealthController.applyDamage(this, source, amount, maidDamage));
+        boolean dealt = this.getHealth() < healthBefore;
+        if (playerDuelDamage) {
+            this.recordDamageShare(maidDamage, healthBefore - this.getHealth());
+        }
+        if (this.getHealth() <= 0.0F) {
             this.beginDefeat(source);
         }
+        // 被受击间隔挡下时这一击没有产生任何效果，必须报 false：
+        // 真伤据此回滚"本场用过真伤"标记，否则一次打空的真伤会白白剥夺奖励。
+        return vanillaApplied[0] && dealt;
     }
 
     /** Resolve a non-player living attacker from direct, projectile, or summon damage. */
@@ -1688,7 +2088,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 真伤改道：不许直写血量，一律折回 {@link #hurt}。
      *
      * <p>不改道的话，真伤会一次性绕过女仆减伤、二阶段减伤、转阶段的 120t 无敌、
-     * 1 点血地板，还会让血直接归零走原版死亡 —— 战败演出、血条收起、战利品判定全部跳过。
+     * 伤害归属与自定义战败结算；直接写血即使归零也只能得到无奖励的战败。
      *
      * <p>顺带把"用过真伤"这一位记下来：这是判「女仆代打」的两个触发条件之一。
      * 记在这儿而不是在饰品那边，是因为这里能看到<b>所有</b>真伤来源，
@@ -1724,75 +2124,89 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
     }
 
-    /**
-     * 血量的地板：护甲、抗性、吸收全部结算完之后，把血兜回 1 点。
-     *
-     * <p>{@code actuallyHurt} 是扣血的那一步，而 {@code LivingEntity.hurt} 是在它返回之后
-     * 才查 {@code isDeadOrDying()} 决定要不要走死亡流程 —— 卡在这两步中间兜血， 血量就从来没有到过 0，原版的死亡分支一次都不会进。
-     */
+    /** 保留原版护甲、抗性和吸收结算；生命写入由权威控制器接管。 */
     @Override
     protected void actuallyHurt(DamageSource source, float amount) {
-        super.actuallyHurt(source, amount);
-        if (this.isBattleActive() && !bypassesSurvival(source)
-            && this.getHealth() < SURVIVAL_HEALTH_FLOOR) {
-            this.setHealth(SURVIVAL_HEALTH_FLOOR);
-        }
-    }
-
-    /**
-     * 这一击是不是 {@code /kill} 一类的强制移除：那种不受 1 点血地板保护。
-     */
-    private static boolean bypassesSurvival(DamageSource source) {
-        return source.is(DamageTypeTags.BYPASSES_INVULNERABILITY);
-    }
-
-    /**
-     * 转入战败演出：播 {@code defeat}，1 点血保持到动画放完。
-     *
-     * <p>标志走同步字段 {@link #DEFEATED} 而不是 {@code deathTime}：后者是纯服务端的，
-     * 客户端拿不到就不会切战败动画。{@code deathTime} 仍留作服务端这边的计时器。
-     *
-     * <p>{@code isDeadOrDying()} 判的是 {@code getHealth() <= 0}，我们的血永远是 1，
-     * 那条判断在这儿恒为假。所有"她是不是已经败了"的地方一律问 {@link #isDefeated}。
-     */
-    private void beginDefeat(DamageSource source) {
-        if (this.isDefeated()) {
+        if (WinefoxBossHealthController.currentCause(this) == WinefoxBossHealthController.Cause.DAMAGE) {
+            super.actuallyHurt(source, amount);
             return;
         }
-        // 奖励、交易解锁与胜利台词只归正式挑战中由挑战者（或其女仆）完成的击败。
-        // 其他生物可以让她进入同一套战败演出与归位流程，但不能借此刷挑战奖励。
-        boolean playerVictory = this.isPlayerDuelDamage(source);
-        if (playerVictory && this.challengerId != null) {
-            this.postVictoryChatPlayerId = this.challengerId;
-        }
-        this.entityData.set(DEFEATED, true);
-        this.entityData.set(BATTLE_MUSIC, false);
-        this.clearDuelHazards();
-        // 她倒下了，场上的召唤物没有理由继续打。
-        this.recallSummons();
+        WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.EXTERNAL_UNKNOWN,
+            () -> super.actuallyHurt(source, amount));
+    }
+
+    /**
+     * 收场的**唯一**共用清理例程：战败（{@code COMBAT -> DEFEATED}）与异常回归
+     * （{@code -> RETURNING}）都必须经过它，两处不得各写一份。
+     *
+     * <p>这里只放"任何一次战斗结束都要做"的事，且每一项都幂等：重复调用不得重复发物品、
+     * 重复释放女仆或重复写状态。
+     *
+     * <p><b>刻意不放进来的三项</b>，它们只属于各自的收场语义，留在调用点：
+     * <ul>
+     *   <li>{@code setInvulnerable(true)} / {@code dropWeaponForDefeat()} ——
+     *       只有战败演出需要"躺在场上并收起武器"；玩家打赢后她还要继续站着做生意。</li>
+     *   <li>{@code setNoGravity(false)} —— 与上面那条配套，由两个调用点各自决定重力，
+     *       免得以后有人改了其中一处而不知道另一处被共用。</li>
+     *   <li>{@code CURTSYING} / 台词 / 归位倒计时 —— 战败与"打服"两种演出的时长和台词不同。</li>
+     * </ul>
+     */
+    private void maidspell$teardownCombat() {
         this.cancelCast();
         this.cancelSpearThrow();
         this.clearAction();
-        this.dropWeaponForDefeat();
-        this.entityData.set(TRANSITIONING, false);
-        this.phaseTransitionTicks = 0;
+        this.recallSummons();
+        this.clearMaidAggro();
+        this.releaseRetiredMaids();
         this.getNavigation().stop();
         this.setDeltaMovement(Vec3.ZERO);
         this.resetFlightControl();
+        this.setTarget(null);
+        this.entityData.set(BATTLE_MUSIC, false);
+        this.bossEvent.setVisible(false);
+    }
+
+    /** 权威生命归零后提交战败；动画由同步遭遇状态驱动而非原版死亡计时。 */
+    private void beginDefeat(@Nullable DamageSource source) {
+        if (this.isDefeated() || this.maidspell$encounterState() != WinefoxEncounterState.COMBAT) {
+            return;
+        }
+        boolean playerVictory = source != null && this.isPlayerDuelDamage(source);
+        if (playerVictory && this.challengerId != null) {
+            this.postVictoryChatPlayerId = this.challengerId;
+        }
+        this.maidspell$setEncounterState(WinefoxEncounterState.DEFEATED);
+        WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.SCRIPTED_TRANSITION,
+            () -> this.setHealth(0.0F));
+        this.dead = false;
+        this.deathTime = 0;
+        this.entityData.set(TRANSITIONING, false);
+        this.phaseTransitionTicks = 0;
+        // 她输了，挑战者身上的火和负面效果一并收掉：这一场已经结束，
+        // 不该让残留在人身上的火在战败演出里把人烧死。
+        this.clearDuelHazards();
+        this.maidspell$teardownCombat();
+        // 只有战败演出要躺在地上：收起武器、落到地面、进入无敌。
+        // 这些不进共用清理，否则玩家打赢那一路也会把她按在地上。
+        this.dropWeaponForDefeat();
         this.setNoGravity(false);
         this.setInvulnerable(true);
-        this.setTarget(null);
-        this.clearMaidAggro();
-        // 打完了，血条收掉；她本人留在场上倒着。
-        this.bossEvent.setVisible(false);
-        if (playerVictory) {
-            // 战败那一刻把这一场的归属结算下来，之后回秋千、发战利品都读它。
+        if (playerVictory && this.maidspell$rewardState() == WinefoxRewardState.NONE) {
             this.entityData.set(RESTRICTED, this.computeRestricted());
-            this.dropDefeatRewards(source);
-            // 输过一次就开放交易；限制标志刚刚才定下来，旧的交易表作废，下次打开时按新标志现算。
-            this.tradingUnlocked |= !this.isRestricted();
-            this.speakDialogue(WinefoxDialogue.victory(this.isRestricted(),
-                this.trueDamageUsed && Config.winefoxTrueDamageRestrictsReward));
+            this.rewardTransaction = UUID.randomUUID();
+            this.maidspell$setRewardState(WinefoxRewardState.GRANTING);
+            try {
+                this.dropDefeatRewards(source);
+                this.maidspell$setRewardState(WinefoxRewardState.GRANTED);
+                this.tradingUnlocked |= !this.isRestricted();
+                this.speakDialogue(WinefoxDialogue.victory(this.isRestricted(),
+                    this.trueDamageUsed && Config.winefoxTrueDamageRestrictsReward));
+            } catch (RuntimeException exception) {
+                com.github.yimeng261.maidspell.Global.LOGGER.error(
+                    "Winefox reward {} needs administrator review", this.rewardTransaction, exception);
+            }
+        } else if (this.maidspell$rewardState() == WinefoxRewardState.NONE) {
+            this.maidspell$setRewardState(WinefoxRewardState.NOT_ELIGIBLE);
         }
         this.offers = null;
         this.returnHomeTicks = DEFEAT_RETURN_HOME_TICKS;
@@ -1801,9 +2215,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /**
      * 发战败奖励。
      *
-     * <p><b>必须自己调 {@code dropFromLootTable}。</b>原版只在 {@code LivingEntity.die()}
-     * 里发战利品，而她的血被 {@link #SURVIVAL_HEALTH_FLOOR} 钉在 1、{@code die()} 一次都不会进 ——
-     * 光把物品写进 {@code loot_tables/entities/stellar_witch.json} 是发不出来的。
+     * <p><b>必须自己调 {@code dropFromLootTable}。</b>原版死亡流程已被禁用，
+     * 只有有归属的合法战败才能调用这个奖励入口。
      *
      * <p>星云核心不走战利品表而是直接落地：它是「女仆代打」判定的结算结果，
      * 掉不掉取决于这一场的伤害归属，不是随机项，也不作为入场消耗。
@@ -1975,6 +2388,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (this.returnHomeTicks <= 0 || --this.returnHomeTicks > 0) {
             return;
         }
+        if (this.isDefeated()) {
+            this.maidspell$setEncounterState(WinefoxEncounterState.RETURNING);
+        }
         BlockPos home = this.homePos;
         if (home != null) {
             this.teleportTo(home.getX() + 0.5D, home.getY() + SEATED_HOVER_OFFSET, home.getZ() + 0.5D);
@@ -1986,9 +2402,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         }
         this.setInvulnerable(false);
-        this.entityData.set(DEFEATED, false);
+        this.maidspell$setEncounterState(WinefoxEncounterState.SEATED);
         this.entityData.set(CURTSYING, false);
-        this.entityData.set(SEATED, true);
         this.entityData.set(BATTLE_MUSIC, false);
         this.challengerId = null;
         this.challengeStartTicks = 0;
@@ -1996,16 +2411,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.setTarget(null);
         this.setLastHurtByMob(null);
         this.removeAllEffects();
-        // 回满血、退回一阶段，这一场才算真的翻篇。
-        //
-        // 少了回血这一句就是一个无限刷战利品的口子：战败时她被钉在 1 点血上，
-        // 而 hurt() 里那句「血 <= 地板就 beginDefeat」是无条件判的 ——
-        // 再递一颗核心，她带着 1 点血站起来，下一击立刻又走一遍战败流程，
-        // 战利品表和星云核心跟着再发一次。
-        //
-        // 阶段标志也一并撤掉：光回血的话，tickPhaseThresholds 会在她起身那一刻
-        // 判定「被治疗回血」而立刻起一段退形转场，下一场开场就是 120t 无敌。
-        this.setHealth(this.getMaxHealth());
+        // 回满权威生命并退回一阶段，下一场挑战才从完整状态开始。
+        WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.RESET,
+            () -> this.setHealth(this.maidspell$bossMaxHealth()));
         this.entityData.set(PHASE_TWO, false);
         this.entityData.set(TRANSITIONING, false);
         this.phaseTransitionTicks = 0;
@@ -2023,7 +2431,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private void tickBattleOver() {
         if (this.challengerId != null) {
             Player challenger = this.level().getPlayerByUUID(this.challengerId);
-            if (challenger != null && challenger.getHealth() <= SURVIVAL_HEALTH_FLOOR) {
+            if (challenger != null && challenger.getHealth() <= duelSurvivalFloor()) {
                 this.endChallengeLost();
                 return;
             }
@@ -2056,28 +2464,23 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     private void finishCombat(boolean playerChallenge) {
-        if (this.isSeated() || this.isDefeated() || this.returnHomeTicks > 0) {
+        if (this.maidspell$encounterState() == WinefoxEncounterState.RETURNING || this.isDefeated()) {
             return;
+        }
+        this.maidspell$setEncounterState(WinefoxEncounterState.RETURNING);
+        if (this.maidspell$rewardState() == WinefoxRewardState.NONE) {
+            this.maidspell$setRewardState(WinefoxRewardState.NOT_ELIGIBLE);
         }
         this.noTargetTicks = 0;
         if (playerChallenge) {
             this.clearDuelHazards();
             this.speakDialogue(WinefoxDialogue.playerSubdued());
         }
-        // 走和战败一样的归位路径，只是不进战败演出、不结算战利品。
-        this.cancelCast();
-        this.cancelSpearThrow();
-        this.clearAction();
-        this.recallSummons();
-        this.clearMaidAggro();
-        this.getNavigation().stop();
-        this.bossEvent.setVisible(false);
+        // 与战败共用同一份清理（这里是"打服/收场"，她仍站着，所以不收武器、不加无敌、
+        // 不动重力），差别只在演出时长与台词。
+        this.maidspell$teardownCombat();
         this.entityData.set(CURTSYING, playerChallenge);
         this.returnHomeTicks = playerChallenge ? CURTSY_RETURN_HOME_TICKS : DEFEAT_RETURN_HOME_TICKS;
-        this.setTarget(null);
-        this.setDeltaMovement(Vec3.ZERO);
-        this.resetFlightControl();
-        this.entityData.set(BATTLE_MUSIC, false);
     }
 
     boolean isChallenger(Player player) {
@@ -2122,7 +2525,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             this.setTarget(null);
         }
         this.clearMaidCombatState(maid);
-        maid.setHealth(SURVIVAL_HEALTH_FLOOR);
+        maid.setHealth(duelSurvivalFloor());
         maid.clearFire();
         for (MobEffectInstance effect : List.copyOf(maid.getActiveEffects())) {
             if (effect.getEffect().getCategory() == net.minecraft.world.effect.MobEffectCategory.HARMFUL) {
@@ -2255,7 +2658,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.clearMaidCombatState(maid);
         // 万一主人趁这一场还没结束又把任务改回战斗类，这里再按一次。
         setIdleWorkMode(maid);
-        maid.setHealth(SURVIVAL_HEALTH_FLOOR);
+        maid.setHealth(duelSurvivalFloor());
         maid.setEntityInvulnerable(true);
         maid.setInvulnerable(true);
         maid.setInSittingPose(true);
@@ -2354,7 +2757,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     public boolean isBattleActive() {
-        return !this.isSeated() && !this.isDefeated() && this.returnHomeTicks <= 0;
+        return this.maidspell$encounterState() == WinefoxEncounterState.COMBAT;
     }
 
     public boolean isBattleMusicActive() {
@@ -2388,9 +2791,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private void normalizeDefeatState() {
         this.dropWeaponForDefeat();
         this.setNoGravity(false);
-        if (this.getHealth() > SURVIVAL_HEALTH_FLOOR) {
-            this.setHealth(SURVIVAL_HEALTH_FLOOR);
-        }
+        WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.LOAD,
+            () -> this.setHealth(0.0F));
     }
 
     /**
@@ -2422,7 +2824,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 战败演出已经开始（含已放完等待移除）。客户端也要能判，动画靠它切 {@code defeat}。
      */
     public boolean isDefeated() {
-        return this.entityData.get(DEFEATED);
+        return this.maidspell$encounterState() == WinefoxEncounterState.DEFEATED;
     }
 
     /** 玩家挑战结束后、回秋千之前是否正在行礼。 */
@@ -2511,6 +2913,18 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
+        CompoundTag lifecycle = new CompoundTag();
+        lifecycle.putInt("Version", 1);
+        lifecycle.putFloat("BossHealth", this.getHealth());
+        lifecycle.putFloat("BossMaxHealth", this.maidspell$bossMaxHealth());
+        lifecycle.putByte("EncounterState", (byte) this.maidspell$encounterState().ordinal());
+        lifecycle.putByte("RewardState", (byte) this.maidspell$rewardState().ordinal());
+        lifecycle.putUUID("EncounterId", this.encounterId);
+        lifecycle.putInt("EncounterSerial", this.entityData.get(ENCOUNTER_SERIAL));
+        if (this.rewardTransaction != null) {
+            lifecycle.putUUID("RewardTransaction", this.rewardTransaction);
+        }
+        tag.put("MaidSpellWinefoxLifecycle", lifecycle);
         tag.putBoolean("WinefoxPhaseTwo", this.isPhaseTwo());
         tag.putBoolean("WinefoxTransitioning", this.isTransitioning());
         tag.putInt("WinefoxTransitionTicks", this.phaseTransitionTicks);
@@ -2532,6 +2946,13 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (this.postVictoryChatPlayerId != null) {
             tag.putUUID("WinefoxPostVictoryChatPlayer", this.postVictoryChatPlayerId);
         }
+        if (!this.greetedPlayers.isEmpty()) {
+            ListTag greeted = new ListTag();
+            for (UUID playerId : this.greetedPlayers) {
+                greeted.add(NbtUtils.createUUID(playerId));
+            }
+            tag.put(GREETED_PLAYERS_TAG, greeted);
+        }
         if (this.homePos != null) {
             tag.put("WinefoxHomePos", NbtUtils.writeBlockPos(this.homePos));
         }
@@ -2539,6 +2960,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
+        this.loadingLifecycle = true;
+        try {
         super.readAdditionalSaveData(tag);
         this.entityData.set(PHASE_TWO, tag.getBoolean("WinefoxPhaseTwo"));
         if (tag.contains("WinefoxHomePos")) {
@@ -2547,7 +2970,6 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 缺键必须按 true 算，不能吃 getBoolean 的默认 false：/summon 不带 NBT 走的就是这条路，
         // 读出 false 她会站起来主动打人，一枚星云核心都没花就能被杀了掏战利品。
         // 这个分支上没有需要兼容的旧存档（1.9.0-alpha 还没发过）。
-        this.entityData.set(SEATED, !tag.contains("WinefoxSeated") || tag.getBoolean("WinefoxSeated"));
         this.entityData.set(RESTRICTED, tag.getBoolean("WinefoxRestricted"));
         this.returnHomeTicks = tag.getInt("WinefoxReturnHomeTicks");
         this.totalDamageTaken = tag.getFloat("WinefoxTotalDamageTaken");
@@ -2559,9 +2981,15 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.challengerId = tag.hasUUID("WinefoxChallenger") ? tag.getUUID("WinefoxChallenger") : null;
         this.postVictoryChatPlayerId = tag.hasUUID("WinefoxPostVictoryChatPlayer")
             ? tag.getUUID("WinefoxPostVictoryChatPlayer") : null;
+        // 老存档没有这个键，读出来是空表 —— 那些玩家会再听一次初见，可以接受。
+        this.greetedPlayers.clear();
+        for (Tag greeted : tag.getList(GREETED_PLAYERS_TAG, Tag.TAG_INT_ARRAY)) {
+            this.greetedPlayers.add(NbtUtils.loadUUID(greeted));
+        }
         // 她战败之后是留在场上的，读档得接着躺着，不能爬起来重新开打。
-        this.entityData.set(DEFEATED, tag.getBoolean("WinefoxDefeated"));
         this.entityData.set(CURTSYING, tag.getBoolean("WinefoxCurtsying"));
+        this.maidspell$readLifecycle(tag);
+        this.setPersistenceRequired();
         if (this.isDefeated()) {
             this.setInvulnerable(true);
             this.bossEvent.setVisible(false);
@@ -2586,6 +3014,66 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (this.isSeated()) {
             this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         }
+        } finally {
+            this.loadingLifecycle = false;
+        }
+    }
+
+    private void maidspell$readLifecycle(CompoundTag tag) {
+        WinefoxEncounterState state;
+        WinefoxRewardState reward;
+        float maximum;
+        float health;
+        if (tag.contains("MaidSpellWinefoxLifecycle", Tag.TAG_COMPOUND)) {
+            CompoundTag lifecycle = tag.getCompound("MaidSpellWinefoxLifecycle");
+            maximum = lifecycle.getFloat("BossMaxHealth");
+            health = lifecycle.getFloat("BossHealth");
+            state = WinefoxEncounterState.fromId(lifecycle.getByte("EncounterState"));
+            reward = WinefoxRewardState.fromId(lifecycle.getByte("RewardState"));
+            this.encounterId = lifecycle.hasUUID("EncounterId")
+                ? lifecycle.getUUID("EncounterId") : UUID.randomUUID();
+            this.rewardTransaction = lifecycle.hasUUID("RewardTransaction")
+                ? lifecycle.getUUID("RewardTransaction") : null;
+            BossLifecycleAccess.withDataWrite(this,
+                () -> this.entityData.set(ENCOUNTER_SERIAL, Math.max(0, lifecycle.getInt("EncounterSerial"))));
+        } else {
+            maximum = this.getMaxHealth();
+            health = tag.contains("Health", Tag.TAG_ANY_NUMERIC) ? tag.getFloat("Health") : maximum;
+            if (tag.getBoolean("WinefoxDefeated")) {
+                state = WinefoxEncounterState.DEFEATED;
+            } else if (tag.getInt("WinefoxReturnHomeTicks") > 0) {
+                state = WinefoxEncounterState.RETURNING;
+            } else if (!tag.contains("WinefoxSeated") || tag.getBoolean("WinefoxSeated")) {
+                state = WinefoxEncounterState.SEATED;
+            } else {
+                state = WinefoxEncounterState.COMBAT;
+            }
+            reward = state == WinefoxEncounterState.DEFEATED
+                ? WinefoxRewardState.NOT_ELIGIBLE : WinefoxRewardState.NONE;
+        }
+        this.maidspell$setMaxHealth(maximum);
+        health = WinefoxBossHealthController.sanitize(health, this.maidspell$bossMaxHealth());
+        if (state == WinefoxEncounterState.SEATED || state == WinefoxEncounterState.CHALLENGE_START) {
+            health = this.maidspell$bossMaxHealth();
+        } else if (state == WinefoxEncounterState.DEFEATED) {
+            health = 0.0F;
+        } else if (state == WinefoxEncounterState.COMBAT && health == 0.0F) {
+            state = WinefoxEncounterState.RETURNING;
+            this.returnHomeTicks = Math.max(1, this.returnHomeTicks);
+            reward = WinefoxRewardState.NOT_ELIGIBLE;
+        }
+        this.maidspell$setEncounterState(state);
+        this.maidspell$setRewardState(reward);
+        if (reward == WinefoxRewardState.GRANTING) {
+            com.github.yimeng261.maidspell.Global.LOGGER.error(
+                "Winefox reward {} for encounter {}#{} requires administrator review; no automatic retry",
+                this.rewardTransaction, this.encounterId, this.entityData.get(ENCOUNTER_SERIAL));
+        }
+        final float restoredHealth = health;
+        WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.LOAD,
+            () -> this.setHealth(restoredHealth));
+        this.dead = false;
+        this.deathTime = 0;
     }
 
     @Override
@@ -2595,10 +3083,153 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     @Override
     public void remove(RemovalReason reason) {
-        if (!this.level().isClientSide) {
-            this.releaseRetiredMaids();
+        if (PersistentEntityLifecycleGuard.shouldBlockRemoval(this, reason)) {
+            this.maidspell$onBlockedRemoval(reason);
+            return;
         }
         super.remove(reason);
+    }
+
+    @Override
+    public boolean maidspell$shouldProtectLifecycle() {
+        return !this.level().isClientSide;
+    }
+
+    @Override
+    public UUID maidspell$encounterId() {
+        return this.encounterId;
+    }
+
+    @Override
+    public void maidspell$onBlockedRemoval(RemovalReason reason) {
+        if (!(this.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        long now = serverLevel.getGameTime();
+        if (now == this.lastBlockedRemovalSync) {
+            return;
+        }
+        this.lastBlockedRemovalSync = now;
+        for (ServerPlayer player : serverLevel.players()) {
+            if (player.distanceToSqr(this) > 128.0D * 128.0D) {
+                continue;
+            }
+            player.connection.send(this.getAddEntityPacket());
+            List<SynchedEntityData.DataValue<?>> values = this.entityData.getNonDefaultValues();
+            if (values != null && !values.isEmpty()) {
+                player.connection.send(new ClientboundSetEntityDataPacket(this.getId(), values));
+            }
+            player.connection.send(new ClientboundTeleportEntityPacket(this));
+            this.resendHealthTo(player);
+            this.resendCastingStateTo(player);
+        }
+    }
+
+    public void maidspell$destroyAuthorized() {
+        if (this.level().isClientSide || this.isRemoved()) {
+            return;
+        }
+        BossLifecycleAccess.withAuthorizedTeardown(this, RemovalReason.DISCARDED, () -> {
+            this.recallSummons();
+            this.releaseRetiredMaids();
+            this.bossEvent.removeAllPlayers();
+            this.remove(RemovalReason.DISCARDED);
+        });
+    }
+
+    /** 管理员：把她拉回秋千，不发奖励、不重置交易。可从任意状态调用，重复调用安全。 */
+    public void maidspell$returnAuthorized() {
+        switch (this.maidspell$encounterState()) {
+            // 战斗中的收场走与普通生物战斗同一条路径（清理 + 归位倒计时）。
+            case COMBAT -> this.finishCombat(false);
+            // 开场期间被打断：状态机允许 CHALLENGE_START -> RETURNING。
+            case CHALLENGE_START -> {
+                this.maidspell$setEncounterState(WinefoxEncounterState.RETURNING);
+                this.returnHomeTicks = Math.max(1, this.returnHomeTicks);
+                this.maidspell$teardownCombat();
+            }
+            case DEFEATED -> {
+                this.maidspell$setEncounterState(WinefoxEncounterState.RETURNING);
+                this.returnHomeTicks = Math.max(1, this.returnHomeTicks);
+                this.maidspell$teardownCombat();
+            }
+            // SEATED 已经在家：这里什么都不做。清理是给"战斗被打断"用的，
+            // 对一个正常坐着的她执行清理只会白跑一遍，还会掩盖真正的状态问题。
+            case SEATED -> { }
+            case RETURNING -> {
+                this.returnHomeTicks = 1;
+                this.maidspell$teardownCombat();
+            }
+        }
+    }
+
+    /**
+     * 管理员修复专用的强制写入：把状态直接摆到 {@code RETURNING}，不经过转移表。
+     *
+     * <p>只给 {@link #maidspell$repairAuthorized} 用。存在的理由是 SEATED 与 RETURNING 之间
+     * 没有任何合法边（坐姿即待战，不该为了"归位"而离开坐姿），而修复命令需要把任意状态都收敛
+     * 到同一条归位路径。为了让状态机保持严格，这条旁路在这里显式命名，而不是放宽转移表或
+     * 先用一个假的开场态绕过。
+     */
+    private void maidspell$forceReturningForRepair() {
+        BossLifecycleAccess.withDataWrite(this, () -> this.entityData.set(
+            ENCOUNTER_STATE, (byte) WinefoxEncounterState.RETURNING.ordinal()));
+    }
+
+    /**
+     * 管理员：把损坏的状态修到"可再次挑战"。
+     *
+     * <p>与 {@link #maidspell$returnAuthorized} 的区别在于它**保证收场**：即使她已经坐在秋千上，
+     * 也要先走一趟归位、清掉残留的战斗副作用，再退回满血。否则"修好了"只是看起来坐在那儿，
+     * 残留目标或血量仍未复位。
+     */
+    public void maidspell$repairAuthorized() {
+        if (this.isRemoved()) {
+            return;
+        }
+        if (this.maidspell$encounterState() != WinefoxEncounterState.RETURNING) {
+            this.maidspell$forceReturningForRepair();
+        }
+        this.returnHomeTicks = 1;
+        this.maidspell$teardownCombat();
+        // 权威生命退回满值，下一场挑战从完整状态开始。
+        WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.ADMIN,
+            () -> this.setHealth(this.maidspell$bossMaxHealth()));
+        if (this.maidspell$rewardState() == WinefoxRewardState.NONE) {
+            this.maidspell$setRewardState(WinefoxRewardState.NOT_ELIGIBLE);
+        }
+    }
+
+    public boolean maidspell$resolvePendingReward(boolean reissue) {
+        if (this.level().isClientSide || this.maidspell$rewardState() != WinefoxRewardState.GRANTING) {
+            return false;
+        }
+        UUID transaction = this.rewardTransaction;
+        this.maidspell$setRewardState(WinefoxRewardState.GRANTED);
+        if (reissue) {
+            try {
+                this.dropDefeatRewards(this.damageSources().generic());
+            } catch (RuntimeException exception) {
+                com.github.yimeng261.maidspell.Global.LOGGER.error(
+                    "Manual Winefox reward reissue {} failed; review spawned items before any further action",
+                    transaction, exception);
+                return false;
+            }
+        }
+        this.tradingUnlocked |= !this.isRestricted();
+        this.offers = null;
+        com.github.yimeng261.maidspell.Global.LOGGER.warn(
+            "Administrator {} Winefox reward {} for encounter {}#{}",
+            reissue ? "reissued" : "confirmed", transaction, this.encounterId,
+            this.entityData.get(ENCOUNTER_SERIAL));
+        return true;
+    }
+
+    public Component maidspell$lifecycleStatus() {
+        return Component.literal("Winefox " + this.getUUID() + " encounter=" + this.encounterId
+            + "#" + this.entityData.get(ENCOUNTER_SERIAL) + " " + this.maidspell$encounterState()
+            + " health=" + this.getHealth() + "/" + this.maidspell$bossMaxHealth()
+            + " reward=" + this.maidspell$rewardState() + " unattributed=" + this.unattributedDamage);
     }
 
     /**
@@ -2644,27 +3275,18 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.resendHealthTo(player);
     }
 
-    /**
-     * 给刚进入追踪范围的玩家补一份血量。
-     *
-     * <p>{@code LivingEntity.defineSynchedData} 把 {@code DATA_HEALTH_ID} 的默认值定成了
-     * 正好 {@code 1.0F}，而 {@code SynchedEntityData.getNonDefaultValues()} 会跳过 "当前值 equals 初始值"的项（{@code DataItem.isSetToDefault}）。
-     * 战败后她被 {@link #SURVIVAL_HEALTH_FLOOR} 钉在 1.0F —— 不多不少正是那个默认值 —— 于是血量根本不进 {@code ServerEntity} 的配对包，客户端那侧的实体一直停在
-     * {@code LivingEntity} 构造函数里 {@code setHealth(getMaxHealth())} 给的 600， 而且此后再不会变：她无敌又不动，血量不会有第二次 set 去触发同步。
-     *
-     * <p>后果不止是血条数字。{@code query.health} 是客户端求值的，作者写在
-     * {@code parallel4} 里的血量门 {@code (query.health/query.max_health) < 0.25} 因此判假， 躺在地上的她显示的是满血形态的九尾，还跟着 {@code pre_parallel2} 一起摆。
-     *
-     * <p>{@code ServerEntity.addPairing} 先发配对包（内含 {@code getNonDefaultValues}
-     * 的快照）、再调 {@code startSeenByPlayer}，所以这一发必定盖在后面。 不加战败判断：任何时候血量恰好落在 1.0F 都会踩到，无条件补发才是对的。
-     */
+    /** 配对后补发权威生命、最大生命及遭遇状态，兼容同步默认值与重新追踪。 */
     private void resendHealthTo(ServerPlayer player) {
         if (this.level().isClientSide) {
             return;
         }
-        player.connection.send(new ClientboundSetEntityDataPacket(this.getId(),
-            List.of(SynchedEntityData.DataValue.create(
-                LivingEntityHealthAccessor.maidspell$getHealthAccessor(), this.getHealth()))));
+        player.connection.send(new ClientboundSetEntityDataPacket(this.getId(), List.of(
+            SynchedEntityData.DataValue.create(LivingEntityHealthAccessor.maidspell$getHealthAccessor(), 1.0F),
+            SynchedEntityData.DataValue.create(BOSS_HEALTH, this.getHealth()),
+            SynchedEntityData.DataValue.create(BOSS_MAX_HEALTH, this.maidspell$bossMaxHealth()),
+            SynchedEntityData.DataValue.create(ENCOUNTER_STATE, this.entityData.get(ENCOUNTER_STATE)),
+            SynchedEntityData.DataValue.create(REWARD_STATE, this.entityData.get(REWARD_STATE)),
+            SynchedEntityData.DataValue.create(ENCOUNTER_SERIAL, this.entityData.get(ENCOUNTER_SERIAL)))));
     }
 
     /**
@@ -2743,28 +3365,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         return this.issCastingAnimateState;
     }
 
-    /**
-     * 战败之后她**留在场上**，不再走任何移除流程。
-     *
-     * <p>{@code death} 是 5 秒的 {@code HOLD_LAST_FRAME} 动画，演出结束前实体保持在原地。
-     * 原版的 {@code tickDeath} 本来就只在 {@code isDeadOrDying()} 时被调，而她的血永远是 1，
-     * 那个回调根本不会触发 —— 这里覆写成空是为了挡住别处（比如别的模组）主动调它把她计时移除。
-     *
-     * <p>{@code deathTime} 一并保持为 0：它没有同步给客户端，但渲染那边
-     * （原先是 {@code GeoEntityRenderer.applyRotations}）会照着它把实体侧翻， 万一哪天有人把它同步出去，非零值会让倒地姿势再被扭一次。
-     *
-     * <p><b>但血真的掉到 0 时必须放行。</b>{@link #hurt} 与 {@link #actuallyHurt}
-     * 都特意给 {@code BYPASSES_INVULNERABILITY}（{@code /kill}、虚空伤害那一类） 开了口子，就是为了留一条把她清掉的路。
-     * 而原版**唯一**的移除路径正是 {@code tickDeath()} 里的 {@code ++deathTime} 到 20 之后那句 {@code remove(RemovalReason.KILLED)} —— 这里整个覆写成空，
-     * 等于把自己特意留的那条口子又堵死了：{@code /kill} 把血打到 0，她照样躺着不走。
-     *
-     * <p>所以只在「战败演出」那种血还剩 1 的状态下空转（挡住别的模组主动调它
-     * 提前把她计时移除），真死了就老老实实走原版流程。
-     */
+    /** 战败不走原版死亡计时；显式调用也不能移除这个持久 Boss。 */
     @Override
     protected void tickDeath() {
-        if (this.getHealth() <= 0.0F) {
-            super.tickDeath();
-        }
+        this.deathTime = 0;
     }
 }

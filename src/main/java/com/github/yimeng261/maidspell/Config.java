@@ -630,7 +630,7 @@ public class Config {
 
     static {
         BUILDER.pop(); // compat
-        BUILDER.comment("万法酒狐 Boss 战配置")
+        BUILDER.comment("星之魔女酒狐 Boss 战配置")
                .comment("Magical Winefox boss fight configuration")
                .push("winefox");
     }
@@ -646,9 +646,51 @@ public class Config {
     }
 
     private static final ForgeConfigSpec.BooleanValue WINEFOX_TRUE_DAMAGE_RESTRICTS_REWARD = BUILDER
-            .comment("对万法酒狐使用真实伤害是否同样触发上述限制 (默认: true)")
+            .comment("对星之魔女酒狐使用真实伤害是否同样触发上述限制 (默认: true)")
             .comment("Whether using true damage on the Magical Winefox also triggers the restriction above")
             .define("winefoxTrueDamageRestrictsReward", true);
+
+    private static final ForgeConfigSpec.DoubleValue WINEFOX_MAX_HEALTH = BUILDER
+            .comment("星之魔女酒狐的最大生命 (默认: 600.0)")
+            .comment("The Magical Winefox's maximum health. The value is persisted on the entity,")
+            .comment("so changing it only affects newly spawned or newly loaded bosses.")
+            .defineInRange("winefoxMaxHealth", 600.0, 1.0, 100000.0);
+
+    private static final ForgeConfigSpec.DoubleValue WINEFOX_DAMAGE_MULTIPLIER = BUILDER
+            .comment("她受到的所有伤害的倍率，作用于最终结算之前 (默认: 1.0)")
+            .comment("Global damage multiplier applied to every hit she takes. This is an extra layer")
+            .comment("on top of the maid and phase-two reductions below.")
+            .defineInRange("winefoxDamageMultiplier", 1.0, 0.0, 100.0);
+
+    private static final ForgeConfigSpec.DoubleValue WINEFOX_HIT_DAMAGE_CAP_RATIO = BUILDER
+            .comment("单次受击最多打掉最大生命的这个比例；0 表示不限伤 (默认: 0.08，即 8%)")
+            .comment("Weak per-hit damage cap as a fraction of her maximum health.")
+            .comment("Applied to the final damage (after armour, resistance and absorption), so true")
+            .comment("damage is capped too. Set to 0 to disable the cap entirely.")
+            .defineInRange("winefoxHitDamageCapRatio", 0.08, 0.0, 1.0);
+
+    private static final ForgeConfigSpec.IntValue WINEFOX_HIT_INTERVAL_TICKS = BUILDER
+            .comment("两次有效受击之间的最小间隔，单位 tick；0 表示不限制 (默认: 6，即 0.3 秒)")
+            .comment("Minimum interval between two effective hits, in ticks.")
+            .comment("This is the boss's own gate and it also caps spells and true damage, which")
+            .comment("otherwise clear the vanilla invulnerability window and can land many hits per tick.")
+            .defineInRange("winefoxHitIntervalTicks", 6, 0, 200);
+
+    private static final ForgeConfigSpec.DoubleValue WINEFOX_MAID_DAMAGE_MULTIPLIER = BUILDER
+            .comment("女仆造成的伤害额外倍率 (默认: 0.5)")
+            .comment("Extra multiplier applied to damage dealt by maids, on top of the global multiplier")
+            .defineInRange("winefoxMaidDamageMultiplier", 0.5, 0.0, 1.0);
+
+    private static final ForgeConfigSpec.DoubleValue WINEFOX_PHASE_TWO_DAMAGE_MULTIPLIER = BUILDER
+            .comment("二阶段期间受到的伤害额外倍率 (默认: 0.5)")
+            .comment("Extra multiplier applied while she is in her second phase")
+            .defineInRange("winefoxPhaseTwoDamageMultiplier", 0.5, 0.0, 1.0);
+
+    private static final ForgeConfigSpec.DoubleValue WINEFOX_DUEL_SURVIVAL_FLOOR = BUILDER
+            .comment("表演赛里挑战者与参战女仆的最低生命，被打到这个值就算被制服 (默认: 1.0)")
+            .comment("Health floor for the challenger and participating maids during a formal duel.")
+            .comment("She herself uses independent health and can be reduced to zero.")
+            .defineInRange("winefoxDuelSurvivalFloor", 1.0, 0.0, 1024.0);
 
     static {
         BUILDER.pop(); // winefox
@@ -738,9 +780,16 @@ public class Config {
     // 兼容性相关
     public static boolean autoInstallTlmModelPack;
 
-    // 万法酒狐 Boss 战
+    // 星之魔女酒狐 Boss 战
     public static double winefoxMaidDamageShareLimit;
     public static boolean winefoxTrueDamageRestrictsReward;
+    public static double winefoxMaxHealth;
+    public static double winefoxDamageMultiplier;
+    public static double winefoxHitDamageCapRatio;
+    public static int winefoxHitIntervalTicks;
+    public static double winefoxMaidDamageMultiplier;
+    public static double winefoxPhaseTwoDamageMultiplier;
+    public static double winefoxDuelSurvivalFloor;
 
 
     @SubscribeEvent
@@ -832,9 +881,16 @@ public class Config {
         // 兼容性相关
         autoInstallTlmModelPack = AUTO_INSTALL_TLM_MODEL_PACK.get();
 
-        // 万法酒狐 Boss 战
+        // 星之魔女酒狐 Boss 战
         winefoxMaidDamageShareLimit = WINEFOX_MAID_DAMAGE_SHARE_LIMIT.get();
         winefoxTrueDamageRestrictsReward = WINEFOX_TRUE_DAMAGE_RESTRICTS_REWARD.get();
+        winefoxMaxHealth = WINEFOX_MAX_HEALTH.get();
+        winefoxDamageMultiplier = WINEFOX_DAMAGE_MULTIPLIER.get();
+        winefoxHitDamageCapRatio = WINEFOX_HIT_DAMAGE_CAP_RATIO.get();
+        winefoxHitIntervalTicks = WINEFOX_HIT_INTERVAL_TICKS.get();
+        winefoxMaidDamageMultiplier = WINEFOX_MAID_DAMAGE_MULTIPLIER.get();
+        winefoxPhaseTwoDamageMultiplier = WINEFOX_PHASE_TWO_DAMAGE_MULTIPLIER.get();
+        winefoxDuelSurvivalFloor = WINEFOX_DUEL_SURVIVAL_FLOOR.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);

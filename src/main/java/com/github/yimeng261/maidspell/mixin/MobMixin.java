@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.mixin;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.utils.AnchorCoreProtection;
+import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
@@ -20,30 +21,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class MobMixin {
     
     /**
-     * 拦截convertTo方法，阻止女仆被转换成其他实体
-     * 
+     * 拦截 convertTo 方法，阻止受保护实体被转换成其他实体。
+     *
+     * <p>判据只有一条，由 {@link PersistentEntityLifecycleGuard#shouldBlockConversion} 统一给出：
+     * 它内部是"星之魔女等受保护遭遇实体，**或**装备了锚定核心的女仆"。两种策略的判定顺序与
+     * 合并方式都在那一处维护，这里不再重复判一次锚定核心 —— 重复判会写出一段永远走不到的分支，
+     * 让人误以为这里还有第二条独立判据。
+     *
      * @param entityType 目标实体类型
      * @param bl 是否保留装备
      * @param cir 回调信息返回值
      */
-    @Inject(method = "convertTo(Lnet/minecraft/world/entity/EntityType;Z)Lnet/minecraft/world/entity/Mob;", 
-            at = @At("HEAD"), 
+    @Inject(method = "convertTo(Lnet/minecraft/world/entity/EntityType;Z)Lnet/minecraft/world/entity/Mob;",
+            at = @At("HEAD"),
             cancellable = true)
     public <T extends Mob> void preventMaidConversion(EntityType<T> entityType, boolean bl, CallbackInfoReturnable<T> cir) {
-        // 检查当前实体是否为女仆
-        if ((Object) this instanceof EntityMaid maid) {
-            // 检查女仆是否装备了锚定核心饰品
-            if (!AnchorCoreProtection.shouldBlockConversion(maid)) {
-                Global.LOGGER.debug("Maid {} does not have anchor_core, allowing conversion", maid.getUUID());
-                return;
-            }
-
-            Global.LOGGER.debug("Prevented maid {} from converting to {} (anchor_core protection)",
-                maid.getUUID(), entityType.getDescriptionId());
-
-            // 取消转换操作，返回null
-            cir.setReturnValue(null);
+        if (!PersistentEntityLifecycleGuard.shouldBlockConversion((Mob) (Object) this)) {
+            return;
         }
+        Global.LOGGER.debug("Prevented {} from converting to {} (lifecycle protection)",
+            this, entityType.getDescriptionId());
+        // 取消转换操作，返回 null
+        cir.setReturnValue(null);
     }
 
     /**

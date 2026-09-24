@@ -117,7 +117,7 @@ public final class WinefoxNonLethalGuard {
             return;
         }
         float survivable = Math.max(0.0F,
-            victim.getHealth() - MagicalWinefoxBossEntity.SURVIVAL_HEALTH_FLOOR);
+            victim.getHealth() - MagicalWinefoxBossEntity.duelSurvivalFloor());
         if (event.getAmount() >= survivable) {
             event.setAmount(survivable);
             if (victim instanceof Player) {

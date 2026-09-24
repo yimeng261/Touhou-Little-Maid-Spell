@@ -24,6 +24,7 @@
     "ServerLevelMixin",
     "StructureTemplateMixin",
     "SynchedEntityDataHealthMixin",
+    "WinefoxDamageClampMixin",
     "accessor.SynchedEntityDataMixin",
     "goety.MobUtilMixin",
     "goety.CuriosFinderMixin",
