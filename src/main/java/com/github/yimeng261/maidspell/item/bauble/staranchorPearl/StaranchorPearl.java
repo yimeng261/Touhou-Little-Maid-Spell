@@ -25,16 +25,20 @@ import java.util.List;
  *
  * <p>两种用法共用一件物品：
  * <ul>
- *   <li><b>玩家</b>：右键消耗 1 点耐久，拿到 30 秒的「虚空漫步」，期间免疫虚空伤害；</li>
+ *   <li><b>玩家</b>：右键消耗 {@link #PLAYER_USE_COST} 点耐久，拿到 30 秒的「虚空漫步」，
+ *       期间免疫虚空伤害；</li>
  *   <li><b>女仆</b>：当作饰品佩戴，替她挡下虚空伤害，每挡一发扣 1 点耐久，
  *       见 {@link StaranchorPearlBauble}。</li>
  * </ul>
+ *
+ * <p><b>两边的单价不一样是有意的</b>：玩家那一下是主动买来的 30 秒免疫，按次收贵一点；
+ * 女仆那边是跟着伤害结算走的被动抵挡，照原版保护类饰品的 1 点／次。
  *
  * <p><b>耐久为什么这么给</b>：参照车万女仆原版的保护类饰品 —— 那几个都是
  * {@code new Item.Properties().durability(n).setNoRepair()}，靠 {@code hurtAndBreak} 消耗，
  * 用完即碎、不可修复（{@code ItemDamageableBauble}）。这里取同一档的 64
  * （溺水/弹射物保护是 64，爆炸/摔落是 32，火焰/魔法是 128），
- * 于是珍珠既是「一次性的应急道具」又是「会磨损的饰品」。
+ * 于是珍珠既是「一次性的应急道具」又是「会磨损的饰品」：玩家侧撑 8 次，女仆侧撑 64 次。
  */
 public class StaranchorPearl extends Item {
     /** 虚空漫步时长：30 秒。 */
@@ -42,6 +46,17 @@ public class StaranchorPearl extends Item {
 
     /** 和原版保护类饰品同一档的耐久。 */
     public static final int DURABILITY = 64;
+
+    /** 玩家右键一次的耐久开销。8 点配 64 点总耐久，正好 8 次。 */
+    public static final int PLAYER_USE_COST = 8;
+
+    /**
+     * 女仆那边每挡下一发虚空伤害的耐久开销。
+     *
+     * <p>和玩家侧不同价：玩家是主动买 30 秒免疫，贵一点；女仆是被动抵挡，
+     * 照原版保护类饰品的 1 点／次。
+     */
+    public static final int MAID_BLOCK_COST = 1;
 
     public StaranchorPearl() {
         super(new Properties()
@@ -72,7 +87,7 @@ public class StaranchorPearl extends Item {
                     false, false, true));
             VoidWalkEffect.spawnRing(serverLevel, player);
             // 消耗耐久。耐久见底时 hurtAndBreak 会把这颗珍珠直接销毁。
-            stack.hurtAndBreak(1, player, broken -> broken.broadcastBreakEvent(hand));
+            stack.hurtAndBreak(PLAYER_USE_COST, player, broken -> broken.broadcastBreakEvent(hand));
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
@@ -87,9 +102,10 @@ public class StaranchorPearl extends Item {
                         .withStyle(ChatFormatting.GRAY)),
                 List.of(
                         Component.translatable("item.touhou_little_maid_spell.staranchor_pearl.desc2",
-                                        VOID_WALK_TICKS / 20)
+                                        PLAYER_USE_COST, VOID_WALK_TICKS / 20)
                                 .withStyle(ChatFormatting.LIGHT_PURPLE),
-                        Component.translatable("item.touhou_little_maid_spell.staranchor_pearl.desc3")
+                        Component.translatable("item.touhou_little_maid_spell.staranchor_pearl.desc3",
+                                        MAID_BLOCK_COST)
                                 .withStyle(ChatFormatting.DARK_PURPLE),
                         Component.translatable("item.touhou_little_maid_spell.staranchor_pearl.desc4")
                                 .withStyle(ChatFormatting.YELLOW)));

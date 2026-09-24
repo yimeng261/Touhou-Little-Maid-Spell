@@ -21,7 +21,8 @@ import org.apache.commons.lang3.mutable.MutableFloat;
  * 而是跟着伤害结算的频率走，64 点耐久能撑住一段像样的救援时间。
  *
  * <p>玩家那一路不吃这个类：玩家是自己右键喝下状态，走
- * {@code event.StaranchorPearlEvents} 的全局免疫，珍珠只在这一下被磨掉一点。
+ * {@code event.StaranchorPearlEvents} 的全局免疫，按 {@link StaranchorPearl#PLAYER_USE_COST}
+ * 扣耐久；这里按 {@link StaranchorPearl#MAID_BLOCK_COST} 扣。
  */
 public class StaranchorPearlBauble implements IMaidBauble {
 
@@ -33,7 +34,8 @@ public class StaranchorPearlBauble implements IMaidBauble {
 
         // 原版保护类饰品的固定写法：坏了就发一条物品损坏提示。
         // 回调参数是「持有者」，sendItemBreakMessage 收的却是那个 ItemStack，别传错。
-        baubleItem.hurtAndBreak(1, maid, holder -> maid.sendItemBreakMessage(baubleItem));
+        baubleItem.hurtAndBreak(StaranchorPearl.MAID_BLOCK_COST, maid,
+                holder -> maid.sendItemBreakMessage(baubleItem));
         if (maid.level() instanceof ServerLevel serverLevel) {
             // 挡下的那一下也扫一圈虚空粒子，玩家才看得出是珍珠在起作用。
             VoidWalkEffect.spawnRing(serverLevel, maid);
