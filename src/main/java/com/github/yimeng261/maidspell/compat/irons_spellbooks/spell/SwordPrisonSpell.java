@@ -10,7 +10,6 @@ import io.redspace.ironsspellbooks.api.registry.SchoolRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.CastSource;
 import io.redspace.ironsspellbooks.api.spells.CastType;
-import io.redspace.ironsspellbooks.api.spells.SpellAnimations;
 import io.redspace.ironsspellbooks.api.spells.SpellRarity;
 import io.redspace.ironsspellbooks.api.util.AnimationHolder;
 import io.redspace.ironsspellbooks.api.util.Utils;
@@ -41,16 +40,30 @@ public class SwordPrisonSpell extends AbstractSpell {
     /**
      * 相邻两圈的半径差。圈间距与剑间距是两回事：1.5 格只约束同一圈内相邻的两柄剑，
      * 圈与圈之间没有这个限制，所以这里取一个比它更小的固定值，让剑阵更聚拢
-     * （五级六圈的最外圈也只有 7.2 格），而不是随圈数把整个阵型撑开。
+     * （满级七圈的最外圈也只有 8.4 格），而不是随圈数把整个阵型撑开。
      */
     private static final double RING_RADIUS_STEP = 1.2D;
-    /** 相邻两圈的落下间隔：0.25 秒 = 5 tick。 */
+    /** 相邻两圈的落下间隔：5 tick = 0.25 秒。 */
     private static final int RING_INTERVAL_TICKS = 5;
     /** 单圈剑数上限，避免高等级下实体数量失控。 */
     private static final int MAX_SWORDS_PER_RING = 48;
     private static final int MIN_SWORDS_PER_RING = 3;
     /** 拿不到施法者尺寸时（比如查看法术书 tooltip）假定的半宽。 */
     private static final double DEFAULT_CASTER_HALF_WIDTH = 0.3D;
+
+    /**
+     * 举枪。玩家施法时由 PlayerAnimator 播，资源在
+     * {@code assets/touhou_little_maid_spell/player_animation/spear_throw.json}。
+     *
+     * <p>铁魔法给 INSTANT 法术的默认动画 {@code ANIMATION_INSTANT_CAST} 是一个
+     * 0.1875 秒的抬手，配不上"召出一圈剑把人围死"。
+     *
+     * <p>酒狐那边不走这条：她是 Mob，用的是自己模型包上的 {@code iss:spear_throw}
+     * （骨骼完全不同），由她的动作表单独指定。两边是同一个动作的两份实现，
+     * 改表演时记得一起改。
+     */
+    private static final AnimationHolder CAST_START_ANIMATION =
+            new AnimationHolder(new ResourceLocation(MaidSpellMod.MOD_ID, "spear_throw"), true);
 
     /** 剑从落点上方的斜上方扑向落点，避免远距离施法时被施法者自身高度遮挡。 */
     private static final double LAUNCH_HEIGHT = 8.0D;
@@ -63,7 +76,7 @@ public class SwordPrisonSpell extends AbstractSpell {
     private final DefaultConfig defaultConfig = new DefaultConfig()
             .setMinRarity(SpellRarity.RARE)
             .setSchoolResource(SchoolRegistry.ENDER_RESOURCE)
-            .setMaxLevel(5)
+            .setMaxLevel(6)
             .setCooldownSeconds(12)
             .build();
 
@@ -87,7 +100,7 @@ public class SwordPrisonSpell extends AbstractSpell {
 
     @Override
     public AnimationHolder getCastStartAnimation() {
-        return SpellAnimations.ANIMATION_INSTANT_CAST;
+        return CAST_START_ANIMATION;
     }
 
     @Override
@@ -126,7 +139,7 @@ public class SwordPrisonSpell extends AbstractSpell {
     }
 
     /**
-     * 把落点按同心圆铺开：最内圈（最靠近目标的那圈）先落，之后每 0.5 秒往外落一圈。
+     * 把落点按同心圆铺开：最内圈（最靠近目标的那圈）先落，之后每 0.25 秒往外落一圈。
      *
      * <p>每圈剑数由该圈周长与 {@link #MAX_SWORD_SPACING} 反推（{@code ceil(2πr / 1.5)}），
      * 于是同一圈上任意相邻两柄剑的弧长都压在上限内，圈越大剑越密。
@@ -143,7 +156,7 @@ public class SwordPrisonSpell extends AbstractSpell {
             if (ring == 0) {
                 launchRing(level, caster, landingPoints, damage);
             } else {
-                // chain=true：第 n 圈接在第 n-1 圈之后 0.5 秒，而不是都从施法那一刻起算。
+                // chain=true：第 n 圈接在第 n-1 圈之后 0.25 秒，而不是都从施法那一刻起算。
                 SwordRingScheduler.schedule(level, RING_INTERVAL_TICKS, true,
                         () -> launchRing(level, caster, landingPoints, damage));
             }
