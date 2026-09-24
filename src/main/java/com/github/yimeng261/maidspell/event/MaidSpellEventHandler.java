@@ -27,6 +27,8 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.spell.providers.PsiProvider;
 import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
+import com.github.yimeng261.maidspell.utils.MaidSuppressionZone;
+import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import com.github.yimeng261.maidspell.utils.MaidReviveEffectCleanup;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
@@ -91,6 +93,12 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
         Entity entity = event.getEntity();
+        if (event.getLevel() instanceof ServerLevel serverLevel
+                && PersistentEntityLifecycleGuard.conflictsWithLoadedEncounter(entity, serverLevel)) {
+            LOGGER.warn("Rejecting duplicate loaded encounter entity {} in {}", entity.getUUID(), serverLevel.dimension().location());
+            event.setCanceled(true);
+            return;
+        }
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.onMaidJoin(maid);
@@ -537,7 +545,19 @@ public class MaidSpellEventHandler {
 
 
 
+    /**
+     * 压制区里的女仆饰品效果不生效。
+     *
+     * <p>在饰品分发口统一拦截，新增饰品无需逐个判断。
+     */
+    private static boolean suppressed(EntityMaid maid) {
+        return MaidSuppressionZone.suppresses(maid);
+    }
+
     private static void processorAft(LivingDamageEvent.Post event, EntityMaid maid) {
+        if (suppressed(maid)) {
+            return;
+        }
         Global.baubleDamageHandlers.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(event, maid);
@@ -546,6 +566,9 @@ public class MaidSpellEventHandler {
     }
 
     private static void processorPre(LivingIncomingDamageEvent event, EntityMaid maid) {
+        if (suppressed(maid)) {
+            return;
+        }
         Global.commonHurtHandlers.forEach(function -> function.apply(event, maid));
 
         Global.baubleHurtHandlers.forEach((item, func) -> {
@@ -669,6 +692,7 @@ public class MaidSpellEventHandler {
         AnchorCoreBauble.clearRuntimeCache();
         YueLinglanBlockEntity.clearAllStructureSearchCaches();
         SpellBookManager.clearAll();
+        MaidSuppressionZone.clear();
     }
 
     private static void cleanupMaidBaubleRuntimeState(UUID maidId) {

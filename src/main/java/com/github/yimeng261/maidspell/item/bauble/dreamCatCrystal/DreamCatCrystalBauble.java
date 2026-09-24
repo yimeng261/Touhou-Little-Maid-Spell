@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal;
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHandler;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
@@ -128,7 +129,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             }
 
             LivingEntity target = context.getTarget();
-            if (target == null || !target.isAlive()) {
+            if (!IAuthoritativeHealth.combatAlive(target)) {
                 return;
             }
 
@@ -140,7 +141,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             }
 
             // 2. 时停 1 秒（仅在服务端执行）
-            if (!maid.level().isClientSide() && target.isAlive() && target instanceof Mob mob) {
+            if (!maid.level().isClientSide() && IAuthoritativeHealth.combatAlive(target)
+                    && target instanceof Mob mob) {
                 MinecraftServer server = maid.getServer();
                 if (server != null) {
                     long unfreezeTime = PortableTimerMath.saturatingAdd(globalGameTime(server), 20L);
@@ -156,7 +158,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                         target.getBoundingBox().inflate(5.0),
                         entity -> entity != maid
                                 && entity != target
-                                && entity.isAlive()
+                                && IAuthoritativeHealth.combatAlive(entity)
                                 && !(entity instanceof net.minecraft.world.entity.player.Player)
                                 && !(entity instanceof EntityMaid)
                 ).forEach(nearby -> TrueDamageUtil.dealTrueDamage(nearby, barrageDamage, maid));
@@ -701,7 +703,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             }
 
             Mob target = state.target;
-            if (target == null || !target.isAlive()) {
+            if (!IAuthoritativeHealth.combatAlive(target)) {
                 FROZEN_TARGETS.remove(scheduled.entityId());
                 FROZEN_TARGET_EXPIRIES.poll();
                 continue;

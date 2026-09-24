@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.HairpinBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
@@ -62,7 +63,7 @@ public abstract class LivingEntityMixin {
         //处理heal
         float oldHealth = -114514;
         try{
-            oldHealth = entity.getHealth();
+            oldHealth = IAuthoritativeHealth.health(entity);
         }catch(Exception ignored){
         }
 

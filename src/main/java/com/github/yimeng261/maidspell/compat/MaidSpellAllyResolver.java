@@ -79,6 +79,48 @@ public final class MaidSpellAllyResolver {
                 || resolveResponsibleEntity(direct).map(owner -> areFriendly(target, owner)).orElse(false);
     }
 
+    /**
+     * owner 链上（含自身）是否有一节是 {@code type}。
+     * <p>与 {@link #resolveResponsibleEntity} 只取链尾不同，这里看整条链：女仆召唤物的链尾是玩家，但链上有女仆。
+     * <p>深度由 {@link #OWNER_TRACE_LIMIT} 封顶，不分配集合；该方法挂在受击事件上，每次伤害都会调用。
+     */
+    public static boolean isOwnedBy(@Nullable Entity entity, Class<?> type) {
+        Entity current = entity;
+        for (int depth = 0; depth < OWNER_TRACE_LIMIT && current != null; depth++) {
+            if (type.isInstance(current)) {
+                return true;
+            }
+            current = getDirectOwner(current);
+        }
+        return false;
+    }
+
+    /**
+     * 主人链上有女仆、且链上有一位在线玩家时，返回那位玩家；否则返回 {@code null}。
+     *
+     * <p>女仆本人、她的召唤物与弹体都算，链上先遇到玩家的那一节就算数。
+     * 与 {@link #collectAffinityIds} 不同，这里只要玩家本人且必须在线。
+     */
+    @Nullable
+    public static Player maidOwningPlayer(@Nullable Entity entity) {
+        EntityMaid maid = null;
+        Entity current = entity;
+        for (int depth = 0; depth < OWNER_TRACE_LIMIT && current != null; depth++) {
+            if (current instanceof EntityMaid found) {
+                maid = found;
+            } else if (current instanceof Player player) {
+                return player;
+            }
+            current = getDirectOwner(current);
+        }
+        if (maid == null) {
+            return null;
+        }
+        UUID ownerId = maid.getOwnerUUID();
+        // 女仆的 getOwner() 走 PlayerList，测试假玩家等只在关卡玩家表里，按 UUID 在关卡里再找一次
+        return ownerId == null ? null : maid.level().getPlayerByUUID(ownerId);
+    }
+
     public static Optional<Entity> resolveResponsibleEntity(@Nullable Entity entity) {
         if (entity == null) {
             return Optional.empty();

@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.spell.manager;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.MinecraftServer;
@@ -284,7 +285,8 @@ public class SpellBookManager {
     }
 
     private static boolean isValidTarget(LivingEntity target) {
-        return target != null && target.isAlive() && !target.isDeadOrDying() && !target.isRemoved();
+        return IAuthoritativeHealth.combatAlive(target)
+            && !IAuthoritativeHealth.deadOrDying(target);
     }
 
     public void initSpellBooks(EntityMaid maid){

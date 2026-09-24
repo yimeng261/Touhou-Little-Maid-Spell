@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IBossSyncedDataGuard;
 import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityHealthAccessor;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.github.yimeng261.maidspell.utils.MaidDamageProcessor;
@@ -25,6 +26,11 @@ public abstract class SynchedEntityDataHealthMixin {
             at = @At("HEAD"),
             cancellable = true)
     private <T> void maidspell$protectDirectMaidHealthWrites(EntityDataAccessor<T> accessor, T value, boolean force, CallbackInfo ci) {
+        if (this.entity instanceof IBossSyncedDataGuard boss
+                && boss.maidspell$protectSyncedDataWrite(accessor, value)) {
+            ci.cancel();
+            return;
+        }
         if (MaidHealthWriteGuard.isBypassing()) {
             return;
         }

@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCross;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
+import com.github.yimeng261.maidspell.item.block.SuppressionStoneItem;
 import com.github.yimeng261.maidspell.item.block.JingxuYoulanItem;
 import com.github.yimeng261.maidspell.item.block.ScarletZhuhuaItem;
 import com.github.yimeng261.maidspell.item.block.YueLinglanItem;
@@ -85,7 +86,7 @@ public class MaidSpellItems {
     public static final DeferredItem<Item> JINGXU_YOULAN = ITEMS.register("jingxu_youlan",
         () -> new JingxuYoulanItem(MaidSpellBlocks.JINGXU_YOULAN.get()));
     public static final DeferredItem<Item> SUPPRESSION_STONE = ITEMS.register("suppression_stone",
-        () -> new BlockItem(MaidSpellBlocks.SUPPRESSION_STONE.get(), new Item.Properties()));
+        () -> new SuppressionStoneItem(MaidSpellBlocks.SUPPRESSION_STONE.get()));
 
     // 管理员工具
     public static final DeferredItem<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);

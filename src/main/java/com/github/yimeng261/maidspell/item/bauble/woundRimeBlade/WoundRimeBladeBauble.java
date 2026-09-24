@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.item.bauble.woundRimeBlade;
 
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -59,7 +60,7 @@ public class WoundRimeBladeBauble implements IMaidBauble {
         ConcurrentHashMap<TargetKey, Pair<Float, Integer>> targets = maidWoundRimeBladeMap.computeIfAbsent(
                 maid.getUUID(), ignored -> new ConcurrentHashMap<>());
         TargetKey targetKey = TargetKey.of(entity);
-        float nowHealth = entity.getHealth();
+        float nowHealth = IAuthoritativeHealth.health(entity);
         Pair<Float, Integer> record = targets.getOrDefault(
                 targetKey, new Pair<>(nowHealth, Config.woundRimeBladeRecordTimes));
         float recordHealth = record.getA();
@@ -133,7 +134,8 @@ public class WoundRimeBladeBauble implements IMaidBauble {
             return false;
         }
         Entity entity = level.getEntity(targetKey.entityId());
-        return entity instanceof LivingEntity livingEntity && livingEntity.isAlive();
+        return entity instanceof LivingEntity livingEntity
+            && IAuthoritativeHealth.combatAlive(livingEntity);
     }
 
     private record TargetKey(ResourceKey<Level> dimension, UUID entityId) {

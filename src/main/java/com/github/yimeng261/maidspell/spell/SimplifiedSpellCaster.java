@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.spell;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
@@ -54,7 +55,8 @@ public class SimplifiedSpellCaster {
      */
     public boolean hasValidTarget() {
         LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-        boolean valid = target != null && target.isAlive() && !target.isDeadOrDying() && !target.isRemoved();
+        boolean valid = IAuthoritativeHealth.combatAlive(target)
+            && !IAuthoritativeHealth.deadOrDying(target);
         if (!valid && target != null) {
             // 目标已死亡/被移除时清理 ATTACK_TARGET 与 WALK_TARGET，避免女仆继续追击或攻击残影。
             maid.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
