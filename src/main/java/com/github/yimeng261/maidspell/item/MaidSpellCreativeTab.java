@@ -70,6 +70,7 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.WOUND_RIME_BLADE.get());
                 output.accept(MaidSpellItems.BLEEDING_HEART.get());
                 output.accept(MaidSpellItems.SPRING_BLOOM_RETURN.get());
+                output.accept(MaidSpellItems.STARANCHOR_PEARL.get());
             })
             .build());
 

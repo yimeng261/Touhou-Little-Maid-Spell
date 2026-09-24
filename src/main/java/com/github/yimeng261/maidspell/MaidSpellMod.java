@@ -9,6 +9,8 @@ import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaid
 import com.github.yimeng261.maidspell.crafting.OptionalModIngredientSerializer;
 import com.github.yimeng261.maidspell.event.FoxLeafOwnerWaterWalking;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
+import com.github.yimeng261.maidspell.event.StaranchorPearlEvents;
+import com.github.yimeng261.maidspell.effect.MaidSpellEffects;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
@@ -52,6 +54,7 @@ public class MaidSpellMod {
         // 手动注册事件处理器，确保事件能被正确监听
         forgeBus.register(MaidSpellEventHandler.class);
         forgeBus.register(FoxLeafOwnerWaterWalking.class);
+        forgeBus.register(StaranchorPearlEvents.class);
         // Curios 事件处理器仅在 Curios 加载时注册，避免硬依赖
         if (net.minecraftforge.fml.ModList.get().isLoaded("curios")) {
             forgeBus.register(com.github.yimeng261.maidspell.event.CuriosEventHandler.class);
@@ -70,6 +73,7 @@ public class MaidSpellMod {
         MaidSpellContainers.register(modBus);
         MaidSpellSounds.SOUNDS.register(modBus);
         MaidSpellParticles.PARTICLES.register(modBus);
+        MaidSpellEffects.MOB_EFFECTS.register(modBus);
         MaidSpellEntities.register(modBus);
         MaidSpellPaintings.register(modBus);
         IronsSpellbooksCompat.init(modBus);

@@ -21,6 +21,7 @@ import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeB
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
+import com.github.yimeng261.maidspell.item.bauble.staranchorPearl.StaranchorPearlBauble;
 import com.github.yimeng261.maidspell.item.bauble.quickChantRing.QuickChantBauble;
 import com.github.yimeng261.maidspell.item.bauble.rockCrystal.RockCrystalBauble;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
@@ -170,6 +171,10 @@ public class MaidBaubleRegistry implements ILittleMaid {
 
         if(MaidSpellItems.FRAGRANT_INGENUITY != null){
             manager.bind(MaidSpellItems.FRAGRANT_INGENUITY, new FragrantIngenuityBauble());
+        }
+
+        if(MaidSpellItems.STARANCHOR_PEARL != null){
+            manager.bind(MaidSpellItems.STARANCHOR_PEARL, new StaranchorPearlBauble());
         }
 
         // 梦云水晶
