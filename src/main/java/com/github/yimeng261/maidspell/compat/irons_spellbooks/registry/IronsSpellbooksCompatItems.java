@@ -60,11 +60,26 @@ public final class IronsSpellbooksCompatItems {
     public static final RegistryObject<Item> STAR_WITCH_HAT =
             ITEMS.register("star_witch_hat", StarWitchHatItem::new);
 
+    /**
+     * 星之魔女酒狐刷怪蛋。贴图是成品色，所以两个颜色都给白 —— 见下。
+     *
+     * <p>刷怪蛋的染色不是可选项：{@code ItemModelGenerator} 会给 {@code item/generated}
+     * 声明过的每一层按<b>层号</b>发一个 tintindex（原版 {@code template_spawn_egg} 的
+     * layer0/layer1 就是靠这个分别上底色与斑点），而 {@code ItemColors.createDefault}
+     * 又给 {@code SpawnEggItem.eggs()} 里的每一颗都注册了
+     * {@code (stack, tintIndex) -> egg.getColor(tintIndex)}。于是 layer0 拿到 tint 0，
+     * 也就是 {@code ForgeSpawnEggItem} 的「底色」，整张贴图会被乘上去。
+     *
+     * <p>照旧填 0x5B3B87 的后果是：贴图平均亮度从 86 掉到 25，整颗发黑。
+     * 两个颜色都给 0xFFFFFF 即等于不染（0xFFFFFF 乘任何颜色都是它自己）。
+     * <b>哪天要是换回 {@code template_spawn_egg}，这两个值得跟着填回配色</b>，
+     * 否则会得到一颗纯白蛋。
+     */
     public static final RegistryObject<Item> MAGICAL_WINEFOX_BOSS_SPAWN_EGG =
             ITEMS.register("stellar_witch_spawn_egg",
                     () -> new ForgeSpawnEggItem(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS,
-                            0x5B3B87,
-                            0xE8D8FF,
+                            0xFFFFFF,
+                            0xFFFFFF,
                             new Item.Properties()));
 
     private IronsSpellbooksCompatItems() {

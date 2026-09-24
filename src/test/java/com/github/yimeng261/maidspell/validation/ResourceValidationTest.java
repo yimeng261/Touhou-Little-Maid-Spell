@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -178,6 +179,60 @@ class ResourceValidationTest {
 
         assertTrue(missing.isEmpty(),
             () -> "刷怪蛋缺少与注册名同名的物品模型：\n" + String.join("\n", missing));
+    }
+
+    /**
+     * 自己画贴图的刷怪蛋，{@code ForgeSpawnEggItem} 的两个颜色必须给白。
+     *
+     * <p>这不是「配色偏好」而是会不会发黑的开关：{@code ItemModelGenerator} 会给
+     * {@code item/generated} 声明过的每一层按<b>层号</b>发一个 tintindex
+     * （原版 {@code template_spawn_egg} 的 layer0/layer1 就是靠它分别上底色与斑点），
+     * 而 {@code ItemColors.createDefault} 给 {@code SpawnEggItem.eggs()} 里每一颗都注册了
+     * {@code egg.getColor(tintIndex)}。于是 layer0 拿到 tint 0 = 底色，整张贴图被乘上去。
+     * 星之魔女那颗蛋贴图平均亮度 86，乘完 0x5B3B87 只剩 25，看上去就是"很暗"。
+     *
+     * <p>反过来，{@code template_spawn_egg} 那颗白底蛋<b>必须</b>有配色，给白会变成纯白蛋 ——
+     * 所以这条只盯"自定义贴图"的那些，判据取模型文件的 {@code parent}。
+     * 将来真要画一张灰度贴图让它吃染色，得先来这儿改判据。
+     */
+    @Test
+    void spawnEggsWithCustomTexturesMustUseNeutralTint() throws IOException {
+        Pattern registration = Pattern.compile(
+            "ITEMS\\s*\\.\\s*register\\s*\\(\\s*\"([^\"]*_spawn_egg)\"\\s*,\\s*\\(\\s*\\)\\s*->"
+                + "\\s*new\\s+ForgeSpawnEggItem\\s*\\(\\s*[^,]+,\\s*(0[xX][0-9a-fA-F]+|\\d+)"
+                + "\\s*,\\s*(0[xX][0-9a-fA-F]+|\\d+)", Pattern.DOTALL);
+        Pattern templateParent = Pattern.compile("minecraft:item/template_spawn_egg");
+
+        Map<String, int[]> declared = new TreeMap<>();
+        for (Path source : filesUnder(JAVA_SOURCES, path -> path.toString().endsWith(".java"))) {
+            Matcher matcher = registration.matcher(
+                withoutJavaComments(Files.readString(source, StandardCharsets.UTF_8)));
+            while (matcher.find()) {
+                declared.put(matcher.group(1),
+                    new int[] {Integer.decode(matcher.group(2)), Integer.decode(matcher.group(3))});
+            }
+        }
+        assertFalse(declared.isEmpty(), "没从源码里解析出任何 ForgeSpawnEggItem 注册，正则大概过时了");
+
+        List<String> failures = new ArrayList<>();
+        Path models = RESOURCES.resolve("assets/touhou_little_maid_spell/models/item");
+        for (Map.Entry<String, int[]> entry : declared.entrySet()) {
+            Path model = models.resolve(entry.getKey() + ".json");
+            if (!Files.isRegularFile(model)) {
+                continue; // 缺模型由 spawnEggModelsFollowTheirRegisteredItemIds 单独报
+            }
+            if (templateParent.matcher(Files.readString(model, StandardCharsets.UTF_8)).find()) {
+                continue;
+            }
+            int[] colors = entry.getValue();
+            if (colors[0] != 0xFFFFFF || colors[1] != 0xFFFFFF) {
+                failures.add(entry.getKey() + ": 自定义贴图的蛋必须用 0xFFFFFF/0xFFFFFF，当前是 0x"
+                    + String.format("%06X", colors[0]) + "/0x" + String.format("%06X", colors[1]));
+            }
+        }
+
+        assertTrue(failures.isEmpty(),
+            () -> "自定义贴图的刷怪蛋会被 ForgeSpawnEggItem 的底色乘暗：\n" + String.join("\n", failures));
     }
 
     @Test
