@@ -51,6 +51,7 @@ public class MaidSpellCommand {
 
         // 仅在安装 Iron's Spellbooks 时注册施法命令，避免可选依赖缺失时加载相关类
         if (IronsSpellbooksCompat.isLoaded()) {
+            WinefoxLifecycleCommand.register(dispatcher);
             dispatcher.register(Commands.literal("maidspell")
                     .requires(source -> source.hasPermission(2))
                     .then(Commands.argument("targets", EntityArgument.entities())

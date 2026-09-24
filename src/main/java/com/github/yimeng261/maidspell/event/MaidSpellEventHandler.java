@@ -22,6 +22,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.block.entity.SuppressionStoneBlockEntity;
 import com.github.yimeng261.maidspell.utils.ChunkLoadingManager;
 import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
+import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import com.github.yimeng261.maidspell.utils.MaidReviveEffectCleanup;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
@@ -88,6 +89,12 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
         Entity entity = event.getEntity();
+        if (event.getLevel() instanceof ServerLevel serverLevel
+                && PersistentEntityLifecycleGuard.conflictsWithLoadedEncounter(entity, serverLevel)) {
+            LOGGER.warn("Rejecting duplicate loaded encounter entity {} in {}", entity.getUUID(), serverLevel.dimension().location());
+            event.setCanceled(true);
+            return;
+        }
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
 
             if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
