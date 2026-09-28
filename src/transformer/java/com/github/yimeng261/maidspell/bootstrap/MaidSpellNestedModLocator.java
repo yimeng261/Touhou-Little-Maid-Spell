@@ -25,7 +25,8 @@ public final class MaidSpellNestedModLocator extends AbstractJarFileModLocator {
         if (isExplodedDevelopmentModPresent()) {
             return Stream.empty();
         }
-        return Stream.of(extractNestedMod());
+        Path bootstrapJar = resolveBootstrapJar();
+        return bootstrapJar == null ? Stream.empty() : Stream.of(extractNestedMod(bootstrapJar));
     }
 
     @Override
@@ -47,13 +48,12 @@ public final class MaidSpellNestedModLocator extends AbstractJarFileModLocator {
         super.scanFile(modFile, pathConsumer);
     }
 
-    private static synchronized Path extractNestedMod() {
+    private static synchronized Path extractNestedMod(Path bootstrapJar) {
         if (extractedMod != null && Files.isRegularFile(extractedMod)) {
             return extractedMod;
         }
 
         try {
-            Path bootstrapJar = resolveBootstrapJar();
             Path extractionDirectory = Path.of(System.getProperty("java.io.tmpdir"), "maidspell-bootstrap");
             Files.createDirectories(extractionDirectory);
             Path destination = extractionDirectory.resolve("maidspell-mod-" + Files.size(bootstrapJar) + ".jar");
@@ -75,14 +75,16 @@ public final class MaidSpellNestedModLocator extends AbstractJarFileModLocator {
         }
     }
 
-    private static Path resolveBootstrapJar() throws IOException {
+    private static Path resolveBootstrapJar() {
         Path modsDirectory = FMLPaths.MODSDIR.get();
         try (Stream<Path> candidates = Files.list(modsDirectory)) {
             return candidates
                     .filter(path -> path.getFileName().toString().endsWith(".jar"))
                     .filter(MaidSpellNestedModLocator::containsNestedMod)
                     .findFirst()
-                    .orElseThrow(() -> new IOException("Unable to find the MaidSpell bootstrap jar in " + modsDirectory));
+                    .orElse(null);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to scan the mods directory " + modsDirectory, exception);
         }
     }
 
