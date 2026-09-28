@@ -389,6 +389,9 @@ tasks.withType(JavaCompile).configureEach {
 def maidSpellCompileRefmap = layout.buildDirectory.file('tmp/compileJava/compileJava-refmap.json')
 tasks.named('compileJava').configure {
     outputs.file(maidSpellCompileRefmap)
+    // Older Gradle execution history may not contain the declared refmap output.
+    // Force annotation processing to run when that file is missing.
+    outputs.upToDateWhen { maidSpellCompileRefmap.get().asFile.isFile() }
 }
 
 tasks.named('jar', Jar).configure {
