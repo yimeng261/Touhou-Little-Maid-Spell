@@ -20,14 +20,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 基于 WorldWorkerManager 的分帧结构搜索器。
- * <p>
- * 复现 ChunkGenerator.findNearestMapStructure 的环形搜索逻辑，
+ * 基于 WorldWorkerManager 的分帧结构搜索器：复现 {@code ChunkGenerator.findNearestMapStructure} 的环形搜索逻辑，
  * 每次 {@link #doWork()} 只检查一个边界候选区块，在主线程分帧执行。
- * <p>
- * 关键设计：每次 doWork 最多执行一次昂贵的区块生成操作（{@code getChunk(STRUCTURE_STARTS)}），
- * 执行后主动让出控制权（返回 false），确保 WorldWorkerManager 有机会检查时间预算，
- * 避免单次 tick 被阻塞过久。
+ * <p>每次 doWork 最多执行一次昂贵的区块生成操作（{@code getChunk(STRUCTURE_STARTS)}），
+ * 执行后主动让出控制权（返回 false），确保 WorldWorkerManager 有机会检查时间预算，避免单次 tick 被阻塞过久。
  */
 public class StructureSearchWorker implements WorldWorkerManager.IWorker {
 
@@ -121,13 +117,9 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
 
     /**
      * 每次调用检查一个边界候选区块。
-     * <p>
-     * 返回值语义：
-     * <ul>
-     *   <li>{@code true} — 本次操作是廉价的（缓存命中），可以继续执行下一个候选</li>
-     *   <li>{@code false} — 本次操作是昂贵的（触发了区块生成）或搜索已结束，
-     *       应让出控制权让 WorldWorkerManager 重新检查时间预算</li>
-     * </ul>
+     * <p>返回 {@code true} 表示本次操作廉价（缓存命中），可继续执行下一个候选；
+     * 返回 {@code false} 表示本次操作昂贵（触发了区块生成）或搜索已结束，
+     * 应让出控制权让 WorldWorkerManager 重新检查时间预算。
      */
     @Override
     public boolean doWork() {
@@ -207,14 +199,9 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
 
     /**
      * 将环的线性边界索引转换为 (j, k) 偏移。
-     * <p>
-     * 环 ring=N 的边界有 8*N 个位置，按四段排列：
-     * <ol>
-     *   <li>上边：j 从 -N 到 N-1，k = -N（共 2N 个）</li>
-     *   <li>右边：j = N，k 从 -N 到 N-1（共 2N 个）</li>
-     *   <li>下边：j 从 N 到 -N+1，k = N（共 2N 个）</li>
-     *   <li>左边：j = -N，k 从 N 到 -N+1（共 2N 个）</li>
-     * </ol>
+     * <p>环 ring=N 的边界有 8*N 个位置，按四段排列，每段 2N 个：
+     * <p>上边 j 从 -N 到 N-1、k = -N；右边 j = N、k 从 -N 到 N-1；
+     * 下边 j 从 N 到 -N+1、k = N；左边 j = -N、k 从 N 到 -N+1。
      */
     private static int[] edgeIndexToOffset(int ring, int idx) {
         int sideLen = 2 * ring; // 每段的长度

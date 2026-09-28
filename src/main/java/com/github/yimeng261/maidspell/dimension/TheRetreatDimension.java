@@ -28,17 +28,9 @@ import java.util.UUID;
 import java.util.function.Function;
 
 /**
- * 归隐之地维度工具类
- * 职责：
- * 1. 提供维度ResourceKey生成工具方法
- * 2. 提供玩家传送功能（传送到/从归隐之地）
- * 3. 提供维度状态检查方法
- * 4. 提供安全传送位置查找功能
- * 维度特性：
- * 1. 坐标与主世界完全相同
- * 2. 单一樱花林群系
- * 3. 每个玩家一个独立维度
- * 4. 只生成一个隐世之境结构
+ * 归隐之地维度工具类。
+ * 职责：提供维度 {@code ResourceKey} 生成、玩家传送（进出归隐之地）、维度状态检查、安全传送位置查找。
+ * 维度特性：坐标与主世界完全相同；单一樱花林群系；每个玩家一个独立维度；只生成一个隐世之境结构。
  */
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class TheRetreatDimension {
@@ -133,9 +125,8 @@ public class TheRetreatDimension {
         return player.level().dimension().equals(playerRetreat);
     }
     /**
-     * 查找安全的传送位置
-     * 采用单列二分搜索估算落点，再在估算值附近做极小范围校正。
-     * 这样可以把开销压到 O(logH) 级别，避免邻列扫描和高度图查询。
+     * 查找安全的传送位置。采用单列二分搜索估算落点，再在估算值附近做极小范围校正，把开销压到 O(logH) 级别，
+     * 避免邻列扫描和高度图查询。
      */
     private static BlockPos findSafePosition(ServerLevel level, BlockPos targetPos) {
         int fallbackY = Math.max(level.getSeaLevel() + 5, 100);

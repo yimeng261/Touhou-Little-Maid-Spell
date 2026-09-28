@@ -14,19 +14,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 /**
- * 把 jar 内置的车万女仆模型包解压到 {@code gameDir/tlm_custom_pack}。
- *
- * <p>TLM 1.5.x 只从 {@code tlm_custom_pack} 读模型包 —— 不读 mod jar、不读原版资源包栈、
- * 也不读数据包（那是 1.12.2 时代的机制）。它自己的默认女仆包走的就是这条自解压路线
- * （{@code CommonDefaultPack} + {@code GetJarResources.copyFolder}），本类是同一手法。
- *
- * <p>解压到磁盘而不是运行时注入，是因为{@link ServerCustomPackLoader 服务端}和客户端
- * 各有一份加载器、读的是同一个目录：躺在目录里，两边就都有，玩家才能在模型选择界面里
- * 真正选到它（服务端那份还负责显示名和野生女仆的随机模型池）。
- *
- * <p>文件清单写死而不是遍历 jar：{@code getResourceAsStream} 在开发环境和 jar 里行为一致，
- * 不用碰 Forge 的 union 文件系统。清单与磁盘的一致性由
- * {@code TouhouLittleMaidModelPackInstallerTest} 兜底。
+ * 将内置模型包解压到 TLM 的 {@code tlm_custom_pack} 目录。
+ * TLM 1.5.x 的客户端和服务端加载器都从该目录读取模型包。
  */
 public final class TouhouLittleMaidModelPackInstaller {
     private static final String TLM_MOD_ID = "touhou_little_maid";

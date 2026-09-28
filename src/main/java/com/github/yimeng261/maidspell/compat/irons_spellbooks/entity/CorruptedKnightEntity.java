@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.base.AbstractSpellMeleeMob;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.registries.ItemRegistry;
@@ -87,7 +88,7 @@ public class CorruptedKnightEntity extends AbstractSpellMeleeMob implements Enem
 
     @Override
     public boolean isHostileTowards(LivingEntity target) {
-        if (target == this || !target.isAlive()) return false;
+        if (target == this || !IAuthoritativeHealth.combatAlive(target)) return false;
         if (target instanceof Player player && (player.isCreative() || player.isSpectator())) return false;
         if (isGoetyReaper(target)) return false;
         return true;

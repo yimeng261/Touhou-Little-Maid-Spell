@@ -19,6 +19,7 @@ import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -49,23 +50,9 @@ import java.util.List;
 import java.util.OptionalInt;
 
 /**
- * 守塔人。观星塔的守卫，牧师那套远程法师模板：站桩不动、被打才还手，靠 {@code WizardAttackGoal}
- * 的加权逻辑在攻击／防御／辅助三类法术之间挑。
- *
- * <p>与牧师的区别只有三处：
- * <ul>
- *   <li>不带村庄那一摊（找 POI、回家睡觉、保卫村庄），只留「玩家中立」这一层——
- *       {@link NeutralWizard} 自带的怒气系统管着：不惹它就不动手，打了它就记仇。</li>
- *   <li>魔法飞弹改成连发，见 {@link GuardianWitchAttackGoal}；攻击池里另有魔法霰弹。</li>
- *   <li>开了交易栏，见 {@link AstroMancerTrades} —— 那套「每天 5 次、半天补货」的机器
- *       与 {@link ElfTemplarEntity} 逐行同源，改一边记得看另一边。</li>
- * </ul>
- *
- * <p><b>法力值和冷却缩减对它自己不起作用</b>，记在这里省得下次再查：
- * {@code AbstractSpellCastingMob} 的施法路径压根不碰 {@code MagicData} 的法力池，也不走
- * {@code getEffectiveSpellCooldown}——怪物的出手节奏完全由 {@code WizardAttackGoal} 的
- * {@code spellAttackInterval} 决定。属性照着需求配上是为了让面板／别的模组读得到，
- * 真想让它放得更密，改的是 {@link #SPELL_ATTACK_INTERVAL_MIN}/{@code MAX}。
+ * 观星塔的中立法师守卫，使用加权施法与交易系统。
+ * 施法间隔由 WizardAttackGoal 控制，法力和冷却缩减属性不影响自身出手频率。
+ * 星陨石只出售一次，不参与常规补货。
  */
 public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizard {
     /** 轨路虚空来自 traveloptics，那个模组不是编译期依赖，只能按 id 在运行时找。 */
@@ -79,8 +66,10 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
     private static final int SPELL_ATTACK_INTERVAL_MAX = 60;
 
     /**
-     * 每条报价每天能成交几次。与 {@code ElfTemplarEntity} 取同一个值：交易界面里
-     * {@code maxUses} 就是这个数，卖完要等半天补货。
+     * 报价的默认每日上限。与 {@code ElfTemplarEntity} 取同一个值：交易界面里 {@code maxUses} 就是它，
+     * 卖完要等半天补货。
+     *
+     * <p>不是全表统一：星锚珍珠按 {@code AstroMancerTrades#dailyLimitFor} 只给 1，星陨石那一条更是全局一次。
      */
     static final int DAILY_TRADE_MAX_USES = 5;
 
@@ -133,6 +122,12 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
         this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Player.class, 10, true, false,
                 this::isHostileTowards));
         this.targetSelector.addGoal(5, new ResetUniversalAngerTargetGoal<>(this, false));
+    }
+
+    /** 同类范围法术可能误伤并触发还击，声明同盟以阻止互相攻击。 */
+    @Override
+    public boolean isAlliedTo(Entity entity) {
+        return entity instanceof GuardianWitchEntity || super.isAlliedTo(entity);
     }
 
     private static List<AbstractSpell> attackSpells() {
@@ -217,16 +212,7 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
-    /**
-     * 打开交易界面。
-     *
-     * <p>不用 {@link net.minecraft.world.item.trading.Merchant} 自带的
-     * {@code openTradingScreen}，只为多一句：菜单没开起来时把交易对象撤回来。
-     * 默认实现开不起来就直接返回，而 {@code tradingPlayer} 只在
-     * {@code MerchantMenu.removed()} 里清 —— 菜单压根没开过，那个方法就永远不会跑，
-     * 于是 {@code mobInteract} 里那一关永远过不去，之后再也点不开交易。
-     * 星之魔女酒狐那边（{@code MagicalWinefoxBossEntity#startTrading}）同样处理。
-     */
+    /** 打开菜单失败时清除交易对象，避免后续交易被锁住。 */
     private void startTrading(Player player) {
         this.setTradingPlayer(player);
         OptionalInt containerId = player.openMenu(new SimpleMenuProvider(
@@ -268,6 +254,26 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
         this.ambientSoundTime = -this.getAmbientSoundInterval();
     }
 
+    /**
+     * 补货：与她同源的精灵守卫走 {@code IMerchantWizard#restock} 那份默认实现，这里只多一条 ——
+     * 「只可交易一次」的星陨石不跟着刷回来（见 {@code AstroMancerTrades#isOnceEver}）。
+     *
+     * <p>与默认实现逐行相同的原因：默认那份会把整张表一律 {@code resetUses()}，星陨石一次用掉之后
+     * 每半天又会被它放回货架，那就不叫只可交易一次了。次数本身就是它的全部状态，
+     * {@code uses}／{@code maxUses} 落盘，所以读档以后仍然是卖光。
+     */
+    @Override
+    public void restock() {
+        for (MerchantOffer offer : this.getOffers()) {
+            if (AstroMancerTrades.isOnceEver(offer.getResult())) {
+                continue;
+            }
+            offer.updateDemand();
+            offer.resetUses();
+        }
+        this.setRestocksToday(this.getRestocksToday() + 1);
+    }
+
     @Override
     public void notifyTradeUpdated(ItemStack stack) {
         if (!this.level().isClientSide && this.ambientSoundTime > -this.getAmbientSoundInterval() + 20) {
@@ -290,34 +296,8 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
     @Override
     public void readAdditionalSaveData(CompoundTag compound) {
         super.readAdditionalSaveData(compound);
-        deserializeMerchant(compound, offers -> this.offers = offers);
-        if (this.offers != null) {
-            this.offers = normalizeDailyUseLimit(this.offers);
-        }
-    }
-
-    /**
-     * 把读回来的表按当前的每日限额重盖一遍。
-     *
-     * <p>存档里的报价是<b>过去某一版</b>的 {@code AstroMancerTrades} 写下的：改过价格、
-     * 加过条目、动过限额之后，老存档会一直卖着旧价。这里只重盖 {@code maxUses} 与已用次数
-     * 的上限，价格条目本身留给 {@code getOffers()} 那份新表 —— 但只有表被重建时才会生效。
-     * 想彻底换表（比如删掉某条报价）得清掉实体存档里的 {@code Offers}。
-     */
-    private MerchantOffers normalizeDailyUseLimit(MerchantOffers saved) {
-        MerchantOffers normalized = new MerchantOffers();
-        for (MerchantOffer offer : saved) {
-            normalized.add(new MerchantOffer(
-                offer.getBaseCostA().copy(),
-                offer.getCostB().copy(),
-                offer.getResult().copy(),
-                Math.min(offer.getUses(), DAILY_TRADE_MAX_USES),
-                DAILY_TRADE_MAX_USES,
-                offer.getXp(),
-                offer.getPriceMultiplier(),
-                offer.getDemand()));
-        }
-        return normalized;
+        // 按当前报价重建，仅从存档保留使用次数。
+        deserializeMerchant(compound, offers -> this.offers = AstroMancerTrades.rebuildKeepingUses(offers));
     }
 
     @Override

@@ -56,14 +56,11 @@ import com.mojang.logging.LogUtils;
 import top.theillusivec4.curios.api.CuriosApi;
 
 /**
- * 铁魔法模组的法术书提供者
- * 包含完整的施法逻辑，支持持续性法术和复杂的冷却系统
- * 通过 MaidIronsSpellData 管理各女仆的数据
- * 支持的法术容器类型：
- * - SpellBook: 法术书
- * - StaffItem: 法杖（继承自CastingItem）
- * - MagicSwordItem: 魔剑（带有法术容器功能的剑）
- * - 其他继承自CastingItem的物品
+ * 铁魔法模组的法术书提供者。包含完整施法逻辑，支持持续性法术和复杂的冷却系统，
+ * 通过 {@code MaidIronsSpellData} 管理各女仆的数据。
+ *
+ * <p>支持的法术容器类型：{@code SpellBook}（法术书）、{@code StaffItem}（法杖，继承自 {@code CastingItem}）、
+ * {@code MagicSwordItem}（带法术容器功能的魔剑），以及其他继承自 {@code CastingItem} 的物品。
  */
 public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellData, SpellData> {
     private static final Logger LOGGER = LogUtils.getLogger();

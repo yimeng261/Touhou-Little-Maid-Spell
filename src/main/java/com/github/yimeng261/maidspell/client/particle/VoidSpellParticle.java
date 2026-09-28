@@ -11,17 +11,8 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
 /**
- * 虚空法术粒子。
- *
- * <p>贴图是 {@code textures/particle/void_spell_0..7.png} 八张 16x16 的帧，
- * 由 {@code particles/void_spell.json} 按顺序列出来；{@link #setSpriteFromAge} 再按年龄挑帧，
- * 于是每个粒子各播各的动画，不需要 {@code .mcmeta}（{@code .mcmeta} 的动画是整张图集
- * 全局同步播的，那样同一时刻所有粒子都停在同一帧）。
- *
- * <p><b>不能只写一张 16x128 的竖排图集。</b>{@code ParticleEngine} 只把 JSON 里列出的
- * 每个贴图 id 绑成一个 sprite（{@code MutableSpriteSet.rebind} 一张图一个），整张 PNG
- * 就是一帧 —— 竖排图集写成一个条目，屏幕上看到的就是 8 帧挤在同一个方块里。
- * 一帧一张方图这条约定由 {@code ParticleSpriteResourceTest} 在构建期把着。
+ * 虚空法术粒子按年龄从八张独立贴图中取帧。
+ * 粒子 JSON 须逐帧列出贴图，单张竖排图不会被自动拆帧。
  */
 public class VoidSpellParticle extends TextureSheetParticle {
     private static final float BASE_QUAD_SIZE = 0.42F;

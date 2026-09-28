@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.spell.providers.slashblade;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import mods.flammpfeil.slashblade.slasharts.CircleSlash;
 import mods.flammpfeil.slashblade.slasharts.Drive;
@@ -30,7 +31,7 @@ public final class SlashBladeDirectSkills {
 
     private static double getDashDistance(EntityMaid maid, double scale) {
         LivingEntity target = MaidSlashBladeData.getOrCreate(maid.getUUID()).getTarget();
-        if (target == null || !target.isAlive() || target.isRemoved()) {
+        if (!IAuthoritativeHealth.combatAlive(target)) {
             return DASH_DISTANCE_FALLBACK * scale;
         }
 
@@ -61,7 +62,7 @@ public final class SlashBladeDirectSkills {
 
     private static void reaimAtCurrentTarget(EntityMaid maid) {
         LivingEntity target = getCurrentTarget(maid);
-        if (target != null && target.isAlive() && !target.isRemoved()) {
+        if (IAuthoritativeHealth.combatAlive(target)) {
             adjustMaidLookAngle(maid, target);
         }
     }

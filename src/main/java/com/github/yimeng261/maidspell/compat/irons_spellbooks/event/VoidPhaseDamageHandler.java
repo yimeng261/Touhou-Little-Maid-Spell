@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.event;
 
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxNonLethalGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.VoidPhaseSpell;
@@ -15,10 +16,9 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 /**
- * 虚空相变的追加伤害：只要身上带着虚空相变，攻击者造成的任何一次伤害都会再追加一次虚空伤害。
- *
- * <p>没有来源类型筛选 —— 近战、末影法术、箭矢、爆炸、荆棘反伤一律触发，唯一的门槛是
- * 「伤害来源实体是生物且身上有 {@code void_phase}」。
+ * 虚空相变对带效果的生物造成的所有伤害追加虚空伤害。
+ * 正式挑战须通过 {@link WinefoxNonLethalGuard#duelFollowUpLimit} 限制追加量，
+ * 避免主伤害尚未落账时击穿最低生命值。
  */
 public final class VoidPhaseDamageHandler {
     private static final ThreadLocal<Boolean> APPLYING_VOID_DAMAGE =
@@ -47,6 +47,10 @@ public final class VoidPhaseDamageHandler {
         int spellLevel = phase.getAmplifier() + 1;
         VoidPhaseSpell spell = (VoidPhaseSpell) IronsSpellbooksCompatSpells.VOID_PHASE.get();
         float bonusDamage = spell.getBonusDamage(spellLevel, attacker);
+        // 正赛里这一发要和主伤害共用同一份"削到地板为止"的额度，所以拿的是事件里那个已经被守则
+        // 削过的数（本处理器优先级更低，跑在守则后面 —— 顺序由优先级保证，不看注册先后）。
+        bonusDamage = WinefoxNonLethalGuard.duelFollowUpLimit(
+                event.getEntity(), event.getSource(), event.getAmount(), bonusDamage);
         if (bonusDamage <= 0.0F) {
             return;
         }

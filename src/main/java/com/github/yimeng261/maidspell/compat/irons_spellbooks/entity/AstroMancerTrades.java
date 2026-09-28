@@ -14,12 +14,8 @@ import net.minecraft.world.item.trading.MerchantOffers;
 import java.util.List;
 
 /**
- * 观星术士的交易表，照《NPC交易栏》抄：一半是「购入」（她花绿宝石收玩家的东西），
- * 一半是「出售」（玩家花绿宝石买她的货）。
- *
- * <p>与星之魔女酒狐那两张表不同，她的报价是<b>有偿</b>的：每条每天 5 次、半天补一次货。
- * 补货那套机器在 {@code GuardianWitchEntity} 上（{@code IMerchantWizard}），
- * 与 {@code ElfTemplarEntity} 同一份规则。
+ * 观星术士的购入与出售报价。普通商品每日限购 5 次并补货，
+ * 星锚珍珠每日 1 件，星陨石只出售一次。
  */
 public final class AstroMancerTrades {
 
@@ -32,6 +28,23 @@ public final class AstroMancerTrades {
 
     /** 卷轴上的那一发魔法霰弹的等级。 */
     private static final int SCROLL_LEVEL = 1;
+
+    /**
+     * 星锚珍珠的每日上限，按《NPC交易栏》那一列：1 件。
+     *
+     * <p>注意她的补货周期是<b>半天</b>（{@code IMerchantWizard#shouldRestock} 的 12000 tick 窗口，与
+     * {@code ElfTemplarEntity} 同源），所以这一条实际是「每次补货 1 件、一天最多两次」。
+     * 要严格一天一件，得把整台补货机器的窗口改成 24000 tick —— 那会一起改掉她所有报价，
+     * 也会和精灵守卫分家，不在这里动。
+     */
+    private static final int STARANCHOR_PEARL_DAILY_LIMIT = 1;
+
+    /** 只可交易一次的那一条（星陨石）用掉的次数上限，见 {@link #isOnceEver}。 */
+    private static final int ONCE_EVER_USES = 1;
+
+    /** 成交给的经验与要价系数：她不是村民，经验只走界面显示，需求涨跌不改价。 */
+    private static final int XP_PER_TRADE = 1;
+    private static final float PRICE_MULTIPLIER = 0.05F;
 
     /**
      * 「原版食物」那一行的实体。
@@ -72,16 +85,20 @@ public final class AstroMancerTrades {
         offers.add(sell(16, new ItemStack(ItemRegistry.MITHRIL_SCRAP.get())));
         offers.add(sell(4, new ItemStack(Items.ENDER_PEARL)));
         offers.add(sell(10, scroll(IronsSpellbooksCompatSpells.MAGIC_SHOTGUN.get())));
+        // 星陨石：六十四颗绿宝石外加一颗下界之星，只此一次（补货机器不会把它刷回来，见 #isOnceEver）。
+        // 两样付款走 costA／costB 那一对槽位，与酒狐那边换法杖／长剑的写法一致。
+        offers.add(offer(new ItemStack(Items.EMERALD, 64), new ItemStack(Items.NETHER_STAR),
+                new ItemStack(MaidSpellItems.STAR_METEORITE.get()), ONCE_EVER_USES));
 
         return offers;
     }
 
     private static MerchantOffer buy(ItemStack goods, int emeralds) {
-        return offer(goods, new ItemStack(Items.EMERALD, emeralds));
+        return offer(goods, ItemStack.EMPTY, new ItemStack(Items.EMERALD, emeralds));
     }
 
     private static MerchantOffer sell(int emeralds, ItemStack goods) {
-        return offer(new ItemStack(Items.EMERALD, emeralds), goods);
+        return offer(new ItemStack(Items.EMERALD, emeralds), ItemStack.EMPTY, goods);
     }
 
     private static ItemStack scroll(AbstractSpell spell) {
@@ -91,12 +108,70 @@ public final class AstroMancerTrades {
     }
 
     /**
-     * {@code maxUses} 由观星术士那边的每日限额决定，这里给的是「还没开张」的初值：
-     * 真正的上限在 {@code GuardianWitchEntity#normalizeDailyUseLimit} 里统一盖成
-     * {@code DAILY_TRADE_MAX_USES}，存档读回来也走同一处。
+     * 每档报价的每日上限，按「她卖出去的东西」认行。
+     *
+     * <p>认东西而不是认报价对象：存档里那张表是从 NBT 里 {@code new MerchantOffer(tag)} 造回来的，
+     * 任何自定义标记都过不了这一关，只有 {@code uses}／{@code maxUses}／物品本身留得下来。
      */
-    private static MerchantOffer offer(ItemStack cost, ItemStack result) {
-        return new MerchantOffer(cost, ItemStack.EMPTY, result, 0,
-                GuardianWitchEntity.DAILY_TRADE_MAX_USES, 1, 0.05F);
+    public static int dailyLimitFor(ItemStack result) {
+        if (isOnceEver(result)) {
+            return ONCE_EVER_USES;
+        }
+        return result.is(MaidSpellItems.STARANCHOR_PEARL.get())
+                ? STARANCHOR_PEARL_DAILY_LIMIT
+                : GuardianWitchEntity.DAILY_TRADE_MAX_USES;
+    }
+
+    /**
+     * 「只可交易一次」的那一行：星陨石。
+     *
+     * <p>它靠 {@code maxUses = 1} 加上「补货时跳过它」实现（见 {@code GuardianWitchEntity#restock}）：
+     * {@code uses}／{@code maxUses} 都会随交易表落盘，所以读档回来仍是卖光，不会变成每天一颗。
+     * 只要以后没有别的行卖星陨石，按东西认行就够用。
+     */
+    public static boolean isOnceEver(ItemStack result) {
+        return result.is(MaidSpellItems.STAR_METEORITE.get());
+    }
+
+    /** 按当前报价重建旧存档交易表，按结果和代价匹配并保留使用次数。 */
+    public static MerchantOffers rebuildKeepingUses(MerchantOffers saved) {
+        MerchantOffers rebuilt = new MerchantOffers();
+        for (MerchantOffer current : build()) {
+            MerchantOffer previous = saved == null ? null : findSameRow(saved, current);
+            rebuilt.add(new MerchantOffer(
+                    current.getBaseCostA().copy(),
+                    current.getCostB().copy(),
+                    current.getResult().copy(),
+                    previous == null ? 0 : Math.min(previous.getUses(), current.getMaxUses()),
+                    current.getMaxUses(),
+                    current.getXp(),
+                    current.getPriceMultiplier(),
+                    previous == null ? 0 : previous.getDemand()));
+        }
+        return rebuilt;
+    }
+
+    private static MerchantOffer findSameRow(MerchantOffers saved, MerchantOffer current) {
+        for (MerchantOffer old : saved) {
+            if (ItemStack.isSameItemSameTags(old.getResult(), current.getResult())
+                    && ItemStack.isSameItemSameTags(old.getBaseCostA(), current.getBaseCostA())
+                    && ItemStack.isSameItemSameTags(old.getCostB(), current.getCostB())) {
+                return old;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * {@code maxUses} 就是这一行的每日限额，见 {@link #dailyLimitFor}；第 4 个参数是「已经用掉几次」的初值，
+     * 不是上限（{@code (costA, costB, result, uses, maxUses, xp, priceMultiplier)}）。
+     */
+    private static MerchantOffer offer(ItemStack costA, ItemStack costB, ItemStack result, int maxUses) {
+        return new MerchantOffer(costA, costB, result, 0, maxUses, XP_PER_TRADE, PRICE_MULTIPLIER);
+    }
+
+    /** 走每日限额的那条路：上限按卖的东西现查。 */
+    private static MerchantOffer offer(ItemStack costA, ItemStack costB, ItemStack result) {
+        return offer(costA, costB, result, dailyLimitFor(result));
     }
 }

@@ -18,16 +18,10 @@ import software.bernie.geckolib.renderer.GeoEntityRenderer;
 public class StarShadowSpearRenderer extends GeoEntityRenderer<StarShadowSpearEntity> {
 
     /**
-     * 把枪身从自己的坐标系摆到原版 {@code TridentModel} 的坐标系。
-     *
-     * <p>模型里枪柄朝 +Z、枪头朝 -Z，根骨骼那个绕 Z 的旋转不改变 Z 轴，
-     * 所以在 GeckoLib 的实体渲染空间里枪尖仍是 -Z；原版三叉戟模型的枪尖是 -Y。
-     * 绕 X 转 -90° 正好把 -Z 对到 -Y，同时枪头那几片翼保持在 X 轴上 ——
-     * 和三叉戟的三个尖齿一个方向。
-     *
-     * <p>与 {@code WinefoxSwordProjectileRenderer} 的差别只在这一步：
-     * 那边是纯法术弹体，没有 {@code yRot/xRot} 可用，直接按速度向量转；
-     * 这边是真的 {@code ThrownTrident}，两个角由原版维护，照抄原版的用法最稳。
+     * 把枪身从自己的坐标系摆到原版 {@code TridentModel} 的坐标系。模型里枪柄朝 +Z、枪头朝 -Z，根骨骼绕 Z 的旋转
+     * 不改变 Z 轴，故 GeckoLib 实体渲染空间里枪尖仍是 -Z，而原版三叉戟枪尖是 -Y；绕 X 转 -90° 正好把 -Z 对到 -Y，
+     * 枪头那几片翼也仍留在 X 轴上，与三叉戟的三个尖齿同向。与 {@code WinefoxSwordProjectileRenderer} 的差别只在这一步：
+     * 那边是纯法术弹体，没有 {@code yRot/xRot} 可用，直接按速度向量转；这边是真的 {@code ThrownTrident}，两角由原版维护。
      */
     private static final float TRIDENT_FRAME_ROTATION = -90.0F;
 

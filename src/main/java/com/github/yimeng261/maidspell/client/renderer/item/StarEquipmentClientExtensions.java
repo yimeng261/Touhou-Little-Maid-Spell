@@ -87,14 +87,9 @@ public final class StarEquipmentClientExtensions {
     }
 
     /**
-     * 要顺带指定持握姿势的装备走这个 —— 比如法杖，手臂微微上抬并跟着视角俯仰。
-     *
-     * <p>一个物品只能给一份 {@link IClientItemExtensions}，而铁魔法是在
-     * {@code StaffItem.initializeClient} 里单独 accept 一份只带 {@code getArmPose} 的扩展，
-     * 所以这里把姿势和渲染器合到同一份里。
-     *
-     * <p>姿势由调用方传进来，本类不认识任何一个可选模组的类型：
-     * 这个文件在核心包下，缺了那个模组照样要能加载。
+     * 要顺带指定持握姿势的装备走这个 —— 比如法杖，手臂微微上抬并跟着视角俯仰。一个物品只能给一份 {@link IClientItemExtensions}，
+     * 而铁魔法在 {@code StaffItem.initializeClient} 里单独 accept 一份只带 {@code getArmPose} 的扩展，故这里把姿势和渲染器合到同一份里。
+     * <p>姿势由调用方传进来：本类不认识任何可选模组的类型，这个文件在核心包下，缺了那个模组也要能加载。
      */
     public static <T extends Item & GeoAnimatable> IClientItemExtensions withArmPose(ResourceLocation model,
                                                                                       ResourceLocation texture,

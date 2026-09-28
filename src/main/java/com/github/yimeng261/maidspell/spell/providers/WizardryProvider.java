@@ -21,6 +21,7 @@ import com.binaris.wizardry.setup.registries.EBItems;
 import com.binaris.wizardry.setup.registries.Spells;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidWizardrySpellData;
 import com.mojang.logging.LogUtils;
@@ -104,7 +105,7 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
 
         // 检查目标
         LivingEntity target = data.getTarget();
-        if (target == null || !target.isAlive()) {
+        if (!IAuthoritativeHealth.combatAlive(target)) {
             return;
         }
 
@@ -298,7 +299,7 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
      */
     private void updateMaidOrientation(EntityMaid maid, MaidWizardrySpellData data) {
         LivingEntity target = data.getTarget();
-        if (target != null && target.isAlive()) {
+        if (IAuthoritativeHealth.combatAlive(target)) {
             BehaviorUtils.lookAtEntity(maid, target);
         }
     }
@@ -612,5 +613,4 @@ public class WizardryProvider extends ISpellBookProvider<MaidWizardrySpellData, 
         data.resetCastingState();
     }
 }
-
 

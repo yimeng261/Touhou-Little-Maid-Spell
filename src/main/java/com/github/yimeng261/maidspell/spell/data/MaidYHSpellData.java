@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.spell.data;
 
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import dev.xkmc.fastprojectileapi.entity.SimplifiedProjectile;
 import dev.xkmc.youkaishomecoming.content.spell.spellcard.SpellCardWrapper;
 import net.minecraft.world.entity.LivingEntity;
@@ -101,7 +102,7 @@ public class MaidYHSpellData extends IMaidSpellData {
      * 检查目标是否有效
      */
     public boolean isValidTarget() {
-        return target != null && target.isAlive();
+        return IAuthoritativeHealth.combatAlive(target);
     }
 
     

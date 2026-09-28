@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.spell.manager;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.LivingEntity;
@@ -269,7 +270,7 @@ public class SpellBookManager {
 
 
     public void tick(EntityMaid maid){
-        // Clear stale attack targets before providers tick; otherwise long SlashBlade combos can keep swinging after a kill.
+        // Clear stale targets before providers tick to stop post-kill combos.
         LivingEntity attackTarget = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
         if (attackTarget != null && !isValidTarget(attackTarget)) {
             maid.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
@@ -309,7 +310,8 @@ public class SpellBookManager {
     }
 
     private static boolean isValidTarget(LivingEntity target) {
-        return target != null && target.isAlive() && !target.isDeadOrDying() && !target.isRemoved();
+        return IAuthoritativeHealth.combatAlive(target)
+            && !IAuthoritativeHealth.deadOrDying(target);
     }
 
     private static String describeTarget(LivingEntity target) {

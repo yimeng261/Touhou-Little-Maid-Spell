@@ -14,6 +14,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -121,7 +122,22 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
         this.targetSelector.addGoal(5, new ResetUniversalAngerTargetGoal<>(this, false));
     }
 
+    /** 同类范围法术可能触发还击；声明同盟以阻止友伤和连锁仇恨。 */
+    @Override
+    public boolean isAlliedTo(Entity entity) {
+        return entity instanceof ElfTemplarEntity || super.isAlliedTo(entity);
+    }
+
+    /**
+     * 天生的敌人只有灾厄村民和不死生物。
+     *
+     * <p>同类在这里再显式排一次：上面那个谓词是白名单，照理轮不到同类，但把这条规矩钉在谓词里，
+     * 以后谁把 {@link #isAlliedTo} 或索敌条件改宽松了，也不会重新变成精灵打精灵。
+     */
     private boolean isNaturalEnemy(LivingEntity target) {
+        if (target instanceof ElfTemplarEntity || this.isAlliedTo(target)) {
+            return false;
+        }
         return target instanceof Raider || target.getMobType() == MobType.UNDEAD;
     }
 

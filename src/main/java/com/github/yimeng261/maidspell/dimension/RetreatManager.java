@@ -337,16 +337,7 @@ public class RetreatManager {
         return generatedStructurePositions.get(dimKey);
     }
 
-    // ========== 结构生成标记（两阶段设计） ==========
-    //
-    // 阶段1 — Mixin (tryGenerateStructure HEAD)：
-    //   tryBeginGeneration()  → 写入 pendingGenerations，阻止后续候选区块进入
-    //
-    // 阶段2 — generate()：
-    //   成功：completeGeneration() → 写入 generatedDimensions，清除 pendingGenerations
-    //   失败：cancelGeneration()   → 仅清除 pendingGenerations，允许下一个候选区块重试
-    //
-    // 两个集合分离，Mixin 和 generate() 各自操作不同集合，不存在双重标记冲突。
+    // 结构生成先占 pending 名额；成功后标记完成，失败则释放名额供下个候选重试。
 
     /**
      * [Mixin 调用] 原子性预约生成槽位。

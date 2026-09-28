@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.spell.providers;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidManaAndArtificeSpellData;
 import com.mna.api.ManaAndArtificeMod;
@@ -78,7 +79,7 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
         }
 
         LivingEntity target = data.getTarget();
-        if (target == null || !target.isAlive()) {
+        if (!IAuthoritativeHealth.combatAlive(target)) {
             return;
         }
 
@@ -279,7 +280,7 @@ public class ManaAndArtificeProvider extends ISpellBookProvider<MaidManaAndArtif
         LivingEntity target = data.getTarget();
         String cooldownKey = data.getCurrentSpellId();
 
-        if (target == null || !target.isAlive()) {
+        if (!IAuthoritativeHealth.combatAlive(target)) {
             LOGGER.debug("[MaidSpell/MNA] Target missing before cast maid={} spell={}", maid.getUUID(), cooldownKey);
             return false;
         }

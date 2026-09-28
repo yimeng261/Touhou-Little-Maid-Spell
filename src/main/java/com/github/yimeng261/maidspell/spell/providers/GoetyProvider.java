@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.spell.providers;
 
 import org.slf4j.Logger;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidGoetySpellData;
 import com.mojang.logging.LogUtils;
@@ -85,7 +86,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
         
         // 检查目标（只在开始施法时检查一次）
         LivingEntity target = data.getTarget();
-        if (target == null || !target.isAlive()) {
+        if (!IAuthoritativeHealth.combatAlive(target)) {
             return;
         }
         
@@ -238,7 +239,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData,ItemSta
         LivingEntity target = data.getTarget();
         
         // 只有当目标存在且存活时才更新朝向
-        if (target != null && target.isAlive()) {
+        if (IAuthoritativeHealth.combatAlive(target)) {
             BehaviorUtils.lookAtEntity(maid, target);
             // Goety 的投射物会立即读取 caster.getViewVector；非蓄力瞬发法术也必须同步精确朝向。
             updatePreciseOrientation(maid, data);

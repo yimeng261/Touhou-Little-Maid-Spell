@@ -326,16 +326,12 @@ public class HiddenRetreatStructure extends Structure {
     }
 
     /**
-     * 检查地形并返回平均高度。
+     * 检查地形并返回平均高度。用 NoiseRouter 的 depth 密度函数二分法估算地表高度，配 Welford 在线算法增量算方差，方差超阈值即退出。
      * <p>
-     * 使用 NoiseRouter 的 depth 密度函数通过二分法估算地表高度，
-     * 配合 Welford 在线算法增量计算方差，方差超阈值时立即退出。
-     * <p>
-     * 水域检测：depth 函数的零交叉点不等于实际地形表面。对于海洋地形，
-     * depth 的零交叉点可能在海平面附近（Y≈64），而实际海底远低于此。
-     * 当估算表面接近海平面时（seaLevel ~ seaLevel+5），在固定的 seaLevel-1
-     * 处用 finalDensity 交叉验证：陆地该处是固体（泥土/石头），海洋该处是水。
-     * 使用固定 Y 而非 surfaceY-1，避免 depth 二分法 ±1~3 格误差导致误判。
+     * 水域检测：depth 的零交叉点不等于实际地形表面。海洋地形下零交叉点可能在海平面附近（Y≈64），
+     * 实际海底远低于此。估算表面接近海平面时（seaLevel ~ seaLevel+5），在固定 seaLevel-1 处用
+     * finalDensity 交叉验证：陆地该处是固体（泥土/石头），海洋该处是水。
+     * 用固定 Y 而非 surfaceY-1，避免 depth 二分法 ±1~3 格误差导致误判。
      */
     private OptionalInt checkTerrainAndGetHeight(GenerationContext context, ChunkPos centerChunk) {
         DensityFunction depthFn = context.randomState().router().depth();
