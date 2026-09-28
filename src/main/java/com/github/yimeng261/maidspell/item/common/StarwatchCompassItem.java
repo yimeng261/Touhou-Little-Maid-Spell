@@ -27,24 +27,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * 观星罗盘。守塔人的战利品，在末地右键指向最近的星途终岸。
- *
- * <p><b>为什么继承 {@link CompassItem}：</b>指针朝向那一整套（{@code minecraft:angle} 谓词、
- * 磁石坐标的读写、发光效果）原版已经写好了，只要把 {@code LodestonePos} /
- * {@code LodestoneDimension} 填对，客户端一行代码都不用写。
- * 模型侧的 12 帧 overrides 见 {@code models/item/starwatch_compass.json}，
- * 谓词函数在 {@code MaidSpellClientMod} 里按物品单独注册——{@code angle} 是逐物品注册的，
- * 不是通用谓词，光继承 {@code CompassItem} 拿不到。
- *
- * <p><b>{@code LodestoneTracked} 必须写 false。</b>{@code CompassItem.inventoryTick}
- * 每 tick 都会去查坐标处是不是还有一块真磁石，不是就把 {@code LodestonePos} 抹掉——
- * 而我们指的是一座结构，那儿当然没有磁石。原版给这条留的口子正是
- * {@code LodestoneTracked}：它存在且为 false 时直接 return，不做校验。
- *
- * <p><b>名字必须自己钉住。</b>{@code CompassItem.getDescriptionId(ItemStack)} 只要看见
- * {@code LodestonePos} / {@code LodestoneDimension} 就返回 {@code item.minecraft.lodestone_compass}，
- * 也就是原版"磁石指针"。而这两个键正是我们存结构坐标用的，于是绑定成功的同一刻，
- * 物品名会被原版顺手改成磁石指针，见 {@link #getDescriptionId(ItemStack)}。
+ * 指向最近星途终岸的罗盘，复用磁石罗盘的指针逻辑。
+ * LodestoneTracked 必须为 false，否则原版会清除并非磁石的结构坐标。
  */
 public class StarwatchCompassItem extends CompassItem {
 
@@ -119,19 +103,7 @@ public class StarwatchCompassItem extends CompassItem {
         return InteractionResultHolder.success(stack);
     }
 
-    /**
-     * 物品名恒为"观星罗盘"。
-     *
-     * <p>父类 {@code CompassItem} 用 {@code LodestonePos} / {@code LodestoneDimension} 的存在与否
-     * 来判断"这是不是一块磁石指针"，是就换用 {@code item.minecraft.lodestone_compass} 这个名字。
-     * 我们借的正是同一个键来存结构坐标，所以绑定成功后名字会跟着变成磁石指针——
-     * 那是给真磁石用的名字，对一座结构毫无意义。这里把它换回自己的翻译键。
-     *
-     * <p>{@code super.getDescriptionId()} 调的是<b>无参</b>那一个（{@code Item} 的实现，
-     * 由注册名推出 {@code item.touhou_little_maid_spell.starwatch_compass}）；
-     * {@code CompassItem} 只覆盖了带 {@code ItemStack} 的那一版，无参版没被动过。
-     * 写成带 {@code ItemStack} 的 {@code super.getDescriptionId(stack)} 就会绕回磁石指针。
-     */
+    /** 固定物品名；带 ItemStack 的父类方法会返回磁石罗盘名称。 */
     @Override
     public @NotNull String getDescriptionId(@NotNull ItemStack stack) {
         return super.getDescriptionId();

@@ -32,13 +32,10 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 梦云水晶女仆效果事件监听器
- *
- * 负责：
+ * 梦云水晶女仆效果事件监听器。负责：
  * - 生物友好 / Boss 中立（LivingChangeTargetEvent）
  * - 记录女仆攻击 Boss 的历史（LivingHurtEvent）
- * - 特定伤害免疫（LivingAttackEvent）
- * - 复活后无敌（LivingAttackEvent）
+ * - 特定伤害免疫、复活后无敌（LivingAttackEvent）
  * - 在服务端 tick 中统一处理时停/范围强化到期
  */
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)

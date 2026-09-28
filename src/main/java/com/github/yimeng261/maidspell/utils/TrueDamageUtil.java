@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.utils;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.api.ITrueDamageRedirect;
 import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityInvoker;
 import com.github.yimeng261.maidspell.mixin.accessor.SynchedEntityDataMixin;
@@ -70,7 +71,7 @@ public class TrueDamageUtil {
         TrueDamageRequest request;
         while (drained++ < MAX_QUEUED_DAMAGE_PER_TICK && (request = TRUE_DAMAGE_QUEUE.poll()) != null) {
             LivingEntity target = request.target.get();
-            if (canNotBeApllied(target) || !target.isAlive() || target.isRemoved()) {
+            if (canNotBeApllied(target) || !IAuthoritativeHealth.combatAlive(target)) {
                 continue;
             }
             LivingEntity attacker = request.attacker.get();
@@ -82,7 +83,7 @@ public class TrueDamageUtil {
 
         aggregated.values().forEach(damage -> {
             LivingEntity target = damage.target.get();
-            if (canNotBeApllied(target) || !target.isAlive() || target.isRemoved()) {
+            if (canNotBeApllied(target) || !IAuthoritativeHealth.combatAlive(target)) {
                 return;
             }
             if (target instanceof ITrueDamageRedirect redirect) {

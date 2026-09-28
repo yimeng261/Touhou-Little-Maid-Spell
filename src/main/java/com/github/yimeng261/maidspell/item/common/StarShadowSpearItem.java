@@ -22,19 +22,7 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.function.Consumer;
 
-/**
- * 星影投枪：万法酒狐的投枪，数值与行为都跟着原版三叉戟走。
- *
- * <p>直接继承 {@link TridentItem}，所以攻击力 +8、攻击速度 -2.9、耐久掉落、
- * 蓄力投掷、激流全都是现成的；附魔面也一并拿到 ——
- * {@code EnchantmentCategory.TRIDENT.canEnchant} 判的就是 {@code instanceof TridentItem}，
- * 忠诚 / 激流 / 引雷 / 穿刺因此都能上。
- *
- * <p>只重写了 {@code releaseUsing}：原版那份写死了 {@code new ThrownTrident(...)}，
- * 扔出去会渲染成三叉戟，这里换成 {@link StarShadowSpearEntity}，飞行中用的是同一份枪身模型。
- *
- * <p>没有 lang 条目、也没进创造模式物品栏，都是有意的。
- */
+/** 继承三叉戟行为，投掷时改用星影投枪实体与模型。 */
 public class StarShadowSpearItem extends TridentItem implements GeoItem {
 
     /** 手持和飞行共用同一份几何体与贴图。 */

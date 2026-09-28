@@ -14,18 +14,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * 压制区里女仆一律不插手，这是把 {@link MaidSuppressionZone} 接到索敌与伤害两条路上的地方。
- *
- * <p>单独一个类而不是塞进 {@code MaidSpellAllyEvents}：那边管的是友伤仲裁，
- * 是另一条规则、另一个理由。两条规则同挂 {@code LivingAttackEvent} 时，
- * 各自成类反而让"谁在什么条件下取消"读得清楚。
- *
- * <p><b>没有压制区时这个类必须是零成本的。</b>它挂在全服每一次伤害和每一次换目标上，
- * 而绝大多数存档里根本没有压制区。所以每个判断都先问
- * {@link MaidSuppressionZone#isActive()}（一次静态字段读），确认有区域再去顺 owner 链
- * 找女仆——后者要走最多八层、每层做几次类型查表。顺序反了就是把这条便宜的短路作废。
- */
+/** 压制区中的女仆索敌与伤害拦截；先检查区域是否存在，再解析主人链。 */
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public final class MaidSuppressionEvents {
 
@@ -62,12 +51,11 @@ public final class MaidSuppressionEvents {
     /**
      * 这一下算不算「压制区里女仆插手」。
      *
-     * <p>出手方和挨打方各算一次「在不在圈里」：压制区是以 Boss 为心的球，
-     * 而女仆的远程手段够得着更远。只看出手方的位置，站在圈外放法术的女仆照打不误——
-     * 而她打出的伤害仍会计进伤害归属，玩家反倒因为一场本该被拦住的插手被判了代打。
+     * <p>出手方和挨打方各算一次「在不在圈里」：压制区是以 Boss 为心的球，而女仆的远程手段够得着更远。
+     * 只看出手方的位置，站在圈外放法术的女仆照打不误，而她打出的伤害仍会计进伤害归属，玩家反倒被判了代打。
      *
-     * <p>「女仆这一边」包含她的召唤物：伤害源上挂的是召唤物本身，
-     * 主人在 owner 链的上游，不上溯就等于留着一条绕开整条规则的路。
+     * <p>「女仆这一边」包含她的召唤物：伤害源上挂的是召唤物本身，主人在 owner 链的上游，
+     * 不上溯就等于留着一条绕开整条规则的路。
      */
     private static boolean suppressed(@Nullable Entity origin, @Nullable Entity victim) {
         if (!MaidSuppressionZone.isActive()) {

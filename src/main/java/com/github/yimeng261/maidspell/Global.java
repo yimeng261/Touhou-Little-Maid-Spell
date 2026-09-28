@@ -68,41 +68,15 @@ public class Global {
     public static final Map<Item, BiFunction<MobEffectEvent.Added, EntityMaid, Void>> baubleEffectAddedHandlers = new ConcurrentHashMap<>();
     public static final Map<Item, BiFunction<LivingDeathEvent, EntityMaid, Void>> baubleDeathHandlers = new ConcurrentHashMap<>();
 
-    /**
-     * 女仆效果双重阻断过滤器。
-     *
-     * <p>同时作用于两个拦截点，形成双重防护：
-     * <ol>
-     *   <li>{@code LivingEntity.addEffect} 中的 {@code activeEffects.put} 调用被 @Redirect 重定向——
-     *       若过滤器返回 {@code true}，效果不会写入 activeEffects Map，
-     *       因此既不会触发 tick 效果，也不会显示粒子/图标。</li>
-     *   <li>{@code MobEffect.addAttributeModifiers} 被 @Inject 拦截——
-     *       即使效果通过其他途径绕过了第一关（如直接操作 activeEffects），
-     *       其属性修改器也不会被应用到实体属性上。</li>
-     * </ol>
-     *
-     * <p>注册示例（在饰品 static 块中）：
-     * <pre>{@code
-     * Global.baubleEffectBlockFilter.put(MaidSpellItems.MY_BAUBLE.get(),
-     *     (maid, effect) -> effect.getCategory() == MobEffectCategory.HARMFUL);
-     * }</pre>
-     *
-     * <p>返回 {@code true} 表示阻止该效果；返回 {@code false} 表示放行。
-     */
+    /** 返回 true 时阻止女仆效果写入及属性修饰符应用。 */
     public static final Map<Item, BiFunction<EntityMaid, MobEffect, Boolean>> baubleEffectBlockFilters = new ConcurrentHashMap<>();
 
     /**
-     * `LivingEntity#hurt` 头部阶段的上下文。
+     * `LivingEntity#hurt` 头部阶段的上下文，比 Forge `LivingHurtEvent` 更早，用于最先判定是否拦截本次
+     * hurt、在原版 invulnerable / event 流程前运行逻辑，以及避免 `InfoDamageSource` 一类二次伤害重复展开。
      *
-     * <p>这是比 Forge `LivingHurtEvent` 更早的切入点，适合：
-     * <ul>
-     *   <li>最先判定是否拦截本次 hurt 调用；</li>
-     *   <li>处理需要在原版 invulnerable / event 流程前运行的逻辑；</li>
-     *   <li>避免 `InfoDamageSource` 一类二次伤害在后续链路中重复展开。</li>
-     * </ul>
-     *
-     * <p>注意：这里的“最高优先级”仅指本模组内部通过 hurt coremod
-     * 在目标方法头部执行；若其他模组也修改 `LivingEntity#hurt`，最终顺序仍受对应注入机制影响。
+     * <p>“最高优先级”仅指本模组 hurt coremod 在目标方法头部执行；其他模组若也修改 `LivingEntity#hurt`，
+     * 最终顺序仍受各自注入机制影响。
      */
     public static class HurtHeadContext {
         private final @NotNull LivingEntity entity;

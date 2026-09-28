@@ -32,6 +32,10 @@ public class ChaosBookBauble implements IMaidBauble {
     }
 
     public static void chaosBookProcess(EntityMaid maid, LivingEntity target) {
+        // 已排队真伤折回 hurt 时仍带女仆来源，不能再次排队。
+        if (TrueDamageUtil.isApplyingQueuedDamage()) {
+            return;
+        }
         if(BaubleStateManager.hasBauble(maid, MaidSpellItems.CHAOS_BOOK)) {
             float multiplier = BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL) ? 2.0f : 1.0f;
             float damage = (float) Math.max(Config.chaosBookTrueDamageMin,

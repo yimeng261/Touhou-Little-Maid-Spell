@@ -48,7 +48,7 @@ public final class MaidReviveEffectCleanup {
         maid.setTicksFrozen(0);
         maid.setSharedFlagOnFire(false);
 
-        // Keep effects granted by the revive bauble itself, but remove effects that survived from before death.
+        // Keep the bauble's effects; clear effects retained from before death.
         removeEffectsPresentBeforeRevive(maid, effectsBeforeRevive);
         cleanupResidualMovementState(maid);
     }

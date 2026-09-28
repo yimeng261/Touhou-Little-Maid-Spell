@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.hairpin.HairpinBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
@@ -61,7 +62,7 @@ public abstract class LivingEntityMixin {
         //处理heal
         float oldHealth = -114514;
         try{
-            oldHealth = entity.getHealth();
+            oldHealth = IAuthoritativeHealth.health(entity);
         }catch(Exception ignored){
         }
 
@@ -120,14 +121,9 @@ public abstract class LivingEntityMixin {
 
     /**
      * 方案二：@Redirect 重定向 addEffect 中的 activeEffects.put 调用。
-     *
-     * <p>拦截点在 Forge 事件 post 之后、效果真正写入 Map 之前。
-     * 若 baubleEffectBlockFilter 中有任意过滤器返回 true，则不写入 Map，
-     * 效果既不会 tick，也不会显示图标/粒子。
-     *
-     * <p>注意：put 被阻止后，原方法中紧随其后的 onEffectAdded 仍会被调用，
-     * 因此还需要 MobEffectMixin 中的 addAttributeModifiers 注入作为第二重防护，
-     * 确保属性修改器也不会被应用。
+     * <p>拦截点在 Forge 事件 post 之后、效果真正写入 Map 之前；若 baubleEffectBlockFilter 中有任意过滤器返回 true，
+     * 则不写入 Map，效果既不会 tick，也不会显示图标/粒子。
+     * <p>put 被阻止后，原方法中紧随其后的 onEffectAdded 仍会被调用，因此还需要 MobEffectMixin 中的 addAttributeModifiers 注入作为第二重防护，确保属性修改器也不会被应用。
      */
     @WrapOperation(
         method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z",

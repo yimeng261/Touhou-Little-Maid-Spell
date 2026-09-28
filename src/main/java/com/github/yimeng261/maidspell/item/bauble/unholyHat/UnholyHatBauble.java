@@ -23,15 +23,9 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 
 /**
- * 不洁圣冠饰品逻辑
- *
- * 女仆装备效果：
- * - 防火能力
- * - 狱火伤害额外 85% 抗性
- * - 下界维度伤害减半
- * - 限伤：单次伤害不超过 20 点
- * - 免疫灼烧诅咒（Goety 的 BURN_HEX 效果）
- * - 渲染头顶光环（使徒同款）
+ * 不洁圣冠饰品逻辑。
+ * <p>女仆装备效果：防火能力；狱火伤害额外 85% 抗性；下界维度伤害减半；限伤单次不超过 20 点；
+ * 免疫灼烧诅咒（Goety 的 BURN_HEX 效果）；渲染头顶光环（使徒同款）。
  */
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class UnholyHatBauble implements IMaidBauble {

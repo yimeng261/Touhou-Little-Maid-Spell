@@ -95,7 +95,7 @@ public class HairpinBauble implements IMaidBauble {
             RedirectContext context = new RedirectContext(maid, player);
             ACTIVE_REDIRECT.set(context);
             try {
-                // Route the hit through the owner's full hurt/setHealth pipeline, then reuse the final HP loss on the maid.
+                // Use the owner's final HP loss as the maid's redirected damage.
                 InfoDamageSource hairpinDamage = InfoDamageSource.create(player.level(), "hairpin_redirect", source);
                 hairpinDamage.setSourceEntity(maid);
                 player.setInvulnerable(false);

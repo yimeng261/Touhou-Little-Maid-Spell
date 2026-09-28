@@ -6,6 +6,7 @@ import com.github.tartaricacid.touhoulittlemaid.inventory.handler.BaubleItemHand
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -49,27 +50,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-/**
- * 梦云水晶饰品逻辑
- *
- * 主要效果：
- * - 取消法术冷却
- * - 女仆铁魔法法强翻倍（×2，MULTIPLY_TOTAL）
- * - 生命上限 +50%，全伤害抗性 30%，单次伤害上限 40
- * - 免疫：魔法、燃烧、溺水、爆炸、熔岩伤害
- * - 维度特定 Buff（主世界/下界/末地/归隐之地）
- * - 每 30 秒两种随机正面效果
- * - 直接攻击：真实伤害 + 时停 1 秒 + 弹幕溅射 10%
- * - 范围内女仆冷却降至 1/3，伤害 +50%
- * - 每秒修复整个背包物品 1 点耐久
- * - 概率复活（100% - N×10%，N 为 120s 内复活次数）
- * - 复活后 15 秒无敌
- *
- * 组合效果：
- * - + 紫荆银冠：每次受伤直接反伤（不需要 N 次累计，见 LivingEntityMixin）
- * - + 混沌之书：真实伤害百分比翻倍（见 ChaosBookBauble.chaosBookProcess）
- * - + 双心之链：主人不分担伤害，女仆仅受 50%（见 DoubleHeartChainBauble）
- */
+/** 梦云水晶的战斗、支援、耐久修复与复活效果。具体数值由各处理方法维护。 */
 public class DreamCatCrystalBauble implements IMaidBauble {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -250,7 +231,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             }
 
             LivingEntity target = context.getTarget();
-            if (target == null || !target.isAlive()) {
+            if (!IAuthoritativeHealth.combatAlive(target)) {
                 return;
             }
 
@@ -262,7 +243,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             }
 
             // 2. 时停 1 秒（仅在服务端执行）
-            if (!maid.level().isClientSide() && target.isAlive() && target instanceof Mob mob) {
+            if (!maid.level().isClientSide() && IAuthoritativeHealth.combatAlive(target)
+                    && target instanceof Mob mob) {
                 MinecraftServer server = maid.getServer();
                 if (server != null) {
                     long unfreezeTime = PortableTimerMath.saturatingAdd(globalGameTime(server), 20L);
@@ -278,7 +260,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                     target.getBoundingBox().inflate(5.0),
                     entity -> entity != maid
                         && entity != target
-                        && entity.isAlive()
+                        && IAuthoritativeHealth.combatAlive(entity)
                         && !(entity instanceof Player)
                         && !(entity instanceof EntityMaid)
                 ).forEach(nearby -> TrueDamageUtil.dealTrueDamage(nearby, barrageDamage, maid));
@@ -751,7 +733,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             }
 
             Mob target = state.target;
-            if (target == null || !target.isAlive()) {
+            if (!IAuthoritativeHealth.combatAlive(target)) {
                 FROZEN_TARGETS.remove(scheduled.entityId());
                 FROZEN_TARGET_EXPIRIES.poll();
                 continue;

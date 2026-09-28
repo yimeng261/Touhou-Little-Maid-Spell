@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.entity;
 
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxSpearImpactEffects;
 import net.minecraft.nbt.CompoundTag;
@@ -185,7 +186,7 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
         }
         for (LivingEntity nearby : level.getEntitiesOfClass(LivingEntity.class,
             new AABB(impact, impact).inflate(3.0D), entity -> entity != directTarget
-                && entity != this.getOwner() && entity.isAlive()
+                && entity != this.getOwner() && IAuthoritativeHealth.combatAlive(entity)
                 && entity.position().distanceToSqr(impact) <= 9.0D
                 && (this.getOwner() == null || !MaidSpellAllyResolver.areFriendly(this.getOwner(), entity)))) {
             nearby.hurt(source, 10.0F);

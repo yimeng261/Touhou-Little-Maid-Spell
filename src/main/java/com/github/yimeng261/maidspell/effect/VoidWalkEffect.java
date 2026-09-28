@@ -11,17 +11,8 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
- * 虚空漫步。星锚珍珠给的状态。
- *
- * <p>表现部分整体照抄 {@code VoidPhaseEffect}：纯增益、不改属性，药水效果自己的水泡粒子
- * 用 {@code visible=false} 关掉（那一位由给状态的调用方设），持续期间由 {@link #applyEffectTick}
- * 在服务端播一圈 {@code void_spell} 粒子 —— 也就是「注册的虚空粒子」。
- *
- * <p><b>免疫不在这里做。</b>{@code MobEffect} 没有「免疫某种伤害」的钩子，而且
- * {@code minecraft:out_of_world} 带着 {@code bypasses_invulnerability}，靠
- * {@code setInvulnerable} 或抗性提升都拦不住。真正生效的是
- * {@code event.StaranchorPearlEvents} 里对 {@code LivingAttackEvent} 的取消。
- * 这里只负责「看见它就知道自己在虚空漫步」这一件事，判断口径见 {@link #isVoidDamage}。
+ * 星锚珍珠的虚空漫步状态及粒子表现。
+ * 虚空伤害免疫由 StaranchorPearlEvents 在攻击事件中处理。
  */
 public class VoidWalkEffect extends MobEffect {
     /** 图标底色。取星锚珍珠贴图的主色，和 {@code textures/mob_effect/void_walk.png} 对得上。 */
@@ -44,8 +35,7 @@ public class VoidWalkEffect extends MobEffect {
      * <p>就是原版 {@code minecraft:out_of_world}（掉出世界底）。选它当唯一的判据，是因为
      * 模组里本来就把这一类当成虚空伤害在用：星影刃光追加的那一发是
      * {@code damageSources().fellOutOfWorld()}（见 {@code StarShadowStrikeSpell}），
-     * 虚空相变的额外伤害也是同一个（见 {@code VoidPhaseDamageHandler}），
-     * 连 {@code StarShadowStrikeGameTests} 都拿 {@code DamageTypes.FELL_OUT_OF_WORLD} 对账。
+     * 虚空相变的额外伤害也是同一个（见 {@code VoidPhaseDamageHandler}）。
      * 所以「免疫虚空伤害」= 免疫这一类，不另开一套自定义伤害类型。
      */
     public static boolean isVoidDamage(DamageSource source) {

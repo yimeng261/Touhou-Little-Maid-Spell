@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.mixin.tlm;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.MaidOriginData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -48,6 +49,12 @@ public class EntityMaidStructureSpawnMixin {
             EntityMaid maid = (EntityMaid) (Object) this;
             BlockPos maidPos = maid.blockPosition();
             if (maidspell$shouldSkipRandomModel(worldIn, maidPos)) {
+                if (maidspell$isInsideStructure(
+                        worldIn.getLevel().structureManager(),
+                        worldIn.registryAccess().registryOrThrow(Registries.STRUCTURE),
+                        maidPos, "hidden_retreat")) {
+                    MaidOriginData.markHiddenRetreatMaid(maid);
+                }
                 this.structureSpawn = false;
                 Global.LOGGER.debug("Prevented finalizeSpawn processing for maid in protected structure at {}", maidPos);
                 cir.setReturnValue(spawnDataIn);

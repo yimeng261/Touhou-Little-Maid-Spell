@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.utils;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
@@ -89,7 +90,7 @@ public final class MaidDamageProcessor {
         if (target == null) {
             return;
         }
-        if (!target.isAlive()) {
+        if (!IAuthoritativeHealth.combatAlive(target)) {
             target = maid.getTarget();
         }
 

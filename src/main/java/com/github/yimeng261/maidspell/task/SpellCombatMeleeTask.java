@@ -11,6 +11,7 @@ import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksDataBridge;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.google.common.collect.ImmutableMap;
@@ -225,7 +226,8 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         @Override
         protected boolean checkExtraStartConditions(@NotNull ServerLevel level, EntityMaid maid) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            if (target == null || !target.isAlive() || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target)) {
+            if (!IAuthoritativeHealth.combatAlive(target)
+                    || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target)) {
                 return false;
             }
 
@@ -298,7 +300,8 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
             if (target instanceof Player && isIronSpellSpecialCase(maid)) {
                 return true;
             }
-            return target != null && target.isAlive() && SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target);
+            return IAuthoritativeHealth.combatAlive(target)
+                && SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target);
         }
 
         @Override
@@ -309,7 +312,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         @Override
         protected void tick(@NotNull ServerLevel level, EntityMaid maid, long gameTime) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            if (target != null && target.isAlive()) {
+            if (IAuthoritativeHealth.combatAlive(target)) {
                 // 检查是否是铁魔法特殊情况
                 if (target instanceof Player && isIronSpellSpecialCase(maid)) {
                     BehaviorUtils.lookAtEntity(maid, target);
@@ -368,7 +371,8 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         @Override
         protected boolean checkExtraStartConditions(@NotNull ServerLevel worldIn, EntityMaid maid) {
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-            return target != null && target.isAlive() && SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target);
+            return IAuthoritativeHealth.combatAlive(target)
+                && SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target);
         }
 
         @Override

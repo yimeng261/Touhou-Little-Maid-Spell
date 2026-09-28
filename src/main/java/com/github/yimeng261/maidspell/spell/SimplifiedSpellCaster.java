@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.EntityTracker;
@@ -61,7 +62,8 @@ public class SimplifiedSpellCaster {
      */
     public boolean hasValidTarget() {
         LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-        boolean valid = target != null && target.isAlive() && !target.isDeadOrDying() && !target.isRemoved();
+        boolean valid = IAuthoritativeHealth.combatAlive(target)
+            && !IAuthoritativeHealth.deadOrDying(target);
         if (!valid) {
             if (target != null) {
                 //LOGGER.debug("[MaidSpell][Caster] clearing invalid target maid={} tick={} target={}", maid.getId(), maid.tickCount, describeTarget(target));

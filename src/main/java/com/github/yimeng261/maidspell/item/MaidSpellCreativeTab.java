@@ -100,6 +100,7 @@ public class MaidSpellCreativeTab {
                     output.accept(MaidSpellItems.NEBULA_CORE.get());
                     output.accept(MaidSpellItems.STAR_METEORITE.get());
                     output.accept(MaidSpellItems.RITUAL_HILT.get());
+                    output.accept(MaidSpellItems.RETURNING_STAR.get());
                     output.accept(MaidSpellItems.WIND_SEEKING_BELL.get());
                     output.accept(MaidSpellItems.STARWATCH_COMPASS.get());
                 }

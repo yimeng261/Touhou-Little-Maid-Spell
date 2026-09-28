@@ -22,28 +22,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = ClientMagicData.class, remap = false)
 public class ClientMagicDataMixin {
     /**
-     * <b>必须是 HEAD，不能是 TAIL。</b>
-     *
-     * <p>对铁魔法自己的施法怪（{@code IMagicEntity}，万法酒狐就是），
-     * {@code handleAbstractCastingMobSyncedData} 方法体里会先调
-     * {@code AbstractSpellCastingMob.setSyncedSpellData(syncedSpellData)}，
-     * 那边把<b>包里这个对象</b>直接装进 {@code MagicData}，然后对瞬发法术接着走：
-     *
-     * <pre>
-     * setSyncedSpellData -> castComplete() -> MagicData.resetCastingState()
-     *                    -> getSyncedData().setIsCasting(false, "", 0, ...)
-     * </pre>
-     *
-     * <p>最后那一句改的正是<b>我们马上要读的那个对象</b>。挂在 TAIL 上时，
-     * {@code updateState} 拿到的已经是被清成 {@code isCasting=false, spellId=""} 的空壳，
-     * 于是走「两边都是 none」的提前返回，相位永远停在 {@code NONE}，
-     * {@code ISSCastingAnimationProvider} 什么也建不出来。她 22 条施法里 17 条是瞬发。
-     *
-     * <p>普通女仆不受影响，两个注入点等价：女仆不是 {@code IMagicEntity}，
-     * 上面那条分支压根不进，包里的对象没人动。
-     *
-     * <p>放在 HEAD 安全：{@code updateState} 只读传进来的 {@code syncedSpellData}
-     * 和 {@code caster.level().isClientSide}，不依赖铁魔法那边装没装好。
+     * 必须在 HEAD 读取同步数据；ISS 会在处理瞬发法术时原地清空同一对象。
+     * TAIL 时动画状态只会看到空数据。
      */
     @Inject(method = "handleAbstractCastingMobSyncedData", at = @At(value = "HEAD"))
     private static void afterHandleAbstractCastingMobSyncedData(int entityId, SyncedSpellData syncedSpellData, CallbackInfo ci) {
