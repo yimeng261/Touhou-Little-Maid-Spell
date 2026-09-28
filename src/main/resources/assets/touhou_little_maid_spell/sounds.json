@@ -18,5 +18,15 @@
         "type": "event"
       }
     ]
+  },
+  "star_shadow_strike": {
+    "category": "players",
+    "subtitle": "subtitle.touhou_little_maid_spell.star_shadow_strike",
+    "sounds": [
+      {
+        "name": "touhou_little_maid_spell:spell/star_shadow_strike",
+        "volume": 1.0
+      }
+    ]
   }
 }

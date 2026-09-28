@@ -5,10 +5,12 @@ import com.github.yimeng261.maidspell.client.gui.SpellWhiteListScreen;
 import com.github.yimeng261.maidspell.client.model.AscensionHaloModel;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
+import com.github.yimeng261.maidspell.client.particle.VoidSpellParticle;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
+import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -19,6 +21,7 @@ import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import net.neoforged.neoforge.event.AddPackFindersEvent;
 import com.github.yimeng261.maidspell.client.resource.LegacyPackRepositorySource;
 
@@ -46,6 +49,11 @@ public class MaidSpellClientMod {
     public static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(MaidSpellEntities.WIND_SEEKING_BELL.get(), WindSeekingBellRenderer::new);
         IronsSpellbooksCompat.initClient(event);
+    }
+
+    @SubscribeEvent
+    public static void onRegisterParticleProviders(RegisterParticleProvidersEvent event) {
+        event.registerSpriteSet(MaidSpellParticles.VOID_SPELL.get(), VoidSpellParticle.Provider::new);
     }
 
     @SubscribeEvent

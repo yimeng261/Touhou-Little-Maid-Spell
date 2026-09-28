@@ -5,6 +5,12 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.CorruptedKn
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ElfTemplarEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.HolyConstructEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ShadowAssassinEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.CompanionBlackHoleEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCloudEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCometEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SpellbreakingEchoEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.StarShadowStrikeEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.WinefoxSwordProjectileEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.BlockTags;
@@ -53,6 +59,59 @@ public final class IronsSpellbooksCompatEntities {
                             .sized(0.8F, 2.5F)
                             .clientTrackingRange(10)
                             .build("holy_construct"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<ModifiedStarfallCloudEntity>> MODIFIED_STARFALL_CLOUD =
+            ENTITY_TYPES.register("starfall_modified_cloud",
+                    () -> EntityType.Builder.<ModifiedStarfallCloudEntity>of(ModifiedStarfallCloudEntity::new, MobCategory.MISC)
+                            .sized(0.1F, 0.1F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("starfall_modified_cloud"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<ModifiedStarfallCometEntity>> MODIFIED_STARFALL_COMET =
+            ENTITY_TYPES.register("starfall_modified_comet",
+                    () -> EntityType.Builder.<ModifiedStarfallCometEntity>of(ModifiedStarfallCometEntity::new, MobCategory.MISC)
+                            .sized(0.5F, 0.5F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("starfall_modified_comet"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<WinefoxSwordProjectileEntity>> WINEFOX_SWORD_PROJECTILE =
+            ENTITY_TYPES.register("winefox_sword_projectile",
+                    () -> EntityType.Builder.<WinefoxSwordProjectileEntity>of(WinefoxSwordProjectileEntity::new, MobCategory.MISC)
+                            .sized(0.35F, 0.35F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("winefox_sword_projectile"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<StarShadowStrikeEntity>> STAR_SHADOW_STRIKE =
+            ENTITY_TYPES.register("star_shadow_strike",
+                    () -> EntityType.Builder.<StarShadowStrikeEntity>of(StarShadowStrikeEntity::new, MobCategory.MISC)
+                            .sized(5.0F, 1.0F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("star_shadow_strike"));
+
+    /**
+     * 「伴星黑洞」用的小型黑洞载体。
+     *
+     * <p>{@code updateInterval(1)} 必须保留：实体每 tick 都要移到施法者头顶，隔帧更新会让跟随一顿一顿。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<CompanionBlackHoleEntity>> COMPANION_BLACK_HOLE =
+            ENTITY_TYPES.register("companion_black_hole",
+                    () -> EntityType.Builder.<CompanionBlackHoleEntity>of(CompanionBlackHoleEntity::new, MobCategory.MISC)
+                            .sized(1.0F, 1.0F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("companion_black_hole"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<SpellbreakingEchoEntity>> SPELLBREAKING_ECHO =
+            ENTITY_TYPES.register("spellbreaking_echo",
+                    () -> EntityType.Builder.<SpellbreakingEchoEntity>of(SpellbreakingEchoEntity::new, MobCategory.MISC)
+                            .sized(1.0F, 1.0F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("spellbreaking_echo"));
 
     private IronsSpellbooksCompatEntities() {
     }

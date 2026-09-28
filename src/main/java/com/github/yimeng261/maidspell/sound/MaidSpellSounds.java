@@ -23,4 +23,7 @@ public class MaidSpellSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> SILENT_MERCHANT_FEEDBACK = SOUNDS.register("silent_merchant_feedback",
         () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "silent_merchant_feedback")));
 
+    public static final DeferredHolder<SoundEvent, SoundEvent> STAR_SHADOW_STRIKE = SOUNDS.register("star_shadow_strike",
+        () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "star_shadow_strike")));
+
 }

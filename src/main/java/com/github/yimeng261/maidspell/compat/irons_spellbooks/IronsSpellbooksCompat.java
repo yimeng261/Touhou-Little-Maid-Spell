@@ -1,10 +1,14 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.IronsSpellbooksCompatClient;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.VoidPhaseDamageHandler;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 
 public final class IronsSpellbooksCompat {
@@ -24,6 +28,9 @@ public final class IronsSpellbooksCompat {
         }
         IronsSpellbooksCompatItems.register(eventBus);
         IronsSpellbooksCompatEntities.register(eventBus);
+        IronsSpellbooksCompatEffects.register(eventBus);
+        IronsSpellbooksCompatSpells.register(eventBus);
+        NeoForge.EVENT_BUS.register(VoidPhaseDamageHandler.class);
     }
 
     public static void initClient(EntityRenderersEvent.RegisterRenderers event) {

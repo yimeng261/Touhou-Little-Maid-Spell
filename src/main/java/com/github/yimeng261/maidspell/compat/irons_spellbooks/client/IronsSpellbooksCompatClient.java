@@ -2,8 +2,14 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.client;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model.GenericSpellHumanoidModel;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.CompanionBlackHoleRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.GenericSpellHumanoidRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.SpellbreakingEchoRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.StarShadowStrikeRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.WinefoxSwordProjectileRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
+import io.redspace.ironsspellbooks.entity.spells.comet.CometRenderer;
+import net.minecraft.client.renderer.entity.NoopRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 
@@ -28,5 +34,16 @@ public final class IronsSpellbooksCompatClient {
                 new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
                         ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "geo/holy_construct.geo.json"),
                         ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "textures/entity/holy_construct.png"))));
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_STARFALL_CLOUD.get(), NoopRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_STARFALL_COMET.get(), context ->
+                new CometRenderer(context, 0.75F));
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.WINEFOX_SWORD_PROJECTILE.get(),
+                WinefoxSwordProjectileRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.STAR_SHADOW_STRIKE.get(),
+                StarShadowStrikeRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.COMPANION_BLACK_HOLE.get(),
+                CompanionBlackHoleRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.SPELLBREAKING_ECHO.get(),
+                SpellbreakingEchoRenderer::new);
     }
 }

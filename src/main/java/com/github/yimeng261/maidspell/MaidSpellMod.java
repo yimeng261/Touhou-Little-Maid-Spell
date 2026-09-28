@@ -19,6 +19,7 @@ import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantInge
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
+import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
@@ -68,6 +69,7 @@ public class MaidSpellMod {
         MaidSpellCreativeTab.register(modEventBus);
         MaidSpellContainers.register(modEventBus);
         MaidSpellSounds.SOUNDS.register(modEventBus);
+        MaidSpellParticles.PARTICLES.register(modEventBus);
         MaidSpellEntities.register(modEventBus);
         IronsSpellbooksCompat.init(modEventBus);
         CuriosCompat.init();
