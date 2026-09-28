@@ -34,6 +34,7 @@ public class AnchorCoreBauble implements IMaidBauble {
                 className.startsWith("tschipp.carryon") ||
                 className.contains("backup") ||
                 className.contains("maid") ||
+                className.contains("net.zhaiji.cirno") ||
                 className.contains("c2me");
     }
 
