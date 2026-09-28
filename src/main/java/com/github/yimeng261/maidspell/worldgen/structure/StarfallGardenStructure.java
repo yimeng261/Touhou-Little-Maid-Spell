@@ -1,32 +1,35 @@
 package com.github.yimeng261.maidspell.worldgen.structure;
 
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
+import com.github.yimeng261.maidspell.worldgen.StarfallGardenData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pools.JigsawPlacement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
- * 星落之庭结构。
- *
- * <p>它的落点规则和本模组其它地表建筑都不一样：不看地形、不看生物群系细节，
- * 只认<b>离世界出生点的水平距离</b>。原因写在需求里——这座庭院是给刚出生的玩家留的
- * 一个「往外走一段路才能撞见」的目标：太近了会压着出生点、把新手村那一圈改成废墟；
- * 太远了又变成边境内容，正常流程里根本走不到。200~500 格这个环带正好是「先探索一会儿
- * 再遇到」的距离。
- *
- * <p>实现上有两个坑，都在下面各自的方法上写着：一是距离必须用<b>水平</b>距离并且用
- * {@code long} 平方比较（出生点和候选点的坐标差可以到千万级，平方后远超 int），
- * 二是出生点在数据生成、单元测试期间是拿不到的，必须能退化而不是抛异常。
+ * 星落之庭按出生点水平距离选址，再按地表高度抬升为空岛。
+ * 距离平方使用 long；只有结构确实生成后才写入单实例标记。
  */
 public class StarfallGardenStructure extends Structure {
     public static final Codec<StarfallGardenStructure> CODEC = RecordCodecBuilder.create(instance ->
@@ -44,46 +47,81 @@ public class StarfallGardenStructure extends Structure {
                             .forGetter(structure -> structure.minSpawnDistance),
                     Codec.intRange(1, 100000)
                             .optionalFieldOf("max_spawn_distance", 500)
-                            .forGetter(structure -> structure.maxSpawnDistance)
+                            .forGetter(structure -> structure.maxSpawnDistance),
+                    // 相对地表抬升；默认 72 格覆盖向下延伸 42 格的岛底并留出净空。
+                    Codec.intRange(0, 384)
+                            .optionalFieldOf("height_offset", 72)
+                            .forGetter(structure -> structure.heightOffset),
+                    // 旧存档补生成开关。放数据包而不是 Config：这是世界生成语义，该跟着存档/整合包走；
+                    // Config 是全局的，改一次会影响所有存档，而且别的 agent 正在动 Config。
+                    Codec.BOOL
+                            .optionalFieldOf("retrofit_on_load", true)
+                            .forGetter(structure -> structure.retrofitOnLoad),
+                    // 与 retrofit_on_load 分开控制是否向已生成区块写入结构。
+                    Codec.BOOL
+                            .optionalFieldOf("retrofit_place_in_explored", true)
+                            .forGetter(structure -> structure.retrofitPlaceInExplored)
             ).apply(instance, StarfallGardenStructure::new)
     );
 
-    /**
-     * 拼图把起始件的底层放在 {@code startPos.getY() - groundLevelDelta} 上，
-     * 见 {@code JigsawPlacement.addPieces} 里那句
-     * {@code piece.move(0, startY - (bbox.minY() + groundLevelDelta), 0)}。
-     * 单件池元素的 {@code getGroundLevelDelta()} 恒为 1，所以传进去的 Y 要先加回这 1，
-     * 底层才会正好落在我们算出来的地表那一格上（{@code getFirstFreeHeight} 返回的本来就是
-     * 地表之上第一格空气的 Y，也就是地板该占的那一格）。
-     */
+    /** 拼图会减去 groundLevelDelta=1，传入 Y 时须加回以对齐底层。 */
     private static final int GROUND_LEVEL_DELTA = 1;
+
+    /**
+     * 起始件底层往上最多还有多高，用来把落点夹在世界上界以内（不然塔顶会被顶出世界高度，拼图块直接消失）。
+     * <p>
+     * 实测形体（读模板里的 jigsaw 朝向算出来的，不是拍脑袋）：起始件 1 号是一层 4 格高的花园平台，
+     * 2~4 号在它同一高度上往外接；4 号顶面有个朝上的接口接 5 号（48x47 的高塔），
+     * 5 号顶层再朝上接 8 号（47x42），所以最高处在起始件底层之上约 4+46+40 ≈ 90 格。取 96 留余量。
+     */
+    private static final int MAX_STRUCTURE_HEIGHT = 96;
 
     private final Holder<StructureTemplatePool> startPool;
     private final int size;
     private final int maxDistanceFromCenter;
     private final int minSpawnDistance;
     private final int maxSpawnDistance;
+    private final int heightOffset;
+    private final boolean retrofitOnLoad;
+    private final boolean retrofitPlaceInExplored;
 
     public StarfallGardenStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool, int size,
-                                   int maxDistanceFromCenter, int minSpawnDistance, int maxSpawnDistance) {
+                                   int maxDistanceFromCenter, int minSpawnDistance, int maxSpawnDistance,
+                                   int heightOffset, boolean retrofitOnLoad, boolean retrofitPlaceInExplored) {
         super(settings);
         this.startPool = startPool;
         this.size = size;
         this.maxDistanceFromCenter = maxDistanceFromCenter;
         this.minSpawnDistance = minSpawnDistance;
         this.maxSpawnDistance = maxSpawnDistance;
+        this.heightOffset = heightOffset;
+        this.retrofitOnLoad = retrofitOnLoad;
+        this.retrofitPlaceInExplored = retrofitPlaceInExplored;
+    }
+
+    public int getMinSpawnDistance() {
+        return this.minSpawnDistance;
+    }
+
+    public int getMaxSpawnDistance() {
+        return this.maxSpawnDistance;
+    }
+
+    /** 旧存档补生成开关，供 {@code StarfallGardenRetrofit} 读取。 */
+    public boolean isRetrofitOnLoad() {
+        return this.retrofitOnLoad;
+    }
+
+    /** 补生成是否允许在已探明区块里主动落一座，供 {@code StarfallGardenRetrofit} 读取。 */
+    public boolean isRetrofitPlaceInExplored() {
+        return this.retrofitPlaceInExplored;
     }
 
     /**
      * 世界出生点，拿不到时退化成原点。
-     *
-     * <p>走 {@link ServerLifecycleHooks} 而不是缓存一份坐标，是因为出生点可以被
-     * {@code /setworldspawn} 改，也能被床重设；每次判定现取，改完立刻生效。
-     *
-     * <p>服务器为 null 不是异常情况：数据生成（{@code runData}）只解析结构 JSON、
-     * 不生成区块，结构模板校验也可能在没有服务器实例的线程里跑。这种时候返回
-     * {@link BlockPos#ZERO}，让距离判定退化成一个「离原点 200~500 格」的普通条件，
-     * 既不会崩，也不会把结构整个吞掉。
+     * 走 {@link ServerLifecycleHooks} 而不是缓存一份坐标，是因为出生点可以被 {@code /setworldspawn} 改，也能被床重设；每次判定现取，改完立刻生效。
+     * 服务器为 null 不是异常情况：数据生成（{@code runData}）只解析结构 JSON、不生成区块，结构模板校验也可能在没有服务器实例的线程里跑。
+     * 这种时候返回 {@link BlockPos#ZERO}，让距离判定退化成一个「离原点 200~500 格」的普通条件，既不会崩，也不会把结构整个吞掉。
      */
     private static BlockPos overworldSpawnOrOrigin() {
         var server = ServerLifecycleHooks.getCurrentServer();
@@ -95,6 +133,12 @@ public class StarfallGardenStructure extends Structure {
 
     @Override
     protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
+        // 「一存档一座」的第一道闸门：只读内存里的标记。这里跑在 worldgen worker 线程上、每个候选区块都要问一次，
+        // 所以不能碰 SavedData（会读盘，而且 DimensionDataStorage 不是线程安全的）；标记什么时候写见 generate()。
+        if (StarfallGardenData.isPlaced()) {
+            return Optional.empty();
+        }
+
         int centerX = context.chunkPos().getMiddleBlockX();
         int centerZ = context.chunkPos().getMiddleBlockZ();
 
@@ -115,8 +159,9 @@ public class StarfallGardenStructure extends Structure {
             return Optional.empty();
         }
 
-        // 区块中心的地表高度。和观星塔那种多采样取中位数的做法不同：这里只锚定一格，
-        // 地形起伏交给数据包里的 terrain_adaptation: beard_thin 去抹平。
+        // 区块中心的地表高度。和观星塔那种多采样取中位数的做法不同：这里只锚定一格。
+        // WORLD_SURFACE_WG 走的是噪声高度图（不是区块里的 heightmap），所以 STRUCTURE_STARTS 阶段就能算，
+        // 旧存档补生成把区块只读到 STRUCTURE_STARTS 时也一样能拿到值。
         int surface = context.chunkGenerator().getFirstFreeHeight(
                 centerX, centerZ,
                 Heightmap.Types.WORLD_SURFACE_WG,
@@ -124,7 +169,14 @@ public class StarfallGardenStructure extends Structure {
                 context.randomState()
         );
 
-        BlockPos startPos = new BlockPos(centerX, surface + GROUND_LEVEL_DELTA, centerZ);
+        // floorY 是起始件「最底层该占的那一格」。空岛就是在它上面再加 heightOffset 格空气：
+        // 拼图把底层放在 startPos.getY() - 1，所以这里给的是底层本身，不是底层之上。
+        int minBuildY = context.heightAccessor().getMinBuildHeight();
+        int maxBuildY = Math.max(minBuildY, context.heightAccessor().getMaxBuildHeight() - MAX_STRUCTURE_HEIGHT);
+        int floorY = Mth.clamp(surface + this.heightOffset, minBuildY, maxBuildY);
+
+        // GROUND_LEVEL_DELTA 的账没变：传进去的 Y 加回这 1，最底层才正好落在 floorY（见字段注释）。
+        BlockPos startPos = new BlockPos(centerX, floorY + GROUND_LEVEL_DELTA, centerZ);
         return JigsawPlacement.addPieces(
                 context,
                 this.startPool,
@@ -135,6 +187,24 @@ public class StarfallGardenStructure extends Structure {
                 Optional.empty(),
                 this.maxDistanceFromCenter
         );
+    }
+
+    /**
+     * 只在 StructureStart 有效时标记已生成。findGenerationPoint 可能被试探性调用，
+     * 不能在那里占用名额；手动 /place structure 同样计入一座。
+     */
+    @Override
+    public @NotNull StructureStart generate(RegistryAccess registryAccess, ChunkGenerator chunkGenerator,
+                                           BiomeSource biomeSource, RandomState randomState,
+                                           StructureTemplateManager templateManager, long seed, ChunkPos chunkPos,
+                                           int references, LevelHeightAccessor heightAccessor,
+                                           Predicate<Holder<Biome>> validBiome) {
+        StructureStart start = super.generate(registryAccess, chunkGenerator, biomeSource, randomState,
+                templateManager, seed, chunkPos, references, heightAccessor, validBiome);
+        if (start.isValid()) {
+            StarfallGardenData.markPlaced(start.getBoundingBox().getCenter());
+        }
+        return start;
     }
 
     @Override

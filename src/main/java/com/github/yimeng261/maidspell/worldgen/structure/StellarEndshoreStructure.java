@@ -17,13 +17,9 @@ import java.util.Optional;
 /**
  * 星途终岸结构。
  *
- * <p>悬在末地外岛上空的固定高度，<b>完全不看地形</b>：末地的岛顶大约在 Y60-70，
- * 我们生在 150，脚下是岛、是空、还是别的结构都无所谓，所以这里没有
- * {@code RelicSanctumStructure} 那套地形取样，也不需要 {@code terrain_adaptation}
- * ——没有地面要削平，加了反而会在半空糊出一坨基座。
+ * <p>悬在末地外岛上空的固定高度，完全不看地形：末地的岛顶大约在 Y60-70，我们生在 150，脚下是岛、是空、还是别的结构都无所谓，所以没有 {@code RelicSanctumStructure} 那套地形取样，也不需要 {@code terrain_adaptation}——没有地面要削平，加了反而会在半空糊出一坨基座。
  *
- * <p>高度做成可配的 {@link #baseHeight} 加抖动，是因为一整片末地全在同一个 Y 上
- * 会看出是刷出来的。抖动后仍会夹住上界，见 {@link #MAX_STRUCTURE_HEIGHT}。
+ * <p>高度做成可配的 {@link #baseHeight} 加抖动，是因为一整片末地全在同一个 Y 上会看出是刷出来的；抖动后仍会夹住上界，见 {@link #MAX_STRUCTURE_HEIGHT}。
  */
 public class StellarEndshoreStructure extends Structure {
     public static final Codec<StellarEndshoreStructure> CODEC = RecordCodecBuilder.create(instance ->

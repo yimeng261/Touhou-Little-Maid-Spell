@@ -5,8 +5,11 @@
   "size": 10,
   "min_spawn_distance": 200,
   "max_spawn_distance": 500,
+  "height_offset": 72,
+  "retrofit_on_load": true,
+  "retrofit_place_in_explored": true,
   "biomes": "#touhou_little_maid_spell:has_structure/starfall_garden",
   "spawn_overrides": {},
   "step": "surface_structures",
-  "terrain_adaptation": "beard_thin"
+  "terrain_adaptation": "none"
 }
