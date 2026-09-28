@@ -47,7 +47,8 @@ public class Config {
             "goety:fiery_aura",
             "goety:frosty_aura",
             "minecraft:invisibility",
-            "irons_spellbooks:true_invisibility"
+            "irons_spellbooks:true_invisibility",
+            "goety:explosive"
     );
 
     // ========== 战斗系统配置 ==========

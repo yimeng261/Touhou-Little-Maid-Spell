@@ -34,6 +34,7 @@
     "goety.MobUtilMixin",
     "goety.WandUtilMixin",
     "iss.SyncedSpellDataMixin",
+    "iss.ThunderstormEffectMixin",
     "iss.UtilsMixin",
     "iss.accessor.PlayerRecastsAccessor",
     "psi.PieceSelectorNearbyMixin",

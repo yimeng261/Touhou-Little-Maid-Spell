@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.client.overlay;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.client.EnderPocketClientConfig;
+import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.mojang.math.Axis;
 import net.minecraft.client.DeltaTracker;
@@ -13,6 +14,7 @@ import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.joml.Quaternionf;
@@ -181,6 +183,11 @@ public final class EnderPocketHudOverlay implements LayeredDraw.Layer {
 
         String name = trimToWidth(mc, info.maidName, 92);
         graphics.drawString(mc.font, name, x + 42, y + 4, 0xFFFFFFFF, true);
+        graphics.pose().pushPose();
+        graphics.pose().translate(x + ROW_WIDTH - 13, y + 2, 0);
+        graphics.pose().scale(0.625F, 0.625F, 1.0F);
+        graphics.renderItem(new ItemStack(MaidSpellItems.ENDER_POCKET.get()), 0, 0);
+        graphics.pose().popPose();
 
         int barX = x + 42;
         int barY = y + 17;

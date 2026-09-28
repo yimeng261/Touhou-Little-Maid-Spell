@@ -15,6 +15,7 @@ import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.tags.EntityTypeTags;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -123,7 +124,19 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
         this.targetSelector.addGoal(5, new ResetUniversalAngerTargetGoal<>(this, false));
     }
 
+    /** 同类范围法术可能触发还击；声明同盟以阻止友伤和连锁仇恨 */
+    @Override
+    public boolean isAlliedTo(Entity entity) {
+        return entity instanceof ElfTemplarEntity || super.isAlliedTo(entity);
+    }
+
+    /**
+     * 天生的敌人只有灾厄村民和不死生物，同类和同盟一律排除
+     */
     private boolean isNaturalEnemy(LivingEntity target) {
+        if (target instanceof ElfTemplarEntity || this.isAlliedTo(target)) {
+            return false;
+        }
         return target instanceof Raider || target.getType().is(EntityTypeTags.UNDEAD);
     }
 
