@@ -536,5 +536,15 @@
   "dialogue.touhou_little_maid_spell.winefox.vow_oath_2": "星辰为鉴，誓约已成。往后的漫漫长路，请多多关照。",
   "dialogue.touhou_little_maid_spell.winefox.tamed_chat_1": "欢迎回来，无论走过多远，都可以回到我身边。",
   "dialogue.touhou_little_maid_spell.winefox.tamed_chat_2": "今夜星辰很美，不知你的旅途又遇见了何种风景。",
-  "dialogue.touhou_little_maid_spell.winefox.tamed_chat_3": "星念依旧在你我之间回响。有什么想倾诉的，都可以讲给我听。"
+  "dialogue.touhou_little_maid_spell.winefox.tamed_chat_3": "星念依旧在你我之间回响。有什么想倾诉的，都可以讲给我听。",
+  "travelerstitles.structure.touhou_little_maid_spell.relic_sanctum": "圣遗礼拜堂",
+  "travelerstitles.structure.touhou_little_maid_spell.relic_sanctum.color": "d8c28f",
+  "travelerstitles.structure.touhou_little_maid_spell.fallen_sanctum": "堕天圣堂",
+  "travelerstitles.structure.touhou_little_maid_spell.fallen_sanctum.color": "b52b37",
+  "travelerstitles.structure.touhou_little_maid_spell.stellar_endshore": "星海终途",
+  "travelerstitles.structure.touhou_little_maid_spell.stellar_endshore.color": "9fc7ff",
+  "travelerstitles.structure.touhou_little_maid_spell.starfall_garden": "星落之庭",
+  "travelerstitles.structure.touhou_little_maid_spell.starfall_garden.color": "e2b8ff",
+  "travelerstitles.structure.touhou_little_maid_spell.hidden_retreat": "隐世之境",
+  "travelerstitles.structure.touhou_little_maid_spell.hidden_retreat.color": "f2b7d9"
 }

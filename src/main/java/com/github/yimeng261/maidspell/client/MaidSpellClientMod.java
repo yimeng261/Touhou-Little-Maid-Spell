@@ -9,12 +9,14 @@ import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
 import com.github.yimeng261.maidspell.client.particle.VoidSpellParticle;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.compat.travelerstitles.client.TravelerTitlesStructureClient;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
 import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraft.client.renderer.item.CompassItemPropertyFunction;
@@ -31,6 +33,7 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.AddPackFindersEvent;
 import com.github.yimeng261.maidspell.client.resource.LegacyPackRepositorySource;
 
@@ -42,7 +45,14 @@ public class MaidSpellClientMod {
         event.enqueueWork(() -> {
             IronsSpellbooksCompat.initClientSetup();
             registerCompassAngleProperty();
+            registerTravelerTitlesCompat();
         });
+    }
+
+    private static void registerTravelerTitlesCompat() {
+        if (ModList.get().isLoaded("travelerstitles")) {
+            NeoForge.EVENT_BUS.register(TravelerTitlesStructureClient.class);
+        }
     }
 
     /**

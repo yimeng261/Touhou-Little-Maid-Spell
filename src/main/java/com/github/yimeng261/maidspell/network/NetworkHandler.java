@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.network;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.WinefoxSeatedAmbienceController;
+import com.github.yimeng261.maidspell.compat.travelerstitles.client.TravelerTitlesStructureClient;
 import com.github.yimeng261.maidspell.network.message.C2SEnderPocketHudRequest;
 import com.github.yimeng261.maidspell.network.message.C2SEnderPocketMaidList;
 import com.github.yimeng261.maidspell.network.message.C2SEnderPocketMaidReady;
@@ -13,6 +14,7 @@ import com.github.yimeng261.maidspell.network.message.S2CEnderPocketMaidList;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketMaidSnapshot;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.network.message.TransmogNecklaceMessage;
+import com.github.yimeng261.maidspell.network.message.TravelerTitlesStructureMessage;
 import com.github.yimeng261.maidspell.network.message.WinefoxChallengeConfigMessage;
 import com.github.yimeng261.maidspell.network.message.WinefoxStructureMusicMessage;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,7 +26,7 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
  * 网络消息处理器
  */
 public class NetworkHandler {
-    private static final String PROTOCOL_VERSION = "6";
+    private static final String PROTOCOL_VERSION = "7";
 
     public static void registerMessages(final RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);
@@ -42,6 +44,7 @@ public class NetworkHandler {
         registrar.playToClient(MaidClientRemovalGuardMessage.TYPE, MaidClientRemovalGuardMessage.STREAM_CODEC, NetworkHandler::handleMaidClientRemovalGuard);
         registrar.playToClient(MaidEntityRestoreMessage.TYPE, MaidEntityRestoreMessage.STREAM_CODEC, NetworkHandler::handleMaidEntityRestore);
         registrar.playToClient(WinefoxStructureMusicMessage.TYPE, WinefoxStructureMusicMessage.STREAM_CODEC, NetworkHandler::handleWinefoxStructureMusic);
+        registrar.playToClient(TravelerTitlesStructureMessage.TYPE, TravelerTitlesStructureMessage.STREAM_CODEC, NetworkHandler::handleTravelerTitlesStructure);
     }
 
     public static void handleEnderPocketRequestMaidList(C2SEnderPocketMaidList packet, IPayloadContext context) {
@@ -119,5 +122,9 @@ public class NetworkHandler {
 
     public static void handleWinefoxStructureMusic(WinefoxStructureMusicMessage packet, IPayloadContext context) {
         WinefoxSeatedAmbienceController.setInsideStellarEndshore(packet.insideStructure());
+    }
+
+    public static void handleTravelerTitlesStructure(TravelerTitlesStructureMessage packet, IPayloadContext context) {
+        TravelerTitlesStructureClient.setStructure(packet.structureId());
     }
 }

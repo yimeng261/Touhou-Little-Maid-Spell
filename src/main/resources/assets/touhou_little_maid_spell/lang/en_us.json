@@ -533,5 +533,15 @@
   "dialogue.touhou_little_maid_spell.winefox.vow_oath_2": "The stars stand witness; the vow is made. On the long road ahead, please take good care of me.",
   "dialogue.touhou_little_maid_spell.winefox.tamed_chat_1": "Welcome back. However far you wander, you can always return to my side.",
   "dialogue.touhou_little_maid_spell.winefox.tamed_chat_2": "The stars are beautiful tonight. I wonder what sights your travels brought you this time.",
-  "dialogue.touhou_little_maid_spell.winefox.tamed_chat_3": "The thought of the stars still echoes between us. Whatever weighs on you, you may tell me."
+  "dialogue.touhou_little_maid_spell.winefox.tamed_chat_3": "The thought of the stars still echoes between us. Whatever weighs on you, you may tell me.",
+  "travelerstitles.structure.touhou_little_maid_spell.relic_sanctum": "Relic Sanctum",
+  "travelerstitles.structure.touhou_little_maid_spell.relic_sanctum.color": "d8c28f",
+  "travelerstitles.structure.touhou_little_maid_spell.fallen_sanctum": "Fallen Sanctum",
+  "travelerstitles.structure.touhou_little_maid_spell.fallen_sanctum.color": "b52b37",
+  "travelerstitles.structure.touhou_little_maid_spell.stellar_endshore": "Stellar Endshore",
+  "travelerstitles.structure.touhou_little_maid_spell.stellar_endshore.color": "9fc7ff",
+  "travelerstitles.structure.touhou_little_maid_spell.starfall_garden": "Starfall Garden",
+  "travelerstitles.structure.touhou_little_maid_spell.starfall_garden.color": "e2b8ff",
+  "travelerstitles.structure.touhou_little_maid_spell.hidden_retreat": "Hidden Retreat",
+  "travelerstitles.structure.touhou_little_maid_spell.hidden_retreat.color": "f2b7d9"
 }
