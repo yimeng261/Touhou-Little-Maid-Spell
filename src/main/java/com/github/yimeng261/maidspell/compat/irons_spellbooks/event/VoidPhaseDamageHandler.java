@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.event;
 
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxNonLethalGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.VoidPhaseSpell;
@@ -16,6 +17,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 
 /**
  * 虚空相变对带效果的生物造成的所有伤害追加虚空伤害。
+ * 正式挑战须通过 {@link WinefoxNonLethalGuard#duelFollowUpLimit} 限制追加量，
+ * 避免主伤害尚未落账时击穿最低生命值。
  */
 public final class VoidPhaseDamageHandler {
     private static final ThreadLocal<Boolean> APPLYING_VOID_DAMAGE =
@@ -48,6 +51,12 @@ public final class VoidPhaseDamageHandler {
         int spellLevel = phase.getAmplifier() + 1;
         VoidPhaseSpell spell = (VoidPhaseSpell) IronsSpellbooksCompatSpells.VOID_PHASE.get();
         float bonusDamage = spell.getBonusDamage(spellLevel, attacker);
+        // 正赛里追加伤害与主伤害共用"削到地板为止"的额度；本处理器优先级最低，拿到的是守则削过的数。
+        // Pre 阶段尚未扣吸收，主伤害只按吸收之后真正扣血的部分计入。
+        float pendingDamage = event.getNewDamage()
+                - WinefoxNonLethalGuard.absorbedPart(event.getEntity(), event.getNewDamage());
+        bonusDamage = WinefoxNonLethalGuard.duelFollowUpLimit(
+                event.getEntity(), event.getSource(), pendingDamage, bonusDamage);
         if (bonusDamage <= 0.0F) {
             return;
         }

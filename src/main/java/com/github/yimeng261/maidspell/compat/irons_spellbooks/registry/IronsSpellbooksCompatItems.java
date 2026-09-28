@@ -52,6 +52,13 @@ public final class IronsSpellbooksCompatItems {
     public static final DeferredItem<Item> STAR_WITCH_HAT =
             ITEMS.register("star_witch_hat", StarWitchHatItem::new);
 
+    public static final DeferredItem<Item> MAGICAL_WINEFOX_BOSS_SPAWN_EGG =
+            ITEMS.register("stellar_witch_spawn_egg",
+                    () -> new DeferredSpawnEggItem(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS,
+                            0xFFFFFF,
+                            0xFFFFFF,
+                            new Item.Properties()));
+
     // 星影投枪：星之魔女的投枪，玩家拿到后按三叉戟使用
     public static final DeferredItem<Item> STAR_SHADOW_SPEAR =
             ITEMS.register("star_shadow_spear", StarShadowSpearItem::new);

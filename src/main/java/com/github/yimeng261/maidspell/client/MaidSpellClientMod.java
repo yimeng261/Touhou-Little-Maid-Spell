@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.client;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.gui.SpellWhiteListScreen;
+import com.github.yimeng261.maidspell.client.gui.WinefoxChallengeConfigScreen;
 import com.github.yimeng261.maidspell.client.model.AscensionHaloModel;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
@@ -39,6 +40,7 @@ public class MaidSpellClientMod {
     @SubscribeEvent
     public static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
         event.register(MaidSpellContainers.SPELL_WHITE_LIST_CONTAINER.get(), SpellWhiteListScreen::new);
+        event.register(MaidSpellContainers.WINEFOX_CHALLENGE_CONFIG.get(), WinefoxChallengeConfigScreen::new);
     }
 
     @SubscribeEvent

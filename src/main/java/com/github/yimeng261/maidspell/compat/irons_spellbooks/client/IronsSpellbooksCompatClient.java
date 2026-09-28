@@ -1,5 +1,8 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.client;
 
+import net.neoforged.neoforge.common.NeoForge;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.MagicalWinefoxBossRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.animation.WinefoxMaidAnimationStates;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model.GenericSpellHumanoidModel;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.CompanionBlackHoleRenderer;
@@ -27,6 +30,11 @@ public final class IronsSpellbooksCompatClient {
      * 判据名沿用原版的 {@code throwing}，属性按物品注册，不会和三叉戟冲突。
      */
     public static void onClientSetup() {
+        // TLM 的动画状态表是全局静态的，资源重载不会清空，只能在这里注册一次。
+        WinefoxMaidAnimationStates.register();
+        NeoForge.EVENT_BUS.register(WinefoxBossMusicController.class);
+        // 坐姿常驻 BGM 与战斗 BGM 各自持有实例，靠 PlaySoundEvent 的静音闸门和 tick 里的战斗优先判定互斥。
+        NeoForge.EVENT_BUS.register(WinefoxSeatedAmbienceController.class);
         ItemProperties.register(IronsSpellbooksCompatItems.STAR_SHADOW_SPEAR.get(), ResourceLocation.withDefaultNamespace("throwing"),
                 (stack, level, entity, seed) ->
                         entity != null && entity.isUsingItem() && entity.getUseItem() == stack ? 1.0F : 0.0F);
@@ -39,6 +47,7 @@ public final class IronsSpellbooksCompatClient {
 
     public static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.STAR_SHADOW_SPEAR.get(), StarShadowSpearRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), MagicalWinefoxBossRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.CORRUPTED_KNIGHT.get(), context ->
                 new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
                         ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "geo/corrupted_knight.geo.json"),

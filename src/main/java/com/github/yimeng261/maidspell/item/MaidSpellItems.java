@@ -11,6 +11,8 @@ import com.github.yimeng261.maidspell.item.common.StarglintMaterialItem;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCross;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
+import com.github.yimeng261.maidspell.item.block.StarGlowFlowerClusterItem;
+import com.github.yimeng261.maidspell.item.common.StarglintDaggerItem;
 import com.github.yimeng261.maidspell.item.block.SuppressionStoneItem;
 import com.github.yimeng261.maidspell.item.block.JingxuYoulanItem;
 import com.github.yimeng261.maidspell.item.block.ScarletZhuhuaItem;
@@ -104,6 +106,10 @@ public class MaidSpellItems {
         () -> new YueLinglanItem(MaidSpellBlocks.YUE_LINGLAN.get()));
     public static final DeferredItem<Item> JINGXU_YOULAN = ITEMS.register("jingxu_youlan",
         () -> new JingxuYoulanItem(MaidSpellBlocks.JINGXU_YOULAN.get()));
+    public static final DeferredItem<Item> STAR_GLOW_FLOWER_CLUSTER = ITEMS.register("star_glow_flower_cluster",
+        () -> new StarGlowFlowerClusterItem(MaidSpellBlocks.STAR_GLOW_FLOWER_CLUSTER.get()));
+    public static final DeferredItem<Item> STARGLINT_DAGGER = ITEMS.register("starglint_dagger",
+        StarglintDaggerItem::new);
     public static final DeferredItem<Item> SUPPRESSION_STONE = ITEMS.register("suppression_stone",
         () -> new SuppressionStoneItem(MaidSpellBlocks.SUPPRESSION_STONE.get()));
 

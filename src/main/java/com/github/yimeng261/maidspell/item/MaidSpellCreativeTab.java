@@ -88,6 +88,7 @@ public class MaidSpellCreativeTab {
                     output.accept(IronsSpellbooksCompatItems.STAR_SHADOW_LONGSWORD.get());
                     output.accept(IronsSpellbooksCompatItems.STAR_SHADOW_STAFF.get());
                     output.accept(IronsSpellbooksCompatItems.STAR_WITCH_HAT.get());
+                    output.accept(MaidSpellItems.STARGLINT_DAGGER.get());
 
                     // 材料与道具
                     output.accept(MaidSpellItems.NEBULA_CORE.get());
@@ -101,6 +102,7 @@ public class MaidSpellCreativeTab {
                 output.accept(MaidSpellItems.SCARLET_ZHUHUA.get());
                 output.accept(MaidSpellItems.YUE_LINGLAN.get());
                 output.accept(MaidSpellItems.JINGXU_YOULAN.get());
+                output.accept(MaidSpellItems.STAR_GLOW_FLOWER_CLUSTER.get());
                 output.accept(MaidSpellItems.SUPPRESSION_STONE.get());
 
                 // 管理员工具
@@ -108,6 +110,7 @@ public class MaidSpellCreativeTab {
 
                 // 怪物蛋
                 if (ironsSpellbooks) {
+                    output.accept(IronsSpellbooksCompatItems.MAGICAL_WINEFOX_BOSS_SPAWN_EGG.get());
                     output.accept(IronsSpellbooksCompatItems.CORRUPTED_KNIGHT_SPAWN_EGG.get());
                     output.accept(IronsSpellbooksCompatItems.SHADOW_ASSASSIN_SPAWN_EGG.get());
                     output.accept(IronsSpellbooksCompatItems.ELF_TEMPLAR_SPAWN_EGG.get());

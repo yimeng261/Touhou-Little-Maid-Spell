@@ -1,0 +1,59 @@
+{
+  id: "touhou_little_maid:maid",
+  model_id: "touhou_little_maid_spell:stellar_witch",
+  SoundPackId: "littlemaid_peco",
+  MaidTask: "touhou_little_maid:idle",
+  MaidFavorability: 192,
+  MaidBackpackType: "touhou_little_maid:big_backpack",
+  MaidScheduleMode: "ALL",
+  MaidIsPickup: 0b,
+  MaidSubConfig: {SoundFreq: 0.0f, ChatBubbleShow: 0b, OpenDoor: 1b, BackItemShow: 0b, OpenFenceGate: 1b, PickupType: 2, BackpackShow: 0b, ActiveClimbing: 1b},
+  StruckByLightning: 1b,
+  PersistenceRequired: 1b,
+  Health: 60.0f,
+  attributes: [
+    {id: "minecraft:generic.max_health", base: 60.0d},
+    {id: "minecraft:generic.movement_speed", base: 0.699999988079071d},
+    {id: "minecraft:generic.follow_range", base: 64.0d},
+    {id: "minecraft:generic.attack_damage", base: 4.0d}
+  ],
+  NeoForgeData: {MaidSpellStarterMaid: 1b},
+  ArmorItems: [{}, {}, {}, {id: "touhou_little_maid_spell:star_witch_hat", count: 1}],
+  HandItems: [{}, {}],
+  MaidBaubleInventory: {Size: 30, Items: [
+    {Slot: 1, id: "touhou_little_maid_spell:quick_chant_ring", count: 1},
+    {Slot: 2, id: "touhou_little_maid_spell:ender_pocket", count: 1},
+    {Slot: 3, id: "touhou_little_maid_spell:spell_enhancement_core", count: 1},
+    {Slot: 7, id: "touhou_little_maid_spell:staranchor_pearl", count: 1}
+  ]},
+  MaidInventory: {Size: 36, Items: [
+    {Slot: 1, id: "touhou_little_maid_spell:star_shadow_longsword", count: 1, components: {
+      "irons_spellbooks:spell_container": {maxSpells: 1, spellWheel: 1b, mustEquip: 0b, data: [
+        {id: "touhou_little_maid_spell:void_phase", index: 0, level: 1, locked: 1b}
+      ]}
+    }},
+    {Slot: 2, id: "irons_spellbooks:dragonskin_spell_book", count: 1, components: {
+      "irons_spellbooks:spell_container": {maxSpells: 12, spellWheel: 1b, mustEquip: 1b, data: [
+        {id: "touhou_little_maid_spell:magic_shotgun", index: 0, level: 5},
+        {id: "irons_spellbooks:evasion", index: 1, level: 5},
+        {id: "touhou_little_maid_spell:star_shadow_strike", index: 2, level: 5},
+        {id: "irons_spellbooks:magic_missile", index: 3, level: 10},
+        {id: "irons_spellbooks:black_hole", index: 4, level: 4},
+        {id: "touhou_little_maid_spell:sword_prison", index: 5, level: 5},
+        {id: "touhou_little_maid_spell:starfall_modified", index: 6, level: 9},
+        {id: "touhou_little_maid_spell:triple_star_arrow", index: 7, level: 9},
+        {id: "touhou_little_maid_spell:teleport_modified", index: 8, level: 4},
+        {id: "irons_spellbooks:fireball", index: 9, level: 5},
+        {id: "irons_spellbooks:lightning_bolt", index: 10, level: 10},
+        {id: "irons_spellbooks:heal", index: 11, level: 8}
+      ]}
+    }},
+    {Slot: 3, id: "touhou_little_maid_spell:star_shadow_staff", count: 1},
+    {Slot: 30, id: "touhou_little_maid_spell:star_glow_flower_cluster", count: 1},
+    {Slot: 31, id: "touhou_little_maid_spell:star_glow_flower_cluster", count: 1},
+    {Slot: 32, id: "touhou_little_maid_spell:star_glow_flower_cluster", count: 1},
+    {Slot: 33, id: "touhou_little_maid_spell:star_glow_flower_cluster", count: 1},
+    {Slot: 34, id: "touhou_little_maid_spell:star_glow_flower_cluster", count: 1},
+    {Slot: 35, id: "touhou_little_maid_spell:star_glow_flower_cluster", count: 1}
+  ]}
+}

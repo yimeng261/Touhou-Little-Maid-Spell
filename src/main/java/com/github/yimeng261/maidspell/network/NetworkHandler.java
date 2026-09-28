@@ -12,6 +12,7 @@ import com.github.yimeng261.maidspell.network.message.S2CEnderPocketMaidList;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketMaidSnapshot;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.network.message.TransmogNecklaceMessage;
+import com.github.yimeng261.maidspell.network.message.WinefoxChallengeConfigMessage;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -31,6 +32,7 @@ public class NetworkHandler {
         registrar.playToServer(C2SEnderPocketMaidReady.TYPE, C2SEnderPocketMaidReady.STREAM_CODEC, NetworkHandler::handleEnderPocketMaidReady);
         registrar.playToServer(C2SEnderPocketTeleport.TYPE, C2SEnderPocketTeleport.STREAM_CODEC, NetworkHandler::handleEnderPocketTeleport);
         registrar.playToServer(TransmogNecklaceMessage.TYPE, TransmogNecklaceMessage.STREAM_CODEC, NetworkHandler::handleTransmogNecklaceMessage);
+        registrar.playToServer(WinefoxChallengeConfigMessage.TYPE, WinefoxChallengeConfigMessage.STREAM_CODEC, NetworkHandler::handleWinefoxChallengeConfig);
         registrar.playToClient(S2CEnderPocketMaidList.TYPE, S2CEnderPocketMaidList.STREAM_CODEC, NetworkHandler::handleEnderPocketResponseMaidList);
         registrar.playToClient(S2CEnderPocketPushUpdate.TYPE, S2CEnderPocketPushUpdate.STREAM_CODEC, NetworkHandler::handleEnderPocketPushUpdate);
         registrar.playToClient(S2CEnderPocketHudUpdate.TYPE, S2CEnderPocketHudUpdate.STREAM_CODEC, NetworkHandler::handleEnderPocketHudUpdate);
@@ -68,6 +70,13 @@ public class NetworkHandler {
     }
 
     public static void handleEnderPocketTeleport(C2SEnderPocketTeleport packet, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+        packet.handle(serverPlayer);
+    }
+
+    public static void handleWinefoxChallengeConfig(WinefoxChallengeConfigMessage packet, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer serverPlayer)) {
             return;
         }

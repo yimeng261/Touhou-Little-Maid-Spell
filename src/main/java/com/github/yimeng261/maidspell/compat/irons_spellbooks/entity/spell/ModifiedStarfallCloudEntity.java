@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell;
 
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
@@ -63,6 +64,10 @@ public class ModifiedStarfallCloudEntity extends Entity {
         }
 
         LivingEntity caster = getCaster();
+        if (caster instanceof MagicalWinefoxBossEntity boss && !boss.isBattleActive()) {
+            discard();
+            return;
+        }
         if (!IAuthoritativeHealth.combatAlive(caster)
                 || caster.level() != level() || tickCount > DURATION_TICKS) {
             discard();

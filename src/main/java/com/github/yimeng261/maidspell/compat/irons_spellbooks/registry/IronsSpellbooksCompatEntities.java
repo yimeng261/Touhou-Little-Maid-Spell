@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.registry;
 
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.StarShadowSpearEntity;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.CorruptedKnightEntity;
@@ -114,6 +115,14 @@ public final class IronsSpellbooksCompatEntities {
                             .updateInterval(1)
                             .build("spellbreaking_echo"));
 
+    public static final DeferredHolder<EntityType<?>, EntityType<MagicalWinefoxBossEntity>> MAGICAL_WINEFOX_BOSS =
+            ENTITY_TYPES.register("stellar_witch",
+                    () -> EntityType.Builder.of(MagicalWinefoxBossEntity::new, MobCategory.MONSTER)
+                            .sized(0.9F, 2.0F)
+                            .clientTrackingRange(10)
+                            .updateInterval(2)
+                            .build("stellar_witch"));
+
     /** 扔出去的星影投枪。 */
     public static final DeferredHolder<EntityType<?>, EntityType<StarShadowSpearEntity>> STAR_SHADOW_SPEAR =
             ENTITY_TYPES.register("star_shadow_spear",
@@ -138,6 +147,7 @@ public final class IronsSpellbooksCompatEntities {
         event.put(SHADOW_ASSASSIN.get(), ShadowAssassinEntity.createAttributes().build());
         event.put(ELF_TEMPLAR.get(), ElfTemplarEntity.createAttributes().build());
         event.put(HOLY_CONSTRUCT.get(), HolyConstructEntity.prepareAttributes().build());
+        event.put(MAGICAL_WINEFOX_BOSS.get(), MagicalWinefoxBossEntity.createAttributes().build());
     }
 
     private static void onRegisterSpawnPlacements(RegisterSpawnPlacementsEvent event) {

@@ -638,6 +638,88 @@ public class Config {
 
     static {
         BUILDER.pop(); // retreat_dimension
+        BUILDER.push("compat");
+    }
+
+    private static final ModConfigSpec.BooleanValue AUTO_INSTALL_TLM_MODEL_PACK = BUILDER
+            .comment("启动时安装内置 TLM 模型包并覆盖同名文件；自行维护 tlm_custom_pack 时请关闭")
+            .comment("Installs the bundled TLM model pack on launch, overwriting matching files; disable if managed manually.")
+            .define("autoInstallTlmModelPack", true);
+
+    static {
+        BUILDER.pop(); // compat
+        BUILDER.comment("星之魔女酒狐 Boss 战配置")
+               .comment("Magical Winefox boss fight configuration")
+               .push("winefox");
+    }
+
+    private static final ModConfigSpec.BooleanValue WINEFOX_CHALLENGE_CONFIG_ENABLED = BUILDER
+            .comment("是否允许使用星芒短剑的下一场挑战配置界面；关闭后不会打开界面")
+            .comment("Whether the Starglint Dagger challenge configuration screen is available.")
+            .define("winefoxChallengeConfigEnabled", true);
+
+    private static final ModConfigSpec.DoubleValue WINEFOX_MAID_DAMAGE_SHARE_LIMIT = BUILDER
+            .comment("女仆造成的伤害占比超过此值时，不掉落星云核心或解锁特殊交易")
+            .comment("Maid damage share above this fraction disables the Nebula Core drop and special trades.")
+            .defineInRange("winefoxMaidDamageShareLimit", 0.6, 0.0, 1.0);
+
+    static {
+        BUILDER.comment("");
+    }
+
+    private static final ModConfigSpec.BooleanValue WINEFOX_TRUE_DAMAGE_RESTRICTS_REWARD = BUILDER
+            .comment("本场使用真伤后是否限制星云核心掉落和特殊交易")
+            .comment("Whether true damage in this fight also restricts the Nebula Core drop and special trades.")
+            .define("winefoxTrueDamageRestrictsReward", true);
+
+    private static final ModConfigSpec.DoubleValue WINEFOX_MAX_HEALTH = BUILDER
+            .comment("酒狐最大生命；修改后对新生成或重新加载的实体生效")
+            .comment("Winefox max health; changes apply when a boss spawns or reloads.")
+            .defineInRange("winefoxMaxHealth", 600.0, 1.0, 100000.0);
+
+    private static final ModConfigSpec.DoubleValue WINEFOX_DAMAGE_MULTIPLIER = BUILDER
+            .comment("酒狐承伤倍率，先于女仆和二阶段倍率；0 表示免疫伤害")
+            .comment("Winefox damage taken, before maid and phase-two multipliers; 0 prevents damage.")
+            .defineInRange("winefoxDamageMultiplier", 1.0, 0.0, 100.0);
+
+    private static final ModConfigSpec.DoubleValue WINEFOX_SPELL_POWER_MULTIPLIER = BUILDER
+            .comment("酒狐通用及各学派法强倍率；实体进入世界时按当前配置重算")
+            .comment("Winefox general and school spell power multiplier, reapplied when the boss enters the world.")
+            .defineInRange("winefoxSpellPowerMultiplier", 1.0, 0.0, 1000.0);
+
+    private static final ModConfigSpec.DoubleValue WINEFOX_HIT_DAMAGE_CAP_RATIO = BUILDER
+            .comment("单次最终伤害上限，占最大生命的比例；包含真伤，0 表示不限伤")
+            .comment("Per-hit final damage cap as a fraction of max health, including true damage; 0 disables it.")
+            .defineInRange("winefoxHitDamageCapRatio", 0.08, 0.0, 1.0);
+
+    private static final ModConfigSpec.IntValue WINEFOX_HIT_INTERVAL_TICKS = BUILDER
+            .comment("两次有效受击的最短间隔，单位 tick；包含法术和真伤，0 表示不限制")
+            .comment("Minimum ticks between effective hits, including spells and true damage; 0 disables it.")
+            .defineInRange("winefoxHitIntervalTicks", 6, 0, 200);
+
+    private static final ModConfigSpec.DoubleValue WINEFOX_MAID_DAMAGE_MULTIPLIER = BUILDER
+            .comment("女仆及其召唤物对酒狐造成的伤害倍率，叠加在全局承伤倍率上")
+            .comment("Damage dealt by maids and their summons to Winefox, on top of her global damage multiplier.")
+            .defineInRange("winefoxMaidDamageMultiplier", 0.5, 0.0, 1.0);
+
+    private static final ModConfigSpec.DoubleValue WINEFOX_DAMAGE_TO_MAID_MULTIPLIER = BUILDER
+            .comment("酒狐对女仆及其召唤物的伤害倍率；正式挑战中仍受最低生命限制")
+            .comment("Damage dealt by Winefox to maids and their summons; the duel health floor still applies.")
+            .defineInRange("winefoxDamageToMaidMultiplier", 5.0, 0.0, 100.0);
+
+
+    private static final ModConfigSpec.DoubleValue WINEFOX_PHASE_TWO_DAMAGE_MULTIPLIER = BUILDER
+            .comment("酒狐二阶段承伤倍率，与其它承伤倍率叠乘")
+            .comment("Winefox damage taken in phase two, multiplied with other damage modifiers.")
+            .defineInRange("winefoxPhaseTwoDamageMultiplier", 0.5, 0.0, 1.0);
+
+    private static final ModConfigSpec.DoubleValue WINEFOX_DUEL_SURVIVAL_FLOOR = BUILDER
+            .comment("正式挑战中玩家及女仆的最低生命；玩家判负，女仆退场")
+            .comment("Minimum player and maid health in a formal duel; players lose and maids retire at this value.")
+            .defineInRange("winefoxDuelSurvivalFloor", 1.0, 0.0, 1024.0);
+
+    static {
+        BUILDER.pop(); // winefox
     }
 
     public static final ModConfigSpec SPEC = BUILDER.build();
@@ -723,6 +805,23 @@ public class Config {
     public static boolean allowMobSpawnsInRetreat;
     public static boolean allowHostileMobSpawnsInRetreat;
     public static int retreatRecordRetentionDays;
+
+    // TLM 模型包
+    public static boolean autoInstallTlmModelPack;
+
+    // 星之魔女 Boss
+    public static double winefoxMaidDamageShareLimit;
+    public static boolean winefoxChallengeConfigEnabled;
+    public static boolean winefoxTrueDamageRestrictsReward;
+    public static double winefoxMaxHealth;
+    public static double winefoxDamageMultiplier;
+    public static double winefoxSpellPowerMultiplier;
+    public static double winefoxHitDamageCapRatio;
+    public static int winefoxHitIntervalTicks;
+    public static double winefoxMaidDamageMultiplier;
+    public static double winefoxDamageToMaidMultiplier;
+    public static double winefoxPhaseTwoDamageMultiplier;
+    public static double winefoxDuelSurvivalFloor;
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent.Loading event) {
@@ -835,6 +934,21 @@ public class Config {
         allowMobSpawnsInRetreat = ALLOW_MOB_SPAWNS_IN_RETREAT.get();
         allowHostileMobSpawnsInRetreat = ALLOW_HOSTILE_MOB_SPAWNS_IN_RETREAT.get();
         retreatRecordRetentionDays = RETREAT_RECORD_RETENTION_DAYS.get();
+
+        autoInstallTlmModelPack = AUTO_INSTALL_TLM_MODEL_PACK.get();
+
+        winefoxMaidDamageShareLimit = WINEFOX_MAID_DAMAGE_SHARE_LIMIT.get();
+        winefoxChallengeConfigEnabled = WINEFOX_CHALLENGE_CONFIG_ENABLED.get();
+        winefoxTrueDamageRestrictsReward = WINEFOX_TRUE_DAMAGE_RESTRICTS_REWARD.get();
+        winefoxMaxHealth = WINEFOX_MAX_HEALTH.get();
+        winefoxDamageMultiplier = WINEFOX_DAMAGE_MULTIPLIER.get();
+        winefoxSpellPowerMultiplier = WINEFOX_SPELL_POWER_MULTIPLIER.get();
+        winefoxHitDamageCapRatio = WINEFOX_HIT_DAMAGE_CAP_RATIO.get();
+        winefoxHitIntervalTicks = WINEFOX_HIT_INTERVAL_TICKS.get();
+        winefoxMaidDamageMultiplier = WINEFOX_MAID_DAMAGE_MULTIPLIER.get();
+        winefoxDamageToMaidMultiplier = WINEFOX_DAMAGE_TO_MAID_MULTIPLIER.get();
+        winefoxPhaseTwoDamageMultiplier = WINEFOX_PHASE_TWO_DAMAGE_MULTIPLIER.get();
+        winefoxDuelSurvivalFloor = WINEFOX_DUEL_SURVIVAL_FLOOR.get();
 
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);
