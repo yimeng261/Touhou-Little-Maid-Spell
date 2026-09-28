@@ -5,6 +5,8 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.animation.W
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model.GenericSpellHumanoidModel;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.WinefoxSwordProjectileRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.StarShadowStrikeRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.SpellbreakingEchoRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.CompanionBlackHoleRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.HolyConstructRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.GenericSpellHumanoidRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.MagicalWinefoxBossRenderer;
@@ -25,6 +27,9 @@ public final class IronsSpellbooksCompatClient {
     public static void onClientSetup() {
         WinefoxMaidAnimationStates.register();
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(WinefoxBossMusicController.class);
+        // 坐姿常驻 BGM（「星途终岸」）。和战斗 BGM 各自持有实例，靠 PlaySoundEvent 那道
+        // 共用的静音闸门 + tick 里的「战斗优先」判定互斥，见两个类的注释。
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(WinefoxSeatedAmbienceController.class);
     }
 
     public static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
@@ -54,5 +59,9 @@ public final class IronsSpellbooksCompatClient {
                 StarShadowStrikeRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(),
                 MagicalWinefoxBossRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.COMPANION_BLACK_HOLE.get(),
+                CompanionBlackHoleRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.SPELLBREAKING_ECHO.get(),
+                SpellbreakingEchoRenderer::new);
     }
 }

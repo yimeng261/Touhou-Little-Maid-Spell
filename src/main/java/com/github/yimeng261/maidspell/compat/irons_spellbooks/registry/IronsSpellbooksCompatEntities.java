@@ -6,6 +6,8 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ElfTemplarE
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.GuardianWitchEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.HolyConstructEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ShadowAssassinEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.CompanionBlackHoleEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SpellbreakingEchoEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCloudEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCometEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.StarShadowStrikeEntity;
@@ -108,6 +110,32 @@ public final class IronsSpellbooksCompatEntities {
                             .clientTrackingRange(10)
                             .updateInterval(2)
                             .build("stellar_witch"));
+
+    /**
+     * 「伴星黑洞」用的小型黑洞载体。
+     *
+     * <p>尺寸与更新频率都照原版黑洞那份走（原版 {@code BlackHole} 的渲染是按半径自缩放的，
+     * 初始物理尺寸给 1.0 就够）；{@code updateInterval(1)} 必须留着 ——
+     * 这个实体每 tick 都要把位置往施法者头顶挪（见 {@code CompanionBlackHoleEntity#tick}），
+     * 隔帧更新会让跟随看起来一顿一顿。
+     */
+    public static final RegistryObject<EntityType<CompanionBlackHoleEntity>> COMPANION_BLACK_HOLE =
+            ENTITY_TYPES.register("companion_black_hole",
+                    () -> EntityType.Builder.<CompanionBlackHoleEntity>of(
+                                    CompanionBlackHoleEntity::new, MobCategory.MISC)
+                            .sized(1.0F, 1.0F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("companion_black_hole"));
+
+    public static final RegistryObject<EntityType<SpellbreakingEchoEntity>> SPELLBREAKING_ECHO =
+            ENTITY_TYPES.register("spellbreaking_echo",
+                    () -> EntityType.Builder.<SpellbreakingEchoEntity>of(
+                                    SpellbreakingEchoEntity::new, MobCategory.MISC)
+                            .sized(1.0F, 1.0F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("spellbreaking_echo"));
 
     private IronsSpellbooksCompatEntities() {
     }
