@@ -1,11 +1,13 @@
 package com.github.yimeng261.maidspell.client;
 
 import com.github.yimeng261.maidspell.client.gui.SpellWhiteListScreen;
+import com.github.yimeng261.maidspell.client.gui.WinefoxChallengeConfigScreen;
 import com.github.yimeng261.maidspell.client.model.SharedHaloModel;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.particle.VoidSpellParticle;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.compat.travelerstitles.client.TravelerTitlesStructureClient;
 import com.github.yimeng261.maidspell.client.renderer.entity.StarShadowSpearRenderer;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -28,7 +30,9 @@ import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.event.AddPackFindersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.common.MinecraftForge;
 import com.github.yimeng261.maidspell.client.resource.LegacyPackRepositorySource;
 
 @Mod.EventBusSubscriber(modid = "touhou_little_maid_spell", bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
@@ -38,9 +42,17 @@ public class MaidSpellClientMod {
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
             MenuScreens.register(MaidSpellContainers.SPELL_WHITE_LIST_CONTAINER.get(), SpellWhiteListScreen::new);
+            MenuScreens.register(MaidSpellContainers.WINEFOX_CHALLENGE_CONFIG.get(), WinefoxChallengeConfigScreen::new);
             registerSpearThrowingProperty();
             registerCompassAngleProperty();
+            registerTravelerTitlesCompat();
         });
+    }
+
+    private static void registerTravelerTitlesCompat() {
+        if (ModList.get().isLoaded("travelerstitles")) {
+            MinecraftForge.EVENT_BUS.register(TravelerTitlesStructureClient.class);
+        }
     }
 
     @SubscribeEvent
@@ -50,14 +62,9 @@ public class MaidSpellClientMod {
 
     /**
      * 观星罗盘的指针朝向。
-     *
-     * <p>{@code angle} 不是通用谓词，原版只给 {@code Items.COMPASS} 和
-     * {@code Items.RECOVERY_COMPASS} 各注册了一份，所以继承 {@code CompassItem}
-     * 并不会自动带上它，必须按物品再注册一次。
-     *
-     * <p>目标取法比原版简单：观星罗盘只指结构，不存在"没绑定时指向出生点"这一档，
-     * 没绑过就返回 null，{@code CompassItemPropertyFunction} 会退化成随机转圈，
-     * 正好表达"还没找到目标"。
+     * <p>{@code angle} 不是通用谓词，原版只给 {@code Items.COMPASS} 和 {@code Items.RECOVERY_COMPASS} 各注册了一份，所以继承 {@code CompassItem} 并不会自动带上它，必须按物品再注册一次。
+     * <p>目标取法比原版简单：观星罗盘只指结构，不存在"没绑定时指向出生点"这一档，没绑过就返回 null，
+     * {@code CompassItemPropertyFunction} 会退化成随机转圈，正好表达"还没找到目标"。
      */
     private static void registerCompassAngleProperty() {
         ItemProperties.register(MaidSpellItems.STARWATCH_COMPASS.get(), new ResourceLocation("angle"),

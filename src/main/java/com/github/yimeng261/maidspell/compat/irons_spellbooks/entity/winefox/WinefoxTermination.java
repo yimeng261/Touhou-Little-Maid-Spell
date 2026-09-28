@@ -5,9 +5,9 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
  *
  * <p>中间三项与动画 JSON 里 {@code loop} 字段的三种写法一一对应，也就是 GeckoLib 侧
  * {@code thenPlay} / {@code thenLoop} / {@code thenPlayAndHold} 的选择依据。
- * 这层对应关系 原先是手抄的（Java 一份、JSON 一份），现在由 {@code WinefoxActionDataTest} 对账。
  *
- * <p>本枚举刻意不引任何 Minecraft / Forge / 铁魔法类型，对账测试才能不启动 Forge 直接读。
+ * <p>本枚举刻意不引任何 Minecraft / Forge / 铁魔法类型：对账用的读取工具才能在不起 Forge 的
+ * 情况下直接解析它。
  */
 public enum WinefoxTermination {
 

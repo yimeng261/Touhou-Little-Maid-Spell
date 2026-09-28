@@ -1,11 +1,13 @@
 package com.github.yimeng261.maidspell.event;
 
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBackpackChangeEvent;
+import com.github.tartaricacid.touhoulittlemaid.api.event.MaidAndItemTransformEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.MaidOriginData;
 import com.github.yimeng261.maidspell.spell.providers.PsiProvider;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -96,6 +98,7 @@ public class MaidSpellEventHandler {
             return;
         }
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
+            MaidOriginData.upgradeStarWitchSpellBooks(maid);
 
             if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
                 ChunkLoadingManager.getCurrentServer().execute(()->{
@@ -649,6 +652,7 @@ public class MaidSpellEventHandler {
 
         if (!player.level().isClientSide() && player.level() instanceof ServerLevel level) {
             if(maid.isOrderedToSit()&&!maid.isStructureSpawn()&&isInHiddenRetreatStructure(level, maid.blockPosition())){
+                MaidOriginData.markHiddenRetreatMaid(maid);
                 player.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat").withStyle(ChatFormatting.LIGHT_PURPLE));
             }
 
@@ -656,6 +660,16 @@ public class MaidSpellEventHandler {
             Global.updateMaidInfo(maid,true);
             EnderPocketBauble.pushEnderPocketDataToClient((ServerPlayer) player);
         }
+    }
+
+    @SubscribeEvent
+    public static void onMaidToItem(MaidAndItemTransformEvent.ToItem event) {
+        MaidOriginData.writeTransportData(event.getMaid(), event.getData());
+    }
+
+    @SubscribeEvent
+    public static void onItemToMaid(MaidAndItemTransformEvent.ToMaid event) {
+        MaidOriginData.readTransportData(event.getMaid(), event.getData());
     }
 
     @SubscribeEvent

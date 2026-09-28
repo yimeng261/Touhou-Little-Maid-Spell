@@ -12,31 +12,8 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.Win
 import org.jetbrains.annotations.Nullable;
 
 /**
- * 万法酒狐的动作动画走 TLM 自己的 {@code magic_casting} 通道。
- *
- * <p>迁移前这些动画挂在实体自带的 gecko4 {@code action} 控制器上；换成 TLM 的女仆渲染器之后
- * gecko4 那条路整条不再运行，得改用 TLM 的通道。{@code magic_casting} 排在固定表的第 14 位、
- * 在 {@code hold_mainhand}（第 11 位）之后，因此动作动画天然压得住持握姿势写的 {@code scale = 1}
- * —— 迁移前靠控制器注册顺序维持的那条约束，在这里是免费的。
- *
- * <p>它也是 TLM 全局唯一会调 {@code markNeedsReload()} 的地方，也就是唯一能让**同一条动画
- * 从第 0 帧重播**的入口。连段里第二次挥同一招全靠它。
- *
- * <h2>优先级 200，让位给施法</h2>
- * {@link #getPriority()} 报 200，高于 {@code ISSCastingAnimationProvider} 的默认 100。
- * TLM 的 {@code MagicCastingAnimationManager} 按优先级倒序排，注册顺序无关。
- *
- * <p>排在前面不等于抢通道：不是酒狐、或者酒狐没在放动作时，本 provider 报 NONE，
- * {@code predicateMagicCastingAnimation} 就 {@code continue} 到下一个 provider ——
- * 施法动画整条由 {@code ISSCastingAnimationProvider} 从铁魔法的 {@code SyncedSpellData}
- * 算出来，和普通女仆走同一条路。
- *
- * <p><b>报 NONE 时那次 {@code setLastCastingPhase(NONE)} 不会打乱后面的 ISS provider。</b>
- * TLM 把 {@code lastPhase} 在循环开始前读进局部变量、整轮不再重读，所以 ISS
- * 那边判「要不要 {@code markNeedsReload()}」看到的仍是上一 tick 的真实相位。
- * 唯一的交叉是：上一 tick 停在 INSTANT / END 且控制器还没停时，本 provider 会直接
- * {@code CONTINUE} 把这一 tick 让给正在播的一次性动作 —— 这正是 ISS provider
- * 自己在同样位置会做的事，只是提前了一步。
+ * 酒狐动作动画占用 TLM 的 magic_casting 通道，优先于 ISS 施法动画。
+ * 没有动作时返回 NONE，让后续 provider 处理施法；同一动作重播须重新加载控制器。
  */
 public class WinefoxActionAnimationProvider implements IMagicCastingAnimationProvider {
 
@@ -62,16 +39,8 @@ public class WinefoxActionAnimationProvider implements IMagicCastingAnimationPro
     }
 
     /**
-     * <ul>
-     *   <li><b>战败</b>：一直报 CASTING。{@code death} 是 5 秒的 {@code hold_on_last_frame}
-     *       动画；持续占着通道才压得住 {@code main} 通道上的待机。
-     *       报 CASTING 而不是 INSTANT，是因为 CASTING 每 tick 都重新 {@code setAnimation}
-     *       却不会 reload，姿势稳稳地钉着；也顺带把施法 provider 挡在门外
-     *       —— 她已经倒下了，不该再有施法动作。</li>
-     *   <li><b>一次性动作</b>（近战 / 转阶段）：起始那一帧报 INSTANT，之后报 NONE，
-     *       动画由 TLM 靠「上一帧 INSTANT 且控制器没停 → CONTINUE」放完。</li>
-     *   <li><b>其余一律 NONE</b>，让给 {@code ISSCastingAnimationProvider}。</li>
-     * </ul>
+     * 战败和循环动作持续报 CASTING；一次性动作首帧报 INSTANT，之后由 TLM 播完。
+     * 其余状态交给 ISS 施法 provider。
      */
     private static IMagicCastingState.CastingPhase currentPhase(MagicalWinefoxBossEntity boss,
                                                                 WinefoxCastingAnimateState state) {
@@ -81,6 +50,9 @@ public class WinefoxActionAnimationProvider implements IMagicCastingAnimationPro
         WinefoxAction action = boss.animationAction();
         if (action == WinefoxAction.NONE) {
             return IMagicCastingState.CastingPhase.NONE;
+        }
+        if (action.termination() == WinefoxTermination.LOOP) {
+            return IMagicCastingState.CastingPhase.CASTING;
         }
         return state.claimSerial(boss.animationActionSerial())
                 ? IMagicCastingState.CastingPhase.INSTANT

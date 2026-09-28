@@ -7,6 +7,7 @@ import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
 import com.github.yimeng261.maidspell.item.block.JingxuYoulanItem;
 import com.github.yimeng261.maidspell.item.block.ScarletZhuhuaItem;
 import com.github.yimeng261.maidspell.item.block.StarGlowFlowerClusterItem;
+import com.github.yimeng261.maidspell.item.block.SuppressionStoneItem;
 import com.github.yimeng261.maidspell.item.block.YueLinglanItem;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.SpellWhiteList;
 import com.github.yimeng261.maidspell.item.bauble.doubleHeartChain.DoubleHeartChain;
@@ -41,7 +42,6 @@ import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
 import net.minecraft.Util;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
@@ -109,6 +109,10 @@ public class MaidSpellItems {
         () -> new StarglintMaterialItem("item.touhou_little_maid_spell.ritual_hilt.desc"));
     public static final RegistryObject<Item> STARGLINT_DAGGER = ITEMS.register("starglint_dagger",
         StarglintDaggerItem::new);
+    // 归星：星之魔女的誓约信物。合成它要秘银碎片，所以配方也挂在铁魔法上（见同目录的
+    // data/touhou_little_maid_spell/recipes/returning_star.json，条件与星芒短剑同一写法）。
+    public static final RegistryObject<Item> RETURNING_STAR = ITEMS.register("returning_star",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.returning_star.desc"));
 
     public static final RegistryObject<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
         () -> new ScarletZhuhuaItem(MaidSpellBlocks.SCARLET_ZHUHUA.get()));
@@ -119,7 +123,7 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> STAR_GLOW_FLOWER_CLUSTER = ITEMS.register("star_glow_flower_cluster",
         () -> new StarGlowFlowerClusterItem(MaidSpellBlocks.STAR_GLOW_FLOWER_CLUSTER.get()));
     public static final RegistryObject<Item> SUPPRESSION_STONE = ITEMS.register("suppression_stone",
-        () -> new BlockItem(MaidSpellBlocks.SUPPRESSION_STONE.get(), new Item.Properties()));
+        () -> new SuppressionStoneItem(MaidSpellBlocks.SUPPRESSION_STONE.get()));
 
     // 星影投枪：万法酒狐的投枪，不进创造模式物品栏，也没有 lang 条目，只能 /give
     public static final RegistryObject<Item> STAR_SHADOW_SPEAR = ITEMS.register("star_shadow_spear", StarShadowSpearItem::new);

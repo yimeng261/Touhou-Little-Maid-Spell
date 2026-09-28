@@ -1,9 +1,15 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 
+import com.github.yimeng261.maidspell.winefox.WinefoxChallengeConfig;
+import com.github.yimeng261.maidspell.winefox.WinefoxSpellChoice;
+
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SpellbreakingEchoEntity;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectCategory;
@@ -18,8 +24,9 @@ import org.jetbrains.annotations.Nullable;
 /**
  * 万法酒狐的战斗 AI：走位、近战连段、选法术、爆发点名、卡住了跳一下。
  *
- * <p>原先是 {@link MagicalWinefoxBossEntity} 里的一个私有静态内部类，占了那个文件三分之一，
- * 搬出来之后实体那边只剩状态与同步。搬迁本身没改行为，只是把它够得着的那几样 从 {@code private} 放宽到包内可见（{@code isViableTarget}、{@code isBusyCombatAction}、 {@code teleportAwayFrom}、{@code recallSummons}、{@code cancelSwordRing}）—— 它们仍然只有这个类在用。
+ * <p>原先是 {@link MagicalWinefoxBossEntity} 里的一个私有静态内部类，占了那个文件三分之一，搬出来之后实体那边只剩状态与同步。
+ * 搬迁本身没改行为，只是把它够得着的那几样从 {@code private} 放宽到包内可见（{@code isViableTarget}、{@code isBusyCombatAction}、{@code teleportAwayFrom}、
+ * {@code recallSummons}、{@code cancelSwordRing}），它们仍然只有这个类在用。
  */
 final class WinefoxCombatGoal extends Goal {
     /**
@@ -56,6 +63,19 @@ final class WinefoxCombatGoal extends Goal {
 
     /** 二阶段的施法冷却倍率。比一阶段松，节奏改由近战撑。 */
     private static final double PHASE_TWO_COOLDOWN_SCALE = 0.5D;
+
+    /** 连发间隔按法术和阶段分别配置；三矢连星在法术内部连发。 */
+    private static final int MAGIC_MISSILE_PHASE_ONE_BURST_INTERVAL_TICKS = 8;
+    private static final int MAGIC_MISSILE_PHASE_TWO_BURST_INTERVAL_TICKS = 6;
+
+    /**
+     * 魔法霰弹连发里两发之间的间隔，<b>6 tick</b>。
+     *
+     * <p>这个值不是新定的：它等于改造前 {@code tickBurst} 里那句
+     * {@code this.burstDelay = this.phaseTwo ? 6 : 8} 在二阶段的取值。魔法霰弹只出现在
+     * {@code PHASE_TWO_*} 两个法术池里，永远走的是那一支，所以写成常量 6 与原行为<b>逐位一致</b>。
+     */
+    private static final int MAGIC_SHOTGUN_BURST_INTERVAL_TICKS = 6;
 
     /**
      * 二阶段跟目标保持的水平距离。
@@ -103,17 +123,44 @@ final class WinefoxCombatGoal extends Goal {
         WinefoxBossSpellAction.MODIFIED_STARFALL,
         WinefoxBossSpellAction.MAGIC_SHOTGUN,
         WinefoxBossSpellAction.CLEANSE,
-        WinefoxBossSpellAction.BLACK_HOLE);
+        WinefoxBossSpellAction.BLACK_HOLE,
+        WinefoxBossSpellAction.TRIPLE_STAR_ARROW,
+        WinefoxBossSpellAction.COMPANION_BLACK_HOLE,
+        WinefoxBossSpellAction.SPELLBREAKING_ECHO);
     private static final List<WinefoxBossSpellAction> PHASE_TWO_CLOSE_SPELLS = List.of(
         WinefoxBossSpellAction.ECHOING_STRIKES,
         WinefoxBossSpellAction.SHADOW_SLASH,
         WinefoxBossSpellAction.MODIFIED_TELEPORT,
         WinefoxBossSpellAction.STAR_SHADOW_STRIKE,
-        WinefoxBossSpellAction.SHOCKWAVE);
+        WinefoxBossSpellAction.SHOCKWAVE,
+        WinefoxBossSpellAction.SPELLBREAKING_ECHO);
     private static final List<WinefoxBossSpellAction> PHASE_TWO_FAR_SPELLS = List.of(
         WinefoxBossSpellAction.SHADOW_SLASH,
         WinefoxBossSpellAction.MODIFIED_TELEPORT,
-        WinefoxBossSpellAction.SWORD_PRISON);
+        WinefoxBossSpellAction.SWORD_PRISON,
+        WinefoxBossSpellAction.SPELLBREAKING_ECHO);
+
+    static List<WinefoxSpellChoice> defaultChoices(boolean secondPhase) {
+        List<WinefoxBossSpellAction> actions = new ArrayList<>();
+        if (secondPhase) {
+            actions.add(WinefoxBossSpellAction.MAGIC_SHOTGUN);
+            actions.add(WinefoxBossSpellAction.CLEANSE);
+            actions.addAll(PHASE_TWO_CLOSE_SPELLS);
+            for (WinefoxBossSpellAction action : PHASE_TWO_FAR_SPELLS) {
+                if (!actions.contains(action)) actions.add(action);
+            }
+        } else {
+            actions.addAll(PHASE_ONE_SPELLS);
+        }
+        List<WinefoxSpellChoice> choices = new ArrayList<>();
+        for (WinefoxBossSpellAction action : actions) {
+            if (action == WinefoxBossSpellAction.SPELLBREAKING_ECHO
+                    || !WinefoxBossSpells.isSpellAvailable(action)) continue;
+            WinefoxSpellChoice choice = WinefoxBossSpells.choiceFor(action);
+            if (choice != null) choices.add(choice);
+        }
+        return List.copyOf(choices);
+    }
 
     /**
      * 各项「隔多久再考虑一次」的间隔。注意它们和 {@code spellCooldowns} 不是一回事： 这几个是**试过就重置**（够不够条件都算试过），冷却表那份是施法成功才重置。
@@ -125,12 +172,27 @@ final class WinefoxCombatGoal extends Goal {
     private static final int ESCAPE_TELEPORT_CHECK_INTERVAL = 200;
     private static final int COUNTERSPELL_CHECK_INTERVAL = 20;
     private static final int SPEAR_CHECK_INTERVAL = 400;
+    /**
+     * 投枪的抽取概率。抽中才去后退并投枪；没抽中就把冷却拨回 {@link #SPEAR_CHECK_INTERVAL}，
+     * 与原先那条 {@code nextFloat() < 0.5F} 的判定同一个数。
+     */
+    private static final float SPEAR_THROW_CHANCE = 0.5F;
+    /**
+     * 抽中了但退不开时的重试间隔。
+     *
+     * <p>比正式间隔短得多：抽中一次不容易，而「退不开」是场地问题、不是她不想要 ——
+     * 拨回 400t 等于这一轮抽签白费。一秒后再试一次，玩家挪开半步就能成。
+     */
+    private static final int SPEAR_RETRY_INTERVAL = 20;
     private static final int VOID_PHASE_CHECK_INTERVAL = 200;
     private static final int HEAL_CHECK_INTERVAL = 200;
+    private static final int SPELLBREAKING_ECHO_STILL_TICKS = 40;
+    private static final double SPELLBREAKING_ECHO_MOVE_DISTANCE_SQR = 9.0D;
 
     private final MagicalWinefoxBossEntity boss;
     private final EnumMap<WinefoxBossSpellAction, Integer> spellCooldowns =
         new EnumMap<>(WinefoxBossSpellAction.class);
+    private final Map<String, Integer> customSpellCooldowns = new HashMap<>();
     private int spellDecisionCooldown;
     private int meleeCooldown;
     private int closeRangeTicks;
@@ -145,6 +207,10 @@ final class WinefoxCombatGoal extends Goal {
     @Nullable
     private Vec3 lastPosition;
     private int stuckTicks;
+    @Nullable
+    private Vec3 stationaryAnchor;
+    private int stationaryTicks;
+    private boolean stationaryEchoTriggered;
     private double preferredHeight;
     private int phaseOneFloatRefreshCooldown;
     private boolean phaseOneFloatHigh;
@@ -155,6 +221,12 @@ final class WinefoxCombatGoal extends Goal {
     private WinefoxBossSpellAction burstAction;
     private int burstShots;
     private int burstDelay;
+    /**
+     * 这一轮连发的两发之间隔多少 tick。每一轮由 {@link #startBurst} 记下来，不再由 {@link #tickBurst}
+     * 按阶段现算 —— 同一条连发机制现在挂了两种节奏（魔法导弹 0.3/0.4 秒、魔法箭 0.2 秒），
+     * 写成阶段相关的表达式会让「改魔法箭的节奏」顺手把魔法导弹一起改了。
+     */
+    private int burstInterval;
     private int burstSpellLevel;
 
     WinefoxCombatGoal(MagicalWinefoxBossEntity boss) {
@@ -173,7 +245,11 @@ final class WinefoxCombatGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        return this.canUse();
+        if (this.canUse()) {
+            return true;
+        }
+        // 暂时丢失目标时保留战斗，避免 stop() 取消施法和召唤物；非法目标仍立即停止。
+        return this.boss.isBattleActive() && this.boss.getTarget() == null;
     }
 
     @Override
@@ -191,23 +267,28 @@ final class WinefoxCombatGoal extends Goal {
         this.voidPhaseCheckCooldown = VOID_PHASE_CHECK_INTERVAL;
         this.healCheckCooldown = HEAL_CHECK_INTERVAL;
         this.spellCooldowns.clear();
+        this.customSpellCooldowns.clear();
         this.meleeCooldown = 0;
         this.meleeComboRemaining = 0;
         this.closeRangeTicks = 0;
         this.stuckTicks = 0;
         this.lastPosition = null;
+        this.resetStationaryTracking();
         this.refreshMovementPattern();
         this.resetPhaseOneFloat();
         this.starfallHealthThreshold = 0.75D;
         // 只有她血还高过第一档（90%）时，才把「深渊庇佑」的档位拨回去重新数：
         // 目标是"一档一次"，战斗中途 goal 重启（换目标、卡住重选）不该把数过的档位再掷一遍。
         // 反过来，被自己的治疗抬回 90% 以上就算重新武装，与天降之星那份 75% 的写法同源。
-        if (this.boss.getHealth() > this.boss.getMaxHealth() * ABYSSAL_SHROUD_FIRST_HEALTH_THRESHOLD) {
+        if (this.boss.maidspell$authoritativeHealth()
+                > this.boss.maidspell$bossMaxHealth() * ABYSSAL_SHROUD_FIRST_HEALTH_THRESHOLD) {
             this.abyssalShroudHealthThreshold = ABYSSAL_SHROUD_FIRST_HEALTH_THRESHOLD;
         }
 
         LivingEntity target = this.boss.getTarget();
-        if (!this.phaseTwo && target != null) {
+        WinefoxChallengeConfig challengeConfig = this.boss.maidspell$challengeConfig();
+        if (!this.phaseTwo && target != null
+                && (challengeConfig == null || challengeConfig.phaseOneSpells().isEmpty())) {
             this.boss.teleportAwayFrom(target, COMBAT_TELEPORT_DISTANCE);
             if (this.castAction(target, WinefoxBossSpellAction.MAGIC_SHOTGUN,
                 1 + this.boss.getRandom().nextInt(5))) {
@@ -230,6 +311,7 @@ final class WinefoxCombatGoal extends Goal {
         this.boss.cancelCast();
         this.boss.cancelSpearThrow();
         this.closeRangeTicks = 0;
+        this.resetStationaryTracking();
         // 她收手了，剑也该收回来：召唤物本身有 12000 tick 的存活时间，
         // 不主动解散的话会在她脱战之后继续追着人砍十分钟。
         this.boss.recallSummons();
@@ -239,6 +321,7 @@ final class WinefoxCombatGoal extends Goal {
     public void tick() {
         LivingEntity target = this.boss.getTarget();
         if (target == null || !target.isAlive()) {
+            this.resetStationaryTracking();
             return;
         }
 
@@ -248,6 +331,7 @@ final class WinefoxCombatGoal extends Goal {
         if (this.phaseTwo != this.boss.isPhaseTwo()) {
             this.onPhaseChanged();
         }
+        this.tickStationaryTracking();
         if (this.boss.isBusyCombatAction()) {
             return;
         }
@@ -279,9 +363,13 @@ final class WinefoxCombatGoal extends Goal {
         if (this.tickAbyssalShroud(target)) {
             return;
         }
+        if (this.tryStationaryEcho(target)) {
+            return;
+        }
 
         if (this.starfallHealthThreshold > 0.0D
-            && this.boss.getHealth() / this.boss.getMaxHealth() <= this.starfallHealthThreshold) {
+            && this.boss.maidspell$authoritativeHealth() / this.boss.maidspell$bossMaxHealth()
+                <= this.starfallHealthThreshold) {
             double threshold = this.starfallHealthThreshold;
             this.starfallHealthThreshold = Math.max(0.0D, threshold - 0.10D);
             if (this.boss.getRandom().nextFloat() < (threshold >= 0.75D ? 1.0F : 0.5F)
@@ -325,13 +413,16 @@ final class WinefoxCombatGoal extends Goal {
             return;
         }
 
+        if (this.tryConfiguredPool(target, false)) return;
         WinefoxBossSpellAction action = this.chooseSpell(PHASE_ONE_SPELLS, target, horizontalDistance);
         if (action == null) {
             this.boss.performRangedAttack(target, 1.0F);
             return;
         }
         if (action == WinefoxBossSpellAction.MAGIC_MISSILE) {
-            this.startBurst(action, 3 + this.boss.getRandom().nextInt(3), 5);
+            this.startBurst(action, 3 + this.boss.getRandom().nextInt(3), 5,
+                this.phaseTwo ? MAGIC_MISSILE_PHASE_TWO_BURST_INTERVAL_TICKS
+                              : MAGIC_MISSILE_PHASE_ONE_BURST_INTERVAL_TICKS);
             this.spellCooldowns.put(action, this.getSpellCooldown(action));
             this.tickBurst(target);
             return;
@@ -353,7 +444,8 @@ final class WinefoxCombatGoal extends Goal {
      */
     private boolean tickAbyssalShroud(LivingEntity target) {
         if (this.abyssalShroudHealthThreshold <= 0.0D
-            || this.boss.getHealth() / this.boss.getMaxHealth() > this.abyssalShroudHealthThreshold) {
+            || this.boss.maidspell$authoritativeHealth() / this.boss.maidspell$bossMaxHealth()
+                > this.abyssalShroudHealthThreshold) {
             return false;
         }
         this.abyssalShroudHealthThreshold = Math.max(0.0D,
@@ -362,6 +454,47 @@ final class WinefoxCombatGoal extends Goal {
             return false;
         }
         return this.castAction(target, WinefoxBossSpellAction.ABYSSAL_SHROUD, 1);
+    }
+
+    /** 忽略正常悬浮；水平位置连续 40 tick 留在三格内才算停驻。 */
+    private void tickStationaryTracking() {
+        Vec3 position = this.boss.position();
+        if (this.stationaryAnchor == null) {
+            this.stationaryAnchor = position;
+            this.stationaryTicks = 1;
+            return;
+        }
+        double dx = position.x - this.stationaryAnchor.x;
+        double dz = position.z - this.stationaryAnchor.z;
+        if (dx * dx + dz * dz > SPELLBREAKING_ECHO_MOVE_DISTANCE_SQR) {
+            this.resetStationaryTracking();
+            this.stationaryAnchor = position;
+        } else if (this.stationaryTicks < SPELLBREAKING_ECHO_STILL_TICKS) {
+            ++this.stationaryTicks;
+        }
+    }
+
+    private void resetStationaryTracking() {
+        this.stationaryAnchor = null;
+        this.stationaryTicks = 0;
+        this.stationaryEchoTriggered = false;
+    }
+
+    private boolean tryStationaryEcho(LivingEntity target) {
+        WinefoxBossSpellAction action = WinefoxBossSpellAction.SPELLBREAKING_ECHO;
+        if (this.stationaryTicks < SPELLBREAKING_ECHO_STILL_TICKS
+            || this.stationaryEchoTriggered || !this.isSpellReady(action)
+            || !this.boss.level().getEntitiesOfClass(SpellbreakingEchoEntity.class,
+                this.boss.getBoundingBox().inflate(16.0D), echo -> echo.getOwner() == this.boss).isEmpty()) {
+            return false;
+        }
+        if (!WinefoxBossSpells.cast(this.boss, target, action, this.randomSpellLevel(action))) {
+            return false;
+        }
+        this.stationaryEchoTriggered = true;
+        this.spellCooldowns.put(action, this.getSpellCooldown(action));
+        this.spellDecisionCooldown = SPELL_DECISION_INTERVAL;
+        return true;
     }
 
     private void tickPhaseTwo(LivingEntity target, double horizontalDistance) {
@@ -375,13 +508,24 @@ final class WinefoxCombatGoal extends Goal {
         if (this.tickAbyssalShroud(target)) {
             return;
         }
+        if (this.tryStationaryEcho(target)) {
+            return;
+        }
 
         if (this.spearCheckCooldown <= 0) {
-            this.spearCheckCooldown = SPEAR_CHECK_INTERVAL;
-            if (this.boss.getRandom().nextFloat() < 0.5F) {
-                this.boss.teleportAwayFrom(target, COMBAT_TELEPORT_DISTANCE);
-                this.boss.startSpearThrow(target);
-                return;
+            if (this.boss.getRandom().nextFloat() < SPEAR_THROW_CHANCE) {
+                // 退不开就不投。投枪是远程点名技，贴脸甩出去只是白白挨一刀换一下普攻；
+                // 而失败的唯一原因是 15 格到 3 格之间所有落点都被占住（房间、地道、
+                // 建筑群），此刻她多半正贴着人 —— 那就先不打，退开一小会儿再试。
+                if (this.boss.teleportAwayFrom(target, COMBAT_TELEPORT_DISTANCE,
+                    MagicalWinefoxBossEntity.SPEAR_MIN_RETREAT_DISTANCE)) {
+                    this.spearCheckCooldown = SPEAR_CHECK_INTERVAL;
+                    this.boss.startSpearThrow(target);
+                    return;
+                }
+                this.spearCheckCooldown = SPEAR_RETRY_INTERVAL;
+            } else {
+                this.spearCheckCooldown = SPEAR_CHECK_INTERVAL;
             }
         }
         if (this.voidPhaseCheckCooldown <= 0) {
@@ -396,7 +540,7 @@ final class WinefoxCombatGoal extends Goal {
         }
         if (this.healCheckCooldown <= 0) {
             this.healCheckCooldown = HEAL_CHECK_INTERVAL;
-            if (this.boss.getHealth() < this.boss.getMaxHealth()
+            if (this.boss.maidspell$authoritativeHealth() < this.boss.maidspell$bossMaxHealth()
                 && this.boss.getRandom().nextFloat() < 0.5F
                 && this.castAction(target, WinefoxBossSpellAction.HEAL, 5)) {
                 this.spellCooldowns.put(WinefoxBossSpellAction.HEAL,
@@ -437,13 +581,14 @@ final class WinefoxCombatGoal extends Goal {
             return;
         }
 
+        if (this.tryConfiguredPool(target, true)) return;
         WinefoxBossSpellAction action = this.choosePhaseTwoSpell(target, horizontalDistance);
         if (action == null) {
             return;
         }
         if (action == WinefoxBossSpellAction.MAGIC_SHOTGUN) {
             this.startBurst(action, 1 + this.boss.getRandom().nextInt(2),
-                1 + this.boss.getRandom().nextInt(5));
+                1 + this.boss.getRandom().nextInt(5), MAGIC_SHOTGUN_BURST_INTERVAL_TICKS);
             this.spellCooldowns.put(action, this.getSpellCooldown(action));
             this.tickBurst(target);
             return;
@@ -629,6 +774,27 @@ final class WinefoxCombatGoal extends Goal {
         this.refreshMovementPattern();
     }
 
+    /** A nonempty custom list replaces this phase's ordinary random spell pool. */
+    private boolean tryConfiguredPool(LivingEntity target, boolean secondPhase) {
+        WinefoxChallengeConfig config = this.boss.maidspell$challengeConfig();
+        if (config == null) return false;
+        List<WinefoxSpellChoice> pool = secondPhase ? config.phaseTwoSpells() : config.phaseOneSpells();
+        if (pool.isEmpty()) return false;
+        List<WinefoxSpellChoice> available = new ArrayList<>();
+        for (WinefoxSpellChoice choice : pool) {
+            if (!customSpellCooldowns.containsKey(choice.id())) available.add(choice);
+        }
+        while (!available.isEmpty()) {
+            WinefoxSpellChoice choice = available.remove(this.boss.getRandom().nextInt(available.size()));
+            if (WinefoxBossSpells.castCustom(this.boss, target, choice)) {
+                double scale = secondPhase ? PHASE_TWO_COOLDOWN_SCALE : PHASE_ONE_COOLDOWN_SCALE;
+                customSpellCooldowns.put(choice.id(), WinefoxBossSpells.customCooldown(choice, scale));
+                break;
+            }
+        }
+        return true;
+    }
+
     @Nullable
     private WinefoxBossSpellAction choosePhaseTwoSpell(LivingEntity target, double horizontalDistance) {
         List<WinefoxBossSpellAction> rangePool = horizontalDistance <= 3.0D
@@ -647,6 +813,10 @@ final class WinefoxCombatGoal extends Goal {
                                                LivingEntity target, double horizontalDistance) {
         List<WinefoxBossSpellAction> eligible = new ArrayList<>();
         for (WinefoxBossSpellAction action : pool) {
+            // 破法回响只由停驻判定触发，不能由随机法术池提前抽到。
+            if (action == WinefoxBossSpellAction.SPELLBREAKING_ECHO) {
+                continue;
+            }
             if (!WinefoxBossSpells.isSpellAvailable(action)) {
                 continue;
             }
@@ -654,7 +824,7 @@ final class WinefoxCombatGoal extends Goal {
                 continue;
             }
             if (action == WinefoxBossSpellAction.HEAL
-                && this.boss.getHealth() >= this.boss.getMaxHealth()) {
+                && this.boss.maidspell$authoritativeHealth() >= this.boss.maidspell$bossMaxHealth()) {
                 continue;
             }
             // 净化是纯粹的解控：身上一个负面效果都没有时放它等于白站三秒。
@@ -671,9 +841,35 @@ final class WinefoxCombatGoal extends Goal {
         if (eligible.isEmpty()) {
             return null;
         }
-        return eligible.get(this.boss.getRandom().nextInt(eligible.size()));
+        return maidspell$pickWeighted(eligible);
     }
 
+    /** 按整数权重一次抽取，保持其它法术之间的相对概率。 */
+    private WinefoxBossSpellAction maidspell$pickWeighted(List<WinefoxBossSpellAction> eligible) {
+        int total = 0;
+        for (WinefoxBossSpellAction action : eligible) {
+            total += maidspell$weight(action);
+        }
+        int roll = this.boss.getRandom().nextInt(total);
+        for (WinefoxBossSpellAction action : eligible) {
+            roll -= maidspell$weight(action);
+            if (roll < 0) {
+                return action;
+            }
+        }
+        // 循环必然在上面返回；这行只是让编译器安心，同时兜住 total 意外为 0 的情况。
+        return eligible.get(eligible.size() - 1);
+    }
+
+    /** 普通法术权重为 2；一阶段黑洞权重为 1。 */
+    private int maidspell$weight(WinefoxBossSpellAction action) {
+        if (action == WinefoxBossSpellAction.BLACK_HOLE) {
+            return this.phaseTwo ? 2 : 1;
+        }
+        return 2;
+    }
+
+    /** 施法失败时下一 tick 重试，不消耗连发次数。 */
     private boolean tickBurst(LivingEntity target) {
         if (this.burstAction == null || this.burstShots <= 0) {
             return false;
@@ -683,20 +879,23 @@ final class WinefoxCombatGoal extends Goal {
             return true;
         }
         if (!this.castAction(target, this.burstAction, this.burstSpellLevel)) {
+            this.burstDelay = 1;
             return true;
         }
         --this.burstShots;
-        this.burstDelay = this.phaseTwo ? 6 : 8;
+        this.burstDelay = this.burstInterval;
         if (this.burstShots <= 0) {
             this.burstAction = null;
         }
         return true;
     }
 
-    private void startBurst(WinefoxBossSpellAction action, int shots, int spellLevel) {
+    private void startBurst(WinefoxBossSpellAction action, int shots, int spellLevel,
+                            int intervalTicks) {
         this.burstAction = action;
         this.burstShots = shots;
         this.burstDelay = 0;
+        this.burstInterval = intervalTicks;
         this.burstSpellLevel = spellLevel;
     }
 
@@ -739,16 +938,11 @@ final class WinefoxCombatGoal extends Goal {
     }
 
     /**
-     * 一阶段的施法冷却压到基础值的 {@value #PHASE_ONE_COOLDOWN_SCALE} 倍，二阶段
-     * {@value #PHASE_TWO_COOLDOWN_SCALE} 倍。
+     * 一阶段的施法冷却压到基础值的 {@value #PHASE_ONE_COOLDOWN_SCALE} 倍，二阶段 {@value #PHASE_TWO_COOLDOWN_SCALE} 倍。
      *
-     * <p>一阶段更密是有意的：那时候她只有法杖，靠出手频率撑压力；
-     * 二阶段换长剑近身，节奏改由近战和位移撑，法术反而要留出间隙。
+     * <p>一阶段更密是有意的：那时候她只有法杖，靠出手频率撑压力；二阶段换长剑近身，节奏改由近战和位移撑，法术反而要留出间隙。
      *
-     * <p>这里原先还各挂了一张按法术写死的 fallback 表，用于
-     * {@code getCooldownTicks} 取不到法术时兜底。但那张表永远读不到 ——
-     * 法术表是穷尽的、取不到直接抛，于是那二十来行看着像手感基线、
-     * 改了却毫无效果。删掉了。
+     * <p>这里原先还各挂了一张按法术写死的 fallback 表，给 {@code getCooldownTicks} 取不到法术时兜底。但那张表永远读不到——法术表是穷尽的、取不到直接抛，于是那二十来行看着像手感基线、改了却毫无效果。删掉了。
      */
     private int getSpellCooldown(WinefoxBossSpellAction action) {
         double scale = this.phaseTwo ? PHASE_TWO_COOLDOWN_SCALE : PHASE_ONE_COOLDOWN_SCALE;
@@ -772,6 +966,8 @@ final class WinefoxCombatGoal extends Goal {
     private void tickCooldowns() {
         this.spellCooldowns.replaceAll((action, ticks) -> ticks - 1);
         this.spellCooldowns.entrySet().removeIf(entry -> entry.getValue() <= 0);
+        this.customSpellCooldowns.replaceAll((id, ticks) -> ticks - 1);
+        this.customSpellCooldowns.entrySet().removeIf(entry -> entry.getValue() <= 0);
         if (this.spellDecisionCooldown > 0) {
             --this.spellDecisionCooldown;
         }
@@ -799,7 +995,8 @@ final class WinefoxCombatGoal extends Goal {
      * 阶段变了（哪个方向都算），把战斗状态重新起一遍。
      *
      * <p>原先只处理"进二阶段"这一个方向，因为阶段是单程的。她能被治疗回血退形之后，
-     * 这里必须跟着 {@code boss.isPhaseTwo()} 走 —— 否则退回一阶段后 {@code this.phaseTwo} 还是 true，tick() 会一直走 {@code tickPhaseTwo}： 拿着法杖放二阶段的近战法术，且每 tick 都判定为"阶段不一致"反复重置冷却。
+     * 这里必须跟着 {@code boss.isPhaseTwo()} 走 —— 否则退回一阶段后 {@code this.phaseTwo} 还是 true，tick() 会一直走 {@code tickPhaseTwo}：
+     * 拿着法杖放二阶段的近战法术，且每 tick 都判定为"阶段不一致"反复重置冷却。
      */
     private void onPhaseChanged() {
         this.phaseTwo = this.boss.isPhaseTwo();
@@ -813,6 +1010,7 @@ final class WinefoxCombatGoal extends Goal {
         this.spearCheckCooldown = SPEAR_CHECK_INTERVAL;
         this.voidPhaseCheckCooldown = VOID_PHASE_CHECK_INTERVAL;
         this.healCheckCooldown = HEAL_CHECK_INTERVAL;
+        this.resetStationaryTracking();
         this.resetPhaseOneFloat();
         this.refreshMovementPattern();
     }

@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.spell;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedMagicMissileEntity;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
@@ -38,7 +39,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import java.util.List;
 import java.util.Optional;
 
-public class ModifiedTeleportSpell extends AbstractSpell {
+public class ModifiedTeleportSpell extends AbstractSpell implements BossExclusiveSpell {
     public static final ResourceLocation SPELL_ID =
             new ResourceLocation(MaidSpellMod.MOD_ID, "teleport_modified");
     private static final int TARGET_RANGE = 24;
@@ -114,7 +115,7 @@ public class ModifiedTeleportSpell extends AbstractSpell {
         }
 
         LivingEntity target = targetData.getTarget((ServerLevel) level);
-        if (target != null && target.isAlive()
+        if (IAuthoritativeHealth.combatAlive(target)
                 && !MaidSpellAllyResolver.areFriendly(caster, target)) {
             Vec3 destination = findTeleportDestination(level, caster, target);
             if (destination != null) {
@@ -266,5 +267,16 @@ public class ModifiedTeleportSpell extends AbstractSpell {
 
     public float getMissileDamage(int spellLevel, LivingEntity caster) {
         return getSpellPower(spellLevel, caster) * 0.35F;
+    }
+
+    /** 超类的具体方法优先于接口默认方法，必须显式覆写。 */
+    @Override
+    public boolean allowCrafting() {
+        return false;
+    }
+
+    @Override
+    public boolean allowLooting() {
+        return false;
     }
 }

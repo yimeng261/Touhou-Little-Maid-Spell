@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.spell;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.StarShadowStrikeEntity;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
@@ -38,12 +39,19 @@ import java.util.Optional;
 
 @SuppressWarnings("removal")
 @AutoSpellConfig
-public class StarShadowStrikeSpell extends AbstractSpell {
+public class StarShadowStrikeSpell extends AbstractSpell implements BossExclusiveSpell {
     public static final ResourceLocation SPELL_ID =
             new ResourceLocation(MaidSpellMod.MOD_ID, "star_shadow_strike");
 
-    /** 刃光的判定半径（以施法者为球心）。 */
-    private static final float SLASH_RADIUS = 5.25F;
+    /**
+     * 刃光的判定半径（以施法者为球心）。
+     *
+     * <p>从 5.25 提到 6.25，等于把攻击距离整体拉长一格：这个半径同时决定命中球的大小、
+     * {@link #performSlash} 里 {@code searchArea} 的包围盒和下面那条
+     * {@code distanceToSqr >= radius * radius} 的排除条件，改一处三处一起走，不会出现
+     * 「看着够到了却打不着」的错位。
+     */
+    private static final float SLASH_RADIUS = 6.25F;
 
     private final DefaultConfig defaultConfig = new DefaultConfig()
             .setMinRarity(SpellRarity.COMMON)
@@ -118,7 +126,8 @@ public class StarShadowStrikeSpell extends AbstractSpell {
         AABB searchArea = AABB.ofSize(hitLocation, radius * 2.0F, radius, radius * 2.0F);
 
         for (LivingEntity livingTarget : level.getEntitiesOfClass(LivingEntity.class, searchArea,
-                target -> target != caster && target.isAlive() && target.isPickable())) {
+                target -> target != caster && IAuthoritativeHealth.combatAlive(target)
+                    && target.isPickable())) {
             if (MaidSpellAllyResolver.areFriendly(caster, livingTarget)
                     || caster.distanceToSqr(livingTarget) >= radius * radius
                     || livingTarget.position().subtract(caster.getEyePosition()).dot(forward) < 0.0D
@@ -170,5 +179,16 @@ public class StarShadowStrikeSpell extends AbstractSpell {
     @Override
     public AnimationHolder getCastFinishAnimation() {
         return AnimationHolder.pass();
+    }
+
+    /** 超类的具体方法优先于接口默认方法，必须显式覆写。 */
+    @Override
+    public boolean allowCrafting() {
+        return false;
+    }
+
+    @Override
+    public boolean allowLooting() {
+        return false;
     }
 }

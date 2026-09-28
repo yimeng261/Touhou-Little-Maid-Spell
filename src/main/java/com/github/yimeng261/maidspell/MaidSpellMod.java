@@ -10,6 +10,8 @@ import com.github.yimeng261.maidspell.crafting.OptionalModIngredientSerializer;
 import com.github.yimeng261.maidspell.event.FoxLeafOwnerWaterWalking;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.event.StaranchorPearlEvents;
+import com.github.yimeng261.maidspell.event.TravelerTitlesStructureEvents;
+import com.github.yimeng261.maidspell.event.WinefoxStructureMusicEvents;
 import com.github.yimeng261.maidspell.effect.MaidSpellEffects;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -55,6 +57,10 @@ public class MaidSpellMod {
         forgeBus.register(MaidSpellEventHandler.class);
         forgeBus.register(FoxLeafOwnerWaterWalking.class);
         forgeBus.register(StaranchorPearlEvents.class);
+        forgeBus.register(TravelerTitlesStructureEvents.class);
+        if (IronsSpellbooksCompat.isLoaded()) {
+            forgeBus.register(WinefoxStructureMusicEvents.class);
+        }
         // Curios 事件处理器仅在 Curios 加载时注册，避免硬依赖
         if (net.minecraftforge.fml.ModList.get().isLoaded("curios")) {
             forgeBus.register(com.github.yimeng261.maidspell.event.CuriosEventHandler.class);

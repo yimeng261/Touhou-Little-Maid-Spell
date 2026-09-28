@@ -11,6 +11,8 @@ import net.minecraftforge.client.event.sound.PlaySoundEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+import javax.annotation.Nullable;
+
 /** Plays the Winefox battle music while a nearby encounter is active. */
 public final class WinefoxBossMusicController {
     private static final double LISTEN_RANGE = 96.0D;
@@ -41,6 +43,7 @@ public final class WinefoxBossMusicController {
         }
 
         if (current == null) {
+            WinefoxSeatedAmbienceController.stopForBattle(minecraft);
             minecraft.getMusicManager().stopPlaying();
             current = new SimpleSoundInstance(MaidSpellSounds.WINEFOX_BGM.getId(), SoundSource.MUSIC,
                 1.0F, 1.0F, SoundInstance.createUnseededRandom(), true, 0,
@@ -52,7 +55,11 @@ public final class WinefoxBossMusicController {
     @SubscribeEvent
     public static void onPlaySound(PlaySoundEvent event) {
         SoundInstance sound = event.getSound();
-        if (current != null && sound != null && sound != current && sound.getSource() == SoundSource.MUSIC) {
+        // 闸门从前只看「战斗 BGM 在不在」，现在改成「我方任一 BGM 在不在」：
+        // 坐姿 BGM（WinefoxSeatedAmbienceController）同样是 MUSIC 源，两套系统各有各的
+        // 实例，只查自己那一份的话，另一个在响的时候原版音乐照样能挤进来。
+        if (WinefoxSeatedAmbienceController.isOurMusicPlaying()
+            && sound != null && sound != current && sound.getSource() == SoundSource.MUSIC) {
             event.setSound(null);
         }
     }
@@ -74,7 +81,7 @@ public final class WinefoxBossMusicController {
         double rangeSqr = LISTEN_RANGE * LISTEN_RANGE;
         return !minecraft.level.getEntitiesOfClass(MagicalWinefoxBossEntity.class,
                 minecraft.player.getBoundingBox().inflate(LISTEN_RANGE),
-                boss -> boss.isAlive() && boss.isBattleMusicActive()
+                 boss -> !boss.isRemoved() && boss.isBattleMusicActive()
                     && boss.distanceToSqr(minecraft.player) <= rangeSqr)
                 .isEmpty();
     }
@@ -84,6 +91,15 @@ public final class WinefoxBossMusicController {
             minecraft.getSoundManager().stop(current);
             current = null;
         }
+    }
+
+    /**
+     * 当前战斗 BGM 实例，供 {@link WinefoxSeatedAmbienceController} 的静音闸门识别「这是自己人」。
+     * 不加这个的话，那个闸门会把战斗 BGM 一起当成外来音乐掐掉。
+     */
+    @Nullable
+    static SoundInstance currentMusic() {
+        return current;
     }
 
 }

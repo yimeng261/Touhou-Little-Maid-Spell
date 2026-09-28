@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell;
 
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;
 import io.redspace.ironsspellbooks.api.entity.NoKnockbackProjectile;
@@ -218,7 +219,7 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
 
     private void applyContactEffect(Entity entity) {
         if (!(entity instanceof LivingEntity livingEntity)
-                || !livingEntity.isAlive()
+                || !IAuthoritativeHealth.combatAlive(livingEntity)
                 || !canHitEntity(entity)) {
             return;
         }

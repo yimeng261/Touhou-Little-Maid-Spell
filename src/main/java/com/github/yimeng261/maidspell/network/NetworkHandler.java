@@ -8,6 +8,9 @@ import com.github.yimeng261.maidspell.network.message.EnderPocketRequestMessage;
 import com.github.yimeng261.maidspell.network.message.MaidClientRemovalGuardMessage;
 import com.github.yimeng261.maidspell.network.message.MaidEntityRestoreMessage;
 import com.github.yimeng261.maidspell.network.message.TransmogNecklaceMessage;
+import com.github.yimeng261.maidspell.network.message.TravelerTitlesStructureMessage;
+import com.github.yimeng261.maidspell.network.message.WinefoxChallengeConfigMessage;
+import com.github.yimeng261.maidspell.network.message.WinefoxStructureMusicMessage;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.NetworkDirection;
@@ -19,7 +22,7 @@ import java.util.Optional;
  * 网络消息处理器
  */
 public class NetworkHandler {
-    private static final String PROTOCOL_VERSION = "5";
+    private static final String PROTOCOL_VERSION = "9";
     
     @SuppressWarnings("removal")
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
@@ -93,6 +96,33 @@ public class NetworkHandler {
                 EnderPocketMaidReadyMessage::decode,
                 EnderPocketMaidReadyMessage::handle,
                 Optional.of(NetworkDirection.PLAY_TO_SERVER)
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                WinefoxChallengeConfigMessage.class,
+                WinefoxChallengeConfigMessage::encode,
+                WinefoxChallengeConfigMessage::decode,
+                WinefoxChallengeConfigMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER)
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                WinefoxStructureMusicMessage.class,
+                WinefoxStructureMusicMessage::encode,
+                WinefoxStructureMusicMessage::decode,
+                WinefoxStructureMusicMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                TravelerTitlesStructureMessage.class,
+                TravelerTitlesStructureMessage::encode,
+                TravelerTitlesStructureMessage::decode,
+                TravelerTitlesStructureMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
     }

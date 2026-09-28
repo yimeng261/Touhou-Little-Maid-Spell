@@ -20,19 +20,26 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
-public class ModifiedStarfallSpell extends StarfallSpell {
+public class ModifiedStarfallSpell extends StarfallSpell implements BossExclusiveSpell {
     public static final ResourceLocation SPELL_ID =
             new ResourceLocation(MaidSpellMod.MOD_ID, "starfall_modified");
 
+    /** {@code StarfallSpell} 的具体方法优先于接口默认方法，必须显式覆写。 */
+    @Override
+    public boolean allowCrafting() {
+        return false;
+    }
+
+    @Override
+    public boolean allowLooting() {
+        return false;
+    }
+
     /**
      * 蓄力时长：8 秒。
-     *
-     * <p>原版星落是 160 tick 的 CONTINUOUS（按住一直下），本模组把它改成要蓄满才放的
-     * LONG，时长就只剩这一个来源，所以直接写在这里。
-     *
-     * <p>对她和女仆都是同一个数：{@code getEffectiveCastTime} 会再乘一道施法者的
-     * {@code cast_time_reduction}（LONG 走 {@code 2 - softCapFormula(x)}），
-     * 而酒狐没加过那条属性、默认 1.0 恰好抵消，160 tick 就是 8 秒。
+     * <p>原版星落是 160 tick 的 CONTINUOUS（按住一直下），本模组把它改成要蓄满才放的 LONG，时长就只剩这一个来源，所以直接写在这里。
+     * <p>对她和女仆都是同一个数：{@code getEffectiveCastTime} 会再乘一道施法者的 {@code cast_time_reduction}
+     * （LONG 走 {@code 2 - softCapFormula(x)}），而酒狐没加过那条属性、默认 1.0 恰好抵消，160 tick 就是 8 秒。
      */
     private static final int CAST_TIME_TICKS = 8 * 20;
 

@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell;
 
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import io.redspace.ironsspellbooks.api.util.Utils;
 import io.redspace.ironsspellbooks.capabilities.magic.MagicManager;
@@ -66,7 +67,8 @@ public class ModifiedStarfallCloudEntity extends Entity {
             discard();
             return;
         }
-        if (caster == null || !caster.isAlive() || caster.level() != level() || tickCount > DURATION_TICKS) {
+        if (!IAuthoritativeHealth.combatAlive(caster)
+                || caster.level() != level() || tickCount > DURATION_TICKS) {
             discard();
             return;
         }
@@ -141,7 +143,7 @@ public class ModifiedStarfallCloudEntity extends Entity {
 
     private boolean isValidTarget(LivingEntity caster, LivingEntity target) {
         return target != caster
-                && target.isAlive()
+                && IAuthoritativeHealth.combatAlive(target)
                 && !target.isSpectator()
                 && target.canBeHitByProjectile()
                 && target.distanceToSqr(caster) <= TARGET_RANGE_SQR

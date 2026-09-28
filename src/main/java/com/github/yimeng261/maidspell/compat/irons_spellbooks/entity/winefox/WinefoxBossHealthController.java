@@ -1,6 +1,5 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 
-import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.IBossDamageClamp;
 import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityHealthAccessor;
 import com.github.yimeng261.maidspell.utils.BossLifecycleAccess;
@@ -10,25 +9,8 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 /**
- * 星之魔女权威生命的唯一写入层。
- *
- * <p><b>单次受击上限与受击间隔都在这里执行</b>，而不是在 {@code hurt()} 或某个 Mixin 里。
- * 原因只有一个：这里是所有会改变她生命的路径的汇合点 —— 原版伤害链、真伤回流、
- * 公开 {@code setHealth(...)}、第三方直写同步字段，最终都落到 {@link #write}。
- * 放在上游任何一层都只是"多一道可以被绕过的检查"。
- *
- * <p>两条规则的具体语义：
- *
- * <ul>
- *   <li><b>单次上限</b>：一次写入最多让生命下降配置的比例（默认 8%）。它衡量的是
- *       {@code write} 收到的那个新值相对当前值的差值，因此对任何来源一视同仁。</li>
- *   <li><b>受击间隔</b>：两次<b>真正生效</b>的下降之间至少间隔配置的 tick 数（默认 6 = 0.3 秒）。
- *       被挡下的那一次不产生任何副作用（不记伤害归属、不结仇、不推进同 tick 的后续写入），
- *       已生效的那一次才更新时间戳。这与原版 {@code invulnerableTime} 无关，二者互不读写。</li>
- * </ul>
- *
- * <p>恢复类写入（{@code RESET} / {@code LOAD} / {@code ADMIN} / 战败演出归零）不受这两条约束：
- * 它们是内部状态恢复，需要能写回满血；限制它们只会让归位和读档失效。
+ * 酒狐生命值的统一写入层，集中执行单次伤害上限和有效受击间隔。
+ * 恢复、读档、管理操作与战败归零不受伤害限制。
  */
 public final class WinefoxBossHealthController {
     public enum Cause {
@@ -68,7 +50,7 @@ public final class WinefoxBossHealthController {
 
     /** 单次写入允许的最大下降量；返回 {@link IBossDamageClamp#NO_DAMAGE_CAP} 表示不限伤。 */
     public static float damageCap(MagicalWinefoxBossEntity boss) {
-        double ratio = Config.winefoxHitDamageCapRatio;
+        double ratio = boss.maidspell$hitDamageCapRatio();
         if (ratio <= 0.0D) {
             return IBossDamageClamp.NO_DAMAGE_CAP;
         }
@@ -76,12 +58,45 @@ public final class WinefoxBossHealthController {
     }
 
     /**
-     * 扣除一次伤害。调用方负责用 {@link #withCause} 把这次调用包进 {@code DAMAGE} 上下文。
+     * Re-enter the authoritative health path for a write that arrived through
+     * SynchedEntityData rather than through {@code LivingEntity#setHealth}.
      *
-     * <p>倍率在这里施加；单次上限与受击间隔在 {@link #write} 里执行 —— 后者是所有写血路径的
-     * 汇合点，因此不必也不应该在调用链上游重复一遍。
+     * <p>The expected-write marker handles the second raw mirror write made by
+     * a caller that already invoked {@code setHealth}; an unrelated write is
+     * treated as unattributed damage and receives the normal cap and lifecycle
+     * handling.</p>
+     */
+    public static void handleExternalHealthWrite(MagicalWinefoxBossEntity boss, float requested) {
+        if (boss.level().isClientSide) {
+            return;
+        }
+        if (boss.maidspell$consumeExpectedHealthWrite()) {
+            syncMirrors(boss);
+            return;
+        }
+        withCause(boss, Cause.EXTERNAL_UNKNOWN, () -> write(boss, requested));
+    }
+
+    /** Restore the authoritative maximum-health mirror after an external write. */
+    public static void handleExternalMaxHealthWrite(MagicalWinefoxBossEntity boss) {
+        if (!boss.level().isClientSide) {
+            boss.maidspell$syncMaxHealthMirror();
+        }
+    }
+
+    private static void syncMirrors(MagicalWinefoxBossEntity boss) {
+        BossLifecycleAccess.withDataWrite(boss, () -> {
+            boss.getEntityData().set(MagicalWinefoxBossEntity.BOSS_HEALTH, boss.maidspell$authoritativeHealth());
+            boss.getEntityData().set(LivingEntityHealthAccessor.maidspell$getHealthAccessor(), 1.0F);
+        });
+    }
+
+    /**
+     * 扣除一次伤害。倍率在这里施加；上限与间隔在 {@link #write} 里执行。
      *
-     * @param maidDamage 这一击是否出自女仆或其召唤物，决定是否叠加女仆减伤
+     * <p>调用方负责用 {@link #withCause} 把调用包进 {@code DAMAGE} 上下文。
+     *
+     * @param maidDamage 是否出自女仆或其召唤物，决定是否叠加女仆减伤
      * @return 这一击是否真的让生命下降
      */
     public static boolean applyDamage(MagicalWinefoxBossEntity boss, DamageSource source,
@@ -89,7 +104,7 @@ public final class WinefoxBossHealthController {
         if (boss.level().isClientSide || !Float.isFinite(amount) || amount <= 0.0F) {
             return false;
         }
-        float previous = boss.getHealth();
+        float previous = boss.maidspell$authoritativeHealth();
         if (previous <= 0.0F) {
             return false;
         }
@@ -97,10 +112,10 @@ public final class WinefoxBossHealthController {
         if (adjusted <= 0.0F) {
             return false;
         }
-        // 原版结算链只用来跑护甲、抗性、吸收与事件；它读写的 getHealth/setHealth
-        // 都是虚方法，因此实际落值必然回到 write()，上限与间隔在那里执行。
+        // 原版结算链负责护甲、抗性、吸收与事件；Mixin 将链内读血改为权威值，
+        // setHealth 仍回到 write()，上限与间隔在那里执行。
         boss.maidspell$runVanillaDamagePipeline(source, adjusted);
-        boolean changed = boss.getHealth() < previous;
+        boolean changed = boss.maidspell$authoritativeHealth() < previous;
         if (changed) {
             boss.maidspell$markEffectiveHit();
         }
@@ -109,12 +124,12 @@ public final class WinefoxBossHealthController {
 
     /** 施加对 Boss 的伤害倍率：全局一层，女仆与二阶段各自再叠一层。 */
     public static float applyDamageMultipliers(MagicalWinefoxBossEntity boss, float amount, boolean maidDamage) {
-        float adjusted = amount * (float) Config.winefoxDamageMultiplier;
+        float adjusted = amount * (float) boss.maidspell$damageMultiplier();
         if (maidDamage) {
-            adjusted *= (float) Config.winefoxMaidDamageMultiplier;
+            adjusted *= (float) boss.maidspell$maidDamageMultiplier();
         }
         if (boss.maidspell$isPlayerCombatPhaseTwo()) {
-            adjusted *= (float) Config.winefoxPhaseTwoDamageMultiplier;
+            adjusted *= (float) boss.maidspell$phaseTwoDamageMultiplier();
         }
         return adjusted;
     }
@@ -135,8 +150,11 @@ public final class WinefoxBossHealthController {
                 || state == WinefoxEncounterState.RETURNING)) {
             return;
         }
-        float previous = boss.getHealth();
+        float previous = boss.maidspell$authoritativeHealth();
         float health = sanitize(requested, boss.maidspell$bossMaxHealth());
+        if (cause == Cause.HEAL && health < previous) {
+            return;
+        }
 
         if (health < previous) {
             if (isCappedCause(cause)) {
@@ -158,8 +176,19 @@ public final class WinefoxBossHealthController {
         return cause == Cause.DAMAGE || cause == Cause.EXTERNAL_UNKNOWN;
     }
 
+    /**
+     * 这一击会不会被受击间隔挡下 —— 给 {@code hurt()} 在跑原版结算链<b>之前</b>问一句。
+     *
+     * <p>不能等落到 {@link #write} 才挡：原版那一段（{@code super.hurt}）会重置 {@code hurtTime} /
+     * {@code hurtDuration}、广播受击动画并结算击退，写血被挡下时这些副作用早就发生过了。本类的契约
+     * 是"被挡下的那一击不产生任何副作用"，只有提前判定才落实得了。
+     */
+    public static boolean wouldBlockHitInterval(MagicalWinefoxBossEntity boss) {
+        return isWithinHitInterval(boss);
+    }
+
     private static boolean isWithinHitInterval(MagicalWinefoxBossEntity boss) {
-        int interval = Config.winefoxHitIntervalTicks;
+        int interval = boss.maidspell$hitIntervalTicks();
         if (interval <= 0) {
             return false;
         }
@@ -167,11 +196,16 @@ public final class WinefoxBossHealthController {
         return last != Long.MIN_VALUE && boss.tickCount - last < interval;
     }
 
-    private static void restore(MagicalWinefoxBossEntity boss, float health, float previous, Cause cause) {
+    private static void restore(MagicalWinefoxBossEntity boss, float health,
+                                float previous, Cause cause) {
+        boss.maidspell$setAuthoritativeHealth(health);
         BossLifecycleAccess.withDataWrite(boss, () -> {
             boss.getEntityData().set(MagicalWinefoxBossEntity.BOSS_HEALTH, health);
             boss.getEntityData().set(LivingEntityHealthAccessor.maidspell$getHealthAccessor(), 1.0F);
         });
+        if (cause == Cause.EXTERNAL_UNKNOWN) {
+            boss.maidspell$expectExternalHealthWrite();
+        }
         if (cause == Cause.EXTERNAL_UNKNOWN && previous != health) {
             if (health < previous) {
                 boss.maidspell$recordUnattributedDamage(previous - health);

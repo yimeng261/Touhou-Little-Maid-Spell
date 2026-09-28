@@ -1,7 +1,9 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;
+import com.github.yimeng261.maidspell.winefox.WinefoxSpellChoice;
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
@@ -15,6 +17,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
+import java.util.List;
 
 /**
  * 万法酒狐的铁魔法法术行为。boss 本身只在装了铁魔法时注册，所以这里直接调用铁魔法 API。
@@ -38,17 +41,8 @@ public final class WinefoxBossSpells {
     }
 
     /**
-     * 发起一次施法。
-     *
-     * <p>以前这里是自己造一个 {@code new MagicData(true)}，然后把 {@code onServerPreCast} 与
-     * {@code onCast} 连着调掉——等于绕开铁魔法整套吟唱状态机，法术全是瞬发的，
-     * 前摇由酒狐这边另拿一套 {@code pendingCastTicks} 手算。
-     *
-     * <p>改继承 {@code AbstractSpellCastingMob} 之后直接走 {@code initiateCastSpell}：
-     * 吟唱时长、{@code onServerCastTick}、CONTINUOUS 每 10t 复发、收尾、以及存档中断后的续播，
-     * 全部由铁魔法自己管。酒狐只负责"什么时候选哪个法术"。
-     *
-     * @return 是否真的开始了一次吟唱
+     * 由 ISS 状态机管理吟唱和收尾，酒狐只选择施放的法术。
+     * @return 是否成功开始吟唱
      */
     public static boolean cast(MagicalWinefoxBossEntity boss, @Nullable LivingEntity target,
                         WinefoxBossSpellAction action, int spellLevel) {
@@ -64,7 +58,7 @@ public final class WinefoxBossSpells {
         if (boss.isCasting()) {
             return false;
         }
-        if (needsTargetData(action) && (target == null || !target.isAlive())) {
+        if (needsTargetData(action) && !IAuthoritativeHealth.combatAlive(target)) {
             return false;
         }
         // 净化是以自己为圆心的范围法术，转不转身都一样 —— 和 HEAL 同理，别让一次
@@ -88,6 +82,73 @@ public final class WinefoxBossSpells {
         // initiateCastSpell 是 void 的：法术为 none、或 checkPreCastConditions 不通过时会静默放弃。
         // 上面已确保进来时不在施法，所以这里为 true 就说明这一发确实起来了。
         return boss.isCasting();
+    }
+
+    /**
+     * Cast a spell copied from a player or maid without waiting through its
+     * normal wind-up. The regular mob entry point is still used so its target
+     * data and pre-cast hooks remain compatible with Iron's Spellbooks.
+     */
+    public static boolean castInstant(MagicalWinefoxBossEntity boss, @Nullable LivingEntity target,
+                                      AbstractSpell spell, int spellLevel) {
+        if (boss.level().isClientSide || spell == null || spell == SpellRegistry.none()
+                || boss.isCasting()) {
+            return false;
+        }
+        if (IAuthoritativeHealth.combatAlive(target)) {
+            boss.setTarget(target);
+            faceTarget(boss, target);
+        }
+        int level = Mth.clamp(spellLevel, 1, 10);
+        boss.initiateCastSpell(spell, level);
+        if (!boss.isCasting()) {
+            return false;
+        }
+        MagicData magicData = boss.getMagicData();
+        spell.onCast(boss.level(), level, boss, io.redspace.ironsspellbooks.api.spells.CastSource.MOB, magicData);
+        boss.castComplete();
+        return true;
+    }
+
+    public static boolean castCustom(MagicalWinefoxBossEntity boss, @Nullable LivingEntity target,
+                                     WinefoxSpellChoice choice) {
+        if (boss.level().isClientSide || boss.isCasting() || choice == null) return false;
+        AbstractSpell spell = SpellRegistry.getSpell(new ResourceLocation(choice.id()));
+        if (spell == SpellRegistry.none()) return false;
+        try {
+            if (IAuthoritativeHealth.combatAlive(target)) faceTarget(boss, target);
+            if (IAuthoritativeHealth.combatAlive(target)) {
+                boss.getMagicData().setAdditionalCastData(new TargetEntityCastData(target));
+            }
+            boss.initiateCastSpell(spell, Mth.clamp(choice.level(), 1, Math.max(1, spell.getMaxLevel())));
+            return boss.isCasting();
+        } catch (RuntimeException exception) {
+            boss.cancelCast();
+            com.github.yimeng261.maidspell.MaidSpellMod.LOGGER.warn(
+                    "Stellar Witch cannot cast configured spell {}", choice.id(), exception);
+            return false;
+        }
+    }
+
+    public static int customCooldown(WinefoxSpellChoice choice, double scale) {
+        AbstractSpell spell = SpellRegistry.getSpell(new ResourceLocation(choice.id()));
+        return spell == SpellRegistry.none() ? 20 : Math.max(1, Mth.ceil(spell.getSpellCooldown() * scale));
+    }
+
+    static WinefoxSpellChoice choiceFor(WinefoxBossSpellAction action) {
+        AbstractSpell spell = getSpell(action);
+        if (spell == SpellRegistry.none()) return null;
+        int level = switch (action) {
+            case EVASION, CLEANSE -> 1;
+            case BLACK_HOLE -> 3;
+            case SUMMON_SWORDS, MODIFIED_TELEPORT, ARROW_VOLLEY, ARCANE_SHACKLE -> 4;
+            default -> 5;
+        };
+        return WinefoxSpellChoice.valid(spell.getSpellId(), level);
+    }
+
+    public static List<WinefoxSpellChoice> defaultChoices(boolean secondPhase) {
+        return WinefoxCombatGoal.defaultChoices(secondPhase);
     }
 
     /** 这两个法术要在施法数据里带上目标实体，没有目标就没法施。 */
@@ -158,6 +219,9 @@ public final class WinefoxBossSpells {
             case SWORD_PRISON -> IronsSpellbooksCompatSpells.SWORD_PRISON.get();
             case CLEANSE -> SpellRegistry.CLEANSE_SPELL.get();
             case BLACK_HOLE -> SpellRegistry.BLACK_HOLE_SPELL.get();
+            case TRIPLE_STAR_ARROW -> IronsSpellbooksCompatSpells.TRIPLE_STAR_ARROW.get();
+            case COMPANION_BLACK_HOLE -> IronsSpellbooksCompatSpells.COMPANION_BLACK_HOLE.get();
+            case SPELLBREAKING_ECHO -> IronsSpellbooksCompatSpells.SPELLBREAKING_ECHO.get();
         };
     }
 

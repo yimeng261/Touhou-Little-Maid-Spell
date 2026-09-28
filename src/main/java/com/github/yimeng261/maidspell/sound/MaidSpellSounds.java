@@ -43,6 +43,17 @@ public class MaidSpellSounds {
             () -> SoundEvent.createVariableRangeEvent(
                     new ResourceLocation(MaidSpellMod.MOD_ID, "music.stellar_witch")));
 
+    /**
+     * 星之魔女坐姿状态下的常驻 BGM（「星途终岸」）。
+     *
+     * <p>和 {@link #WINEFOX_BGM} 一样是可变距离事件：音量不由距离衰减，而是由
+     * {@code WinefoxSeatedAmbienceSoundInstance} 自己按玩家与秋千的距离每 tick 算。
+     */
+    public static final RegistryObject<SoundEvent> WINEFOX_STARFALL_ENDSHORE_BGM =
+            SOUNDS.register("music.starfall_endshore",
+                    () -> SoundEvent.createVariableRangeEvent(
+                            new ResourceLocation(MaidSpellMod.MOD_ID, "music.starfall_endshore")));
+
     private static RegistryObject<SoundEvent> registerWinefoxSound(String name) {
         String id = "entity.stellar_witch." + name;
         return SOUNDS.register(id,

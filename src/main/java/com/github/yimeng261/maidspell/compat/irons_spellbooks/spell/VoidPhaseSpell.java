@@ -21,12 +21,13 @@ import net.minecraft.world.level.Level;
 
 import java.util.List;
 
-public class VoidPhaseSpell extends AbstractSpell {
+public class VoidPhaseSpell extends AbstractSpell implements BossExclusiveSpell {
     public static final ResourceLocation SPELL_ID =
             new ResourceLocation(MaidSpellMod.MOD_ID, "void_phase");
 
+    /** 追加虚空伤害可绕过多种防御，因此设为最高稀有度。 */
     private final DefaultConfig defaultConfig = new DefaultConfig()
-            .setMinRarity(SpellRarity.RARE)
+            .setMinRarity(SpellRarity.LEGENDARY)
             .setSchoolResource(SchoolRegistry.ENDER_RESOURCE)
             .setMaxLevel(5)
             .setCooldownSeconds(30)
@@ -86,5 +87,16 @@ public class VoidPhaseSpell extends AbstractSpell {
 
     public float getBonusDamage(int spellLevel, LivingEntity caster) {
         return getSpellPower(spellLevel, caster) * 0.35F;
+    }
+
+    /** 超类的具体方法优先于接口默认方法，必须显式覆写。 */
+    @Override
+    public boolean allowCrafting() {
+        return false;
+    }
+
+    @Override
+    public boolean allowLooting() {
+        return false;
     }
 }

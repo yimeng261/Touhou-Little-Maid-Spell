@@ -10,34 +10,8 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.Mag
 import java.util.function.BiPredicate;
 
 /**
- * 把酒狐要的四条 {@code main} 通道动画补进 TLM 的全局动画状态表。
- *
- * <p>TLM 自带的那 20 条（{@code death} / {@code jump} / {@code walk} / {@code idle} …）里
- * 没有「飞」、分阶段的待机或行礼 —— 这四条得自己补。
- *
- * <h2>那张表是全局的</h2>
- * {@code AnimationManager} 的表所有女仆共用，加进去对**每一只**女仆生效，
- * 所以每条谓词第一句都得先 {@code instanceof MagicalWinefoxBossEntity} 把别人挡掉。
- *
- * <p>而且 {@code CustomPackLoader.reloadPacks()} 清的东西里**没有它** ——
- * 必须在客户端 setup 里注册**一次**，绝不能挂进任何 reload 回调，
- * 否则每按一次 F3+T 就多追加一份。
- *
- * <h2>为什么都用优先级 1</h2>
- * {@code predicateMain} 从优先级 0 数到 4，**同一优先级内按注册先后**取第一个命中的谓词。
- * TLM 的 {@code AnimationRegister.registerAnimationState()} 什么时候跑不在我们手里，
- * 所以不能靠「排在 idle 前面」。优先级 1 压得住 {@code attacked}(2) / {@code jump}(2) /
- * {@code run}·{@code walk}(3) / {@code idle}(4)，又让得开 {@code death}·{@code sleep}·
- * {@code swim}·{@code ladder_*}(0)，与注册先后无关。
- *
- * <p>同在优先级 1 的 TLM 项里，{@code chair} / {@code boat} / 五种游戏对酒狐全是 false
- * ——她从不上载具。{@code sit} 不然：她坐在秋千上的时候
- * {@code IMaid.isMaidInSittingPose()} 就是 true，那正是秋千姿势的来源。
- * 同优先级里谁先命中取决于注册先后，而注册先后正是这个类不敢依赖的东西，
- * 所以下面四条一律先排除「坐着」，把这一段让给 {@code sit}。
- *
- * <p><b>代价</b>：TLM 的 {@code attacked}(2) 对酒狐变成不可达。这与迁移前一致 ——
- * 旧的 {@code mainAnimation} 里 {@code hurtTime > 0} 走的也是待机姿势，不是受击动画。
+ * 向 TLM 的全局 main 动画表注册酒狐状态。仅在客户端 setup 注册一次，
+ * 谓词须排除其它女仆与坐姿酒狐，避免覆盖 TLM 的 sit 动画。
  */
 public final class WinefoxMaidAnimationStates {
     /** 地面上算不算在走，与 TLM 的 {@code walk} 用同一个口径，两条谓词才不会重叠。 */

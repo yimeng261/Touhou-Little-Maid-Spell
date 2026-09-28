@@ -11798,6 +11798,50 @@
 					"pivot": [-2.47186, 14.48398, 1.52542]
 				},
 				{
+					"name": "Shengyin",
+					"parent": "RightHand",
+					"pivot": [-2.6789, 12.37492, 1.425],
+					"rotation": [0, -90, 0]
+				},
+				{
+					"name": "ysmGlowFuwen",
+					"parent": "Shengyin",
+					"pivot": [-2.6789, 12.37492, 1.425],
+					"cubes": [
+						{
+							"origin": [-4.1789, 12.37492, -0.075],
+							"size": [3, 0, 3],
+							"uv": {
+								"north": {"uv": [217, 54], "uv_size": [2, 0]},
+								"east": {"uv": [217, 54], "uv_size": [2, 0]},
+								"south": {"uv": [217, 54], "uv_size": [2, 0]},
+								"west": {"uv": [217, 54], "uv_size": [2, 0]},
+								"up": {"uv": [263, 256], "uv_size": [-119, -119]},
+								"down": {"uv": [263, 256], "uv_size": [-119, -119]}
+							}
+						}
+					]
+				},
+				{
+					"name": "ysmGlowBumeng",
+					"parent": "Shengyin",
+					"pivot": [-2.6789, 12.37492, 1.425],
+					"cubes": [
+						{
+							"origin": [-3.6789, 12.37492, 0.425],
+							"size": [2, 0, 2],
+							"uv": {
+								"north": {"uv": [217, 54], "uv_size": [2, 0]},
+								"east": {"uv": [217, 54], "uv_size": [2, 0]},
+								"south": {"uv": [217, 54], "uv_size": [2, 0]},
+								"west": {"uv": [217, 54], "uv_size": [2, 0]},
+								"up": {"uv": [130, 261], "uv_size": [-129, -130]},
+								"down": {"uv": [130, 261], "uv_size": [-129, -130]}
+							}
+						}
+					]
+				},
+				{
 					"name": "Elytra",
 					"parent": "UpperBody",
 					"pivot": [0.70064, 27.70444, 4.18042]

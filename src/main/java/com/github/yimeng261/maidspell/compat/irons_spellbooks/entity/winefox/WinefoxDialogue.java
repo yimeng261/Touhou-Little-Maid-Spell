@@ -16,12 +16,8 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * 万法酒狐的台词排队播报。
  *
- * <p>一次塞进若干句，之后每 {@link #LINE_INTERVAL_TICKS} tick 吐一句，
- * 播给擂台附近的所有玩家——不是只给邀战那一位，同行的人也该听见。
- *
- * <p>先做聊天栏。TLM 的气泡是女仆自己那套 GUI，酒狐虽然实现了 {@code IMaid}
- * 但没有女仆的交互界面，硬接要牵出一整条渲染链；等真需要再换，
- * 换的时候只动这一个类。
+ * <p>一次塞进若干句，之后按指定间隔吐一句，播给擂台附近的所有玩家——不是只给邀战那一位，同行的人也该听见。
+ * 先做聊天栏：TLM 的气泡是女仆自己那套 GUI，酒狐虽然实现了 {@code IMaid} 但没有女仆的交互界面，硬接要牵出一整条渲染链；等真需要再换，换的时候只动这一个类。
  */
 public final class WinefoxDialogue {
 
@@ -46,7 +42,11 @@ public final class WinefoxDialogue {
      * 上一组要是还没播完，说明状态已经变了，接着播反而错乱。
      */
     public void speak(List<Component> lines) {
-        this.begin(lines, LINE_INTERVAL_TICKS, null);
+        this.speak(lines, LINE_INTERVAL_TICKS);
+    }
+
+    public void speak(List<Component> lines, int intervalTicks) {
+        this.begin(lines, intervalTicks, null);
     }
 
     /** 排入只发送给指定玩家的一组台词。 */
@@ -86,8 +86,7 @@ public final class WinefoxDialogue {
         if (this.pending.isEmpty() || !(speaker.level() instanceof ServerLevel level)) {
             return;
         }
-        if (this.delayTicks > 0) {
-            this.delayTicks--;
+        if (this.delayTicks > 0 && --this.delayTicks > 0) {
             return;
         }
         Component line = this.pending.poll();
@@ -177,6 +176,40 @@ public final class WinefoxDialogue {
 
     public static Component postVictoryChatLine() {
         return Component.translatable("dialogue.touhou_little_maid_spell.winefox.post_victory_chat");
+    }
+
+    /**
+     * 驯服第一问：她问玩家愿不愿意缔结契约。
+     *
+     * <p>两句是<b>依次</b>说的：先问，再讨一个确认 —— 第二句说完正好是玩家该做决定的时候，
+     * 所以走排队播报而不是像闲谈那样随机抽一句。
+     */
+    public static List<Component> vowFirstLines() {
+        return List.of(
+            Component.translatable("dialogue.touhou_little_maid_spell.winefox.vow_ask_1"),
+            Component.translatable("dialogue.touhou_little_maid_spell.winefox.vow_ask_2"));
+    }
+
+    /**
+     * 驯服第二问：她把魂符交出去，誓约当场成立。
+     *
+     * <p>同样依次说：第一句随动画开始，第二句在两秒后发送。
+     */
+    public static List<Component> vowSecondLines() {
+        return List.of(
+            Component.translatable("dialogue.touhou_little_maid_spell.winefox.vow_oath_1"),
+            Component.translatable("dialogue.touhou_little_maid_spell.winefox.vow_oath_2"));
+    }
+
+    /**
+     * 誓约已成之后她再开口时的几句。
+     *
+     * <p>抽一句而不是三句连播：这三句是「驯服之后她换了个人跟你说话」的那一层新语气，
+     * 定位与 {@code chat_1..chat_15} 那一池相同（每次右击都是池子里的一句），
+     * 不是 {@code vow_1..vow_4} 那种一次说完的仪式台词。
+     */
+    public static Component tamedChatLine() {
+        return randomTranslation("dialogue.touhou_little_maid_spell.winefox.tamed_chat_", 3);
     }
 
     public static Component tradeLine() {

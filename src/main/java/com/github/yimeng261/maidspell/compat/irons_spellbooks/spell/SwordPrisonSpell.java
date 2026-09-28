@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.spell;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.SwordRingScheduler;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.WinefoxSwordProjectileEntity;
@@ -27,7 +28,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SwordPrisonSpell extends AbstractSpell {
+public class SwordPrisonSpell extends AbstractSpell implements BossExclusiveSpell {
     public static final ResourceLocation SPELL_ID =
             new ResourceLocation(MaidSpellMod.MOD_ID, "sword_prison");
 
@@ -52,15 +53,10 @@ public class SwordPrisonSpell extends AbstractSpell {
     private static final double DEFAULT_CASTER_HALF_WIDTH = 0.3D;
 
     /**
-     * 举枪。玩家施法时由 PlayerAnimator 播，资源在
-     * {@code assets/touhou_little_maid_spell/player_animation/spear_throw.json}。
+     * 举枪。玩家施法时由 PlayerAnimator 播，资源在 {@code assets/touhou_little_maid_spell/player_animation/spear_throw.json}。
      *
-     * <p>铁魔法给 INSTANT 法术的默认动画 {@code ANIMATION_INSTANT_CAST} 是一个
-     * 0.1875 秒的抬手，配不上"召出一圈剑把人围死"。
-     *
-     * <p>酒狐那边不走这条：她是 Mob，用的是自己模型包上的 {@code iss:spear_throw}
-     * （骨骼完全不同），由她的动作表单独指定。两边是同一个动作的两份实现，
-     * 改表演时记得一起改。
+     * <p>铁魔法给 INSTANT 法术的默认动画 {@code ANIMATION_INSTANT_CAST} 是一个 0.1875 秒的抬手，配不上"召出一圈剑把人围死"。
+     * 酒狐那边不走这条：她是 Mob，用的是自己模型包上的 {@code iss:spear_throw}（骨骼完全不同），由她的动作表单独指定；两边是同一个动作的两份实现，改表演时记得一起改。
      */
     private static final AnimationHolder CAST_START_ANIMATION =
             new AnimationHolder(new ResourceLocation(MaidSpellMod.MOD_ID, "spear_throw"), true);
@@ -129,7 +125,7 @@ public class SwordPrisonSpell extends AbstractSpell {
         if (!level.isClientSide
                 && magicData.getAdditionalCastData() instanceof TargetEntityCastData targetData) {
             LivingEntity target = targetData.getTarget((ServerLevel) level);
-            if (target != null && target.isAlive()
+            if (IAuthoritativeHealth.combatAlive(target)
                     && !MaidSpellAllyResolver.areFriendly(caster, target)) {
                 summonSwordRings((ServerLevel) level, spellLevel, caster, target);
             }
@@ -263,5 +259,16 @@ public class SwordPrisonSpell extends AbstractSpell {
 
     public float getSwordDamage(int spellLevel, LivingEntity caster) {
         return getSpellPower(spellLevel, caster) * 0.4F;
+    }
+
+    /** 超类的具体方法优先于接口默认方法，必须显式覆写。 */
+    @Override
+    public boolean allowCrafting() {
+        return false;
+    }
+
+    @Override
+    public boolean allowLooting() {
+        return false;
     }
 }

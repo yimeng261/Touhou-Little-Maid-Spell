@@ -3,12 +3,11 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 /**
  * 星之魔女遭遇的互斥状态。
  *
- * <p>状态转移是这套生命周期的唯一裁决者：业务代码只调 {@code maidspell$setEncounterState}，
- * 由这里决定是否合法。非法转移一律拒绝并记 WARN，不允许产生"半完成"状态。
+ * <p>转移表是唯一裁决者：业务代码只调 {@code maidspell$setEncounterState}，非法转移一律拒绝并
+ * 记 WARN，不产生"半完成"状态。
  *
- * <p><b>自转移不是合法转移。</b>把"已经在目标状态"当成成功会让状态机失去约束力，
- * 也无法在日志里区分"重复请求"与"非法请求"。需要容错的地方（管理员修复命令）由调用方
- * 先判断当前状态，而不是让状态机吞掉重复写入。
+ * <p>自转移不算合法：把"已经在目标状态"当成成功会让状态机失去约束力，也分不清"重复请求"与
+ * "非法请求"。需要容错的地方（管理员修复命令）由调用方先判断当前状态。
  */
 public enum WinefoxEncounterState {
     SEATED,

@@ -13,10 +13,11 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * 打造星芒短剑的两件材料：星陨石与仪式剑柄。
+ * 带描述的普通材料：星陨石、仪式剑柄、归星。
  *
- * <p>两者都只是带描述的普通材料，没有任何行为；共用一个类、各自给出描述 key，
- * 免得为两行字各开一个文件。
+ * <p>它们都只是带描述的普通材料，没有任何行为；共用一个类、各自给出描述 key，
+ * 免得为两行字各开一个文件。归星的行为在星之魔女那边（她认的是手里的物品），
+ * 物品本身不需要覆写任何使用入口。
  */
 public class StarglintMaterialItem extends Item {
     private final String descriptionKey;

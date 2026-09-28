@@ -7,14 +7,7 @@ import io.redspace.ironsspellbooks.util.ParticleHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 
-/**
- * Iron's Spells visual effect used by the Winefox spear impact.
- *
- * <p>The effect follows the old Echoing Strikes impact: a short unstable-ender
- * burst under an expanding, ender-colored blastwave. Keeping this in the
- * compatibility package prevents the common spear entity from resolving ISS
- * particle classes until an ISS-backed projectile actually hits.
- */
+/** ISS spear impact particles, isolated from common code until the compat effect is used. */
 public final class WinefoxSpearImpactEffects {
     private WinefoxSpearImpactEffects() {
     }

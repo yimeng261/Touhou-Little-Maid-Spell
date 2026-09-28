@@ -2,11 +2,14 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.IronsSpellbooksCompatClient;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxNonLethalGuard;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.AuthoritativeHealthReturnTransformer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarWitchHatItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.VoidPhaseDamageHandler;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxBossSleepGuard;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxKnockbackGuard;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxSpellPowerBonus;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
@@ -16,6 +19,7 @@ import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 
 public final class IronsSpellbooksCompat {
     public static final String MOD_ID = "irons_spellbooks";
@@ -36,9 +40,16 @@ public final class IronsSpellbooksCompat {
         IronsSpellbooksCompatEntities.register(eventBus);
         IronsSpellbooksCompatEffects.register(eventBus);
         IronsSpellbooksCompatSpells.register(eventBus);
+        eventBus.addListener((FMLLoadCompleteEvent event) ->
+                event.enqueueWork(AuthoritativeHealthReturnTransformer::install));
         MinecraftForge.EVENT_BUS.register(VoidPhaseDamageHandler.class);
         MinecraftForge.EVENT_BUS.register(WinefoxBossSleepGuard.class);
         MinecraftForge.EVENT_BUS.register(WinefoxNonLethalGuard.class);
+        // 抗推力也挂在这儿而不是用 @Mod.EventBusSubscriber：那个类引用酒狐实体，
+        // 而酒狐的父类来自铁魔法，没装铁魔法时类加载就炸。
+        MinecraftForge.EVENT_BUS.register(WinefoxKnockbackGuard.class);
+        // 法强倍率同理：它要在酒狐进世界时按配置挂属性修饰符，也得解析酒狐实体类。
+        MinecraftForge.EVENT_BUS.register(WinefoxSpellPowerBonus.class);
     }
 
     public static void initClient(EntityRenderersEvent.RegisterRenderers event) {

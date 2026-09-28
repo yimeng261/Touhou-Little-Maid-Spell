@@ -1,0 +1,14 @@
+{
+  "conditions": [{ "type": "forge:mod_loaded", "modid": "irons_spellbooks" }],
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " I ",
+    "IMI",
+    " I "
+  ],
+  "key": {
+    "I": { "item": "irons_spellbooks:mithril_ingot" },
+    "M": { "item": "touhou_little_maid_spell:star_meteorite" }
+  },
+  "result": { "item": "touhou_little_maid_spell:returning_star" }
+}

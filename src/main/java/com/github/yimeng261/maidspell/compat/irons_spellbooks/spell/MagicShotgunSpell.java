@@ -21,7 +21,7 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 
-public class MagicShotgunSpell extends AbstractSpell {
+public class MagicShotgunSpell extends AbstractSpell implements BossExclusiveSpell {
     public static final ResourceLocation SPELL_ID =
             new ResourceLocation(MaidSpellMod.MOD_ID, "magic_shotgun");
     private static final float HALF_SPREAD_RADIANS = 7.5F * Mth.DEG_TO_RAD;
@@ -117,5 +117,16 @@ public class MagicShotgunSpell extends AbstractSpell {
 
     public float getProjectileDamage(int spellLevel, LivingEntity caster) {
         return getSpellPower(spellLevel, caster) * 0.25F;
+    }
+
+    /** 超类的具体方法优先于接口默认方法，必须显式覆写。 */
+    @Override
+    public boolean allowCrafting() {
+        return false;
+    }
+
+    @Override
+    public boolean allowLooting() {
+        return false;
     }
 }

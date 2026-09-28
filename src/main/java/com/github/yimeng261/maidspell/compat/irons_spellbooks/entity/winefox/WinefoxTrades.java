@@ -6,30 +6,25 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
 import io.redspace.ironsspellbooks.registries.ItemRegistry;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraftforge.items.ItemHandlerHelper;
+import net.minecraftforge.server.ServerLifecycleHooks;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * 星之魔女酒狐的交易表，按《NPC交易栏》分两档：
- *
- * <ul>
- *   <li><b>战胜前</b>——只做补给生意：五档墨水、几样吃的、星荧花簇。</li>
- *   <li><b>战胜后</b>——同一批补给半价，另外开放传说墨水、星锚珍珠、她的三件装备，
- *       以及她自己那四张一级卷轴。</li>
- * </ul>
- *
- * <p>「战胜前／后」这一档就是 {@code MagicalWinefoxBossEntity} 的 {@code tradingUnlocked}：
- * 它只在<b>合格</b>的一胜（没有女仆代打、没用真伤收尾）时置位，见
- * {@code MagicalWinefoxBossEntity#beginDefeat}。
- *
- * <p>补给那一列在文档里是「半价折扣后」逐行标出来的，所以这里写成
- * {@code discounted ? 半价 : 全价} 一次配平 —— 数字只留一份，改价不会只改一边。
- * 唯一例外是发光浆果：它连份量都在折扣档里从 10 掉到 8。
+ * 酒狐交易分为战胜前补给和合格胜利后解锁的商品。
+ * 解锁后补给降价；每日限购由 {@link DailyQuotaTable} 管理。
  */
 public final class WinefoxTrades {
 
@@ -48,6 +43,18 @@ public final class WinefoxTrades {
     private static final int SNACK_PRICE = 2;
     private static final int STAR_GLOW_PRICE = 1;
 
+    /**
+     * 每日限购次数，按《NPC交易栏》那一列抄：三件装备各 1 件，星锚珍珠与传说墨水各 3 件。
+     *
+     * <p>每条报价的上限是各自写在 {@code maxUses} 上的 —— 一张表里三种上限（1／3／不限）并存，
+     * 所以不能拿一个表级常量统一盖。
+     */
+    private static final int GEAR_DAILY_LIMIT = 1;
+    private static final int KEY_ITEM_DAILY_LIMIT = 3;
+
+    /** 一整天。跨过这么多游戏刻、或者世界时间翻过一天，就把限购次数清零，见 {@link DailyQuotaTable}。 */
+    private static final long DAY_TICKS = 24000L;
+
     private WinefoxTrades() {
     }
 
@@ -55,6 +62,11 @@ public final class WinefoxTrades {
      * @param equipmentUnlocked 是否曾经取得过合格的胜利
      */
     public static MerchantOffers build(boolean equipmentUnlocked) {
+        return new DailyQuotaTable(equipmentUnlocked);
+    }
+
+    /** 只造报价，不管跨天：跨天那件事由 {@link DailyQuotaTable} 在问价前统一处理。 */
+    private static MerchantOffers rows(boolean equipmentUnlocked) {
         MerchantOffers offers = new MerchantOffers();
         addSupplies(offers, equipmentUnlocked);
         if (equipmentUnlocked) {
@@ -88,18 +100,22 @@ public final class WinefoxTrades {
 
     /** 战胜后才摆出来的那一档。 */
     private static void addUnlocked(MerchantOffers offers) {
-        offers.add(offer(emeralds(50), new ItemStack(ItemRegistry.INK_LEGENDARY.get())));
-        offers.add(offer(emeralds(16), new ItemStack(MaidSpellItems.STARANCHOR_PEARL.get())));
-        offers.add(offer(emeralds(32), new ItemStack(IronsSpellbooksCompatItems.STAR_WITCH_HAT.get())));
+        offers.add(offer(emeralds(50), KEY_ITEM_DAILY_LIMIT, new ItemStack(ItemRegistry.INK_LEGENDARY.get())));
+        offers.add(offer(emeralds(16), KEY_ITEM_DAILY_LIMIT, new ItemStack(MaidSpellItems.STARANCHOR_PEARL.get())));
+        offers.add(offer(emeralds(32), GEAR_DAILY_LIMIT, new ItemStack(IronsSpellbooksCompatItems.STAR_WITCH_HAT.get())));
         offers.add(offer(emeralds(16), new ItemStack(MaidSpellItems.NEBULA_CORE.get()),
-                new ItemStack(IronsSpellbooksCompatItems.STAR_SHADOW_STAFF.get())));
+                new ItemStack(IronsSpellbooksCompatItems.STAR_SHADOW_STAFF.get()), GEAR_DAILY_LIMIT));
         offers.add(offer(emeralds(16), new ItemStack(MaidSpellItems.NEBULA_CORE.get()),
-                new ItemStack(IronsSpellbooksCompatItems.STAR_SHADOW_LONGSWORD.get())));
-        // 四张卷轴都是她自己在擂台上用的那几发：逐星飞瀑、星隙闪袭、星影斩击、剑牢。
+                new ItemStack(IronsSpellbooksCompatItems.STAR_SHADOW_LONGSWORD.get()), GEAR_DAILY_LIMIT));
+        // 四张卷轴都是她自己在擂台上用的那几发：逐星飞瀑、星隙闪袭、星影斩击、星影剑阵（原「剑牢」）。
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.MODIFIED_STARFALL.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.MODIFIED_TELEPORT.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.STAR_SHADOW_STRIKE.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.SWORD_PRISON.get())));
+        // 两发后加的：三矢连星与伴星黑洞，同样 1 级、同样 10 绿宝石。
+        // 它们**不**实现 BossExclusiveSpell —— 这里就是在卖，玩家拿到卷轴是设计的一部分。
+        offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.TRIPLE_STAR_ARROW.get())));
+        offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.COMPANION_BLACK_HOLE.get())));
     }
 
     /**
@@ -123,16 +139,128 @@ public final class WinefoxTrades {
         return scroll;
     }
 
+    /** 不限购的行：左上角小字那一列（补给与卷轴）。 */
     private static MerchantOffer offer(ItemStack cost, ItemStack result) {
-        return offer(cost, ItemStack.EMPTY, result);
+        return offer(cost, ItemStack.EMPTY, result, Integer.MAX_VALUE);
+    }
+
+    private static MerchantOffer offer(ItemStack cost, int dailyLimit, ItemStack result) {
+        return offer(cost, ItemStack.EMPTY, result, dailyLimit);
+    }
+
+    /** maxUses 表示每日限额；初始 uses、经验和动态调价均为零。 */
+    private static MerchantOffer offer(ItemStack costA, ItemStack costB, ItemStack result, int maxUses) {
+        return new MerchantOffer(costA, costB, result, 0, maxUses, 0, 0.0F);
     }
 
     /**
-     * {@code maxUses} 给得很大、{@code xp} 给 0：她不是村民，没有等级也没有补货循环，
-     * 交易表整个由 {@link #build} 按限制标志重算，不该出现"卖光了"这种状态。
+     * 按游戏时间或世界时间跨天重置限购次数。
+     * 原位重置报价，避免交易槽仍引用旧对象；Boss 会将使用次数存入 NBT，
+     * 读档后由 {@link #rebuildKeepingUses} 恢复。
      */
-    private static MerchantOffer offer(ItemStack costA, ItemStack costB, ItemStack result) {
-        return new MerchantOffer(costA, costB, result, Integer.MAX_VALUE, 0, 0.0F);
+    private static final class DailyQuotaTable extends MerchantOffers {
+
+        /** 上一次清零时的世界游戏时间与世界时间；负数表示这张表刚造出来、还没记过。 */
+        private long refreshedGameTime = -1L;
+        private long refreshedDayTime = -1L;
+
+        private DailyQuotaTable(boolean equipmentUnlocked) {
+            this(rows(equipmentUnlocked));
+        }
+
+        /**
+         * 用一张现成的报价表包一层。
+         *
+         * <p>读档走这一支：存档里那份表是原版 {@code MerchantOffers} 反序列化出来的
+         * （行是普通 {@code MerchantOffer}），直接挂上去就没有跨天清零了 ——
+         * 所以必须重新包一次，把「次数怎么算」这件事粘回去，而不是只把数据搬回来。
+         */
+        private DailyQuotaTable(List<MerchantOffer> source) {
+            addAll(source);
+        }
+
+        @Override
+        public MerchantOffer getRecipeFor(ItemStack costA, ItemStack costB, int hint) {
+            refreshIfNewDay();
+            return super.getRecipeFor(costA, costB, hint);
+        }
+
+        @Override
+        public void writeToStream(FriendlyByteBuf buffer) {
+            // 开交易栏时服务端把整张表现发一份给客户端，顺手在这里也过一遍：
+            // 客户端手里只有快照，不在这儿刷一下，跨天之后界面上那一行还画着红叉（判定在服务端，红叉只是难看）。
+            refreshIfNewDay();
+            super.writeToStream(buffer);
+        }
+
+        private void refreshIfNewDay() {
+            MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+            if (server == null) {
+                // 没有服务器实例（数据生成、结构校验，或理论上不该出现的客户端侧调用）：
+                // 拿不到世界时间就别动，宁可多留一次限购，也不能凭空把次数抹掉。
+                return;
+            }
+            ServerLevel overworld = server.overworld();
+            long gameTime = overworld.getGameTime();
+            long dayTime = overworld.getDayTime();
+            if (this.refreshedGameTime < 0L) {
+                stamp(gameTime, dayTime);
+                return;
+            }
+            boolean dayElapsed = gameTime - this.refreshedGameTime >= DAY_TICKS;
+            boolean worldDayRolled = dayTime / DAY_TICKS > this.refreshedDayTime / DAY_TICKS;
+            if (!dayElapsed && !worldDayRolled) {
+                return;
+            }
+            for (MerchantOffer offer : this) {
+                offer.resetUses();
+            }
+            stamp(gameTime, dayTime);
+        }
+
+        private void stamp(long gameTime, long dayTime) {
+            this.refreshedGameTime = gameTime;
+            this.refreshedDayTime = dayTime;
+        }
+    }
+
+    /**
+     * 按当前代码重建报价并包回每日限购表，让旧存档获得新增商品。
+     * 按结果和代价匹配旧报价，保留使用次数而不依赖行序。
+     */
+    public static MerchantOffers rebuildKeepingUses(MerchantOffers saved, boolean equipmentUnlocked) {
+        List<MerchantOffer> rebuilt = new ArrayList<>();
+        // rows() 返回的就是 MerchantOffers（本身是 List<MerchantOffer>），不必再包一层。
+        for (MerchantOffer fresh : rows(equipmentUnlocked)) {
+            MerchantOffer previous = findMatching(saved, fresh);
+            if (previous == null) {
+                rebuilt.add(fresh);
+                continue;
+            }
+            // 1.20.1 的 MerchantOffer <b>没有</b> setUses —— 次数只能在构造时给。
+            // 所以这里新造一个同样报价、但把 uses / demand 搬过来的对象（7 参构造的最后一位是 demand）。
+            // 不搬 demand 会让价格随卖出次数浮动，而她这张表原先是不浮动的（priceMultiplier 恒 0）。
+            rebuilt.add(new MerchantOffer(
+                    fresh.getBaseCostA(), fresh.getCostB(), fresh.getResult(),
+                    Math.min(previous.getUses(), fresh.getMaxUses()),
+                    fresh.getMaxUses(), 0, 0.0F, previous.getDemand()));
+        }
+        return new DailyQuotaTable(rebuilt);
+    }
+
+    @Nullable
+    private static MerchantOffer findMatching(MerchantOffers saved, MerchantOffer target) {
+        if (saved == null) {
+            return null;
+        }
+        for (MerchantOffer candidate : saved) {
+            if (ItemStack.isSameItemSameTags(candidate.getResult(), target.getResult())
+                && ItemStack.isSameItemSameTags(candidate.getCostA(), target.getCostA())
+                && ItemStack.isSameItemSameTags(candidate.getCostB(), target.getCostB())) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     public static boolean isTravelDiary(ItemStack stack) {

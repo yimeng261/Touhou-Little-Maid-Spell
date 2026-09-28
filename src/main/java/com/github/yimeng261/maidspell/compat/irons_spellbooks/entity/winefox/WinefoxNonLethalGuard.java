@@ -15,25 +15,9 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 /**
- * 正式玩家挑战中，万法酒狐的攻击不会真的打死人：把挑战者留在 1 点血。
- *
- * <p>盖住所有出伤口径——近战、法术、弹体，只要伤害源头能追溯到她。
- * 法术伤害由铁魔法自己发，我们插不进它的计算，所以拦在<b>承伤方</b>这一侧。
- *
- * <p>挂 {@code LivingDamageEvent} 而不是 {@code LivingHurtEvent}：前者拿到的是护甲、
- * 抗性、吸收全部结算完、马上就要扣到血条上的那个数，后者是结算<b>之前</b>的原始伤害。
- * 按原始伤害去削，护甲会再砍一刀，玩家的血只会渐近 1 而永远碰不到 1——那样
- * {@code isViableTarget} 就一直认为他还能打，她会追着一个永远打不服的人不放。
- *
- * <p>只保护正式挑战者。普通生物战斗不走这里，目标该死还是得死，
- * 否则召唤物永远清不掉。
- *
- * <p><b>不挂 {@code @Mod.EventBusSubscriber}</b>，由
- * {@code IronsSpellbooksCompat.register} 在确认铁魔法在场之后手动注册——
- * 与同目录下另外两个守卫一样。注解是 Forge 扫描整个 jar 自动登记的，缺铁魔法时照样会挂上去；
- * 而处理器要解析 {@link MagicalWinefoxBossEntity} 的字面量，那个类的父类
- * {@code AbstractSpellCastingMob} 不在，玩家第一次挨打就是 NoClassDefFoundError。
- * 注册这个类本身不会加载它——类字面量是逐个解析的。
+ * 在最终伤害阶段保护正式挑战者的最低生命，并调整酒狐对女仆的伤害。
+ * 虚空相变的追加伤害通过 {@link #duelFollowUpLimit} 共用同一份生命额度。
+ * 由铁魔法兼容入口注册，避免缺少依赖时加载此类。
  */
 public final class WinefoxNonLethalGuard {
 
@@ -41,14 +25,10 @@ public final class WinefoxNonLethalGuard {
     }
 
     /**
-     * 坐姿只限制玩家的短剑邀战，不再让其他生物把她当作不可选中的目标。
-     * 对方一旦锁定她，就切入普通生物战斗；该入口会自行排除玩家和正式挑战。
+     * 坐姿只限制玩家的短剑邀战，不再让其他生物把她当作不可选中的目标。对方一旦锁定她，就切入普通生物战斗；该入口会自行排除玩家和正式挑战。
      *
-     * <p><b>玩家女仆生态是例外：坐姿待机时她们连目标都不该选上。</b>
-     * 女仆的索敌（{@code StartAttacking}）会为 {@code LivingChangeTargetEvent} 的取消让路 ——
-     * 取消之后 {@code ATTACK_TARGET} 记忆根本不会落下去，于是女仆既不会主动开战，
-     * 也不会触发她起身。战斗只能由玩家递星芒短剑开始；打起来之后女仆才作为
-     * 挑战参与者下场，拿得到下面这条 1 点血的保护。
+     * <p>玩家女仆生态是例外：坐姿待机时她们连目标都不该选上——女仆的索敌（{@code StartAttacking}）会为 {@code LivingChangeTargetEvent} 的取消让路，
+     * 取消之后 {@code ATTACK_TARGET} 记忆根本不会落下去，于是女仆既不会主动开战，也不会触发她起身；战斗只能由玩家递星芒短剑开始，打起来之后女仆才作为挑战参与者下场，拿得到下面这条 1 点血的保护。
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void activateNormalMobCombat(LivingChangeTargetEvent event) {
@@ -88,10 +68,14 @@ public final class WinefoxNonLethalGuard {
         }
     }
 
+    /** 先放缩酒狐对女仆生态的伤害，再按正式挑战的生命地板裁剪。 */
     @SubscribeEvent
     public static void onLivingDamage(LivingDamageEvent event) {
         LivingEntity victim = event.getEntity();
-        if (!(victim instanceof Player) && !(victim instanceof EntityMaid)) {
+        // 女仆生态：女仆本尊，以及她名下的召唤物。
+        boolean maidSide = victim instanceof EntityMaid
+            || MaidSpellAllyResolver.isOwnedBy(victim, EntityMaid.class);
+        if (!(victim instanceof Player) && !maidSide) {
             return;
         }
         if (victim.level().isClientSide) {
@@ -100,12 +84,14 @@ public final class WinefoxNonLethalGuard {
         if (victim instanceof Player player && (player.isCreative() || player.isSpectator())) {
             return;
         }
-        MagicalWinefoxBossEntity boss = findBoss(event.getSource());
-        if (boss == null && !event.getSource().is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) {
-            boss = victim.level().getEntitiesOfClass(MagicalWinefoxBossEntity.class,
-                victim.getBoundingBox().inflate(64.0D), candidate -> candidate.isBattleActive()
-                    && candidate.isChallengeParticipant(victim)).stream().findFirst().orElse(null);
+        if (maidSide && event.getAmount() > 0.0F) {
+            // 放在地板判定之前，理由见方法注释。追不到她就一点不动：这一发不是她打的。
+            MagicalWinefoxBossEntity attacker = findBoss(event.getSource());
+            if (attacker != null) {
+                event.setAmount((float) (event.getAmount() * attacker.maidspell$damageToMaidMultiplier()));
+            }
         }
+        MagicalWinefoxBossEntity boss = resolveDuelBoss(victim, event.getSource());
         // The non-lethal duel rule belongs only to the player who opened a
         // formal challenge. A boss fighting normally must be able to damage
         // and kill players just like any other hostile mob.
@@ -120,12 +106,38 @@ public final class WinefoxNonLethalGuard {
             victim.getHealth() - MagicalWinefoxBossEntity.duelSurvivalFloor());
         if (event.getAmount() >= survivable) {
             event.setAmount(survivable);
-            if (victim instanceof Player) {
-                boss.endChallengeLost();
-            } else {
-                boss.retireMaidFromChallenge((EntityMaid) victim);
+            // 玩家判负由 tickBattleOver 读取实际血量；后续监听器仍可能取消本次伤害。
+            if (victim instanceof EntityMaid maid) {
+                // 女仆是原地劝退，不收场（见 retireMaidFromChallenge），而且她那一侧没有
+                // tickBattleOver 那样的逐 tick 复查口，收在这里才收得掉，所以照旧。
+                boss.retireMaidFromChallenge(maid);
             }
         }
+    }
+
+    /**
+     * 追加伤害须扣除同一次事件中尚未写血的主伤害，否则两次独立限额会击穿生命地板。
+     * @param pendingDamage 当前事件削减后、尚未落账的主伤害
+     * @return 允许追加的伤害上限
+     */
+    public static float duelFollowUpLimit(LivingEntity victim, DamageSource source,
+                                          float pendingDamage, float bonus) {
+        if (bonus <= 0.0F || victim.level().isClientSide) {
+            return bonus;
+        }
+        if (!(victim instanceof Player) && !(victim instanceof EntityMaid)) {
+            return bonus;
+        }
+        MagicalWinefoxBossEntity boss = resolveDuelBoss(victim, source);
+        if (boss == null || !boss.isChallengeParticipant(victim)) {
+            return bonus;
+        }
+        // 收场中与上面同一条口径：这一场已经不打了，追加伤害整个不算。
+        if (!boss.isBattleActive()) {
+            return 0.0F;
+        }
+        float room = victim.getHealth() - pendingDamage - MagicalWinefoxBossEntity.duelSurvivalFloor();
+        return Math.max(0.0F, Math.min(bonus, room));
     }
 
     /** 找出伤害来源对应的酒狐：直接来源、弹体，或召唤物 owner 链。 */
@@ -136,5 +148,18 @@ public final class WinefoxNonLethalGuard {
             if (owner instanceof MagicalWinefoxBossEntity boss) return boss;
         }
         return null;
+    }
+
+    /**
+     * 优先按伤害来源查酒狐；无归属的虚空伤害不按附近正赛推定，避免拦截 /kill 或掉出世界。
+     */
+    private static MagicalWinefoxBossEntity resolveDuelBoss(LivingEntity victim, DamageSource source) {
+        MagicalWinefoxBossEntity boss = findBoss(source);
+        if (boss == null && !source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+            boss = victim.level().getEntitiesOfClass(MagicalWinefoxBossEntity.class,
+                victim.getBoundingBox().inflate(64.0D), candidate -> candidate.isBattleActive()
+                    && candidate.isChallengeParticipant(victim)).stream().findFirst().orElse(null);
+        }
+        return boss;
     }
 }

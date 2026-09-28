@@ -50,16 +50,7 @@ public class WinefoxSwordProjectileRenderer extends GeoEntityRenderer<WinefoxSwo
         return Color.LIGHT_GRAY;
     }
 
-    /**
-     * 让剑尖朝着实际运动方向。
-     *
-     * <p>这里**不能**照抄箭矢那套 {@code yRot/xRot}：{@code AbstractArrow} 会维护这两个角，
-     * 而本实体继承的是 {@code AbstractMagicProjectile}，它们一直是 0 ——
-     * 原来"方向乱七八糟"就是这么来的。直接拿 {@code getDeltaMovement()} 算。
-     *
-     * <p>钉在地上之后 {@code deltaMovement} 被清零，改用入射时存下来的
-     * {@code getPlantedDirection()}，否则一落地枪就弹回默认朝向。
-     */
+    /** 飞行时按速度定向；钉住后使用保存的入射方向。 */
     @Override
     protected void applyRotations(WinefoxSwordProjectileEntity entity, PoseStack poseStack,
                                   float ageInTicks, float rotationYaw, float partialTick) {

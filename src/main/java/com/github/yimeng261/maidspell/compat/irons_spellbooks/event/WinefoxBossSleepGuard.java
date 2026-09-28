@@ -2,24 +2,13 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.event;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.entity.player.PlayerSleepInBedEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
-/**
- * 万法酒狐在附近时不许睡觉。
- *
- * <p>原版这条规则由 {@code Monster.isPreventingPlayerRest()} 提供，但酒狐改继承
- * {@code AbstractSpellCastingMob}（其父类是 {@code PathfinderMob}）之后就丢了——而且补不回来：
- * 那个方法只声明在 {@code Monster} 上，{@code LivingEntity} 根本没有；更关键的是
- * {@code ServerPlayer.startSleepInBed} 里那句查询写死了 {@code getEntitiesOfClass(Monster.class, …)}，
- * 就算能重写也扫不到我们。所以改用 Forge 的 {@link PlayerSleepInBedEvent} 从外面拦。
- *
- * <p>判定盒照抄原版：以床方块的 {@link Vec3#atBottomCenterOf} 为中心，XZ ±8、Y ±5，创造模式跳过。
- */
+/** 酒狐不是 Monster，原版睡眠检查不会找到她；用 Forge 事件恢复附近有敌时不可睡眠。 */
 public final class WinefoxBossSleepGuard {
 
     /** 原版 {@code ServerPlayer.startSleepInBed} 里写死的两个半径。 */
@@ -48,7 +37,7 @@ public final class WinefoxBossSleepGuard {
                 center.x - HORIZONTAL_RANGE, center.y - VERTICAL_RANGE, center.z - HORIZONTAL_RANGE,
                 center.x + HORIZONTAL_RANGE, center.y + VERTICAL_RANGE, center.z + HORIZONTAL_RANGE);
         boolean bossNearby = !player.level()
-                .getEntitiesOfClass(MagicalWinefoxBossEntity.class, area, LivingEntity::isAlive)
+                .getEntitiesOfClass(MagicalWinefoxBossEntity.class, area, boss -> !boss.isRemoved())
                 .isEmpty();
         if (bossNearby) {
             event.setResult(Player.BedSleepingProblem.NOT_SAFE);

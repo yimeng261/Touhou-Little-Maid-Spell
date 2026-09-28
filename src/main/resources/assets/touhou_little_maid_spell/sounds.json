@@ -74,5 +74,15 @@
         "volume": 0.7
       }
     ]
+  },
+  "music.starfall_endshore": {
+    "category": "music",
+    "sounds": [
+      {
+        "name": "touhou_little_maid_spell:music/starfall_endshore_bgm",
+        "stream": true,
+        "volume": 0.7
+      }
+    ]
   }
 }
