@@ -167,10 +167,8 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
         }
         if (this.isBossProjectilePlanted()) {
             this.baseTick();
-            if (!this.level().isClientSide) {
-                if (--this.bossProjectilePlantedTicks <= 0) {
-                    this.discard();
-                }
+            if (!this.level().isClientSide && --this.bossProjectilePlantedTicks <= 0) {
+                this.discard();
             }
             return;
         }
@@ -231,7 +229,7 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
         Entity owner = this.getOwner();
         return entity.canBeHitByProjectile()
             && (owner == null || entity.getRootVehicle() != owner.getRootVehicle())
-            && (owner == null || !MaidSpellAllyResolver.areFriendly(owner, entity))
+            && !MaidSpellAllyResolver.areFriendly(owner, entity)
             && !this.bossHitEntityIds.contains(entity.getId());
     }
 
@@ -257,7 +255,7 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
             new AABB(impact, impact).inflate(3.0D), entity -> entity != directTarget
                 && entity != this.getOwner() && IAuthoritativeHealth.combatAlive(entity)
                 && entity.position().distanceToSqr(impact) <= 9.0D
-                && (this.getOwner() == null || !MaidSpellAllyResolver.areFriendly(this.getOwner(), entity)))) {
+                && !MaidSpellAllyResolver.areFriendly(this.getOwner(), entity))) {
             nearby.hurt(source, 10.0F);
         }
         level.playSound(null, impact.x, impact.y, impact.z,
