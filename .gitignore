@@ -20,6 +20,9 @@ out
 build
 .gradle
 
+# locally generated bootstrap/nested mod artifacts
+META-INF/
+
 #mods source code
 Ars-Nouveau-1.20
 Psi-1.20
