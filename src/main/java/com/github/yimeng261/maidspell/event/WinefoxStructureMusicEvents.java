@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/** Sends structure membership to the client that owns the local music controller. */
+/** 把玩家是否位于星途终岸结构内同步给客户端的常驻音乐控制器。 */
 public final class WinefoxStructureMusicEvents {
     private static final ResourceKey<Structure> STELLAR_ENDSHORE = ResourceKey.create(
             Registries.STRUCTURE, ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "stellar_endshore"));
