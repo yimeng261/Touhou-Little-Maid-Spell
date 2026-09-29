@@ -43,9 +43,7 @@ public class SoulBookBauble implements IMaidBauble {
         }
 
         for (EntityMaid maid : maids.values()) {
-            if (maid != null
-                    && !maid.isRemoved()
-                    && maid.isAlive()
+            if (maid.isAlive()
                     && ownerId.equals(maid.getOwnerUUID())
                     && BaubleStateManager.hasBauble(maid, MaidSpellItems.SOUL_BOOK)) {
                 return true;
