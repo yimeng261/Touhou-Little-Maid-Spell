@@ -11,7 +11,6 @@ import net.minecraft.world.scores.Team;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -198,14 +197,12 @@ public final class MaidSpellAllyResolver {
     }
 
     @Nullable
-    private static Object invokeOptionalNoArg(Object target, String className, String methodName, @Nullable Class<?> returnType) {
-        Optional<Class<?>> type = OPTIONAL_TYPES.computeIfAbsent(className, MaidSpellAllyResolver::loadOptionalType);
-        if (type.isEmpty() || !type.get().isInstance(target)) {
-            return null;
-        }
-        Optional<Method> cached = METHODS.computeIfAbsent(
-                new MethodKey(type.get(), methodName, returnType),
-                MaidSpellAllyResolver::findPublicNoArgMethod);
+    private static Object invokeOptionalNoArg(Object target, String className, String methodName, Class<?> returnType) {
+        // 调用方已用 isOptionalInstance 校验过 target 类型
+        Optional<Method> cached = OPTIONAL_TYPES.computeIfAbsent(className, MaidSpellAllyResolver::loadOptionalType)
+                .flatMap(type -> METHODS.computeIfAbsent(
+                        new MethodKey(type, methodName, returnType),
+                        MaidSpellAllyResolver::findPublicNoArgMethod));
         if (cached.isEmpty()) {
             return null;
         }
@@ -219,36 +216,12 @@ public final class MaidSpellAllyResolver {
     private static Optional<Method> findPublicNoArgMethod(MethodKey key) {
         try {
             Method method = key.type().getMethod(key.name());
-            if (isUsableMethod(method, key)) {
+            if (key.returnType().isAssignableFrom(method.getReturnType())) {
                 return Optional.of(method);
             }
         } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
         }
         return Optional.empty();
-    }
-
-    private static boolean isUsableMethod(Method method, MethodKey key) {
-        if (method.getParameterCount() != 0) {
-            return false;
-        }
-        if (key.returnType() != null && !isReturnTypeCompatible(key.returnType(), method.getReturnType())) {
-            return false;
-        }
-        if (!Modifier.isPublic(method.getModifiers()) || !Modifier.isPublic(method.getDeclaringClass().getModifiers())) {
-            method.setAccessible(true);
-        }
-        return true;
-    }
-
-    private static boolean isReturnTypeCompatible(Class<?> expected, Class<?> actual) {
-        if (expected.isAssignableFrom(actual)) {
-            return true;
-        }
-        return (expected == Boolean.class && actual == Boolean.TYPE)
-                || (expected == Integer.class && actual == Integer.TYPE)
-                || (expected == Long.class && actual == Long.TYPE)
-                || (expected == Float.class && actual == Float.TYPE)
-                || (expected == Double.class && actual == Double.TYPE);
     }
 
     @Nullable
@@ -295,6 +268,6 @@ public final class MaidSpellAllyResolver {
                 .orElse(false);
     }
 
-    private record MethodKey(Class<?> type, String name, @Nullable Class<?> returnType) {
+    private record MethodKey(Class<?> type, String name, Class<?> returnType) {
     }
 }
