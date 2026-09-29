@@ -2,7 +2,6 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks;
 
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxSpellPowerBonus;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxKnockbackGuard;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxBossSleepGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxNonLethalGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.IronsSpellbooksCompatClient;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.VoidPhaseDamageHandler;
@@ -43,7 +42,6 @@ public final class IronsSpellbooksCompat {
         IronsSpellbooksCompatEffects.register(eventBus);
         IronsSpellbooksCompatSpells.register(eventBus);
         NeoForge.EVENT_BUS.register(VoidPhaseDamageHandler.class);
-        NeoForge.EVENT_BUS.register(WinefoxBossSleepGuard.class);
         NeoForge.EVENT_BUS.register(WinefoxNonLethalGuard.class);
         // 以下监听器都引用酒狐实体，其父类来自铁魔法，所以只在这里按需注册。
         NeoForge.EVENT_BUS.register(WinefoxKnockbackGuard.class);

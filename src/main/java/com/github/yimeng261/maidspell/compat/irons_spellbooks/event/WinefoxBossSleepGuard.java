@@ -5,10 +5,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.event.entity.player.CanPlayerSleepEvent;
-import net.neoforged.bus.api.SubscribeEvent;
 
-/** 酒狐不是 Monster，原版睡眠检查不会找到她；用 NeoForge 事件恢复附近有敌时不可睡眠。 */
+/**
+ * 酒狐不是 Monster，原版睡眠检查不会找到她；附近有她时床视为不安全。
+ * 由 {@code ServerPlayerWinefoxSleepMixin} 在上床流程最前面调用，先于重生点写入与昼夜判断。
+ */
 public final class WinefoxBossSleepGuard {
 
     /** 原版 {@code ServerPlayer.startSleepInBed} 里写死的两个半径。 */
@@ -18,26 +19,16 @@ public final class WinefoxBossSleepGuard {
     private WinefoxBossSleepGuard() {
     }
 
-    @SubscribeEvent
-    public static void onCanPlayerSleep(CanPlayerSleepEvent event) {
-        if (event.getProblem() != null) {
-            // 已经有别的原因不让睡了，不必再判。
-            return;
-        }
-        Player player = event.getEntity();
+    public static boolean isBossNearBed(Player player, BlockPos bed) {
         if (player.isCreative()) {
-            return;
+            return false;
         }
-        BlockPos bed = event.getPos();
         Vec3 center = Vec3.atBottomCenterOf(bed);
         AABB area = new AABB(
                 center.x - HORIZONTAL_RANGE, center.y - VERTICAL_RANGE, center.z - HORIZONTAL_RANGE,
                 center.x + HORIZONTAL_RANGE, center.y + VERTICAL_RANGE, center.z + HORIZONTAL_RANGE);
-        boolean bossNearby = !player.level()
+        return !player.level()
                 .getEntitiesOfClass(MagicalWinefoxBossEntity.class, area, boss -> !boss.isRemoved())
                 .isEmpty();
-        if (bossNearby) {
-            event.setProblem(Player.BedSleepingProblem.NOT_SAFE);
-        }
     }
 }

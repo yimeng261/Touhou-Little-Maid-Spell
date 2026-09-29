@@ -41,6 +41,7 @@
     "iss.EntityMaidWinefoxRetiredInteractionMixin",
     "iss.EntityMaidWinefoxRetiredStateMixin",
     "iss.MagicalWinefoxBossHealthMixin",
+    "iss.ServerPlayerWinefoxSleepMixin",
     "iss.SyncedSpellDataMixin",
     "iss.ThunderstormEffectMixin",
     "iss.UtilsMixin",
