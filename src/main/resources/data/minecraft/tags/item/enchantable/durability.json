@@ -5,6 +5,9 @@
       "id": "touhou_little_maid_spell:star_shadow_staff",
       "required": false
     },
-    "touhou_little_maid_spell:star_shadow_spear"
+    {
+      "id": "touhou_little_maid_spell:star_shadow_spear",
+      "required": false
+    }
   ]
 }

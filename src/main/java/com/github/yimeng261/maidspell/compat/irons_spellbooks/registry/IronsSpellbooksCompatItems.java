@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.registry;
 
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowSpearItem;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
@@ -50,6 +51,10 @@ public final class IronsSpellbooksCompatItems {
 
     public static final DeferredItem<Item> STAR_WITCH_HAT =
             ITEMS.register("star_witch_hat", StarWitchHatItem::new);
+
+    // 星影投枪：星之魔女的投枪，玩家拿到后按三叉戟使用
+    public static final DeferredItem<Item> STAR_SHADOW_SPEAR =
+            ITEMS.register("star_shadow_spear", StarShadowSpearItem::new);
 
     private IronsSpellbooksCompatItems() {
     }

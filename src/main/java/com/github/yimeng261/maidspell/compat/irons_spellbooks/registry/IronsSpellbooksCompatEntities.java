@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.registry;
 
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.StarShadowSpearEntity;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.CorruptedKnightEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ElfTemplarEntity;
@@ -112,6 +113,16 @@ public final class IronsSpellbooksCompatEntities {
                             .clientTrackingRange(64)
                             .updateInterval(1)
                             .build("spellbreaking_echo"));
+
+    /** 扔出去的星影投枪。 */
+    public static final DeferredHolder<EntityType<?>, EntityType<StarShadowSpearEntity>> STAR_SHADOW_SPEAR =
+            ENTITY_TYPES.register("star_shadow_spear",
+                    () -> EntityType.Builder.<StarShadowSpearEntity>of(StarShadowSpearEntity::new, MobCategory.MISC)
+                            .sized(0.5F, 0.5F)
+                            .eyeHeight(0.13F)
+                            .clientTrackingRange(4)
+                            .updateInterval(5)
+                            .build("star_shadow_spear"));
 
     private IronsSpellbooksCompatEntities() {
     }

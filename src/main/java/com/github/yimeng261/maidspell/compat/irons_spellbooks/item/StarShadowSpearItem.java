@@ -1,9 +1,9 @@
-package com.github.yimeng261.maidspell.item.common;
+package com.github.yimeng261.maidspell.compat.irons_spellbooks.item;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.model.item.StarEquipmentGeoModel;
 import com.github.yimeng261.maidspell.client.renderer.item.StarEquipmentRenderProviders;
-import com.github.yimeng261.maidspell.entity.StarShadowSpearEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.StarShadowSpearEntity;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;

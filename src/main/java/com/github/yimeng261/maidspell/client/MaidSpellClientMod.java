@@ -6,18 +6,15 @@ import com.github.yimeng261.maidspell.client.model.AscensionHaloModel;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
 import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
 import com.github.yimeng261.maidspell.client.particle.VoidSpellParticle;
-import com.github.yimeng261.maidspell.client.renderer.entity.StarShadowSpearRenderer;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
 import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
@@ -36,17 +33,7 @@ public class MaidSpellClientMod {
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(MaidSpellClientMod::registerSpearThrowingProperty);
-    }
-
-    /**
-     * 第三人称蓄力时换成 {@code star_shadow_spear_throwing} 模型，否则枪头朝反。
-     * 判据名沿用原版的 {@code throwing}，属性按物品注册，不会和三叉戟冲突。
-     */
-    private static void registerSpearThrowingProperty() {
-        ItemProperties.register(MaidSpellItems.STAR_SHADOW_SPEAR.get(), ResourceLocation.withDefaultNamespace("throwing"),
-                (stack, level, entity, seed) ->
-                        entity != null && entity.isUsingItem() && entity.getUseItem() == stack ? 1.0F : 0.0F);
+        event.enqueueWork(IronsSpellbooksCompat::initClientSetup);
     }
 
     @SubscribeEvent
@@ -69,7 +56,6 @@ public class MaidSpellClientMod {
     @SubscribeEvent
     public static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(MaidSpellEntities.WIND_SEEKING_BELL.get(), WindSeekingBellRenderer::new);
-        event.registerEntityRenderer(MaidSpellEntities.STAR_SHADOW_SPEAR.get(), StarShadowSpearRenderer::new);
         IronsSpellbooksCompat.initClient(event);
     }
 

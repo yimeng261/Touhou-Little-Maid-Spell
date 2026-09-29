@@ -41,6 +41,13 @@ public final class IronsSpellbooksCompat {
         NeoForge.EVENT_BUS.register(VoidPhaseDamageHandler.class);
     }
 
+    public static void initClientSetup() {
+        if (!isLoaded()) {
+            return;
+        }
+        IronsSpellbooksCompatClient.onClientSetup();
+    }
+
     public static void initClient(EntityRenderersEvent.RegisterRenderers event) {
         if (!isLoaded()) {
             return;

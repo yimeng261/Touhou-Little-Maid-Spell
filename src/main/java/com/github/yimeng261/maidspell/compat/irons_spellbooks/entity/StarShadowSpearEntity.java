@@ -1,8 +1,9 @@
-package com.github.yimeng261.maidspell.entity;
+package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity;
 
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxSpearImpactEffects;
 import com.github.yimeng261.maidspell.mixin.accessor.ThrownTridentAccessor;
 import net.minecraft.core.BlockPos;
@@ -35,7 +36,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.event.EventHooks;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
@@ -73,7 +73,7 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
      * 写死在里面了，这里照着它的构造链补齐拾取物、自定义名、定位、主人与忠诚/光效同步字段。
      */
     public StarShadowSpearEntity(Level level, LivingEntity shooter, ItemStack stack) {
-        this(MaidSpellEntities.STAR_SHADOW_SPEAR.get(), level);
+        this(IronsSpellbooksCompatEntities.STAR_SHADOW_SPEAR.get(), level);
         this.setPickupItemStack(stack.copy());
         this.setCustomName(stack.get(DataComponents.CUSTOM_NAME));
         if (stack.has(DataComponents.INTANGIBLE_PROJECTILE)) {
@@ -142,7 +142,7 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
     /** 父类默认给的是原版三叉戟，换成星影投枪，免得 /summon 出来的枪被捡起来变成三叉戟。 */
     @Override
     protected ItemStack getDefaultPickupItem() {
-        return new ItemStack(MaidSpellItems.STAR_SHADOW_SPEAR.get());
+        return new ItemStack(IronsSpellbooksCompatItems.STAR_SHADOW_SPEAR.get());
     }
 
     @Override
@@ -262,9 +262,7 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
         }
         level.playSound(null, impact.x, impact.y, impact.z,
             SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.HOSTILE, 1.0F, 1.4F);
-        if (ModList.get().isLoaded("irons_spellbooks")) {
-            WinefoxSpearImpactEffects.spawnEchoBlast(level, impact, 3.0F);
-        }
+        WinefoxSpearImpactEffects.spawnEchoBlast(level, impact, 3.0F);
         if (directTarget == null) {
             this.setPos(impact.x, impact.y, impact.z);
             this.setNoGravity(true);
