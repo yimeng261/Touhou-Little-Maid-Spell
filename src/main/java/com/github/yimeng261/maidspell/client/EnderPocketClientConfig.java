@@ -26,5 +26,7 @@ public final class EnderPocketClientConfig {
     public static void setPosition(int x, int y) {
         HUD_X.set(Math.max(0, x));
         HUD_Y.set(Math.max(0, y));
+        // NeoForge 的 set 只改内存，需要显式写回文件
+        SPEC.save();
     }
 }
