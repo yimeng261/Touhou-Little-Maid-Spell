@@ -60,13 +60,10 @@ public class MaidSpellCommand {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("maidspell")
                 .requires(source -> source.hasPermission(2));
 
-        if (IronsSpellbooksCompat.isLoaded()) {
-            WinefoxLifecycleCommand.register(dispatcher);
-        }
-
         // 女仆施法命令
         // /maidspell iron_cast <targets> <spell_id> [level]
         if (IronsSpellbooksCompat.isLoaded()) {
+            WinefoxLifecycleCommand.register(dispatcher);
             root.then(Commands.literal("iron_cast")
                     .then(Commands.argument("targets", EntityArgument.entities())
                             .then(Commands.argument("spell", ResourceLocationArgument.id())

@@ -30,7 +30,7 @@ public class EntityMaidStructureSpawnMixin {
 
     @Unique
     private static final Set<ResourceLocation> maidspell$deniedStructures = Set.of(
-            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat"),
+            MAIDSPELL$HIDDEN_RETREAT,
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "fairy_maid_cafe"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "relic_sanctum"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "fallen_sanctum"),
