@@ -153,9 +153,10 @@ public final class AstroMancerTrades {
 
     private static MerchantOffer findSameRow(MerchantOffers saved, MerchantOffer current) {
         for (MerchantOffer old : saved) {
+            // ItemCost 是含 ItemStack 字段的 record，equals 会按物品实例比较，存档解码出来的永远不相等
             if (ItemStack.isSameItemSameComponents(old.getResult(), current.getResult())
-                    && old.getItemCostA().equals(current.getItemCostA())
-                    && old.getItemCostB().equals(current.getItemCostB())) {
+                    && ItemStack.isSameItemSameComponents(old.getBaseCostA(), current.getBaseCostA())
+                    && ItemStack.isSameItemSameComponents(old.getCostB(), current.getCostB())) {
                 return old;
             }
         }
