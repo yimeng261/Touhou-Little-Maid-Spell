@@ -25,6 +25,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.Tags;
+import net.neoforged.neoforge.common.damagesource.DamageContainer;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
@@ -115,9 +116,11 @@ public final class DreamCrystalPlayerEvents {
         if (!(event.getEntity() instanceof ServerPlayer player)
             || DreamCrystalCurios.findCrystal(player).isEmpty()
             || event.getSource().is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return;
-        float amount = Math.min(event.getNewDamage() * 0.7F, 40.0F);
+        // 只裁剪扣除吸收后会写进血量的部分，吸收量原样加回由随后的吸收结算扣掉
+        float absorbed = Math.min(player.getAbsorptionAmount(), event.getNewDamage());
+        float amount = Math.min((event.getNewDamage() - absorbed) * 0.7F, 40.0F);
         if (DreamCrystalCurios.hasItem(player, MaidSpellItems.DOUBLE_HEART_CHAIN.get())) amount *= 0.5F;
-        event.setNewDamage(amount);
+        event.setNewDamage(amount + absorbed);
         if (!TrueDamageUtil.isApplyingQueuedDamage()
             && DreamCrystalCurios.hasItem(player, MaidSpellItems.SLIVER_CERCIS.get())
             && event.getSource().getEntity() instanceof LivingEntity attacker && attacker != player) {
@@ -127,9 +130,11 @@ public final class DreamCrystalPlayerEvents {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void hit(LivingIncomingDamageEvent event) {
+    public static void hit(LivingDamageEvent.Pre event) {
+        // Pre 只在通过无敌帧与格挡后触发；基数取护甲、附魔、药水减免前的伤害
+        float baseDamage = preArmorDamage(event.getContainer());
         if (!(event.getSource().getEntity() instanceof ServerPlayer player)
-            || event.getAmount() <= 0 || DreamCrystalCurios.findCrystal(player).isEmpty()
+            || baseDamage <= 0 || DreamCrystalCurios.findCrystal(player).isEmpty()
             || TrueDamageUtil.isApplyingQueuedDamage()) return;
         LivingEntity target = event.getEntity();
         if (MaidSpellAllyResolver.areFriendly(player, target)) return;
@@ -138,7 +143,7 @@ public final class DreamCrystalPlayerEvents {
                 .put(target.getUUID(), player.server.overworld().getGameTime());
         }
         if (Config.dreamCrystalExtraTrueDamageEnabled) {
-            TrueDamageUtil.dealTrueDamage(target, event.getAmount(), player);
+            TrueDamageUtil.dealTrueDamage(target, baseDamage, player);
         }
         if (Config.dreamCrystalSetNoAiEnabled && target instanceof Mob mob) {
             DreamCatCrystalBauble.freezeTarget(mob, player.server.overworld().getGameTime() + 20);
@@ -152,8 +157,15 @@ public final class DreamCrystalPlayerEvents {
             target.getBoundingBox().inflate(5), entity -> entity != target && entity.isAlive()
                 && !(entity instanceof Player) && !(entity instanceof EntityMaid)
                 && !MaidSpellAllyResolver.areFriendly(player, entity))) {
-            TrueDamageUtil.dealTrueDamage(nearby, event.getAmount() * 0.1F, player);
+            TrueDamageUtil.dealTrueDamage(nearby, baseDamage * 0.1F, player);
         }
+    }
+
+    private static float preArmorDamage(DamageContainer container) {
+        return container.getNewDamage()
+            + container.getReduction(DamageContainer.Reduction.ARMOR)
+            + container.getReduction(DamageContainer.Reduction.ENCHANTMENTS)
+            + container.getReduction(DamageContainer.Reduction.MOB_EFFECTS);
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
