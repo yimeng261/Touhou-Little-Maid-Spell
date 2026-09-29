@@ -92,9 +92,7 @@ public class EnderPocketService {
         List<EnderPocketMaidInfo> enderPocketMaids = new ArrayList<>();
 
         for (EntityMaid maid : maids.values()) {
-            if (maid != null && maid.isAlive() && !maid.isRemoved()
-                    && playerUUID.equals(maid.getOwnerUUID())
-                    && BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
+            if (isEnderPocketAccessible(maid, playerUUID)) {
                 enderPocketMaids.add(new EnderPocketMaidInfo(
                         maid.getUUID(),
                         maid.getName().getString(),
@@ -118,12 +116,9 @@ public class EnderPocketService {
         Map<UUID, EntityMaid> maids = Global.ownerMaidRegistry.get(player.getUUID());
         EntityMaid maid = maids == null ? null : maids.get(maidUuid);
         if (maid == null
-                || maid.isRemoved()
-                || !maid.isAlive()
+                || !isEnderPocketAccessible(maid, player.getUUID())
                 || maid.isSleeping()
-                || !player.getUUID().equals(maid.getOwnerUUID())
                 || !maid.isOwnedBy(player)
-                || !BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)
                 || !(maid.level() instanceof ServerLevel maidLevel)) {
             return false;
         }
@@ -141,5 +136,14 @@ public class EnderPocketService {
         // 使用车万女仆本体的GUI打开方法
         maid.openMaidGui(player, com.github.tartaricacid.touhoulittlemaid.entity.passive.TabIndex.MAIN);
         return true;
+    }
+
+    /**
+     * 女仆存活、归属该玩家且装备了末影腰包
+     */
+    private static boolean isEnderPocketAccessible(EntityMaid maid, UUID playerUUID) {
+        return maid.isAlive()
+                && playerUUID.equals(maid.getOwnerUUID())
+                && BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET);
     }
 }

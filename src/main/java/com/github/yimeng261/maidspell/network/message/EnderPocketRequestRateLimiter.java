@@ -2,7 +2,6 @@ package com.github.yimeng261.maidspell.network.message;
 
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
@@ -13,8 +12,7 @@ import java.util.concurrent.TimeUnit;
 final class EnderPocketRequestRateLimiter {
     private static final long LIST_REQUEST_COOLDOWN_NANOS = TimeUnit.MILLISECONDS.toNanos(200);
     private static final long OPEN_REQUEST_COOLDOWN_NANOS = TimeUnit.MILLISECONDS.toNanos(250);
-    private static final Map<ServerPlayer, RateLimitState> RATE_LIMITS =
-            Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Map<ServerPlayer, RateLimitState> RATE_LIMITS = new WeakHashMap<>();
 
     private EnderPocketRequestRateLimiter() {
     }
