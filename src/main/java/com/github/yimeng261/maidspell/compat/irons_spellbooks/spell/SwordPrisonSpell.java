@@ -53,7 +53,7 @@ public class SwordPrisonSpell extends AbstractSpell implements BossExclusiveSpel
     private static final double DEFAULT_CASTER_HALF_WIDTH = 0.3D;
 
     /**
-     * 举枪。玩家施法时由 PlayerAnimator 播，资源在 {@code assets/touhou_little_maid_spell/player_animation/spear_throw.json}。
+     * 举枪。玩家施法时由 PlayerAnimator 播，资源在 {@code assets/touhou_little_maid_spell/player_animations/spear_throw.json}。
      *
      * <p>铁魔法给 INSTANT 法术的默认动画 {@code ANIMATION_INSTANT_CAST} 是一个 0.1875 秒的抬手，配不上"召出一圈剑把人围死"。
      * 酒狐那边不走这条：她是 Mob，用的是自己模型包上的 {@code iss:spear_throw}（骨骼完全不同），由她的动作表单独指定；两边是同一个动作的两份实现，改表演时记得一起改。

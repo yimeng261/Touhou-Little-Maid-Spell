@@ -29,6 +29,10 @@ public final class VoidPhaseDamageHandler {
         if (APPLYING_VOID_DAMAGE.get() || event.getEntity().level().isClientSide) {
             return;
         }
+        // Pre 对被盾完全格挡或被其它处理器清零的伤害也会触发，这些不算命中
+        if (event.getNewDamage() <= 0.0F) {
+            return;
+        }
 
         // 追加的那一发自己也会走这个事件，靠上面的闸门挡住，否则会无限递归。
         Entity sourceEntity = event.getSource().getEntity();

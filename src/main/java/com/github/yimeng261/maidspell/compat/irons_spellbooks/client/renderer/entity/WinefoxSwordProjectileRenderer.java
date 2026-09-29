@@ -52,7 +52,7 @@ public class WinefoxSwordProjectileRenderer extends GeoEntityRenderer<WinefoxSwo
     /** 飞行时按速度定向；钉住后使用保存的入射方向。 */
     @Override
     protected void applyRotations(WinefoxSwordProjectileEntity entity, PoseStack poseStack,
-                                  float ageInTicks, float rotationYaw, float partialTick) {
+                                  float ageInTicks, float rotationYaw, float partialTick, float nativeScale) {
         Vec3 direction = entity.isPlanted()
                 ? entity.getPlantedDirection()
                 : entity.getDeltaMovement();
