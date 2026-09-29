@@ -35,14 +35,12 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
 import com.github.yimeng261.maidspell.compat.curios.DreamCrystalCurios;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.wrapper.InvWrapper;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -50,7 +48,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-/** 梦云水晶的战斗、支援、耐久修复与复活效果，女仆与佩戴它的玩家共用。具体数值由各处理方法维护。 */
+/** 梦云水晶的战斗、支援、耐久修复与复活效果。具体数值由各处理方法维护。 */
 public class DreamCatCrystalBauble implements IMaidBauble {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -199,7 +197,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         tickWearer(maid, baubleItem);
     }
 
-    public void tickWearer(LivingEntity maid, ItemStack baubleItem) {
+    public void tickWearer(EntityMaid maid, ItemStack baubleItem) {
         if (maid.level().isClientSide()) return;
 
         int tick = maid.tickCount;
@@ -445,23 +443,13 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     }
 
     // ========== 修复背包耐久度 ==========
-    private void repairInventory(LivingEntity wearer) {
-        IItemHandler handler;
-        if (wearer instanceof EntityMaid maid) {
-            handler = maid.getAvailableInv(false);
-        } else if (wearer instanceof Player player) {
-            handler = new InvWrapper(player.getInventory());
-        } else {
-            return;
-        }
+    private void repairInventory(EntityMaid maid) {
+        IItemHandler handler = maid.getAvailableInv(false);
         for (int i = 0; i < handler.getSlots(); i++) {
             ItemStack stack = handler.getStackInSlot(i);
             if (!stack.isEmpty() && stack.isDamaged()) {
                 stack.setDamageValue(stack.getDamageValue() - 1);
             }
-        }
-        if (wearer instanceof Player && CuriosCompat.isLoaded()) {
-            DreamCrystalCurios.repairEquipment(wearer);
         }
     }
 

@@ -33,10 +33,6 @@ public final class CuriosCompat {
             return;
         }
         NeoForge.EVENT_BUS.register(CuriosEventHandler.class);
-        NeoForge.EVENT_BUS.register(DreamCrystalPlayerEvents.class);
-        if (ModList.get().isLoaded("irons_spellbooks")) {
-            NeoForge.EVENT_BUS.register(DreamCrystalSpellEvents.class);
-        }
     }
 
     /**

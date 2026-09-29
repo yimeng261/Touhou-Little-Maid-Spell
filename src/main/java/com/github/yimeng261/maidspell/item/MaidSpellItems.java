@@ -3,8 +3,6 @@ package com.github.yimeng261.maidspell.item;
 import com.Polarice3.Goety.common.items.ModItems;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
-import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
-import com.github.yimeng261.maidspell.compat.curios.DreamCrystalCurios;
 import com.github.yimeng261.maidspell.item.bauble.staranchorPearl.StaranchorPearl;
 import com.github.yimeng261.maidspell.item.common.StarwatchCompassItem;
 import com.github.yimeng261.maidspell.item.common.NebulaCoreItem;
@@ -82,8 +80,7 @@ public class MaidSpellItems {
     public static final DeferredItem<Item> FRAGRANT_INGENUITY = ITEMS.register("fragrant_ingenuity", FragrantIngenuity::new);
 
     // 梦云水晶
-    public static final DeferredItem<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal",
-        () -> CuriosCompat.isLoaded() ? DreamCrystalCurios.createItem() : new DreamCatCrystal());
+    public static final DeferredItem<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal", DreamCatCrystal::new);
 
     // 星锚珍珠：玩家右键获得 30 秒虚空漫步，女仆佩戴可代挡虚空伤害并消耗耐久
     public static final DeferredItem<Item> STARANCHOR_PEARL = ITEMS.register("staranchor_pearl", StaranchorPearl::new);
