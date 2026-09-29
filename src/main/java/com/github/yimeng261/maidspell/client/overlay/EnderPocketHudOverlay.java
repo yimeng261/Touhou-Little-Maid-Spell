@@ -35,6 +35,7 @@ public final class EnderPocketHudOverlay implements LayeredDraw.Layer {
     private static final int ROW_HEIGHT = 44;
     private static final Map<UUID, EntityMaid> PREVIEW_MAIDS = new HashMap<>();
     private static List<EnderPocketService.EnderPocketMaidInfo> maidInfos = List.of();
+    private static ItemStack enderPocketIcon;
 
     public static void update(List<EnderPocketService.EnderPocketMaidInfo> infos) {
         maidInfos = List.copyOf(infos);
@@ -186,7 +187,7 @@ public final class EnderPocketHudOverlay implements LayeredDraw.Layer {
         graphics.pose().pushPose();
         graphics.pose().translate(x + ROW_WIDTH - 13, y + 2, 0);
         graphics.pose().scale(0.625F, 0.625F, 1.0F);
-        graphics.renderItem(new ItemStack(MaidSpellItems.ENDER_POCKET.get()), 0, 0);
+        graphics.renderItem(enderPocketIcon(), 0, 0);
         graphics.pose().popPose();
 
         int barX = x + 42;
@@ -248,6 +249,13 @@ public final class EnderPocketHudOverlay implements LayeredDraw.Layer {
         graphics.pose().mulPose(Axis.ZP.rotationDegrees(rotation));
         graphics.drawCenteredString(mc.font, "\u2191", 0, -4, color);
         graphics.pose().popPose();
+    }
+
+    private static ItemStack enderPocketIcon() {
+        if (enderPocketIcon == null) {
+            enderPocketIcon = new ItemStack(MaidSpellItems.ENDER_POCKET.get());
+        }
+        return enderPocketIcon;
     }
 
     private static String trimToWidth(Minecraft mc, String text, int width) {

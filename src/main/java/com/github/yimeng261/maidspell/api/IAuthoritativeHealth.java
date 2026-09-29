@@ -2,7 +2,7 @@ package com.github.yimeng261.maidspell.api;
 
 import net.minecraft.world.entity.LivingEntity;
 
-/** Health used by this mod's combat pipeline, independent of public health views. */
+/** 本模组战斗逻辑读取的权威生命值，独立于公开的 getHealth */
 public interface IAuthoritativeHealth {
     float maidspell$authoritativeHealth();
 
@@ -17,6 +17,11 @@ public interface IAuthoritativeHealth {
         }
         return entity instanceof IAuthoritativeHealth authority
             ? authority.maidspell$authoritativeHealth() > 0.0F : entity.isAlive();
+    }
+
+    /** 仍可作为战斗目标：未移除、权威血量存活且未处于死亡过程 */
+    static boolean validCombatTarget(LivingEntity entity) {
+        return combatAlive(entity) && !deadOrDying(entity);
     }
 
     static boolean deadOrDying(LivingEntity entity) {

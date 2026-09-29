@@ -137,8 +137,7 @@ public final class SlashBladeDirectSkillHandler {
     // ==================== 共享工具方法 ====================
 
     public static boolean isValidTarget(LivingEntity target) {
-        return IAuthoritativeHealth.combatAlive(target)
-            && !IAuthoritativeHealth.deadOrDying(target);
+        return IAuthoritativeHealth.validCombatTarget(target);
     }
 
     public static String describeTarget(LivingEntity target) {

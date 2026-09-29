@@ -30,6 +30,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -214,10 +215,11 @@ public class ModifiedTeleportSpell extends AbstractSpell implements BossExclusiv
     }
 
     private Vec3 getSafeLandingOn(Level level, LivingEntity caster, BlockPos floorPos) {
-        if (!level.getBlockState(floorPos).entityCanStandOn(level, floorPos, caster)) {
+        BlockState floorState = level.getBlockState(floorPos);
+        if (!floorState.entityCanStandOn(level, floorPos, caster)) {
             return null;
         }
-        VoxelShape floorShape = level.getBlockState(floorPos).getCollisionShape(level, floorPos);
+        VoxelShape floorShape = floorState.getCollisionShape(level, floorPos);
         if (floorShape.isEmpty()) {
             return null;
         }

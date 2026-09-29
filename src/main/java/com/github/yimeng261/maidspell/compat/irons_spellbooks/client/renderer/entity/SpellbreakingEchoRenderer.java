@@ -11,6 +11,6 @@ public class SpellbreakingEchoRenderer extends LocalBlackHoleRenderer<Spellbreak
 
     public SpellbreakingEchoRenderer(EntityRendererProvider.Context context) {
         super(context, CENTER, BEAM, 0xD2D2D2, 0xB9B9B9, 230, 200, 30,
-                SpellbreakingEchoEntity.HOVER_ABOVE_EYES, 1.0F);
+                SpellbreakingEchoEntity.HOVER_ABOVE_EYES);
     }
 }

@@ -89,9 +89,7 @@ public class EntityMixin {
     }
 
     /**
-     * A few mods update a SynchedEntityData item through a low-level path and
-     * only notify the entity afterward. Give custom health authorities one
-     * common observation point for those writes.
+     * 在 onSyncedDataUpdated 开头把新值转发给 {@link IBossSyncedDataGuard} 实现方，覆盖绕过 set() 直接修改同步字段的写入
      */
     @Inject(method = "onSyncedDataUpdated(Lnet/minecraft/network/syncher/EntityDataAccessor;)V",
             at = @At("HEAD"), remap = true)

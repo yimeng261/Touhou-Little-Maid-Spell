@@ -172,7 +172,7 @@ public class SwordPrisonSpell extends AbstractSpell implements BossExclusiveSpel
         double baseAngle = random.nextDouble() * Mth.TWO_PI;
 
         // 内圈至少离目标半个身位，否则剑会插在身上而不是围住。
-        double innerRadius = Math.max(MIN_INNER_RADIUS, getTargetHalfWidth(target) * 2.0D + 0.65D);
+        double innerRadius = getInnerRadius(getTargetHalfWidth(target));
         List<Vec3[]> rings = new ArrayList<>(ringCount);
 
         for (int ring = 0; ring < ringCount; ring++) {
@@ -240,6 +240,10 @@ public class SwordPrisonSpell extends AbstractSpell implements BossExclusiveSpel
         return target != null ? target.getBbWidth() * 0.5D : DEFAULT_CASTER_HALF_WIDTH;
     }
 
+    private static double getInnerRadius(double targetHalfWidth) {
+        return Math.max(MIN_INNER_RADIUS, targetHalfWidth * 2.0D + 0.65D);
+    }
+
     /** 由圈周长反推剑数，保证同一圈内相邻两柄剑的弧长不超过 {@link #MAX_SWORD_SPACING}。 */
     public static int getSwordsForRing(double radius) {
         int swords = Mth.ceil(Mth.TWO_PI * radius / MAX_SWORD_SPACING);
@@ -249,7 +253,7 @@ public class SwordPrisonSpell extends AbstractSpell implements BossExclusiveSpel
     /** 全部圈上的剑数总和。最内圈本身就是包围圈，不再额外补一柄压轴剑。 */
     public static int getTotalSwordCount(int spellLevel, double targetHalfWidth) {
         int ringCount = getRingCount(spellLevel);
-        double innerRadius = Math.max(MIN_INNER_RADIUS, targetHalfWidth * 2.0D + 0.65D);
+        double innerRadius = getInnerRadius(targetHalfWidth);
         int total = 0;
         for (int ring = 0; ring < ringCount; ring++) {
             total += getSwordsForRing(innerRadius + ring * RING_RADIUS_STEP);

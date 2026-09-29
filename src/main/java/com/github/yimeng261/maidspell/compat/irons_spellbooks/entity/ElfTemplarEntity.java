@@ -134,7 +134,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
      * 天生的敌人只有灾厄村民和不死生物，同类和同盟一律排除
      */
     private boolean isNaturalEnemy(LivingEntity target) {
-        if (target instanceof ElfTemplarEntity || this.isAlliedTo(target)) {
+        if (this.isAlliedTo(target)) {
             return false;
         }
         return target instanceof Raider || target.getType().is(EntityTypeTags.UNDEAD);

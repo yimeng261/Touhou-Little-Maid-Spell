@@ -208,8 +208,7 @@ public class SpellbreakingEchoEntity extends BlackHole {
 
     /** 对弹射物、召唤物和非生物法术生效，但保留施法者自己的造物。 */
     public static boolean isSpellTarget(Entity entity, Entity caster) {
-        // RootEntity is a LivingEntity because it carries the rooted target as a passenger,
-        // but it is itself an AntiMagicSusceptible spell construct and must be cleared.
+        // RootEntity 是承载被定身目标的 LivingEntity，但本身是可被反魔法清除的法术造物，需要清除
         if (entity instanceof RootEntity) {
             return true;
         }

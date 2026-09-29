@@ -55,8 +55,7 @@ public class SimplifiedSpellCaster {
      */
     public boolean hasValidTarget() {
         LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-        boolean valid = IAuthoritativeHealth.combatAlive(target)
-            && !IAuthoritativeHealth.deadOrDying(target);
+        boolean valid = IAuthoritativeHealth.validCombatTarget(target);
         if (!valid && target != null) {
             // 目标已死亡/被移除时清理 ATTACK_TARGET 与 WALK_TARGET，避免女仆继续追击或攻击残影。
             maid.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);

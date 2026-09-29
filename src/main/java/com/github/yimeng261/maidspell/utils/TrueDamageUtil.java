@@ -223,10 +223,8 @@ public class TrueDamageUtil {
     private static void handleTrueDamageDeath(LivingEntity target, LivingEntity attacker) {
         DamageSource damageSource = createDamageSource(target, attacker);
         target.die(damageSource);
-        if (!target.isRemoved() && target.isDeadOrDying()
-                && target instanceof LivingEntityInvoker invoker) {
-            // 未暴露 invoker 的实体交给原版 tickDeath 处理
-            invoker.maidspell$invokeTickDeath();
+        if (!target.isRemoved() && target.isDeadOrDying()) {
+            ((LivingEntityInvoker) target).maidspell$invokeTickDeath();
         }
     }
 

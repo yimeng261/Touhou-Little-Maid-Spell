@@ -122,7 +122,7 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
                 entityData.get(DATA_PLANTED_DIRECTION_Z));
     }
 
-    /** Sets the horizontal plane at which this sword should land instead of stopping at a block. */
+    /** 设置落地平面高度，剑落到该平面时插地，而不是停在方块上 */
     public void setLandingY(double landingY) {
         entityData.set(DATA_LANDING_Y, (float) landingY);
     }
@@ -137,9 +137,7 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
 
     @Override
     protected boolean canHitEntity(Entity entity) {
-        Entity owner = getOwner();
-        return super.canHitEntity(entity)
-                && (owner == null || !MaidSpellAllyResolver.areFriendly(owner, entity));
+        return super.canHitEntity(entity) && !MaidSpellAllyResolver.areFriendly(getOwner(), entity);
     }
 
     @Override
@@ -159,9 +157,7 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
     }
 
     /**
-     * Sword Prison projectiles are intentionally allowed to pass through blocks on their way to
-     * the target plane. Entity hit detection is retained, so a target under a low ceiling can
-     * still be hit before the sword reaches the plane.
+     * 设置了落地平面时忽略方块碰撞，只检测实体命中；低矮天花板下的目标在剑到达平面前仍可被击中
      */
     @Override
     public void handleHitDetection() {
@@ -186,14 +182,19 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
         }
     }
 
-    /** Move normally, but stop exactly at the configured target plane instead of a ceiling block. */
+    /** 未设置落地平面时按原逻辑移动；否则穿过平面时精确停在平面上插地，不受天花板方块阻挡 */
     @Override
     public void travel() {
+        if (!hasLandingPlane()) {
+            super.travel();
+            return;
+        }
+
         Vec3 movement = getDeltaMovement();
         Vec3 start = position();
         Vec3 end = start.add(movement);
 
-        if (hasLandingPlane() && movement.y < 0.0D
+        if (movement.y < 0.0D
                 && start.y >= getLandingY() && end.y <= getLandingY()) {
             double fraction = (start.y - getLandingY()) / (start.y - end.y);
             Vec3 landing = start.add(movement.scale(fraction));
@@ -203,11 +204,6 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
                 getImpactSound().ifPresent(this::doImpactSound);
             }
             plantAt(landing);
-            return;
-        }
-
-        if (!hasLandingPlane()) {
-            super.travel();
             return;
         }
 

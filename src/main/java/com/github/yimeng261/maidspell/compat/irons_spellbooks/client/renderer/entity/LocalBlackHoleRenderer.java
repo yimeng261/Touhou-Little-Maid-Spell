@@ -19,7 +19,7 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
-/** Local copy of the ISS 3.16.3 black-hole visual, adapted for owned spell entities. */
+/** 复刻铁魔法 3.16.3 的黑洞视觉效果，用于本模组自有的法术实体 */
 public class LocalBlackHoleRenderer<T extends BlackHole> extends EntityRenderer<T> {
     private final ResourceLocation centerTexture;
     private final ResourceLocation beamTexture;
@@ -29,13 +29,12 @@ public class LocalBlackHoleRenderer<T extends BlackHole> extends EntityRenderer<
     private final int beamBuildTicks;
     private final int beamDensity;
     private final double hoverAboveEyes;
-    private final float centerScale;
 
     protected LocalBlackHoleRenderer(EntityRendererProvider.Context context,
                                      ResourceLocation centerTexture, ResourceLocation beamTexture,
                                      int centerColor, int beamColor, int beamAlpha,
                                      int beamBuildTicks, int beamDensity,
-                                     double hoverAboveEyes, float centerScale) {
+                                     double hoverAboveEyes) {
         super(context);
         this.centerTexture = centerTexture;
         this.beamTexture = beamTexture;
@@ -45,7 +44,6 @@ public class LocalBlackHoleRenderer<T extends BlackHole> extends EntityRenderer<
         this.beamBuildTicks = beamBuildTicks;
         this.beamDensity = beamDensity;
         this.hoverAboveEyes = hoverAboveEyes;
-        this.centerScale = centerScale;
     }
 
     @Override
@@ -59,7 +57,7 @@ public class LocalBlackHoleRenderer<T extends BlackHole> extends EntityRenderer<
         translateToVisualCenter(entity, partialTick, poseStack, radius);
 
         poseStack.pushPose();
-        poseStack.scale(centerScale * entityScale, centerScale * entityScale, centerScale * entityScale);
+        poseStack.scale(entityScale, entityScale, entityScale);
         poseStack.mulPose(entityRenderDispatcher.cameraOrientation());
         poseStack.mulPose(Axis.YP.rotationDegrees(90.0F));
         drawCenter(poseStack.last(), buffers.getBuffer(RenderType.entityTranslucent(centerTexture)));
@@ -94,7 +92,7 @@ public class LocalBlackHoleRenderer<T extends BlackHole> extends EntityRenderer<
             return;
         }
 
-        // LevelRenderer places the entity using xOld/yOld/zOld, not Entity.getPosition(partialTick).
+        // 与 LevelRenderer 一致，按 xOld/yOld/zOld 插值实体位置，而非 Entity.getPosition(partialTick)
         Vec3 renderedEntityPos = interpolatedPosition(entity, partialTick);
         Vec3 renderedCasterPos = interpolatedPosition(caster, partialTick);
         poseStack.translate(renderedCasterPos.x - renderedEntityPos.x,

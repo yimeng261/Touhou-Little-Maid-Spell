@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
  * 通用工具通过此接口识别目标，避免直接依赖可选模组实体类。
  */
 public interface ITrueDamageRedirect {
-    /** Record an accepted true-damage attack before deferred processing or a simultaneous defeat. */
+    /** 真伤请求入队时回调，在延迟结算或同 tick 战败之前记录这次攻击 */
     default void maidspell$onTrueDamageQueued() {
     }
 

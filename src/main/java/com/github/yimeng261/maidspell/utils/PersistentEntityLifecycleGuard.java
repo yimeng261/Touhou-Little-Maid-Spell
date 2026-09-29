@@ -34,7 +34,7 @@ public final class PersistentEntityLifecycleGuard {
         if (!(candidate instanceof IPersistentEncounterEntity encounter)) {
             return false;
         }
-        // 首版对遭遇唯一性的保证范围是：同一维度、双方都处于已加载状态的实体中，同一个 encounterId 不会出现两个权威实体。
+        // 只在同一维度的已加载实体中检查 encounterId 是否重复
         for (Entity loaded : level.getAllEntities()) {
             if (loaded != candidate && !loaded.isRemoved()
                     && loaded instanceof IPersistentEncounterEntity existing

@@ -217,7 +217,7 @@ public class CompanionBlackHoleEntity extends BlackHole {
             } catch (NoSuchMethodException e) {
                 continue;
             }
-            if (Modifier.isStatic(method.getModifiers()) || method.getParameterCount() != 0) {
+            if (Modifier.isStatic(method.getModifiers())) {
                 continue;
             }
             Class<?> returns = method.getReturnType();

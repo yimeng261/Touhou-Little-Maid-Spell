@@ -67,9 +67,6 @@ public final class SwordRingScheduler {
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         serverTick++;
-        if (PENDING.isEmpty()) {
-            return;
-        }
 
         // 队列按 executeAt 递增排列，所以可以边跑边从头删。
         while (!PENDING.isEmpty() && PENDING.get(0).executeAt() <= serverTick) {

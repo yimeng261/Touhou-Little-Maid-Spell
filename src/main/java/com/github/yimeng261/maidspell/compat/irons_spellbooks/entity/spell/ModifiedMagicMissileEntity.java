@@ -57,9 +57,7 @@ public class ModifiedMagicMissileEntity extends AbstractMagicProjectile {
 
     @Override
     protected boolean canHitEntity(Entity entity) {
-        Entity owner = getOwner();
-        return super.canHitEntity(entity)
-                && (owner == null || !MaidSpellAllyResolver.areFriendly(owner, entity));
+        return super.canHitEntity(entity) && !MaidSpellAllyResolver.areFriendly(getOwner(), entity);
     }
 
     @Override

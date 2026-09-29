@@ -11,6 +11,6 @@ public class CompanionBlackHoleRenderer extends LocalBlackHoleRenderer<Companion
 
     public CompanionBlackHoleRenderer(EntityRendererProvider.Context context) {
         super(context, CENTER, BEAM, 0xFFFFFF, 0xFF00FF, 255, 100, 20,
-                CompanionBlackHoleEntity.HOVER_ABOVE_EYES, 1.0F);
+                CompanionBlackHoleEntity.HOVER_ABOVE_EYES);
     }
 }

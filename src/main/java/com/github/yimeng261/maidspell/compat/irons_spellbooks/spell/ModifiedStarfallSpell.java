@@ -135,6 +135,6 @@ public class ModifiedStarfallSpell extends StarfallSpell implements BossExclusiv
 
     @Override
     public void onServerCastTick(Level level, int spellLevel, LivingEntity caster, @Nullable MagicData magicData) {
-        // The modified storm starts once the eight-second long cast completes.
+        // 吟唱期间不生成彗星，星落云在 onCast（8 秒吟唱完成后）生成
     }
 }

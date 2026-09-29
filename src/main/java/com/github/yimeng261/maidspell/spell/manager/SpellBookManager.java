@@ -285,8 +285,7 @@ public class SpellBookManager {
     }
 
     private static boolean isValidTarget(LivingEntity target) {
-        return IAuthoritativeHealth.combatAlive(target)
-            && !IAuthoritativeHealth.deadOrDying(target);
+        return IAuthoritativeHealth.validCombatTarget(target);
     }
 
     public void initSpellBooks(EntityMaid maid){

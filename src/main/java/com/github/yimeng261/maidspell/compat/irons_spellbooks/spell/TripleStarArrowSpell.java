@@ -102,7 +102,7 @@ public class TripleStarArrowSpell extends AbstractSpell implements BossExclusive
     @Override
     public void onCast(Level level, int spellLevel, LivingEntity caster,
                        CastSource castSource, MagicData magicData) {
-        if (!level.isClientSide && level instanceof ServerLevel serverLevel) {
+        if (level instanceof ServerLevel serverLevel) {
             float damage = getArrowDamage(spellLevel, caster);
             for (int shot = 0; shot < SHOT_COUNT; shot++) {
                 int index = shot;
@@ -124,7 +124,7 @@ public class TripleStarArrowSpell extends AbstractSpell implements BossExclusive
         }
 
         Vec3 forward = caster.getLookAngle().normalize();
-        Vec3 direction = spread(forward, SHOT_OFFSETS[Math.floorMod(shotIndex, SHOT_OFFSETS.length)]);
+        Vec3 direction = spread(forward, SHOT_OFFSETS[shotIndex]);
         Vec3 spawn = caster.position().add(0.0D,
                 caster.getEyeHeight() - 0.2D, 0.0D).add(forward.scale(0.6D));
 
