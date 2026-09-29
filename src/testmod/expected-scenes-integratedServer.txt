@@ -1,0 +1,17 @@
+# integratedServer 拓扑的场景清单
+# 主人侧女仆功能
+touhou_little_maid_spell.owner.ender_pocket.opensRemoteMaid
+touhou_little_maid_spell.owner.blue_note.menuStoresScroll
+touhou_little_maid_spell.owner.bleeding_heart.healsOwner
+touhou_little_maid_spell.owner.molten_fox_leaf.sharedProtection
+touhou_little_maid_spell.owner.molten_fox_leaf.ownerWalksOnLava
+touhou_little_maid_spell.owner.fragrant_ingenuity.feedOwnerBuff
+touhou_little_maid_spell.owner.spring_bloom_return.protectsOwner
+# 寻风之铃与归隐之地（私人维度）
+touhou_little_maid_spell.retreat.windBell.enterAndReturn
+touhou_little_maid_spell.retreat.windBell.searchFindsHiddenRetreat
+touhou_little_maid_spell.retreat.windBell.reshowSameCoordinates
+touhou_little_maid_spell.retreat.windBell.researchAfterCacheLoss
+touhou_little_maid_spell.retreat.hiddenRetreat.tameMessage
+# 已知缺陷（required=false）
+touhou_little_maid_spell.knownDefect.privateSearchFindsStructureAtFarEntry
