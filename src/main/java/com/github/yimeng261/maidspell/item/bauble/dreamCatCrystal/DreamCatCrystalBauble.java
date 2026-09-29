@@ -299,7 +299,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         tickWearer(maid, baubleItem);
     }
 
-    public void tickWearer(LivingEntity maid, ItemStack baubleItem) {
+    public void tickWearer(EntityMaid maid, ItemStack baubleItem) {
         if (maid.level().isClientSide()) return;
 
         int tick = maid.tickCount;
@@ -513,23 +513,13 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     }
 
     // ========== 修复背包耐久度 ==========
-    private void repairInventory(LivingEntity wearer) {
-        net.minecraftforge.items.IItemHandler handler;
-        if (wearer instanceof EntityMaid maid) {
-            handler = maid.getAvailableInv(false);
-        } else if (wearer instanceof Player player) {
-            handler = new net.minecraftforge.items.wrapper.InvWrapper(player.getInventory());
-        } else {
-            return;
-        }
+    private void repairInventory(EntityMaid maid) {
+        net.minecraftforge.items.IItemHandler handler = maid.getAvailableInv(false);
         for (int i = 0; i < handler.getSlots(); i++) {
             ItemStack stack = handler.getStackInSlot(i);
             if (!stack.isEmpty() && stack.isDamaged()) {
                 stack.setDamageValue(stack.getDamageValue() - 1);
             }
-        }
-        if (wearer instanceof Player && ModList.get().isLoaded("curios")) {
-            DreamCrystalCurios.repairEquipment(wearer);
         }
     }
 
