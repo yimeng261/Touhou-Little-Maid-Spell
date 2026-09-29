@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.client;
 
+import net.minecraft.util.Mth;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.UUID;
  * 末影腰包女仆状态栏的客户端位置设置
  */
 public final class EnderPocketClientConfig {
+    private static final int MAX_HUD_POSITION = 8192;
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
     public static final ModConfigSpec.BooleanValue HUD_ENABLED = BUILDER
@@ -17,10 +19,10 @@ public final class EnderPocketClientConfig {
             .define("hudEnabled", true);
     public static final ModConfigSpec.IntValue HUD_X = BUILDER
             .comment("HUD X position in scaled GUI pixels")
-            .defineInRange("hudX", 6, 0, 8192);
+            .defineInRange("hudX", 6, 0, MAX_HUD_POSITION);
     public static final ModConfigSpec.IntValue HUD_Y = BUILDER
             .comment("HUD Y position in scaled GUI pixels")
-            .defineInRange("hudY", 6, 0, 8192);
+            .defineInRange("hudY", 6, 0, MAX_HUD_POSITION);
     public static final ModConfigSpec.ConfigValue<List<? extends String>> HUD_HIDDEN_MAIDS = BUILDER
             .comment("Maid UUIDs hidden from the Ender Pocket HUD")
             .defineListAllowEmpty("hudHiddenMaidUuids", List::of, () -> new UUID(0L, 0L).toString(),
@@ -32,8 +34,8 @@ public final class EnderPocketClientConfig {
     }
 
     public static void setPosition(int x, int y) {
-        HUD_X.set(Math.max(0, x));
-        HUD_Y.set(Math.max(0, y));
+        HUD_X.set(Mth.clamp(x, 0, MAX_HUD_POSITION));
+        HUD_Y.set(Mth.clamp(y, 0, MAX_HUD_POSITION));
         // NeoForge 的 set 只改内存，需要显式写回文件
         SPEC.save();
     }
