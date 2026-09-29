@@ -66,6 +66,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
@@ -218,6 +219,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
     private static final ResourceLocation MAX_HEALTH_MODIFIER_ID =
         ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "winefox_encounter_max_health");
+    private static final ResourceLocation COSMETIC_EQUIPMENT_MODIFIER_ID =
+        ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "winefox_cosmetic_equipment");
 
     /** 五稿规定动画第二秒发射直线投枪。 */
     private static final int SPEAR_RELEASE_TICKS =
@@ -1006,8 +1009,12 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     private static ItemStack cosmeticEquipment(Item item) {
         ItemStack stack = new ItemStack(item);
-        // 装备只管外观，数值已计入基础属性。
-        stack.set(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY);
+        // 装备只管外观，数值已计入基础属性。属性组件为空时 NeoForge 会回退到物品自带的默认修饰符，
+        // 所以放一条 0 值占位让组件非空。
+        stack.set(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.builder()
+            .add(Attributes.ARMOR, new AttributeModifier(COSMETIC_EQUIPMENT_MODIFIER_ID, 0.0D,
+                AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.ANY)
+            .build());
         return stack;
     }
 
@@ -3477,7 +3484,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             if (player.distanceToSqr(this) > 128.0D * 128.0D) {
                 continue;
             }
-            player.connection.send(new ClientboundAddEntityPacket(this, 0, this.blockPosition()));
+            player.connection.send(new ClientboundAddEntityPacket(this.getId(), this.getUUID(),
+                this.getX(), this.getY(), this.getZ(), this.getXRot(), this.getYRot(), this.getType(), 0,
+                this.getDeltaMovement(), this.getYHeadRot()));
             List<SynchedEntityData.DataValue<?>> values = this.entityData.getNonDefaultValues();
             if (values != null && !values.isEmpty()) {
                 player.connection.send(new ClientboundSetEntityDataPacket(this.getId(), values));
