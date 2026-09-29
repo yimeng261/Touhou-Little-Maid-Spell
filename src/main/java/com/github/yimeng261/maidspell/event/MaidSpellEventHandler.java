@@ -694,7 +694,7 @@ public class MaidSpellEventHandler {
 
         if (!player.level().isClientSide() && player.level() instanceof ServerLevel level) {
             Global.activeMaids.add(maid);
-            Global.ownerMaidRegistry.computeIfAbsent(player.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
+            Global.getOrCreatePlayerMaidMap(player.getUUID()).put(maid.getUUID(), maid);
             if(maid.isOrderedToSit()&&!maid.isStructureSpawn()&&isInHiddenRetreatStructure(level, maid.blockPosition())){
                 player.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat").withStyle(ChatFormatting.LIGHT_PURPLE));
             }
