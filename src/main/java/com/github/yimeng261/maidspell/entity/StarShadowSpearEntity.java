@@ -5,11 +5,15 @@ import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxSpearImpactEffects;
 import com.github.yimeng261.maidspell.mixin.accessor.ThrownTridentAccessor;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -18,14 +22,17 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.entity.projectile.ThrownTrident;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.ModList;
@@ -41,9 +48,9 @@ import java.util.Set;
 /**
  * 扔出去的星影投枪。
  *
- * <p>玩家投掷时整套飞行逻辑（忠诚回收、引雷、穿刺加伤、拾取、落地）都从
- * {@link ThrownTrident} 继承；酒狐 Boss 投枪则使用同一个实体类型的专用穿透逻辑，
- * 穿过实体后只在方块命中时停留。
+ * <p>玩家投掷时整套飞行逻辑（忠诚回收、穿刺加伤、拾取、落地）都从
+ * {@link ThrownTrident} 继承；原版引雷附魔只认三叉戟实体类型，由本类按原版条件补上。
+ * 酒狐 Boss 投枪则使用同一个实体类型的专用穿透逻辑，穿过实体后只在方块命中时停留。
  */
 public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
 
@@ -63,16 +70,18 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
 
     /**
      * 原版 {@code ThrownTrident(Level, LivingEntity, ItemStack)} 把 {@code EntityType.TRIDENT}
-     * 写死在里面了，这里照着它的构造链补齐定位、主人、拾取物与忠诚/光效同步字段。
+     * 写死在里面了，这里照着它的构造链补齐拾取物、自定义名、定位、主人与忠诚/光效同步字段。
      */
     public StarShadowSpearEntity(Level level, LivingEntity shooter, ItemStack stack) {
         this(MaidSpellEntities.STAR_SHADOW_SPEAR.get(), level);
-        this.setPos(shooter.getX(), shooter.getEyeY() - 0.1D, shooter.getZ());
-        this.setOwner(shooter);
-        if (shooter instanceof Player) {
-            this.pickup = Pickup.ALLOWED;
-        }
         this.setPickupItemStack(stack.copy());
+        this.setCustomName(stack.get(DataComponents.CUSTOM_NAME));
+        if (stack.has(DataComponents.INTANGIBLE_PROJECTILE)) {
+            this.pickup = Pickup.CREATIVE_ONLY;
+        }
+        this.setPos(shooter.getX(), shooter.getEyeY() - 0.1D, shooter.getZ());
+        // 玩家投掷时由 AbstractArrow.setOwner 把拾取方式放开为 ALLOWED
+        this.setOwner(shooter);
         this.entityData.set(ThrownTridentAccessor.maidspell$getLoyaltyData(), this.loyaltyOf(stack));
         this.entityData.set(ThrownTridentAccessor.maidspell$getFoilData(), stack.hasFoil());
     }
@@ -81,6 +90,53 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
         return this.level() instanceof ServerLevel serverLevel
             ? (byte) Mth.clamp(EnchantmentHelper.getTridentReturnToOwnerAcceleration(serverLevel, stack, this), 0, 127)
             : 0;
+    }
+
+    /** 引雷命中生物：原版只在伤害生效且目标不是末影人时触发，与本回调的调用时机一致。 */
+    @Override
+    protected void doPostHurtEffects(LivingEntity target) {
+        super.doPostHurtEffects(target);
+        if (this.level() instanceof ServerLevel level && level.isThundering()
+            && level.canSeeSky(BlockPos.containing(target.position()))
+            && this.hasChanneling(level)) {
+            this.strikeChannelingLightning(level, target.position(), target);
+        }
+    }
+
+    /** 引雷命中避雷针。 */
+    @Override
+    protected void hitBlockEnchantmentEffects(ServerLevel level, BlockHitResult hitResult, ItemStack stack) {
+        super.hitBlockEnchantmentEffects(level, hitResult, stack);
+        Vec3 origin = hitResult.getBlockPos().clampLocationWithin(hitResult.getLocation());
+        if (level.isThundering() && level.canSeeSky(BlockPos.containing(origin))
+            && level.getBlockState(hitResult.getBlockPos()).is(Blocks.LIGHTNING_ROD)
+            && this.hasChanneling(level)) {
+            this.strikeChannelingLightning(level, origin, this);
+        }
+    }
+
+    private boolean hasChanneling(ServerLevel level) {
+        return EnchantmentHelper.getItemEnchantmentLevel(
+            level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.CHANNELING),
+            this.getWeaponItem()) > 0;
+    }
+
+    /** 与原版引雷附魔的效果相同：召唤闪电（主人是玩家时记为其所致）并以 5 倍音量播放雷鸣。 */
+    private void strikeChannelingLightning(ServerLevel level, Vec3 origin, Entity soundSource) {
+        BlockPos pos = BlockPos.containing(origin);
+        if (Level.isInSpawnableBounds(pos)) {
+            LightningBolt bolt = EntityType.LIGHTNING_BOLT.spawn(level, pos, MobSpawnType.TRIGGERED);
+            if (bolt != null) {
+                if (this.getOwner() instanceof ServerPlayer player) {
+                    bolt.setCause(player);
+                }
+                bolt.moveTo(origin.x, origin.y, origin.z, bolt.getYRot(), bolt.getXRot());
+            }
+        }
+        if (!soundSource.isSilent()) {
+            level.playSound(null, origin.x, origin.y, origin.z, SoundEvents.TRIDENT_THUNDER,
+                soundSource.getSoundSource(), 5.0F, 1.0F);
+        }
     }
 
     /** 父类默认给的是原版三叉戟，换成星影投枪，免得 /summon 出来的枪被捡起来变成三叉戟。 */

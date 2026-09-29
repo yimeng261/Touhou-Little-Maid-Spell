@@ -29,6 +29,7 @@ public class MaidSpellEntities {
         ENTITY_TYPES.register("star_shadow_spear",
             () -> EntityType.Builder.<StarShadowSpearEntity>of(StarShadowSpearEntity::new, MobCategory.MISC)
                 .sized(0.5F, 0.5F)
+                .eyeHeight(0.13F)
                 .clientTrackingRange(4)
                 .updateInterval(5)
                 .build("star_shadow_spear"));

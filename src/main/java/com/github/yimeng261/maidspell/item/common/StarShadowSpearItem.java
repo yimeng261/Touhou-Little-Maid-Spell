@@ -4,8 +4,10 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.model.item.StarEquipmentGeoModel;
 import com.github.yimeng261.maidspell.client.renderer.item.StarEquipmentRenderProviders;
 import com.github.yimeng261.maidspell.entity.StarShadowSpearEntity;
+import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.stats.Stats;
@@ -14,6 +16,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TridentItem;
+import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.Level;
 import software.bernie.geckolib.animatable.GeoItem;
@@ -78,7 +81,9 @@ public class StarShadowSpearItem extends TridentItem implements GeoItem {
             }
 
             level.addFreshEntity(spear);
-            level.playSound(null, spear, SoundEvents.TRIDENT_THROW.value(), SoundSource.PLAYERS, 1.0F, 1.0F);
+            Holder<SoundEvent> throwSound = EnchantmentHelper.pickHighestLevel(stack, EnchantmentEffectComponents.TRIDENT_SOUND)
+                    .orElse(SoundEvents.TRIDENT_THROW);
+            level.playSound(null, spear, throwSound.value(), SoundSource.PLAYERS, 1.0F, 1.0F);
             if (!player.hasInfiniteMaterials()) {
                 player.getInventory().removeItem(stack);
             }
