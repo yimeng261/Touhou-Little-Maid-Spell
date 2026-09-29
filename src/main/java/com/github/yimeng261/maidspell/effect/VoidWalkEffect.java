@@ -20,7 +20,7 @@ public class VoidWalkEffect extends MobEffect {
 
     /** 环形半径：站在目标腰部扫一圈。 */
     private static final double RING_RADIUS = 0.6D;
-    /** 每 tick 转过的圈数。比虚空相变慢一点，毕竟这是个给人挂 30 秒的状态。 */
+    /** 每秒转过的圈数，比虚空相变慢 */
     private static final double TURNS_PER_SECOND = 0.3D;
     private static final int PARTICLES_PER_TICK = 2;
     private static final double VERTICAL_SPREAD = 0.8D;

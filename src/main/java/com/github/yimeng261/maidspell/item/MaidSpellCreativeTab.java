@@ -88,10 +88,8 @@ public class MaidSpellCreativeTab {
                     output.accept(IronsSpellbooksCompatItems.STAR_SHADOW_LONGSWORD.get());
                     output.accept(IronsSpellbooksCompatItems.STAR_SHADOW_STAFF.get());
                     output.accept(IronsSpellbooksCompatItems.STAR_WITCH_HAT.get());
-                }
 
-                // 材料与道具
-                if (ironsSpellbooks) {
+                    // 材料与道具
                     output.accept(MaidSpellItems.NEBULA_CORE.get());
                     output.accept(MaidSpellItems.STAR_METEORITE.get());
                     output.accept(MaidSpellItems.RITUAL_HILT.get());
