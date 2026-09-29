@@ -13,6 +13,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -20,6 +21,7 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
@@ -48,14 +50,18 @@ public final class StarfallGardenRetrofit {
     /** 主动放置最多试多少个候选。每次失败都可能已经付过一次 generate 的代价，所以比认领紧。 */
     private static final int MAX_PLACE_ATTEMPTS = 16;
 
-    /** 限制同步加载的区块数；超出预算则整座庭院不放置。 */
+    /** 限制主动放置涉及的区块总数；超出预算则整座庭院不放置。 */
     private static final long MAX_PLACEMENT_CHUNKS = 400L;
+
+    /** 把主动放置分摊到多个服务器 tick，避免开服任务一次性卡住主线程。 */
+    private static final int CHUNKS_PER_PLACEMENT_TICK = 8;
 
     /** 扫描的格点上限（spacing 网格）。超了就放弃，宁可不补也不能把开服变成几分钟。 */
     private static final long MAX_GRID_CELLS = 2_000_000L;
 
     /** 每个服务器会话只排一次补生成任务。 */
     private static final AtomicBoolean PASS_SCHEDULED = new AtomicBoolean(false);
+    private static PlacementTask pendingPlacement;
 
     private StarfallGardenRetrofit() {
     }
@@ -65,6 +71,17 @@ public final class StarfallGardenRetrofit {
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
         StarfallGardenData.resetSession();
         PASS_SCHEDULED.set(false);
+        pendingPlacement = null;
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || pendingPlacement == null) {
+            return;
+        }
+        PlacementTask task = pendingPlacement;
+        pendingPlacement = null;
+        continuePlacement(event.getServer(), task);
     }
 
     /** 出生点区块生成前恢复存档闸门，防止旧存档多生成一座。 */
@@ -134,7 +151,8 @@ public final class StarfallGardenRetrofit {
 
         // 第二段：真放。这一段才是「旧存档找不到新结构」的解法，原理见类注释。
         if (garden.isRetrofitPlaceInExplored()) {
-            placeInto(overworld, garden, candidates);
+            placeInto(server, overworld, garden, candidates);
+            return;
         } else {
             MaidSpellMod.LOGGER.info("星落之庭补生成：主动放置已在数据包里关闭（retrofit_place_in_explored=false）");
         }
@@ -176,10 +194,10 @@ public final class StarfallGardenRetrofit {
      * 第二段：把庭院真正放进旧存档。
      *
      * <p>逐候选尝试，第一个能生成出合法 {@code StructureStart} 的候选就落。失败不记
-     * {@code markPlaced}，换下一个候选继续；全部失败也只是白扫一遍，不会留下半成品。
+     * {@code markPlaced}，换下一个候选继续；写入异常会保留未完成状态，留待下次开服重试。
      */
-    private static void placeInto(ServerLevel overworld, StarfallGardenStructure garden,
-                                  List<ChunkPos> candidates) {
+    private static void placeInto(MinecraftServer server, ServerLevel overworld,
+                                  StarfallGardenStructure garden, List<ChunkPos> candidates) {
         var chunkGenerator = overworld.getChunkSource().getGenerator();
         var randomState = overworld.getChunkSource().randomState();
         long seed = overworld.getSeed();
@@ -192,8 +210,11 @@ public final class StarfallGardenRetrofit {
             tried++;
 
             // 每个候选都要重开一次窗口：上一个候选可能已经把闸门关回去了。
-            StarfallGardenData.unlockForRetrofit();
+            if (!StarfallGardenData.unlockForRetrofit()) {
+                return;
+            }
             StructureStart start;
+            StarfallGardenData.enterRetrofitGeneration();
             try {
                 start = garden.generate(overworld.registryAccess(), chunkGenerator,
                         chunkGenerator.getBiomeSource(), randomState, overworld.getStructureManager(),
@@ -202,6 +223,8 @@ public final class StarfallGardenRetrofit {
                 MaidSpellMod.LOGGER.warn("星落之庭补生成：候选 {} 生成失败，换下一个", candidate, e);
                 StarfallGardenData.relockAfterRetrofit();
                 continue;
+            } finally {
+                StarfallGardenData.exitRetrofitGeneration();
             }
             if (start == null || !start.isValid()) {
                 // 距离带 / 高度夹取不通过，或者这个候选本来就不该长。正常情况，换下一个。
@@ -222,38 +245,86 @@ public final class StarfallGardenRetrofit {
                         "星落之庭补生成：候选 {} 的落点需要 {} 个区块，超过上限 {}，放弃补生成。"
                                 + "把数据包里的 max_distance_from_center 调小可以收窄覆盖范围",
                         candidate, chunkCount, MAX_PLACEMENT_CHUNKS);
+                StarfallGardenData.reopenAfterRetrofit();
+                StarfallGardenData.markRetrofitAttempted(server);
                 return;
             }
 
-            try {
-                int placedChunks = 0;
-                for (ChunkPos pos : ChunkPos.rangeClosed(min, max).toList()) {
-                    // getChunk(x, z) 不给状态：已经生成过的区块从盘里读回来就是完整区块，
-                    // 未生成的会被生成完整地形。placeInChunk 只是往这些区块里写方块，
-                    // 对区块状态没有要求 —— 这正是原版 /place structure 的做法。
-                    overworld.getChunk(pos.x, pos.z);
-                    start.placeInChunk(overworld, overworld.structureManager(), chunkGenerator,
-                            overworld.getRandom(),
-                            new BoundingBox(pos.getMinBlockX(), overworld.getMinBuildHeight(), pos.getMinBlockZ(),
-                                    pos.getMaxBlockX(), overworld.getMaxBuildHeight(), pos.getMaxBlockZ()),
-                            pos);
-                    placedChunks++;
-                }
-                StarfallGardenData.markPlaced(box.getCenter());
-                MaidSpellMod.LOGGER.info(
-                        "星落之庭补生成：已在旧存档落下一座（锚点区块 {}，覆盖 {} 个区块，高度 {}~{}）",
-                        candidate, placedChunks, box.minY(), box.maxY());
-            } catch (RuntimeException e) {
-                MaidSpellMod.LOGGER.error("星落之庭补生成：写入候选 {} 时失败", candidate, e);
-            } finally {
-                // 无论成败都恢复：markPlaced 已经把闸门关上了，这里再关一次是幂等的；
-                // 失败路径上则靠它避免闸门永久敞开、整座存档到处长庭院。
-                StarfallGardenData.relockAfterRetrofit();
-            }
+            List<ChunkPos> placementChunks = ChunkPos.rangeClosed(min, max).toList();
+            pendingPlacement = new PlacementTask(overworld, garden, start, candidate,
+                    placementChunks, 0);
             return;
         }
 
+        StarfallGardenData.reopenAfterRetrofit();
         MaidSpellMod.LOGGER.info("星落之庭补生成：试了 {} 个候选都没能落下，本次放弃", tried);
+        StarfallGardenData.markRetrofitAttempted(server);
+    }
+
+    private static void continuePlacement(MinecraftServer server, PlacementTask task) {
+        if (!server.isRunning()) {
+            StarfallGardenData.relockAfterRetrofit();
+            return;
+        }
+
+        ServerLevel overworld = task.overworld();
+        ChunkGenerator chunkGenerator = overworld.getChunkSource().getGenerator();
+        List<ChunkPos> chunks = task.chunks();
+        int end = Math.min(task.nextIndex() + CHUNKS_PER_PLACEMENT_TICK, chunks.size());
+        try {
+            for (int i = task.nextIndex(); i < end; i++) {
+                ChunkPos pos = chunks.get(i);
+                // 已存在的区块从盘读取，未生成的区块才会继续生成；每 tick 只处理有限数量。
+                overworld.getChunk(pos.x, pos.z);
+                task.start().placeInChunk(overworld, overworld.structureManager(), chunkGenerator,
+                        overworld.getRandom(),
+                        new BoundingBox(pos.getMinBlockX(), overworld.getMinBuildHeight(), pos.getMinBlockZ(),
+                                pos.getMaxBlockX(), overworld.getMaxBuildHeight(), pos.getMaxBlockZ()),
+                        pos);
+            }
+        } catch (RuntimeException e) {
+            StarfallGardenData.relockAfterRetrofit();
+            MaidSpellMod.LOGGER.error("星落之庭补生成：写入候选 {} 时失败，留待下次开服重试",
+                    task.candidate(), e);
+            return;
+        }
+
+        if (end < chunks.size()) {
+            pendingPlacement = new PlacementTask(overworld, task.garden(), task.start(),
+                    task.candidate(), chunks, end);
+            return;
+        }
+
+        try {
+            // 主动放置不会经过 ChunkGenerator.tryGenerateStructure，必须手动写入起点和引用，
+            // 否则方块虽然存在，但 /locate、结构进度和 Traveler's Titles 都无法识别。
+            ChunkAccess anchor = overworld.getChunk(task.start().getChunkPos().x, task.start().getChunkPos().z,
+                    ChunkStatus.STRUCTURE_STARTS, true);
+            overworld.structureManager().setStartForStructure(
+                    SectionPos.bottomOf(anchor), task.garden(), task.start(), anchor);
+            for (ChunkPos pos : chunks) {
+                ChunkAccess chunk = overworld.getChunk(pos.x, pos.z);
+                overworld.structureManager().addReferenceForStructure(
+                        SectionPos.bottomOf(chunk), task.garden(), task.start().getChunkPos().toLong(), chunk);
+            }
+
+            BoundingBox box = task.start().getBoundingBox();
+            StarfallGardenData.markPlaced(box.getCenter());
+            StarfallGardenData.markRetrofitAttempted(server);
+            MaidSpellMod.LOGGER.info(
+                    "星落之庭补生成：已在旧存档落下一座（锚点区块 {}，覆盖 {} 个区块，高度 {}~{}）",
+                    task.candidate(), chunks.size(), box.minY(), box.maxY());
+        } catch (RuntimeException e) {
+            MaidSpellMod.LOGGER.error("星落之庭补生成：写入候选 {} 的结构索引失败，留待下次开服重试",
+                    task.candidate(), e);
+        } finally {
+            StarfallGardenData.relockAfterRetrofit();
+        }
+    }
+
+    private record PlacementTask(ServerLevel overworld, StarfallGardenStructure garden,
+                                 StructureStart start, ChunkPos candidate, List<ChunkPos> chunks,
+                                 int nextIndex) {
     }
 
     /**

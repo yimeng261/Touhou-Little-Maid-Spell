@@ -75,6 +75,8 @@ public class StarfallGardenStructure extends Structure {
      * 5 号顶层再朝上接 8 号（47x42），所以最高处在起始件底层之上约 4+46+40 ≈ 90 格。取 96 留余量。
      */
     private static final int MAX_STRUCTURE_HEIGHT = 96;
+    private static final ThreadLocal<Boolean> INSIDE_GENERATE =
+            ThreadLocal.withInitial(() -> false);
 
     private final Holder<StructureTemplatePool> startPool;
     private final int size;
@@ -125,17 +127,34 @@ public class StarfallGardenStructure extends Structure {
      */
     private static BlockPos overworldSpawnOrOrigin() {
         var server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null) {
+        if (server == null || server.overworld() == null) {
             return BlockPos.ZERO;
         }
         return server.overworld().getSharedSpawnPos();
     }
 
+    /**
+     * 结构注册表是跨维度共享的；用当前维度的 ChunkGenerator 身份筛掉自定义维度，
+     * 避免固定 cherry_grove 的维度也吃到这座主世界结构。生物群系不参与选址，
+     * 只由结构 JSON 的主世界标签保证结构集能被纳入正常 worldgen。
+     */
+    private static boolean isOverworldGeneration(GenerationContext context) {
+        var server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null || server.overworld() == null) {
+            // 数据生成和没有服务器实例的模板校验没有维度上下文，保留原来的可解析行为。
+            return true;
+        }
+        return server.overworld().getChunkSource().getGenerator() == context.chunkGenerator();
+    }
+
     @Override
     protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
-        // 「一存档一座」的第一道闸门：只读内存里的标记。这里跑在 worldgen worker 线程上、每个候选区块都要问一次，
-        // 所以不能碰 SavedData（会读盘，而且 DimensionDataStorage 不是线程安全的）；标记什么时候写见 generate()。
-        if (StarfallGardenData.isPlaced()) {
+        // StructureCheck 会缓存这里的结果；已被其它线程占用或已经生成后，探测必须立即返回空。
+        // 真正的 generate() 已经通过 CAS 抢到名额，并由 INSIDE_GENERATE 放行。
+        if (StarfallGardenData.isPlaced() && !INSIDE_GENERATE.get()) {
+            return Optional.empty();
+        }
+        if (!isOverworldGeneration(context)) {
             return Optional.empty();
         }
 
@@ -190,6 +209,15 @@ public class StarfallGardenStructure extends Structure {
     }
 
     /**
+     * 星落之庭没有生物群系限制。原版默认实现会在这里再次调用
+     * {@code structure.biomes()::contains}，导致 StructureCheck 和部分定位逻辑把候选提前判空。
+     */
+    @Override
+    public @NotNull Optional<GenerationStub> findValidGenerationPoint(@NotNull GenerationContext context) {
+        return this.findGenerationPoint(context);
+    }
+
+    /**
      * 只在 StructureStart 有效时标记已生成。findGenerationPoint 可能被试探性调用，
      * 不能在那里占用名额；手动 /place structure 同样计入一座。
      */
@@ -199,12 +227,29 @@ public class StarfallGardenStructure extends Structure {
                                            StructureTemplateManager templateManager, long seed, ChunkPos chunkPos,
                                            int references, LevelHeightAccessor heightAccessor,
                                            Predicate<Holder<Biome>> validBiome) {
-        StructureStart start = super.generate(registryAccess, chunkGenerator, biomeSource, randomState,
-                templateManager, seed, chunkPos, references, heightAccessor, validBiome);
-        if (start.isValid()) {
-            StarfallGardenData.markPlaced(start.getBoundingBox().getCenter());
+        if (!StarfallGardenData.tryBeginGeneration()) {
+            return StructureStart.INVALID_START;
         }
-        return start;
+        INSIDE_GENERATE.set(true);
+        try {
+            // 星落之庭不限制具体生物群系；结构的 biome tag 仅用于让结构集进入主世界生成状态。
+            StructureStart start = super.generate(registryAccess, chunkGenerator, biomeSource, randomState,
+                    templateManager, seed, chunkPos, references, heightAccessor, holder -> true);
+            if (start.isValid()) {
+                // 补生成要先检查覆盖区块并写入结构索引，成功落地后由 Retrofit 显式记账。
+                if (!StarfallGardenData.isRetrofitGeneration()) {
+                    StarfallGardenData.markPlaced(start.getBoundingBox().getCenter());
+                }
+            } else {
+                StarfallGardenData.abortGeneration();
+            }
+            return start;
+        } catch (RuntimeException e) {
+            StarfallGardenData.abortGeneration();
+            throw e;
+        } finally {
+            INSIDE_GENERATE.remove();
+        }
     }
 
     @Override

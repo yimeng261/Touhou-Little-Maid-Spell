@@ -25,6 +25,8 @@ public class StarfallGardenData extends SavedData {
     private enum Gate {
         /** 世界生成可出候选。 */
         OPEN,
+        /** 某个线程已经抢到生成名额，正在计算 StructureStart。 */
+        GENERATING,
         /** 世界生成停止出候选。 */
         CLOSED,
         /** 仅允许补生成主动放置。 */
@@ -32,6 +34,9 @@ public class StarfallGardenData extends SavedData {
     }
 
     private static final AtomicReference<Gate> GATE = new AtomicReference<>(Gate.OPEN);
+    private static final AtomicBoolean RETROFIT_RESERVED = new AtomicBoolean(false);
+    private static final ThreadLocal<Boolean> RETROFIT_GENERATION =
+            ThreadLocal.withInitial(() -> false);
 
     /** 本次服务器会话是否已经从存档读过一次；避免重复读盘，也避免读失败时反复重试。 */
     private static final AtomicBoolean RESTORED = new AtomicBoolean(false);
@@ -106,23 +111,65 @@ public class StarfallGardenData extends SavedData {
     // ========== 运行期闸门 ==========
 
     /**
-     * 是否已经有庭院了 —— 世界生成预热用。{@code CLOSED} 与 {@code UNLOCKED_FOR_RETROFIT}
-     * 都算「有主了」，两条路都不该再出候选。
+     * 是否已经有庭院了 —— 补生成启动前检查用。{@code GENERATING}、{@code CLOSED} 与
+     * {@code UNLOCKED_FOR_RETROFIT} 都表示当前会话已经占住了名额。
      */
     public static boolean isPlaced() {
         return GATE.get() != Gate.OPEN;
     }
 
     /**
-     * 补生成专用的放置窗口：把闸门从 {@code CLOSED} 抬到 {@code UNLOCKED_FOR_RETROFIT}。
+     * 在真正调用 {@code Structure.generate} 前抢占唯一生成名额。
+     * <p>
+     * {@code findGenerationPoint} 也会被 StructureCheck 用来做探测，不能在那里抢名额；
+     * 只有进入 {@code generate} 的调用才允许从 OPEN 转成 GENERATING。
+     */
+    public static boolean tryBeginGeneration() {
+        Gate expected = RETROFIT_GENERATION.get() ? Gate.UNLOCKED_FOR_RETROFIT : Gate.OPEN;
+        return GATE.compareAndSet(expected, Gate.GENERATING);
+    }
+
+    /** 结构计算失败或抛异常时释放名额，给下一候选继续尝试。 */
+    public static void abortGeneration() {
+        GATE.set(RETROFIT_GENERATION.get() ? Gate.CLOSED : Gate.OPEN);
+    }
+
+    /**
+     * 补生成专用的放置窗口：把闸门抬到 {@code UNLOCKED_FOR_RETROFIT}。
      *
      * <p>为什么不能直接绕开闸门去造 {@code StructureStart}：落点必须由 mod 自己的
      * {@code structure.generate(...)} 算出来，否则「补生成放的那一座」和「世界生成会放的那一座」
      * 会落在不同位置 —— 补生成一跑，存档里就多出一座谁也算不出来的东西。抬闸门而不是改判定，
      * 保证两条路用的是同一套落点算术。
      */
-    public static void unlockForRetrofit() {
-        GATE.set(Gate.UNLOCKED_FOR_RETROFIT);
+    public static boolean unlockForRetrofit() {
+        while (true) {
+            Gate current = GATE.get();
+            if (current == Gate.GENERATING) {
+                return false;
+            }
+            if (current == Gate.UNLOCKED_FOR_RETROFIT) {
+                return true;
+            }
+            if (current == Gate.CLOSED && !RETROFIT_RESERVED.get()) {
+                // 上次检查后可能有正常 worldgen 抢先生成了庭院，不能覆盖它的 CLOSED。
+                return false;
+            }
+            if (GATE.compareAndSet(current, Gate.UNLOCKED_FOR_RETROFIT)) {
+                RETROFIT_RESERVED.set(true);
+                return true;
+            }
+        }
+    }
+
+    /** 标记当前线程正在执行补生成的 Structure.generate。 */
+    public static void enterRetrofitGeneration() {
+        RETROFIT_GENERATION.set(true);
+    }
+
+    /** 清理补生成线程上下文，避免线程池复用时污染后续 worldgen。 */
+    public static void exitRetrofitGeneration() {
+        RETROFIT_GENERATION.remove();
     }
 
     /**
@@ -136,6 +183,17 @@ public class StarfallGardenData extends SavedData {
         GATE.set(Gate.CLOSED);
     }
 
+    /** 补生成没有落地结构时恢复正常世界生成；成功放置后不会调用此方法。 */
+    public static void reopenAfterRetrofit() {
+        GATE.compareAndSet(Gate.CLOSED, Gate.OPEN);
+        RETROFIT_RESERVED.set(false);
+    }
+
+    /** 供 Structure.generate 判断当前有效 StructureStart 是否由补生成流程创建。 */
+    public static boolean isRetrofitGeneration() {
+        return RETROFIT_GENERATION.get();
+    }
+
     /**
      * 结构真的生成之后调用，见 {@code StarfallGardenStructure#generate}。
      *
@@ -144,6 +202,7 @@ public class StarfallGardenData extends SavedData {
      */
     public static void markPlaced(BlockPos pos) {
         GATE.set(Gate.CLOSED);
+        RETROFIT_RESERVED.set(false);
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) {
             // 数据生成 / 结构模板校验这类没有服务器实例的场合：内存闸门照关，但没有存档可写，只能放弃持久化。
@@ -184,6 +243,7 @@ public class StarfallGardenData extends SavedData {
      */
     public static void resetSession() {
         GATE.set(Gate.OPEN);
+        RETROFIT_RESERVED.set(false);
         RESTORED.set(false);
     }
 
