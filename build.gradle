@@ -3,6 +3,7 @@ plugins {
     id 'maven-publish'
     id 'idea'
     id 'net.neoforged.moddev' version '2.0.115'
+    id 'net.magicterra.stagewright' version '0.1.0-build.11+1.21.1'
     id "com.modrinth.minotaur" version "2.+"
     id 'net.darkhax.curseforgegradle' version '1.1.+'
 }
@@ -12,6 +13,14 @@ group = mod_group_id
 
 repositories {
     mavenLocal()
+    maven {
+        url = 'https://nexus.gardel.top/repository/maven-releases'
+        content { includeGroup 'net.magicterra' }
+    }
+    maven {
+        url = 'https://maven.architectury.dev'
+        content { includeGroup 'dev.architectury' }
+    }
     maven {
         name = "Modrinth"
         url = "https://api.modrinth.com/maven"
@@ -80,9 +89,43 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+// StageWright 测试场景放在 testmod 源集，不进发布 jar，继承 main 的开发类路径。
+// clientTest 是纯 JVM 的 JUnit 源集，通过 worlddriver RPC 附着到 hold 住的客户端做界面测试。
+sourceSets {
+    testmod {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+    clientTest
+}
+
+def stagewrightVersion = '0.1.0-build.11+1.21.1'
+def worlddriverVersion = '0.1.0-build.5+1.21.1'
+
+// 按拓扑分流：场景 Provider 读 maidspell.test.topology，只注册本拓扑的场景，每个拓扑一份清单
+stagewright {
+    topologies {
+        dedicatedServer {
+            runTask = 'runStagewrightDedicatedServer'
+            expectFile = file('src/testmod/expected-scenes-dedicatedServer.txt')
+        }
+        integratedServer {
+            runTask = 'runStagewrightIntegratedServer'
+            expectFile = file('src/testmod/expected-scenes-integratedServer.txt')
+            client = true
+        }
+        integratedServerShared {
+            runTask = 'runStagewrightIntegratedServerShared'
+            expectFile = file('src/testmod/expected-scenes-integratedServerShared.txt')
+            client = true
+        }
+    }
+}
+
 neoForge {
     // 指定 NeoForge 版本
     version = project.neo_version
+    addModdingDependenciesTo sourceSets.testmod
 
     parchment {
         mappingsVersion = project.parchment_mappings_version
@@ -109,6 +152,32 @@ neoForge {
             server()
             programArgument '--nogui'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        // StageWright 运行配置：类路径取 testmod 源集，测试框架和 worlddriver 只在这些运行里加载
+        stagewrightDedicatedServer {
+            server()
+            sourceSet = sourceSets.testmod
+            gameDirectory = file('run-stagewright-dedicatedServer')
+            programArgument '--nogui'
+            // 避开本机其它开发服常用的 25565
+            programArguments.addAll '--port', '25591'
+            systemProperty 'stagewright.autorun', 'true'
+            systemProperty 'maidspell.test.topology', 'dedicatedServer'
+        }
+
+        // 集成拓扑；共享归隐之地模式的配置由 prepareStagewrightIntegratedServerSharedFiles 写入
+        ['integratedServer', 'integratedServerShared'].each { topology ->
+            create("stagewright${topology.capitalize()}") {
+                client()
+                sourceSet = sourceSets.testmod
+                gameDirectory = file("run-stagewright-${topology}")
+                systemProperty 'stagewright.autorun', 'true'
+                // 客户端自动建档进世界；等本地玩家进服后再开跑场景（同时给玩家 op）
+                systemProperty 'stagewright.client.world', 'StageWrightClient'
+                systemProperty 'stagewright.awaitPlayer', 'true'
+                systemProperty 'maidspell.test.topology', topology
+            }
         }
 
         // This run config launches GameTestServer and runs all registered gametests, then exits.
@@ -152,6 +221,7 @@ neoForge {
         // but multi mod projects should define one per mod
         "${mod_id}" {
             sourceSet(sourceSets.main)
+            sourceSet(sourceSets.testmod)
         }
     }
 }
@@ -160,6 +230,18 @@ neoForge {
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
+    // StageWright 测试框架与 worlddriver 驱动：只进 testmod 类路径，不影响 runClient 和发布
+    testmodImplementation "net.magicterra:mc_stagewright-api:${stagewrightVersion}:dev"
+    testmodRuntimeOnly "net.magicterra:mc_stagewright-neoforge:${stagewrightVersion}"
+    testmodRuntimeOnly "net.magicterra:worlddriver-neoforge:${worlddriverVersion}"
+    testmodRuntimeOnly 'dev.architectury:architectury-neoforge:13.0.8'
+
+    // 客户端 JUnit 附着测试
+    clientTestImplementation "net.magicterra:mc_stagewright-junit:${stagewrightVersion}"
+    clientTestImplementation platform('org.junit:junit-bom:5.11.3')
+    clientTestImplementation 'org.junit.jupiter:junit-jupiter'
+    clientTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
     // 车万女仆
     implementation("curse.maven:touhou-little-maid-355044:${tlm_curse_version}") {
         exclude group: "maven.modrinth", module: "sodium"
@@ -193,6 +275,34 @@ dependencies {
     runtimeOnly("maven.modrinth:c2me-neoforge:${c2me_version}")
     // 妖怪的归家
     runtimeOnly("maven.modrinth:youkaishomecoming:${youkaishomecoming_version}")
+}
+
+// 集成拓扑运行目录的种子文件（Provision 会清空运行目录，之后再写入）：客户端选项跳过首次启动的辅助功能引导页、
+// 失焦不暂停；共享归隐之地拓扑另写入关闭私人维度的通用配置（其余配置项由 NeoForge 补默认值）
+[
+        IntegratedServer      : [:],
+        IntegratedServerShared: ['src/testmod/run-config/integratedServerShared': 'config'],
+].each { topology, extra ->
+    def prepare = tasks.register("prepareStagewright${topology}Files", Copy) {
+        into 'run-stagewright-' + topology.uncapitalize()
+        from 'src/testmod/run-config/client'
+        extra.each { source, target -> from(source) { into target } }
+        mustRunAfter "stagewright${topology}Provision"
+    }
+    tasks.matching { it.name == "runStagewright${topology}" }.configureEach {
+        dependsOn prepare
+    }
+}
+
+// 客户端 JUnit 附着测试：先 ./gradlew stagewrightIntegratedServerHold，再带 TESTKIT_ENDPOINT 跑本任务
+tasks.register('clientTest', Test) {
+    group = 'verification'
+    description = 'Attaches JUnit client tests to a held StageWright integratedServer game'
+    testClassesDirs = sourceSets.clientTest.output.classesDirs
+    classpath = sourceSets.clientTest.runtimeClasspath
+    useJUnitPlatform()
+    environment 'TESTKIT_ENDPOINT', System.getenv('TESTKIT_ENDPOINT') ?: ''
+    outputs.upToDateWhen { false }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
