@@ -383,7 +383,12 @@ public class PlayerRetreatManager {
         }
     }
 
-    private static void clearPendingCreations(String reason) {
+    /**
+     * 使当前会话失效，终止所有待创建的维度并重置启动恢复标记
+     */
+    private static void invalidateSession(String reason) {
+        acceptingRequests = false;
+        SESSION_EPOCH.incrementAndGet();
         START_PHASE_TASKS.clear();
         PENDING_CREATIONS.forEach((dimensionKey, creation) -> creation.future().completeExceptionally(
                 new IllegalStateException(reason + ": " + dimensionKey.location())));
@@ -546,9 +551,7 @@ public class PlayerRetreatManager {
 
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
-        acceptingRequests = false;
-        SESSION_EPOCH.incrementAndGet();
-        clearPendingCreations("Server session was replaced before retreat dimension creation completed");
+        invalidateSession("Server session was replaced before retreat dimension creation completed");
         RetreatManager.shutdown();
         activeServer = event.getServer();
         acceptingRequests = true;
@@ -569,9 +572,7 @@ public class PlayerRetreatManager {
             return;
         }
 
-        acceptingRequests = false;
-        SESSION_EPOCH.incrementAndGet();
-        clearPendingCreations("Server stopped before retreat dimension creation completed");
+        invalidateSession("Server stopped before retreat dimension creation completed");
         RetreatManager.shutdown(server);
     }
 
@@ -581,9 +582,7 @@ public class PlayerRetreatManager {
             return;
         }
 
-        acceptingRequests = false;
-        SESSION_EPOCH.incrementAndGet();
-        clearPendingCreations("Server session ended before retreat dimension creation completed");
+        invalidateSession("Server session ended before retreat dimension creation completed");
         RetreatManager.shutdown();
         activeServer = null;
     }
