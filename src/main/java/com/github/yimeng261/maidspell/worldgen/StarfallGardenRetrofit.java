@@ -13,6 +13,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -25,6 +26,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -33,7 +35,7 @@ import java.util.List;
 /**
  * 为旧存档认领已有庭院，或在已探明区块主动放置一座。
  * 已生成区块不会重跑结构生成，因此只改结构集配置无法补出庭院。
- * 放置期间临时打开补生成闸门，复用正常落点规则；超过区块预算则放弃。
+ * 复用正常落点规则选点，超过区块预算则放弃；选定后分摊到多个服务器 tick 写入方块。
  */
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public final class StarfallGardenRetrofit {
@@ -47,11 +49,17 @@ public final class StarfallGardenRetrofit {
     /** 主动放置最多试多少个候选。每次失败都可能已经付过一次 generate 的代价，所以比认领紧。 */
     private static final int MAX_PLACE_ATTEMPTS = 16;
 
-    /** 限制同步加载的区块数；超出预算则整座庭院不放置。 */
+    /** 限制主动放置涉及的区块总数；超出预算则整座庭院不放置。 */
     private static final long MAX_PLACEMENT_CHUNKS = 400L;
+
+    /** 把主动放置分摊到多个服务器 tick，避免开服任务一次性卡住主线程。 */
+    private static final int CHUNKS_PER_PLACEMENT_TICK = 8;
 
     /** 扫描的格点上限（spacing 网格）。超了就放弃，宁可不补也不能把开服变成几分钟。 */
     private static final long MAX_GRID_CELLS = 2_000_000L;
+
+    /** 正在分帧写入的放置任务，只在服务器主线程读写。 */
+    private static PlacementTask pendingPlacement;
 
     private StarfallGardenRetrofit() {
     }
@@ -60,6 +68,17 @@ public final class StarfallGardenRetrofit {
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
         StarfallGardenData.resetSession();
+        pendingPlacement = null;
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(ServerTickEvent.Post event) {
+        if (pendingPlacement == null) {
+            return;
+        }
+        PlacementTask task = pendingPlacement;
+        pendingPlacement = null;
+        continuePlacement(event.getServer(), task);
     }
 
     /** 出生点区块生成前恢复存档闸门，防止旧存档多生成一座。 */
@@ -75,9 +94,9 @@ public final class StarfallGardenRetrofit {
     }
 
     /**
-     * 开服完成后在主线程同步跑补生成，玩家要等它跑完才能进服：
-     * 认领阶段最多推进 {@value #MAX_CLAIM_CANDIDATES} 个候选区块，放置阶段最多写 {@value #MAX_PLACEMENT_CHUNKS} 个区块。
-     * 每个存档只跑一次，之后靠 RetrofitAttempted 直接跳过。
+     * 开服完成后在主线程跑补生成：认领阶段同步推进最多 {@value #MAX_CLAIM_CANDIDATES} 个候选区块；
+     * 放置阶段选定落点后，每 tick 写 {@value #CHUNKS_PER_PLACEMENT_TICK} 个区块，最多 {@value #MAX_PLACEMENT_CHUNKS} 个。
+     * 跑完一次就记 RetrofitAttempted，之后开服直接跳过；放置写入中途失败或停服则不记，下次开服重试。
      */
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
@@ -126,8 +145,10 @@ public final class StarfallGardenRetrofit {
 
         // 第二段：真放。这一段才是「旧存档找不到新结构」的解法，原理见类注释。
         if (garden.isRetrofitPlaceInExplored()) {
-            StarfallGardenData.markRetrofitAttemptedNow(server);
-            placeInto(overworld, garden, candidates);
+            if (placeInto(overworld, garden, candidates)) {
+                // 已排上分帧放置任务，写完后由 continuePlacement 记账。
+                return;
+            }
         } else {
             MaidSpellMod.LOGGER.info("星落之庭补生成：主动放置已在数据包里关闭（retrofit_place_in_explored=false）");
         }
@@ -169,11 +190,13 @@ public final class StarfallGardenRetrofit {
      * 第二段：把庭院真正放进旧存档。
      *
      * <p>逐候选尝试，第一个能生成出合法 {@code StructureStart} 且不超区块预算的候选就落。
-     * 生成失败不占名额，换下一个候选继续；选定之后先占名额关闸再写方块，
-     * 写入中途失败也只留这一座，世界生成不会再放第二座。
+     * 生成失败不占名额，换下一个候选继续；选定之后先在内存里占名额挡住世界生成，
+     * 再排上分帧放置任务，方块全部写完才落盘名额并登记结构起点。
+     *
+     * @return 是否排上了放置任务
      */
-    private static void placeInto(ServerLevel overworld, StarfallGardenStructure garden,
-                                  List<ChunkPos> candidates) {
+    private static boolean placeInto(ServerLevel overworld, StarfallGardenStructure garden,
+                                     List<ChunkPos> candidates) {
         var chunkGenerator = overworld.getChunkSource().getGenerator();
         var randomState = overworld.getChunkSource().randomState();
         long seed = overworld.getSeed();
@@ -187,7 +210,7 @@ public final class StarfallGardenRetrofit {
 
             if (StarfallGardenData.isPlaced()) {
                 MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
-                return;
+                return false;
             }
             StructureStart start;
             try {
@@ -214,62 +237,99 @@ public final class StarfallGardenRetrofit {
                         "星落之庭补生成：候选 {} 的落点需要 {} 个区块，超过上限 {}，放弃补生成。"
                                 + "把数据包里的 max_distance_from_center 调小可以收窄覆盖范围",
                         candidate, chunkCount, MAX_PLACEMENT_CHUNKS);
-                return;
+                return false;
             }
-            if (!StarfallGardenData.tryMarkPlaced(box.getCenter())) {
+            if (!StarfallGardenData.tryReserve()) {
                 // 选点期间世界生成先占到了名额
                 MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
-                return;
+                return false;
             }
 
-            int placedChunks = 0;
-            List<ChunkAccess> written = new ArrayList<>();
-            try {
-                for (ChunkPos pos : ChunkPos.rangeClosed(min, max).toList()) {
-                    // getChunk(x, z) 不给状态：已经生成过的区块从盘里读回来就是完整区块，
-                    // 未生成的会被生成完整地形。placeInChunk 只是往这些区块里写方块，
-                    // 对区块状态没有要求 —— 这正是原版 /place structure 的做法。
-                    ChunkAccess chunk = overworld.getChunk(pos.x, pos.z);
-                    start.placeInChunk(overworld, overworld.structureManager(), chunkGenerator,
-                            overworld.getRandom(),
-                            new BoundingBox(pos.getMinBlockX(), overworld.getMinBuildHeight(), pos.getMinBlockZ(),
-                                    pos.getMaxBlockX(), overworld.getMaxBuildHeight(), pos.getMaxBlockZ()),
-                            pos);
-                    written.add(chunk);
-                    placedChunks++;
-                }
-                MaidSpellMod.LOGGER.info(
-                        "星落之庭补生成：已在旧存档落下一座（锚点区块 {}，覆盖 {} 个区块，高度 {}~{}）",
-                        candidate, placedChunks, box.minY(), box.maxY());
-            } catch (RuntimeException e) {
-                MaidSpellMod.LOGGER.error("星落之庭补生成：写入候选 {} 时失败，已写 {} 个区块，庭院可能不完整",
-                        candidate, placedChunks, e);
-            }
-            registerStart(overworld, garden, start, candidate, written);
-            return;
+            pendingPlacement = new PlacementTask(overworld, garden, start, candidate,
+                    ChunkPos.rangeClosed(min, max).toList(), 0);
+            return true;
         }
 
         MaidSpellMod.LOGGER.info("星落之庭补生成：试了 {} 个候选都没能落下，本次放弃", tried);
+        return false;
+    }
+
+    /**
+     * 写入一批区块；没写完就把剩下的排到下一 tick，写完再登记起点、落盘名额并记账。
+     * 写入失败或停服时名额只在本次会话内保持占用，不落盘也不记账，下次开服重新补生成。
+     */
+    private static void continuePlacement(MinecraftServer server, PlacementTask task) {
+        if (!server.isRunning()) {
+            return;
+        }
+
+        ServerLevel overworld = task.overworld();
+        ChunkGenerator chunkGenerator = overworld.getChunkSource().getGenerator();
+        List<ChunkPos> chunks = task.chunks();
+        int end = Math.min(task.nextIndex() + CHUNKS_PER_PLACEMENT_TICK, chunks.size());
+        try {
+            for (int i = task.nextIndex(); i < end; i++) {
+                ChunkPos pos = chunks.get(i);
+                // getChunk(x, z) 不给状态：已经生成过的区块从盘里读回来就是完整区块，
+                // 未生成的会被生成完整地形。placeInChunk 只是往这些区块里写方块，
+                // 对区块状态没有要求 —— 这正是原版 /place structure 的做法。
+                overworld.getChunk(pos.x, pos.z);
+                task.start().placeInChunk(overworld, overworld.structureManager(), chunkGenerator,
+                        overworld.getRandom(),
+                        new BoundingBox(pos.getMinBlockX(), overworld.getMinBuildHeight(), pos.getMinBlockZ(),
+                                pos.getMaxBlockX(), overworld.getMaxBuildHeight(), pos.getMaxBlockZ()),
+                        pos);
+            }
+        } catch (RuntimeException e) {
+            MaidSpellMod.LOGGER.error("星落之庭补生成：写入候选 {} 时失败，留待下次开服重试",
+                    task.candidate(), e);
+            return;
+        }
+
+        if (end < chunks.size()) {
+            pendingPlacement = new PlacementTask(overworld, task.garden(), task.start(),
+                    task.candidate(), chunks, end);
+            return;
+        }
+
+        if (!registerStart(overworld, task.garden(), task.start(), task.candidate(), chunks)) {
+            return;
+        }
+        BoundingBox box = task.start().getBoundingBox();
+        StarfallGardenData.markPlaced(box.getCenter());
+        StarfallGardenData.markRetrofitAttempted(server);
+        MaidSpellMod.LOGGER.info(
+                "星落之庭补生成：已在旧存档落下一座（锚点区块 {}，覆盖 {} 个区块，高度 {}~{}）",
+                task.candidate(), chunks.size(), box.minY(), box.maxY());
+    }
+
+    private record PlacementTask(ServerLevel overworld, StarfallGardenStructure garden,
+                                 StructureStart start, ChunkPos candidate, List<ChunkPos> chunks,
+                                 int nextIndex) {
     }
 
     /**
      * 原版 /place structure 不登记起点和引用；这里照世界生成补上，/locate、location_check 和结构标题才认得出这一座。
      *
-     * <p>必须在写完方块之后登记：包围盒里没生成过的区块在循环里 getChunk 时走完整生成，
+     * <p>必须在写完方块之后登记：包围盒里没生成过的区块在放置时 getChunk 走完整生成，
      * 那时起点若已登记，它们会在 STRUCTURE_REFERENCES 阶段引用起点、在 FEATURES 阶段自己放一遍，
-     * 接着又被循环再放一遍。写入中途失败时照样登记已写的区块，包围盒里还没生成的区块以后由世界生成按引用补齐。
+     * 接着又被放置任务再放一遍。区块可能在分帧期间卸载过，这里按坐标重新取。
+     *
+     * @return 是否登记成功
      */
-    private static void registerStart(ServerLevel overworld, StarfallGardenStructure garden, StructureStart start,
-                                      ChunkPos anchor, List<ChunkAccess> written) {
+    private static boolean registerStart(ServerLevel overworld, StarfallGardenStructure garden, StructureStart start,
+                                         ChunkPos anchor, List<ChunkPos> chunks) {
         try {
             ChunkAccess anchorChunk = overworld.getChunk(anchor.x, anchor.z);
             anchorChunk.setStartForStructure(garden, start);
             overworld.onStructureStartsAvailable(anchorChunk);
-            for (ChunkAccess chunk : written) {
-                chunk.addReferenceForStructure(garden, anchor.toLong());
+            for (ChunkPos pos : chunks) {
+                overworld.getChunk(pos.x, pos.z).addReferenceForStructure(garden, anchor.toLong());
             }
+            return true;
         } catch (RuntimeException e) {
-            MaidSpellMod.LOGGER.error("星落之庭补生成：登记锚点区块 {} 的结构起点失败，/locate 可能找不到这一座", anchor, e);
+            MaidSpellMod.LOGGER.error("星落之庭补生成：登记锚点区块 {} 的结构起点失败，留待下次开服重试", anchor, e);
+            return false;
         }
     }
 

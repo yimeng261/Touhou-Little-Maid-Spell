@@ -7,7 +7,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.neoforged.neoforge.common.IOUtilities;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -102,18 +101,26 @@ public class StarfallGardenData extends SavedData {
     }
 
     /**
-     * 抢占唯一名额，见 {@code StarfallGardenStructure#generate} 和补生成的放置。
+     * 抢占唯一名额并落盘，见 {@code StarfallGardenStructure#generate}。
      * 并发的几个候选只有一个能抢到，其余返回 false，调用方必须放弃这一座。
      */
     public static boolean tryMarkPlaced(BlockPos pos) {
-        if (!PLACED.compareAndSet(false, true)) {
+        if (!tryReserve()) {
             return false;
         }
         persistPlaced(pos);
         return true;
     }
 
-    /** 认领存档里已有的庭院：无条件关闸并落盘。 */
+    /**
+     * 补生成分帧放置专用：只在内存里抢占名额、不落盘，放置期间挡住世界生成。
+     * 方块全部写完后再调 {@link #markPlaced} 落盘；中途失败或停服则本次会话保持关闸，下次开服重试。
+     */
+    public static boolean tryReserve() {
+        return PLACED.compareAndSet(false, true);
+    }
+
+    /** 认领存档里已有的庭院或补生成放置完成：无条件关闸并落盘。 */
     public static void markPlaced(BlockPos pos) {
         PLACED.set(true);
         persistPlaced(pos);
@@ -146,24 +153,6 @@ public class StarfallGardenData extends SavedData {
             if (data != null) {
                 data.setRetrofitAttempted();
             }
-        } catch (RuntimeException e) {
-            MaidSpellMod.LOGGER.error("写入星落之庭补生成标记失败，下次开服会再试一次", e);
-        }
-    }
-
-    /**
-     * 主线程调用：记账并立即写盘，不等自动保存。补生成放置阶段在开服时同步跑，
-     * 慢机器上可能超过看门狗时限被杀掉；先落盘这一笔，重启后就不会再跑一遍，不会反复崩服。
-     */
-    public static void markRetrofitAttemptedNow(MinecraftServer server) {
-        try {
-            StarfallGardenData data = dataOrNull(server);
-            if (data == null) {
-                return;
-            }
-            data.setRetrofitAttempted();
-            server.overworld().getDataStorage().save();
-            IOUtilities.waitUntilIOWorkerComplete();
         } catch (RuntimeException e) {
             MaidSpellMod.LOGGER.error("写入星落之庭补生成标记失败，下次开服会再试一次", e);
         }

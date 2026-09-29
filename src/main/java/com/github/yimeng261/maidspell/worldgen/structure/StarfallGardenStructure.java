@@ -132,7 +132,7 @@ public class StarfallGardenStructure extends Structure {
      */
     private static BlockPos overworldSpawnOrOrigin() {
         var server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null) {
+        if (server == null || server.overworld() == null) {
             return BlockPos.ZERO;
         }
         return server.overworld().getSharedSpawnPos();
@@ -205,6 +205,15 @@ public class StarfallGardenStructure extends Structure {
     }
 
     /**
+     * 星落之庭没有生物群系限制。原版默认实现会用调用方传入的群系条件再筛一遍落点，
+     * StructureCheck 传的是 {@code structure.biomes()::contains}，会让它和依赖它的定位逻辑把候选提前判空。
+     */
+    @Override
+    public @NotNull Optional<GenerationStub> findValidGenerationPoint(@NotNull GenerationContext context) {
+        return this.findGenerationPoint(context);
+    }
+
+    /**
      * 只在 StructureStart 有效时占用名额。findGenerationPoint 可能被试探性调用，
      * 不能在那里占用；手动 /place structure 同样计入一座。抢占规则见 {@link StarfallGardenData#tryMarkPlaced}。
      */
@@ -214,8 +223,9 @@ public class StarfallGardenStructure extends Structure {
                                            StructureTemplateManager templateManager, long seed, ChunkPos chunkPos,
                                            int references, LevelHeightAccessor heightAccessor,
                                            Predicate<Holder<Biome>> validBiome) {
+        // 星落之庭不限制具体生物群系；结构的生物群系标签只用来让结构集进入主世界生成状态。
         StructureStart start = computeStart(registryAccess, chunkGenerator, biomeSource, randomState,
-                templateManager, seed, chunkPos, references, heightAccessor, validBiome);
+                templateManager, seed, chunkPos, references, heightAccessor, holder -> true);
         if (start.isValid() && !StarfallGardenData.tryMarkPlaced(start.getBoundingBox().getCenter())) {
             return StructureStart.INVALID_START;
         }
