@@ -56,7 +56,13 @@ public final class MaidEntityRestoreMessage implements CustomPacketPayload {
         maid.saveWithoutId(entityTag);
         entityTag.remove("MaidHistoryChat");
         entityTag.remove("MaidHistorySummary");
+        return of(maid, entityTag);
+    }
 
+    /**
+     * 用女仆当前的同步数据与位置，和已序列化的实体 NBT 组成恢复消息
+     */
+    public static MaidEntityRestoreMessage of(EntityMaid maid, CompoundTag entityTag) {
         List<SynchedEntityData.DataValue<?>> entityData = maid.getEntityData().getNonDefaultValues();
         if (entityData == null) {
             entityData = Collections.emptyList();

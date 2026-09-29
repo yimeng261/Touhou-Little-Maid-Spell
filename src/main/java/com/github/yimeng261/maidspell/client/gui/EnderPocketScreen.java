@@ -243,19 +243,19 @@ public class EnderPocketScreen extends Screen {
 
     private static class MaidHudVisibilityButton extends Button {
         private final UUID maidUuid;
-        private boolean visible;
+        private boolean hudVisible;
 
         private MaidHudVisibilityButton(int x, int y, UUID maidUuid) {
             super(x, y, 16, 16, Component.empty(), button -> { }, DEFAULT_NARRATION);
             this.maidUuid = maidUuid;
-            this.visible = EnderPocketClientConfig.isMaidVisible(maidUuid);
+            this.hudVisible = EnderPocketClientConfig.isMaidVisible(maidUuid);
             updateLabel();
         }
 
         @Override
         public void onPress() {
-            visible = !visible;
-            EnderPocketClientConfig.setMaidVisible(maidUuid, visible);
+            hudVisible = !hudVisible;
+            EnderPocketClientConfig.setMaidVisible(maidUuid, hudVisible);
             updateLabel();
         }
 
@@ -268,14 +268,14 @@ public class EnderPocketScreen extends Screen {
             int boxY = getY() + 3;
             graphics.fill(boxX, boxY, boxX + 10, boxY + 10, 0xA040392D);
             graphics.renderOutline(boxX, boxY, 10, 10, 0xFFE0CA9F);
-            if (visible) {
+            if (hudVisible) {
                 graphics.drawCenteredString(net.minecraft.client.Minecraft.getInstance().font,
                         "\u2713", getX() + 8, getY() + 3, 0xFFFFFFFF);
             }
         }
 
         private void updateLabel() {
-            String key = visible
+            String key = hudVisible
                     ? "gui.maidspell.ender_pocket.hud_maid_visible"
                     : "gui.maidspell.ender_pocket.hud_maid_hidden";
             Component label = Component.translatable(key);

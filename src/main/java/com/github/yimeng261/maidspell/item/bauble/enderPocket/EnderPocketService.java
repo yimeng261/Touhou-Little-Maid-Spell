@@ -321,7 +321,7 @@ public class EnderPocketService {
         }
         Map<UUID, EntityMaid> maids = Global.ownerMaidRegistry.get(player.getUUID());
         EntityMaid maid = maids == null ? null : maids.get(maidUuid);
-        if (maid == null || maid.isRemoved()
+        if (maid == null
                 || !isEnderPocketAccessible(maid, player.getUUID())
                 || !maid.isOwnedBy(player)
                 || !isRegisteredServerEntity(maid, player.getServer())) {

@@ -44,9 +44,12 @@ public final class EnderPocketHudOverlay implements LayeredDraw.Layer {
         Minecraft mc = Minecraft.getInstance();
         int screenWidth = graphics.guiWidth();
         int screenHeight = graphics.guiHeight();
-        List<EnderPocketService.EnderPocketMaidInfo> visibleInfos = getVisibleMaidInfos();
         if (mc.player == null || mc.level == null || mc.options.hideGui || mc.screen != null
-                || visibleInfos.isEmpty() || !EnderPocketClientConfig.HUD_ENABLED.get()) {
+                || !EnderPocketClientConfig.HUD_ENABLED.get()) {
+            return;
+        }
+        List<EnderPocketService.EnderPocketMaidInfo> visibleInfos = getVisibleMaidInfos();
+        if (visibleInfos.isEmpty()) {
             return;
         }
 
