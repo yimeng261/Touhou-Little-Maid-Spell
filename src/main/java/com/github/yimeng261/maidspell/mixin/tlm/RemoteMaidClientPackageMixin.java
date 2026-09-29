@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.mixin.tlm;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.network.message.SendEffectPackage;
 import com.github.tartaricacid.touhoulittlemaid.network.message.SyncBaublePackage;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketMaidProxyCache;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -12,10 +13,13 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 /**
  * 客户端找不到女仆实体时，回退到末影腰包远程界面使用的女仆代理
  */
-@Mixin(value = SyncBaublePackage.class, remap = false)
-public class SyncBaublePackageMixin {
+@Mixin(value = {SendEffectPackage.class, SyncBaublePackage.class}, remap = false)
+public class RemoteMaidClientPackageMixin {
     @Redirect(
-            method = "handleClient(Lcom/github/tartaricacid/touhoulittlemaid/network/message/SyncBaublePackage;)V",
+            method = {
+                    "handle(Lcom/github/tartaricacid/touhoulittlemaid/network/message/SendEffectPackage;)V",
+                    "handleClient(Lcom/github/tartaricacid/touhoulittlemaid/network/message/SyncBaublePackage;)V"
+            },
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/multiplayer/ClientLevel;getEntity(I)Lnet/minecraft/world/entity/Entity;",
