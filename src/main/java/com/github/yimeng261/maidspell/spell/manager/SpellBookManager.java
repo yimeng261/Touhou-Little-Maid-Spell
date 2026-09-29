@@ -84,7 +84,7 @@ public class SpellBookManager {
     }
 
     /**
-     * Compatibility entry point. The manager is stateless with respect to individual maid entities.
+     * 兼容入口，管理器不再按女仆保存状态，所有女仆共用同一实例
      *
      * @param maid 女仆实体
      * @return 该女仆对应的SpellBookManager实例

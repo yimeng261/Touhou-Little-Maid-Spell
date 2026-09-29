@@ -1,7 +1,7 @@
 package com.github.yimeng261.maidspell.utils;
 
 /**
- * Clock-independent arithmetic for migrating persisted game-time timers.
+ * 与时钟无关的计时运算，用于迁移已持久化的游戏时间计时器
  */
 public final class PortableTimerMath {
     private PortableTimerMath() {

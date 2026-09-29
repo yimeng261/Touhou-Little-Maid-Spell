@@ -25,7 +25,7 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
     protected final Function<UUID, T> dataFactory;
 
     /**
-     * Non-creating lookup used by unload and death cleanup paths.
+     * 只查询不创建的数据获取方法，供卸载与死亡清理使用
      */
     private final Function<UUID, T> dataLookup;
     private final Consumer<UUID> dataRemover;
@@ -95,13 +95,13 @@ public abstract class ISpellBookProvider<T extends IMaidSpellData, S> {
     }
 
     /**
-     * Hook for providers that need to bind third-party runtime state to a newly loaded maid entity.
+     * 女仆实体加载时调用，供需要绑定第三方运行时状态的提供者重写
      */
     public void onMaidJoin(EntityMaid maid) {
     }
 
     /**
-     * Stops provider runtime work without creating data and always clears shared entity references.
+     * 停止提供者的运行时工作（不创建数据），并始终清除共享的实体引用
      */
     public final void releaseRuntimeReferences(EntityMaid maid) {
         T data = getExistingData(maid.getUUID());

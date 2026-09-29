@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Removes scoreboard teams persisted by versions that represented maid alliances as vanilla teams.
+ * 清理旧版本用原版计分板队伍实现女仆结盟时遗留的队伍
  */
 public final class AllianceManager {
     private static final Logger LOGGER = LogUtils.getLogger();

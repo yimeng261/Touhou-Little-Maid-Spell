@@ -151,7 +151,7 @@ public abstract class IMaidSpellData {
     }
 
     /**
-     * Releases entity and third-party runtime references while retaining spell books and cooldowns.
+     * 释放实体与第三方运行时引用，保留法术书和冷却
      */
     public void releaseRuntimeReferences() {
         resetCastingState();
