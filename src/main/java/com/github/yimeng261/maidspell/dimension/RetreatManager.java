@@ -454,17 +454,15 @@ public class RetreatManager {
             return CompletableFuture.completedFuture(null);
         }
 
-        // 确定搜索中心
-        BlockPos searchCenter;
+        // 私人维度的结构在生成时记下了位置，从那里搜一圈就能命中；没有记录时从玩家脚下搜
+        BlockPos searchCenter = playerPos;
         if (Config.enablePrivateDimensions) {
-            ResourceKey<Level> dimResourceKey = level.dimension();
-            if (generatedDimensions.contains(dimResourceKey)) {
-                searchCenter = level.getSharedSpawnPos();
-            } else {
-                searchCenter = playerPos;
+            UUID owner = PlayerRetreatManager.getPrivateDimensionOwner(level.dimension());
+            BlockPos knownPos = owner == null ? null
+                    : RetreatDimensionData.get(level.getServer()).getFoundStructurePos(owner);
+            if (knownPos != null) {
+                searchCenter = knownPos;
             }
-        } else {
-            searchCenter = playerPos;
         }
 
         // 共享模式跳过已知结构

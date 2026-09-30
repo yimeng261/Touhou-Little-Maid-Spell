@@ -265,6 +265,13 @@ public class WindSeekingBell extends Item {
                         RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
                         data.setFoundStructurePos(player.getUUID(), result);
                     }
+                    if (Config.enablePrivateDimensions) {
+                        // 私人维度记在主人名下，缺位置时补写，之后以它为搜索中心
+                        UUID owner = PlayerRetreatManager.getPrivateDimensionOwner(serverLevel.dimension());
+                        if (owner != null) {
+                            RetreatDimensionData.get(player.getServer()).markStructureGenerated(owner, result);
+                        }
+                    }
                     RetreatManager.updateCache(serverLevel, player.getUUID(), result);
 
                     // 检查玩家手上是否仍持有寻风之铃（异步搜索期间可能已切换物品）

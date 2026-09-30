@@ -312,11 +312,19 @@ public class RetreatDimensionData extends SavedData {
      */
     public void markStructureGenerated(UUID playerUUID, BlockPos pos) {
         DimensionInfo info = playerDimensions.get(playerUUID);
-        if (info != null && !info.structureGenerated) {
+        if (info == null) {
+            return;
+        }
+        if (!info.structureGenerated) {
             info.structureGenerated = true;
             info.foundStructurePos = pos;
             setDirty();
             MaidSpellMod.LOGGER.info("Persisted structure generated flag for player {} at {}", playerUUID, pos);
+        } else if (info.foundStructurePos == null) {
+            // 旧存档生成结构时没有记位置，寻风之铃搜到后补上
+            info.foundStructurePos = pos;
+            setDirty();
+            MaidSpellMod.LOGGER.info("Backfilled structure position for player {} at {}", playerUUID, pos);
         }
     }
 
