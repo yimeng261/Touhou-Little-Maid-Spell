@@ -300,7 +300,7 @@ public final class StructureScenes {
         for (CompoundTag saved : savedBlockEntities(ctx, placeHouse(ctx, "taiga"), "irons_spellbooks:pedestal")) {
             CompoundTag components = saved.getCompound("heldItem").getCompound("components");
             ctx.check(saved.getCompound("heldItem").getString("id")).as("展示台物品").isEqualTo("irons_spellbooks:amethyst_rapier");
-            ctx.check(components.getString("minecraft:custom_name")).as("细剑名字").contains("远途之念");
+            ctx.check(components.getString("minecraft:custom_name")).as("细剑名字").contains("item.touhou_little_maid_spell.loot.wanderlust_rapier");
             ctx.check(components.getCompound("minecraft:enchantments").getCompound("levels").getInt("minecraft:sharpness"))
                     .as("细剑锋利等级").isEqualTo(2);
             ListTag spells = components.getCompound("irons_spellbooks:spell_container").getList("data", Tag.TAG_COMPOUND);
