@@ -237,17 +237,19 @@ public final class StarfallGardenRetrofit {
             }
 
             int placedChunks = 0;
+            List<ChunkAccess> written = new ArrayList<>();
             try {
                 for (ChunkPos pos : ChunkPos.rangeClosed(min, max).toList()) {
                     // getChunk(x, z) 不给状态：已经生成过的区块从盘里读回来就是完整区块，
                     // 未生成的会被生成完整地形。placeInChunk 只是往这些区块里写方块，
                     // 对区块状态没有要求 —— 这正是原版 /place structure 的做法。
-                    overworld.getChunk(pos.x, pos.z);
+                    ChunkAccess chunk = overworld.getChunk(pos.x, pos.z);
                     start.placeInChunk(overworld, overworld.structureManager(), chunkGenerator,
                             overworld.getRandom(),
                             new BoundingBox(pos.getMinBlockX(), overworld.getMinBuildHeight(), pos.getMinBlockZ(),
                                     pos.getMaxBlockX(), overworld.getMaxBuildHeight(), pos.getMaxBlockZ()),
                             pos);
+                    written.add(chunk);
                     placedChunks++;
                 }
                 MaidSpellMod.LOGGER.info(
@@ -257,10 +259,32 @@ public final class StarfallGardenRetrofit {
                 MaidSpellMod.LOGGER.error("星落之庭补生成：写入候选 {} 时失败，已写 {} 个区块，庭院可能不完整",
                         candidate, placedChunks, e);
             }
+            registerStart(overworld, garden, start, candidate, written);
             return;
         }
 
         MaidSpellMod.LOGGER.info("星落之庭补生成：试了 {} 个候选都没能落下，本次放弃", tried);
+    }
+
+    /**
+     * 原版 /place structure 不登记起点和引用；这里照世界生成补上，/locate、location_check 和结构标题才认得出这一座。
+     *
+     * <p>必须在写完方块之后登记：包围盒里没生成过的区块在循环里 getChunk 时走完整生成，
+     * 那时起点若已登记，它们会在 STRUCTURE_REFERENCES 阶段引用起点、在 FEATURES 阶段自己放一遍，
+     * 接着又被循环再放一遍。写入中途失败时照样登记已写的区块，包围盒里还没生成的区块以后由世界生成按引用补齐。
+     */
+    private static void registerStart(ServerLevel overworld, StarfallGardenStructure garden, StructureStart start,
+                                      ChunkPos anchor, List<ChunkAccess> written) {
+        try {
+            ChunkAccess anchorChunk = overworld.getChunk(anchor.x, anchor.z);
+            anchorChunk.setStartForStructure(garden, start);
+            overworld.onStructureStartsAvailable(anchorChunk);
+            for (ChunkAccess chunk : written) {
+                chunk.addReferenceForStructure(garden, anchor.toLong());
+            }
+        } catch (RuntimeException e) {
+            MaidSpellMod.LOGGER.error("星落之庭补生成：登记锚点区块 {} 的结构起点失败，/locate 可能找不到这一座", anchor, e);
+        }
     }
 
     /**
