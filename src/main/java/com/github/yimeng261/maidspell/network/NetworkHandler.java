@@ -17,10 +17,14 @@ import com.github.yimeng261.maidspell.network.message.TransmogNecklaceMessage;
 import com.github.yimeng261.maidspell.network.message.TravelerTitlesStructureMessage;
 import com.github.yimeng261.maidspell.network.message.WinefoxChallengeConfigMessage;
 import com.github.yimeng261.maidspell.network.message.WinefoxStructureMusicMessage;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.network.handling.IPayloadHandler;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+
+import java.util.function.BiConsumer;
 
 /**
  * 网络消息处理器
@@ -30,13 +34,13 @@ public class NetworkHandler {
 
     public static void registerMessages(final RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);
-        registrar.playToServer(C2SEnderPocketMaidList.TYPE, C2SEnderPocketMaidList.STREAM_CODEC, NetworkHandler::handleEnderPocketRequestMaidList);
-        registrar.playToServer(C2SEnderPocketOpenInventory.TYPE, C2SEnderPocketOpenInventory.STREAM_CODEC, NetworkHandler::handleEnderPocketOpenInventory);
-        registrar.playToServer(C2SEnderPocketHudRequest.TYPE, C2SEnderPocketHudRequest.STREAM_CODEC, NetworkHandler::handleEnderPocketHudRequest);
-        registrar.playToServer(C2SEnderPocketMaidReady.TYPE, C2SEnderPocketMaidReady.STREAM_CODEC, NetworkHandler::handleEnderPocketMaidReady);
-        registrar.playToServer(C2SEnderPocketTeleport.TYPE, C2SEnderPocketTeleport.STREAM_CODEC, NetworkHandler::handleEnderPocketTeleport);
-        registrar.playToServer(TransmogNecklaceMessage.TYPE, TransmogNecklaceMessage.STREAM_CODEC, NetworkHandler::handleTransmogNecklaceMessage);
-        registrar.playToServer(WinefoxChallengeConfigMessage.TYPE, WinefoxChallengeConfigMessage.STREAM_CODEC, NetworkHandler::handleWinefoxChallengeConfig);
+        registrar.playToServer(C2SEnderPocketMaidList.TYPE, C2SEnderPocketMaidList.STREAM_CODEC, toServer(C2SEnderPocketMaidList::handle));
+        registrar.playToServer(C2SEnderPocketOpenInventory.TYPE, C2SEnderPocketOpenInventory.STREAM_CODEC, toServer(C2SEnderPocketOpenInventory::handle));
+        registrar.playToServer(C2SEnderPocketHudRequest.TYPE, C2SEnderPocketHudRequest.STREAM_CODEC, toServer(C2SEnderPocketHudRequest::handle));
+        registrar.playToServer(C2SEnderPocketMaidReady.TYPE, C2SEnderPocketMaidReady.STREAM_CODEC, toServer(C2SEnderPocketMaidReady::handle));
+        registrar.playToServer(C2SEnderPocketTeleport.TYPE, C2SEnderPocketTeleport.STREAM_CODEC, toServer(C2SEnderPocketTeleport::handle));
+        registrar.playToServer(TransmogNecklaceMessage.TYPE, TransmogNecklaceMessage.STREAM_CODEC, toServer(TransmogNecklaceMessage::handle));
+        registrar.playToServer(WinefoxChallengeConfigMessage.TYPE, WinefoxChallengeConfigMessage.STREAM_CODEC, toServer(WinefoxChallengeConfigMessage::handle));
         registrar.playToClient(S2CEnderPocketMaidList.TYPE, S2CEnderPocketMaidList.STREAM_CODEC, NetworkHandler::handleEnderPocketResponseMaidList);
         registrar.playToClient(S2CEnderPocketPushUpdate.TYPE, S2CEnderPocketPushUpdate.STREAM_CODEC, NetworkHandler::handleEnderPocketPushUpdate);
         registrar.playToClient(S2CEnderPocketHudUpdate.TYPE, S2CEnderPocketHudUpdate.STREAM_CODEC, NetworkHandler::handleEnderPocketHudUpdate);
@@ -47,53 +51,13 @@ public class NetworkHandler {
         registrar.playToClient(TravelerTitlesStructureMessage.TYPE, TravelerTitlesStructureMessage.STREAM_CODEC, NetworkHandler::handleTravelerTitlesStructure);
     }
 
-    public static void handleEnderPocketRequestMaidList(C2SEnderPocketMaidList packet, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer serverPlayer)) {
-            return;
-        }
-        packet.handle(serverPlayer);
-    }
-
-    public static void handleEnderPocketOpenInventory(C2SEnderPocketOpenInventory packet, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer serverPlayer)) {
-            return;
-        }
-        packet.handle(serverPlayer);
-    }
-
-    public static void handleEnderPocketHudRequest(C2SEnderPocketHudRequest packet, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer serverPlayer)) {
-            return;
-        }
-        packet.handle(serverPlayer);
-    }
-
-    public static void handleEnderPocketMaidReady(C2SEnderPocketMaidReady packet, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer serverPlayer)) {
-            return;
-        }
-        packet.handle(serverPlayer);
-    }
-
-    public static void handleEnderPocketTeleport(C2SEnderPocketTeleport packet, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer serverPlayer)) {
-            return;
-        }
-        packet.handle(serverPlayer);
-    }
-
-    public static void handleWinefoxChallengeConfig(WinefoxChallengeConfigMessage packet, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer serverPlayer)) {
-            return;
-        }
-        packet.handle(serverPlayer);
-    }
-
-    public static void handleTransmogNecklaceMessage(TransmogNecklaceMessage packet, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer serverPlayer)) {
-            return;
-        }
-        packet.handle(serverPlayer);
+    /** 只处理服务端玩家发来的包。 */
+    private static <T extends CustomPacketPayload> IPayloadHandler<T> toServer(BiConsumer<T, ServerPlayer> handler) {
+        return (packet, context) -> {
+            if (context.player() instanceof ServerPlayer serverPlayer) {
+                handler.accept(packet, serverPlayer);
+            }
+        };
     }
 
     public static void handleEnderPocketResponseMaidList(S2CEnderPocketMaidList packet, IPayloadContext context) {
