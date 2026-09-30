@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.stagewright.data.StructureSnapshots;
 import com.github.yimeng261.maidspell.stagewright.support.Actors;
 import com.github.yimeng261.maidspell.stagewright.support.Checks;
 import com.github.yimeng261.maidspell.stagewright.support.Fidelity;
+import com.github.yimeng261.maidspell.stagewright.support.Reflect;
 import com.github.yimeng261.maidspell.stagewright.support.StructureStage;
 import com.github.yimeng261.maidspell.stagewright.support.WorldExtract;
 import com.github.yimeng261.maidspell.stagewright.support.Worldgen;
@@ -11,6 +12,8 @@ import net.magicterra.stagewright.scene.Scene;
 import net.magicterra.stagewright.scene.SceneContext;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -20,22 +23,29 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.decoration.Painting;
+import net.minecraft.world.entity.decoration.PaintingVariant;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -86,6 +96,28 @@ public final class StructureScenes {
     /** 实体放置后观察多少 tick 再检查存活/卡墙。 */
     private static final int SETTLE_TICKS = 40;
 
+    /** 挂着画的模板（本模组命名空间下的路径）、放置时注册的结构、强制加载区块半径。 */
+    private record PaintingTemplate(String path, String structure, int radius) {
+    }
+
+    /** 本模组所有挂着画的模板，由 structure.paintings.templatesListed 与模板池核对。 */
+    private static final List<PaintingTemplate> PAINTING_TEMPLATES = List.of(
+            new PaintingTemplate("starwatch_tower/starwatch_tower_1", Checks.NS + "starwatch_tower", 2),
+            new PaintingTemplate("starwatch_tower/starwatch_tower_2", Checks.NS + "starwatch_tower", 3),
+            new PaintingTemplate("starfall_garden_5", Checks.NS + "starfall_garden", 3),
+            new PaintingTemplate("hidden_retreat/hidden_retreat_building", Checks.NS + "hidden_retreat", 2),
+            new PaintingTemplate("fairy_maid_cafe/fairy_maid_cafe", Checks.NS + "fairy_maid_cafe", 2),
+            new PaintingTemplate("enchantress_footsteps/village/snowy_house", "minecraft:village_snowy", 2));
+
+    /**
+     * 画的中心在偶数尺寸方向上落在方块边界，按中心取整时两组旋转的边界取向相反：
+     * 原 x 在 {NONE, CW90} 与 {CW180, CCW90} 间翻转，原 z 在 {NONE, CCW90} 与 {CW90, CW180} 间翻转，
+     * 一对相反旋转就覆盖了两个轴的两种取向。
+     */
+    private static final List<Rotation> PAINTING_ROTATIONS = List.of(Rotation.NONE, Rotation.CLOCKWISE_180);
+
+    private static final String PAINTING = "minecraft:painting";
+
     private StructureScenes() {
     }
 
@@ -114,6 +146,14 @@ public final class StructureScenes {
         scenes.add(structureScene("structure.yin_yang_altar.hauntedJugHasWater", 2, StructureScenes::hauntedJugHasWater));
         scenes.add(structureScene("village.plains.house.cauldronKeepsInk", 2, StructureScenes::cauldronKeepsInk));
         scenes.add(structureScene("village.taiga.house.pedestalRapierKeepsData", 2, StructureScenes::rapierKeepsData));
+        scenes.add(Checks.scene("structure.paintings.anchorMechanism", 20, StructureScenes::paintingAnchorMechanism));
+        scenes.add(Checks.scene("structure.paintings.templatesListed", 20, StructureScenes::paintingTemplatesListed));
+        for (PaintingTemplate painting : PAINTING_TEMPLATES) {
+            for (Rotation rotation : PAINTING_ROTATIONS) {
+                scenes.add(structureScene("structure.paintings." + painting.path().replace('/', '.') + "."
+                        + rotation.name().toLowerCase(Locale.ROOT), painting.radius(), ctx -> paintingsStayAnchored(ctx, painting, rotation)));
+            }
+        }
         scenes.add(Checks.scene("knownDefect.templatesUseOnlyRegisteredBlocks", 20, StructureScenes::onlyRegisteredBlocks)
                 .withRequired(false));
         scenes.add(structureScene("knownDefect.villagePlainsHouseChairsNotInBlocks", 2, StructureScenes::chairsNotInBlocks)
@@ -216,6 +256,106 @@ public final class StructureScenes {
             want.forEach((field, value) ->
                     ctx.check(got.get(field)).as("女仆[" + want.get("model_id") + "]." + field).isEqualTo(value));
         }
+    }
+
+    /**
+     * 按指定旋转单独放置一个模板（取模板池里的拼图元素，处理器与自然生成一致），逐幅比对变体、挂靠格和朝向，
+     * 并当场判定每幅画能否挂住（原版每 100 tick 才做一次同样的判定）。
+     * 预期挂靠格是模板 blockPos 经原版变换后的位置，偏一格也算错。
+     */
+    private static void paintingsStayAnchored(SceneContext ctx, PaintingTemplate painting, Rotation rotation) {
+        ServerLevel level = ctx.level();
+        StructureStage.Placed placed = StructureStage.placeElement(ctx, painting.structure(),
+                Worldgen.poolElement(level, Checks.NS + painting.path()), rotation);
+        StructureStage.Piece piece = placed.pieces().getFirst();
+        List<String> expected = piece.entities().stream()
+                .filter(StructureScenes::isPainting)
+                .map(info -> paintingKey(info.nbt.getString("variant"), info.blockPos,
+                        rotation.rotate(Direction.from2DDataValue(info.nbt.getByte("facing")))))
+                .toList();
+        ctx.check(expected).as(piece.template() + " 里的画").isNotEmpty();
+
+        List<Painting> paintings = level.getEntitiesOfClass(Painting.class, AABB.of(piece.box()).inflate(2), Entity::isAlive);
+        List<String> actual = paintings.stream()
+                .map(p -> paintingKey(p.getVariant().unwrapKey().map(key -> key.location().toString()).orElse("?"),
+                        p.getPos(), p.getDirection()))
+                .toList();
+        ctx.record("paintings", actual);
+        Checks.sameMultiset(ctx, "放置后的画（变体 @挂靠格 朝向）", expected, actual);
+        ctx.check(paintings.stream().filter(p -> !p.survives()).map(p -> p.getPos().toShortString()).toList())
+                .as("挂不住的画").isEmpty();
+    }
+
+    private static boolean isPainting(StructureTemplate.StructureEntityInfo info) {
+        return info.nbt.getString("id").equals(PAINTING);
+    }
+
+    private static String paintingKey(String variant, BlockPos anchor, Direction facing) {
+        return variant + " @" + anchor.toShortString() + " " + facing;
+    }
+
+    /**
+     * 放置模板时画的挂靠格等于模板 blockPos 经旋转变换后的位置：每种尺寸的画按四个朝向保存成模板实体信息
+     * （位置取实体中心，与结构方块保存的一致），四种旋转下经 processEntityInfos 处理后按位置取整都应回到 blockPos。
+     * 同时确认用例里既有偶数高度、也有偶数宽度的画在直接按中心取整时会错位，保证覆盖了两类情形。
+     */
+    private static void paintingAnchorMechanism(SceneContext ctx) {
+        ServerLevel level = ctx.level();
+        Map<String, Holder<PaintingVariant>> bySize = new TreeMap<>();
+        level.registryAccess().registryOrThrow(Registries.PAINTING_VARIANT).holders()
+                .forEach(variant -> bySize.putIfAbsent(variant.value().width() + "x" + variant.value().height(), variant));
+        BlockPos anchor = new BlockPos(8, 8, 8);
+        List<StructureTemplate.StructureEntityInfo> raw = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+        bySize.forEach((size, variant) -> {
+            for (Direction facing : Direction.Plane.HORIZONTAL) {
+                Painting painting = new Painting(level, anchor, facing, variant);
+                CompoundTag nbt = new CompoundTag();
+                painting.save(nbt);
+                raw.add(new StructureTemplate.StructureEntityInfo(painting.position(), anchor, nbt));
+                labels.add(size + " " + facing);
+            }
+        });
+        ctx.record("cases", raw.size() * Rotation.values().length);
+
+        List<String> misplaced = new ArrayList<>();
+        int heightMisses = 0;
+        int widthMisses = 0;
+        for (Rotation rotation : Rotation.values()) {
+            StructurePlaceSettings settings = new StructurePlaceSettings().setRotation(rotation);
+            List<StructureTemplate.StructureEntityInfo> placed =
+                    StructureTemplate.processEntityInfos(null, level, BlockPos.ZERO, settings, raw);
+            for (int i = 0; i < raw.size(); i++) {
+                BlockPos expected = placed.get(i).blockPos;
+                BlockPos rounded = BlockPos.containing(StructureTemplate.transformedVec3d(settings, raw.get(i).pos));
+                heightMisses += rounded.getY() != expected.getY() ? 1 : 0;
+                widthMisses += rounded.getX() != expected.getX() || rounded.getZ() != expected.getZ() ? 1 : 0;
+                BlockPos actual = BlockPos.containing(placed.get(i).pos);
+                if (!actual.equals(expected)) {
+                    misplaced.add(labels.get(i) + " " + rotation + ": " + actual.toShortString() + " ≠ " + expected.toShortString());
+                }
+            }
+        }
+        ctx.record("heightMisses", heightMisses);
+        ctx.record("widthMisses", widthMisses);
+        ctx.check(heightMisses).as("按中心取整会上下错位的用例数（偶数高度）").isGreaterThan(0);
+        ctx.check(widthMisses).as("按中心取整会水平错位的用例数（偶数宽度）").isGreaterThan(0);
+        ctx.check(misplaced).as("处理后挂靠格偏离 blockPos 的画").isEmpty();
+    }
+
+    /** 本模组模板池引用的模板里，挂着画的正好是 PAINTING_TEMPLATES 列出的那些。 */
+    private static void paintingTemplatesListed(SceneContext ctx) {
+        StructureTemplateManager manager = ctx.level().getStructureManager();
+        List<String> withPaintings = new ArrayList<>();
+        Worldgen.poolElements(ctx.level()).keySet().stream().filter(id -> id.startsWith(Checks.NS)).forEach(id -> {
+            List<StructureTemplate.StructureEntityInfo> entities =
+                    Reflect.field(manager.getOrCreate(ResourceLocation.parse(id)), StructureTemplate.class, "entityInfoList");
+            if (entities.stream().anyMatch(StructureScenes::isPainting)) {
+                withPaintings.add(id);
+            }
+        });
+        Checks.sameSet(ctx, "挂着画的模板（PAINTING_TEMPLATES）",
+                PAINTING_TEMPLATES.stream().map(painting -> Checks.NS + painting.path()).toList(), withPaintings);
     }
 
     /** 已知缺陷：隐世樱树的狐狸按模板原始高度生成，没有跟随重力处理器落到结构地面。 */

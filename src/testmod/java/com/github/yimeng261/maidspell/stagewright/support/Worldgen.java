@@ -28,11 +28,14 @@ import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -172,6 +175,30 @@ public final class Worldgen {
     public static String templateId(SinglePoolElement element) {
         Either<ResourceLocation, StructureTemplate> template = Reflect.field(element, SinglePoolElement.class, "template");
         return template.left().map(ResourceLocation::toString).orElse("<inline>");
+    }
+
+    /** 已注册模板池里引用各模板的拼图元素（模板 ID → 第一个引用它的元素，不含内联模板）。 */
+    public static Map<String, SinglePoolElement> poolElements(ServerLevel level) {
+        Map<String, SinglePoolElement> out = new LinkedHashMap<>();
+        for (StructureTemplatePool pool : level.registryAccess().registryOrThrow(Registries.TEMPLATE_POOL)) {
+            for (StructurePoolElement element : pool.templates) {
+                if (element instanceof SinglePoolElement single) {
+                    String id = templateId(single);
+                    if (!id.equals("<inline>")) {
+                        out.putIfAbsent(id, single);
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    public static SinglePoolElement poolElement(ServerLevel level, String templateId) {
+        SinglePoolElement element = poolElements(level).get(templateId);
+        if (element == null) {
+            throw new IllegalStateException("没有模板池引用 " + templateId);
+        }
+        return element;
     }
 
     /** 包围盒水平范围内按步长采样，水面高于水底（WORLD_SURFACE_WG &gt; OCEAN_FLOOR_WG）的列所占比例。 */

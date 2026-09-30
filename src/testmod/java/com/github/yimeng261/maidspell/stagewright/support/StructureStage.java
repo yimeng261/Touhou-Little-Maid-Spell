@@ -92,6 +92,20 @@ public final class StructureStage {
                 80, LiquidSettings.APPLY_WATERLOGGING));
     }
 
+    /**
+     * 按指定旋转单独放置模板池里的一个拼图元素（不展开它的拼图接口），起点注册在 registerAs 结构名下。
+     * 拼图片按原版默认的含水设置放置。
+     */
+    public static Placed placeElement(SceneContext ctx, String registerAs, SinglePoolElement element, Rotation rotation) {
+        ServerLevel level = ctx.level();
+        StructureTemplateManager templates = level.getStructureManager();
+        BlockPos position = new BlockPos(ctx.originX(), ctx.surfaceY(0, 0), ctx.originZ());
+        PoolElementStructurePiece piece = new PoolElementStructurePiece(templates, element, position,
+                element.getGroundLevelDelta(), rotation, element.getBoundingBox(templates, position, rotation),
+                LiquidSettings.APPLY_WATERLOGGING);
+        return placeCentered(ctx, Worldgen.structure(level, registerAs).value(), new PiecesContainer(List.of(piece)));
+    }
+
     private static Jigsaw jigsawOf(SceneContext ctx, Structure structure, String structureId) {
         RegistryAccess access = ctx.level().registryAccess();
         RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, access);
@@ -152,8 +166,11 @@ public final class StructureStage {
         if (stub.isEmpty()) {
             throw new IllegalStateException("拼图组装失败：起始池 " + jigsaw.pool().getRegisteredName());
         }
-        PiecesContainer container = stub.get().getPiecesBuilder().build();
-        // 拼图可能向任意方向延伸，水平居中到场地原点，让强制加载范围对称覆盖
+        return placeCentered(ctx, structure, stub.get().getPiecesBuilder().build());
+    }
+
+    /** 拼图可能向任意方向延伸，水平居中到场地原点，让强制加载范围对称覆盖。 */
+    private static Placed placeCentered(SceneContext ctx, Structure structure, PiecesContainer container) {
         BoundingBox raw = container.calculateBoundingBox();
         int dx = ctx.originX() - raw.getCenter().getX();
         int dz = ctx.originZ() - raw.getCenter().getZ();
