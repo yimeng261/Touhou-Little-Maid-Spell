@@ -1,10 +1,12 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks;
 
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.SubscribeEvent;
 import org.slf4j.Logger;
 
@@ -12,7 +14,7 @@ import java.util.Comparator;
 import java.util.PriorityQueue;
 
 /**
- * 按 tick 延迟执行的服务端任务队列，供剑牢这种"分圈次第落下"的法术使用。
+ * 按 tick 延迟执行的服务端任务队列，供剑牢这种"分圈次第落下"、三连星箭这种分次发射的法术使用。
  *
  * <p>{@code MinecraftServer.tell} / {@code level.getServer().execute} 都只把任务塞进"当前 tick"
  * 的队列，不支持指定未来 tick；{@code TickTask} 里的 tick 只被 {@code shouldRun} 当作"超时多久
@@ -20,14 +22,14 @@ import java.util.PriorityQueue;
  *
  * <p>每个任务的延迟都从调度那一刻起算，各次施法互不拖延；同一次施法的分段由调用方按段数乘间隔给出延迟。
  */
-public final class SwordRingScheduler {
+public final class DelayedServerTasks {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final PriorityQueue<ScheduledTask> PENDING = new PriorityQueue<>(
             Comparator.comparingLong(ScheduledTask::executeAt).thenComparingLong(ScheduledTask::sequence));
     private static boolean registered;
     private static long nextSequence;
 
-    private SwordRingScheduler() {
+    private DelayedServerTasks() {
     }
 
     /**
@@ -38,9 +40,20 @@ public final class SwordRingScheduler {
         PENDING.add(new ScheduledTask(level.getServer().getTickCount() + delayTicks, nextSequence++, task));
     }
 
+    /**
+     * 法术的后续段：到期时施法者已死亡、被移除或换了维度就跳过。
+     */
+    public static void scheduleForCaster(ServerLevel level, LivingEntity caster, int delayTicks, Runnable task) {
+        schedule(level, delayTicks, () -> {
+            if (IAuthoritativeHealth.combatAlive(caster) && caster.level() == level) {
+                task.run();
+            }
+        });
+    }
+
     private static void ensureRegistered() {
         if (!registered) {
-            NeoForge.EVENT_BUS.register(SwordRingScheduler.class);
+            NeoForge.EVENT_BUS.register(DelayedServerTasks.class);
             registered = true;
         }
     }

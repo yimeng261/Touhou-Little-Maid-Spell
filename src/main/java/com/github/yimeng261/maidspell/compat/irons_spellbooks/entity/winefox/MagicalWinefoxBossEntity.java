@@ -14,7 +14,7 @@ import com.github.tartaricacid.touhoulittlemaid.init.InitItems;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.StellarWitchStarterMaid;
 import com.github.yimeng261.maidspell.client.animation.MagicCastingAnimateState;
 import com.github.yimeng261.maidspell.client.spell.CastingAnimateStateAccessor;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.SwordRingScheduler;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.DelayedServerTasks;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.NpcMerchantTrading;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
@@ -1800,7 +1800,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         serverLevel.sendParticles(ParticleTypes.END_ROD, this.getX(), this.getY(0.8D), this.getZ(),
             12, 0.25D, 0.25D, 0.25D, 0.02D);
         this.playSound(SoundEvents.ENDER_EYE_LAUNCH, 1.0F, 1.4F);
-        SwordRingScheduler.schedule(serverLevel, VOW_CHARM_FLIGHT_TICKS, () -> {
+        DelayedServerTasks.schedule(serverLevel, VOW_CHARM_FLIGHT_TICKS, () -> {
             // 玩家可能在延迟期间下线。
             ServerPlayer receiver = serverLevel.getServer().getPlayerList().getPlayer(playerId);
             if (receiver == null) {

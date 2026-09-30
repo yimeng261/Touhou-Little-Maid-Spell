@@ -3,7 +3,7 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.spell;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.SwordRingScheduler;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.DelayedServerTasks;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.WinefoxSwordProjectileEntity;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
@@ -153,7 +153,7 @@ public class SwordPrisonSpell extends AbstractSpell implements BossExclusiveSpel
                 launchRing(level, caster, landingPoints, damage);
             } else {
                 // 第 n 圈在施法后 n × 0.25 秒落下
-                SwordRingScheduler.schedule(level, ring * RING_INTERVAL_TICKS,
+                DelayedServerTasks.scheduleForCaster(level, caster, ring * RING_INTERVAL_TICKS,
                         () -> launchRing(level, caster, landingPoints, damage));
             }
         }
@@ -203,10 +203,6 @@ public class SwordPrisonSpell extends AbstractSpell implements BossExclusiveSpel
     /** 一圈同时落下。 */
     private static void launchRing(ServerLevel level, LivingEntity caster,
                                    Vec3[] landingPoints, float damage) {
-        // 延迟落下的外圈：施法者已死亡、被移除或换了维度就不再落剑
-        if (!IAuthoritativeHealth.combatAlive(caster) || caster.level() != level) {
-            return;
-        }
         for (Vec3 landing : landingPoints) {
             launchSword(level, caster, landing, damage);
         }

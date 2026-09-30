@@ -1,8 +1,7 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.spell;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.SwordRingScheduler;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.DelayedServerTasks;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.SchoolRegistry;
@@ -31,7 +30,7 @@ import java.util.Optional;
 
 /**
  * 一次吟唱连发三支魔法箭，动画和冷却只结算一次。
- * 后两支由 {@link SwordRingScheduler} 依次延迟发射。
+ * 后两支由 {@link DelayedServerTasks} 依次延迟发射，施法者已死亡或换了维度就不再发射。
  */
 @SuppressWarnings("removal")
 @AutoSpellConfig
@@ -109,7 +108,7 @@ public class TripleStarArrowSpell extends AbstractSpell implements BossExclusive
                 if (shot == 0) {
                     fireArrow(serverLevel, caster, damage, index);
                 } else {
-                    SwordRingScheduler.schedule(serverLevel, shot * SHOT_INTERVAL_TICKS,
+                    DelayedServerTasks.scheduleForCaster(serverLevel, caster, shot * SHOT_INTERVAL_TICKS,
                             () -> fireArrow(serverLevel, caster, damage, index));
                 }
             }
@@ -117,12 +116,7 @@ public class TripleStarArrowSpell extends AbstractSpell implements BossExclusive
         super.onCast(level, spellLevel, caster, castSource, magicData);
     }
 
-    /** 延迟发射时重新检查施法者是否仍在该世界。 */
     private void fireArrow(ServerLevel level, LivingEntity caster, float damage, int shotIndex) {
-        if (!IAuthoritativeHealth.combatAlive(caster) || caster.level() != level) {
-            return;
-        }
-
         Vec3 forward = caster.getLookAngle().normalize();
         Vec3 direction = spread(forward, SHOT_OFFSETS[shotIndex]);
         Vec3 spawn = caster.position().add(0.0D,
