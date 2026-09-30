@@ -28,6 +28,7 @@ import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.spell.providers.PsiProvider;
+import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
 import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
 import com.github.yimeng261.maidspell.utils.MaidSuppressionZone;
 import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
@@ -362,7 +363,7 @@ public class MaidSpellEventHandler {
                     }
                 }
                 if(maid.tickCount%20 == 0){
-                    boolean isMaidSpellTask = MaidSpellMod.MOD_ID.equals(maid.getTask().getUid().getNamespace());
+                    boolean isMaidSpellTask = SpellCombatMeleeTask.UID.getNamespace().equals(maid.getTask().getUid().getNamespace());
                     if(maid.isNoAi() && isMaidSpellTask){
                         maid.setNoAi(false);
                     }
