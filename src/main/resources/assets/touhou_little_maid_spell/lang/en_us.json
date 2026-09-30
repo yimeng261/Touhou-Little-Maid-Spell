@@ -415,7 +415,7 @@
   "entity.touhou_little_maid_spell.stellar_witch.vow_already_bound": "The Stellar Witch has already sworn her vow",
   "entity.touhou_little_maid_spell.stellar_witch.vow_gift_missing": "Something went wrong with the token of the vow. Take this empty charm instead.",
   "item.touhou_little_maid_spell.returning_star": "Returning Star",
-  "item.touhou_little_maid_spell.returning_star.desc": "A pledge wrought from a Star Meteorite and mithril scrap. After three fair victories over the Stellar Witch, win one more fight without any maid damage, then show her this.",
+  "item.touhou_little_maid_spell.returning_star.desc": "A pledge wrought from a Star Meteorite and mithril ingots. After three fair victories over the Stellar Witch, win one more fight without any maid damage, then show her this.",
   "effect.touhou_little_maid_spell.void_walk": "Void Walk",
   "item.touhou_little_maid_spell.staranchor_pearl": "Staranchor Pearl",
   "item.touhou_little_maid_spell.staranchor_pearl.desc1": "A relic of the previous civilization, made to explore the void and to keep its bearer whole in twisted space.",
