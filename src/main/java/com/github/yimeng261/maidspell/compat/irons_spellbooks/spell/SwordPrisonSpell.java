@@ -203,6 +203,10 @@ public class SwordPrisonSpell extends AbstractSpell implements BossExclusiveSpel
     /** 一圈同时落下。 */
     private static void launchRing(ServerLevel level, LivingEntity caster,
                                    Vec3[] landingPoints, float damage) {
+        // 延迟落下的外圈：施法者已死亡、被移除或换了维度就不再落剑
+        if (!IAuthoritativeHealth.combatAlive(caster) || caster.level() != level) {
+            return;
+        }
         for (Vec3 landing : landingPoints) {
             launchSword(level, caster, landing, damage);
         }
