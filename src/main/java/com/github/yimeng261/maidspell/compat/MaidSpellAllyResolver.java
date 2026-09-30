@@ -88,13 +88,60 @@ public final class MaidSpellAllyResolver {
     }
 
     public static boolean isFriendlyDamage(LivingEntity target, @Nullable Entity causing, @Nullable Entity direct) {
-        // 玩家造成的伤害按目标原有规则处理（例如女仆对主人伤害的减免）
-        if (causing instanceof Player || direct instanceof Player) {
-            return false;
+        Player player = causing instanceof Player causingPlayer ? causingPlayer
+                : direct instanceof Player directPlayer ? directPlayer : null;
+        if (player != null) {
+            return isFriendlyPlayerDamage(target, player, direct != null && direct != player);
         }
         return areFriendly(target, causing)
                 || areFriendly(target, direct)
                 || resolveResponsibleEntity(direct).map(owner -> areFriendly(target, owner)).orElse(false);
+    }
+
+    /**
+     * 玩家造成的伤害：
+     * <ul>
+     *     <li>法术、弹射物、范围伤害等间接伤害打不到自己的女仆、宠物和召唤物；近战按目标原有规则处理（例如车万女仆对自家女仆的规则）。</li>
+     *     <li>同一记分板队伍且关闭友伤时，打不到队友的女仆、宠物和召唤物。</li>
+     * </ul>
+     * 玩家之间的伤害交给原版处理。
+     */
+    private static boolean isFriendlyPlayerDamage(LivingEntity target, Player player, boolean indirect) {
+        // 没有主人的生物（绝大多数怪物）不走主人链
+        if (target instanceof Player || !couldHaveOwner(target)) {
+            return false;
+        }
+        if (indirect && isOwnedById(target, player.getUUID(), 0)) {
+            return true;
+        }
+        Team team = player.getTeam();
+        if (team == null || team.isAllowFriendlyFire()) {
+            return false;
+        }
+        return resolveResponsibleEntity(target)
+                .filter(owner -> owner instanceof Player && owner != player && player.isAlliedTo(owner))
+                .isPresent();
+    }
+
+    /**
+     * 与 {@code collectAffinityIds(entity).contains(id)} 判定相同：每一节比对自身和记下的主人 UUID，
+     * 再分别沿直接主人、按主人 UUID 找回的实体两条路往上（两条路指向同一实体时只走一次）。
+     * <p>深度由 {@link #OWNER_TRACE_LIMIT} 封顶，环也在此截断，不分配集合；该方法挂在受击事件上，玩家每次间接伤害都会调用。
+     */
+    private static boolean isOwnedById(@Nullable Entity entity, UUID id, int depth) {
+        if (entity == null || depth > OWNER_TRACE_LIMIT) {
+            return false;
+        }
+        UUID ownerId = getDirectOwnerId(entity);
+        if (id.equals(entity.getUUID()) || id.equals(ownerId)) {
+            return true;
+        }
+        Entity owner = getDirectOwner(entity);
+        if (isOwnedById(owner, id, depth + 1)) {
+            return true;
+        }
+        Entity resolved = findEntity(entity, ownerId);
+        return resolved != owner && isOwnedById(resolved, id, depth + 1);
     }
 
     /**
