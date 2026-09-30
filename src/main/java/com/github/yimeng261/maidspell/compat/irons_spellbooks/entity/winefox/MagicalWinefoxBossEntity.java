@@ -1375,7 +1375,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      */
     private void adoptChallengeFrom(Player owner) {
         this.challengerId = owner.getUUID();
-        WinefoxChallengeProgress.markChallengeActive(owner);
+        WinefoxChallengeProgress.markChallengeActive(this.getServer(), owner.getUUID());
         this.hasStartedChallenge = true;
         this.resetBattleTally();
         this.entityData.set(RESTRICTED, false);
@@ -1935,7 +1935,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 同 adoptChallengeFrom：置空会连当天限购次数一起抹掉，而报价集合并没有变。
         this.setTradingPlayer(null);
         this.challengerId = challenger.getUUID();
-        WinefoxChallengeProgress.markChallengeActive(challenger);
+        WinefoxChallengeProgress.markChallengeActive(this.getServer(), challenger.getUUID());
         this.challengeStartTicks = WinefoxAction.CURTSY_COMBAT.durationTicks();
         this.beginAction(WinefoxAction.CURTSY_COMBAT);
         this.level().playSound(null, this.blockPosition(),
@@ -1960,7 +1960,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (challenger == null || !challenger.isAlive() || challenger.isSpectator()
             || this.distanceToSqr(challenger) > CHALLENGER_MAX_DISTANCE * CHALLENGER_MAX_DISTANCE
             || challenger.getHealth() <= duelSurvivalFloor()) {
-            WinefoxChallengeProgress.clearChallengeActive(challenger);
+            WinefoxChallengeProgress.clearChallengeActive(this.getServer(), this.challengerId);
             this.challengerId = null;
             // 表演中途作废也要把动作收掉：动作是同步值，挂着不放，magic_casting 通道就会继续拿这段行礼
             // 盖住她回坐姿后的 sit，玩家看到的是一边坐着一边鞠躬。
@@ -2490,7 +2490,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         boolean playerVictory = source != null && this.isPlayerDuelDamage(source);
         if (playerVictory && this.challengerId != null) {
             this.postVictoryChatPlayerId = this.challengerId;
-            WinefoxChallengeProgress.markDefeated(this.level().getPlayerByUUID(this.challengerId));
+            WinefoxChallengeProgress.markDefeated(this.getServer(), this.challengerId);
         }
         this.maidspell$setEncounterState(WinefoxEncounterState.DEFEATED);
         // 她打输了 —— 与「玩家打输」那一路各放一次提示音，见 playCombatEndCue。
@@ -2706,7 +2706,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.maidspell$setEncounterState(WinefoxEncounterState.SEATED);
         this.entityData.set(CURTSYING, false);
         this.entityData.set(BATTLE_MUSIC, false);
-        WinefoxChallengeProgress.clearChallengeActive(this.maidspell$challenger());
+        WinefoxChallengeProgress.clearChallengeActive(this.getServer(), this.challengerId);
         this.challengerId = null;
         this.challengeStartTicks = 0;
         this.clearAction();
@@ -3062,6 +3062,26 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         WinefoxEncounterState state = this.maidspell$encounterState();
         return this.challengerId != null && this.challengerId.equals(player.getUUID())
                 && (state == WinefoxEncounterState.CHALLENGE_START || state == WinefoxEncounterState.COMBAT);
+    }
+
+    @Override
+    public void onAddedToLevel() {
+        super.onAddedToLevel();
+        if (!this.level().isClientSide) {
+            this.restoreChallengeActiveMark();
+        }
+    }
+
+    /**
+     * 实体加入世界时补记挑战中标记。挑战者和阶段随实体存档，进度存档里的标记可能对不上：
+     * 旧版本记在玩家身上的标记升级时已丢弃，崩服时实体区块和进度存档也可能不同步。
+     */
+    private void restoreChallengeActiveMark() {
+        WinefoxEncounterState state = this.maidspell$encounterState();
+        if (this.challengerId != null
+                && (state == WinefoxEncounterState.CHALLENGE_START || state == WinefoxEncounterState.COMBAT)) {
+            WinefoxChallengeProgress.markChallengeActive(this.getServer(), this.challengerId);
+        }
     }
 
     @Nullable
