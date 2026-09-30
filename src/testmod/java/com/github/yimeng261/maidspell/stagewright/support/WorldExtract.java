@@ -39,7 +39,7 @@ public final class WorldExtract {
 
     /** 本模组模板对应的拼图片（原版补充片不参与快照比对）。 */
     public static List<StructureStage.Piece> ownPieces(StructureStage.Placed placed) {
-        return placed.pieces().stream().filter(p -> StructureSnapshots.TEMPLATES.containsKey(p.template())).toList();
+        return placed.pieces().stream().filter(p -> p.template().startsWith(Checks.NS)).toList();
     }
 
     /** 已放置的本模组模板在快照里的预期内容合集。 */

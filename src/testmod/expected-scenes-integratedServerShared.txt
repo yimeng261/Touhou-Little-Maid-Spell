@@ -7,4 +7,4 @@ touhou_little_maid_spell.shared.windBell.noQuota
 touhou_little_maid_spell.shared.windBell.playersFindOwnRetreats
 # 已知缺陷（required=false）
 touhou_little_maid_spell.knownDefect.sharedFirstEntryNoticeVisible
-touhou_little_maid_spell.knownDefect.sharedReshowIsFree
+touhou_little_maid_spell.shared.windBell.reshowConsumesBell

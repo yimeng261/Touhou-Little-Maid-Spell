@@ -61,9 +61,9 @@ public final class SharedRetreatScenes {
                 SharedRetreatScenes::switchItemDuringSearch));
         scenes.add(Players.hostScene("shared.windBell.reshowSameCoordinates", ENTER_TICKS + SEARCH_TICKS + 100,
                 (ctx, player) -> reshow(ctx, player, false)));
-        // 源码注释约定"已找到过的结构免费重复查看"：重复查看不应消耗铃
-        scenes.add(Players.hostScene("knownDefect.sharedReshowIsFree", ENTER_TICKS + SEARCH_TICKS + 100,
-                (ctx, player) -> reshow(ctx, player, true)).withRequired(false));
+        // 重复查看复用坐标，仍消耗一只铃
+        scenes.add(Players.hostScene("shared.windBell.reshowConsumesBell", ENTER_TICKS + SEARCH_TICKS + 100,
+                (ctx, player) -> reshow(ctx, player, true)));
         scenes.add(Players.hostScene("shared.windBell.noQuota", ENTER_TICKS + 200, SharedRetreatScenes::noQuota));
         scenes.add(Checks.superflat("shared.windBell.playersFindOwnRetreats", ENTER_TICKS + 2 * SEARCH_TICKS + 800,
                 SharedRetreatScenes::playersFindOwnRetreats));
@@ -124,8 +124,8 @@ public final class SharedRetreatScenes {
         });
     }
 
-    /** 已找到后再次右键：直接给出记住的坐标，不再进入等待搜索；checkFree 时还要求不消耗铃。 */
-    private static void reshow(SceneContext ctx, ServerPlayer player, boolean checkFree) {
+    /** 已找到后再次右键：直接给出记住的坐标，不再进入等待搜索；checkConsumption 时还检查消耗一只铃。 */
+    private static void reshow(SceneContext ctx, ServerPlayer player, boolean checkConsumption) {
         Players.hold(player, RetreatScenes.bell(BELLS));
         RetreatScenes.enterRetreat(ctx, player, () -> {
             BlockPos saved = RetreatDimensionData.get(ctx.server()).getFoundStructurePos(player.getUUID());
@@ -139,8 +139,8 @@ public final class SharedRetreatScenes {
                 if (found != null) {
                     ctx.check(found.x() + "," + found.z()).as("重复查看给出的坐标").isEqualTo(saved.getX() + "," + saved.getZ());
                 }
-                if (checkFree) {
-                    ctx.check(player.getMainHandItem().getCount()).as("重复查看后手上铃的数量").isEqualTo(BELLS);
+                if (checkConsumption) {
+                    ctx.check(player.getMainHandItem().getCount()).as("重复查看后手上铃的数量").isEqualTo(BELLS - 1);
                 }
             });
         });

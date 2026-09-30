@@ -8,7 +8,13 @@ package com.github.yimeng261.maidspell.stagewright;
 public enum TestTopology {
     DEDICATED_SERVER("dedicatedServer"),
     INTEGRATED_SERVER("integratedServer"),
-    INTEGRATED_SERVER_SHARED("integratedServerShared");
+    INTEGRATED_SERVER_SHARED("integratedServerShared"),
+    /** 只装车万女仆（可选联动全部缺席）。 */
+    DEDICATED_SERVER_MINIMAL("dedicatedServerMinimal"),
+    /** 全套联动去掉农夫乐事。 */
+    DEDICATED_SERVER_NO_FARMERS_DELIGHT("dedicatedServerNoFarmersDelight"),
+    /** 专用服 + 经网络加入的真实客户端。 */
+    DEDICATED_SERVER_WITH_CLIENT("dedicatedServerWithClient");
 
     private final String id;
 

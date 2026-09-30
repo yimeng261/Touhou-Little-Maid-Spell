@@ -121,11 +121,24 @@ public final class StructureStage {
             // HiddenRetreatStructure：起点在估算地表，最远距离写死 150，不应用含水
             case "touhou_little_maid_spell:hidden_retreat" -> new Jigsaw(pool, Optional.empty(), size,
                     at(ctx, firstAir - 1), false, Optional.empty(), 150, LiquidSettings.IGNORE_WATERLOGGING);
-            // RelicSanctum（精灵秘境同类型）/FallenSanctum：起点在地表上一格
-            case "touhou_little_maid_spell:relic_sanctum", "touhou_little_maid_spell:fallen_sanctum" -> new Jigsaw(
+            // 堕天圣堂地下入口需要完整空间，超平坦场地将起点抬离世界底部。
+            case "touhou_little_maid_spell:fallen_sanctum" -> new Jigsaw(pool, Optional.empty(), size,
+                    at(ctx, Math.max(firstAir, ctx.level().getMinBuildHeight() + 32)), false, Optional.empty(),
+                    json.has("max_distance_from_center") ? json.get("max_distance_from_center").getAsInt() : 256,
+                    LiquidSettings.APPLY_WATERLOGGING);
+            // RelicSanctum（精灵秘境同类型）：起点在地表上一格
+            case "touhou_little_maid_spell:relic_sanctum" -> new Jigsaw(
                     pool, Optional.empty(), size, at(ctx, firstAir), false, Optional.empty(),
                     json.has("max_distance_from_center") ? json.get("max_distance_from_center").getAsInt() : 256,
                     LiquidSettings.APPLY_WATERLOGGING);
+            case "touhou_little_maid_spell:stellar_endshore" -> new Jigsaw(pool, Optional.empty(), size,
+                    at(ctx, net.minecraft.util.Mth.clamp((json.has("base_height") ? json.get("base_height").getAsInt() : 150) - 27,
+                            ctx.level().getMinBuildHeight(), ctx.level().getMaxBuildHeight() - 80)),
+                    false, Optional.empty(), json.has("max_distance_from_center") ? maxDistance(json.get("max_distance_from_center")) : 256,
+                    LiquidSettings.APPLY_WATERLOGGING);
+            case "touhou_little_maid_spell:starwatch_tower" -> new Jigsaw(pool, Optional.empty(), size,
+                    at(ctx, firstAir + (json.has("vertical_offset") ? json.get("vertical_offset").getAsInt() : 0)), false, Optional.empty(),
+                    json.has("max_distance_from_center") ? maxDistance(json.get("max_distance_from_center")) : 256, LiquidSettings.APPLY_WATERLOGGING);
             // 原版拼图与 LandJigsaw：固定起始高度，可投影到高度图
             case "minecraft:jigsaw", "touhou_little_maid_spell:land_jigsaw" -> new Jigsaw(pool,
                     json.has("start_jigsaw_name")
@@ -207,13 +220,49 @@ public final class StructureStage {
         ctx.cleanup(() -> unregister(level, structure, startChunk, chunks));
 
         ChunkGenerator generator = level.getChunkSource().getGenerator();
+        var captured = new java.util.IdentityHashMap<StructurePiece, List<StructureTemplate.StructureBlockInfo>>();
+        BoundingBox firstBox = start.getPieces().getFirst().getBoundingBox();
+        BlockPos pivot = new BlockPos(firstBox.getCenter().getX(), firstBox.minY(), firstBox.getCenter().getZ());
         for (ChunkPos chunk : chunks) {
-            start.placeInChunk(level, level.structureManager(), generator, level.getRandom(),
-                    new BoundingBox(chunk.getMinBlockX(), level.getMinBuildHeight(), chunk.getMinBlockZ(),
-                            chunk.getMaxBlockX(), level.getMaxBuildHeight(), chunk.getMaxBlockZ()), chunk);
+            BoundingBox clip = new BoundingBox(chunk.getMinBlockX(), level.getMinBuildHeight(), chunk.getMinBlockZ(),
+                    chunk.getMaxBlockX(), level.getMaxBuildHeight(), chunk.getMaxBlockZ());
+            for (StructurePiece part : start.getPieces()) {
+                if (!part.getBoundingBox().intersects(clip)) continue;
+                captured.computeIfAbsent(part, ignored -> new ArrayList<>())
+                        .addAll(expectedBlocks(level, part, pivot, clip));
+                part.postProcess(level, level.structureManager(), generator, level.getRandom(), clip, chunk, pivot);
+            }
+            structure.afterPlace(level, level.structureManager(), generator, level.getRandom(), clip, chunk,
+                    new PiecesContainer(start.getPieces()));
         }
+        List<Piece> placedPieces = new ArrayList<>();
+        for (Piece piece : pieces) {
+            StructurePiece source = start.getPieces().stream()
+                    .filter(part -> part.getBoundingBox().equals(piece.box())).findFirst().orElseThrow();
+            placedPieces.add(new Piece(piece.template(), piece.box(), piece.extent(), piece.terrainMatching(),
+                    captured.getOrDefault(source, List.of()), piece.entities()));
+        }
+        pieces = placedPieces;
         ctx.record("templates", pieces.stream().map(Piece::template).toList());
         return new Placed(pieces, start.getPieces().stream().map(StructurePiece::getBoundingBox).toList());
+    }
+
+    /** 在每个区块的拼图片放置前按实时地形和同一裁剪范围计算预期方块。 */
+    private static List<StructureTemplate.StructureBlockInfo> expectedBlocks(
+            ServerLevel level, StructurePiece part, BlockPos pivot, BoundingBox clip) {
+        if (!(part instanceof PoolElementStructurePiece piece)
+                || !(piece.getElement() instanceof SinglePoolElement single)) return List.of();
+        StructureTemplate template = Reflect.call(single, SinglePoolElement.class, "getTemplate",
+                new Class<?>[]{StructureTemplateManager.class}, level.getStructureManager());
+        LiquidSettings liquid = Reflect.field(piece, PoolElementStructurePiece.class, "liquidSettings");
+        StructurePlaceSettings settings = Reflect.call(single, SinglePoolElement.class, "getSettings",
+                new Class<?>[]{Rotation.class, BoundingBox.class, LiquidSettings.class, boolean.class},
+                piece.getRotation(), clip, liquid, false);
+        List<StructureTemplate.Palette> palettes = Reflect.field(template, StructureTemplate.class, "palettes");
+        if (palettes.isEmpty()) return List.of();
+        return StructureTemplate.processBlockInfos(level, piece.getPosition(), pivot, settings,
+                settings.getRandomPalette(palettes, piece.getPosition()).blocks(), template).stream()
+                .filter(info -> clip.isInside(info.pos())).toList();
     }
 
     /** 与 StructureStart.placeInChunk → SinglePoolElement.place 相同的参数，放置前算出预期内容。 */

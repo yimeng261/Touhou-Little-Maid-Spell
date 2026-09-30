@@ -38,6 +38,15 @@ public final class Checks {
         ctx.await(() -> ctx.ticks() >= at + ticks).within(ticks + 10).then(next);
     }
 
+    /** 接下来 ticks 个 tick 里每 tick 运行一次 sample，结束后运行 next。 */
+    public static void watch(SceneContext ctx, int ticks, Runnable sample, Runnable next) {
+        int at = ctx.ticks();
+        ctx.await(() -> {
+            sample.run();
+            return ctx.ticks() >= at + ticks;
+        }).within(ticks + 10).then(next);
+    }
+
     /** 集合完全相等：分别报告缺少和多出的元素，便于直接看出差异。 */
     public static void sameSet(SceneContext ctx, String label, Collection<String> expected, Collection<String> actual) {
         Set<String> missing = new TreeSet<>(expected);

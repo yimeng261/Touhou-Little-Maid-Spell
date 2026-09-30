@@ -104,6 +104,40 @@ public final class Players {
         return maid.isOwnedBy(player);
     }
 
+    /** 手持空魂符右键女仆把她收进魂符（车万女仆的真实交互入口），返回装着女仆的魂符；主手恢复原物品。 */
+    public static ItemStack storeInSlab(ServerPlayer player, EntityMaid maid) {
+        ItemStack previous = player.getMainHandItem().copy();
+        hold(player, Actors.stack("touhou_little_maid:smart_slab_empty"));
+        player.getCooldowns().removeCooldown(player.getMainHandItem().getItem());
+        player.interactOn(maid, InteractionHand.MAIN_HAND);
+        ItemStack slab = player.getMainHandItem().copy();
+        hold(player, previous);
+        return slab;
+    }
+
+    /** 拿着装有女仆的魂符对 pos 方块顶面右键放出女仆（车万女仆的真实使用入口），主手恢复原物品。 */
+    public static void releaseSlab(SceneContext ctx, ServerPlayer player, ItemStack slab,
+                                   net.minecraft.core.BlockPos pos, Runnable next) {
+        ctx.await(() -> !player.getCooldowns().isOnCooldown(slab.getItem())).within(40).then(() -> {
+            InteractionResult result = releaseSlab(player, slab, pos);
+            if (!result.consumesAction()) {
+                ctx.fail("魂符放出交互失败：" + result);
+                return;
+            }
+            next.run();
+        });
+    }
+
+    private static InteractionResult releaseSlab(ServerPlayer player, ItemStack slab, net.minecraft.core.BlockPos pos) {
+        ItemStack previous = player.getMainHandItem().copy();
+        hold(player, slab.copy());
+        net.minecraft.world.phys.BlockHitResult hit = new net.minecraft.world.phys.BlockHitResult(
+                net.minecraft.world.phys.Vec3.atCenterOf(pos).add(0, 0.5, 0), net.minecraft.core.Direction.UP, pos, false);
+        InteractionResult result = player.gameMode.useItemOn(player, player.serverLevel(), player.getMainHandItem(), InteractionHand.MAIN_HAND, hit);
+        hold(player, previous);
+        return result;
+    }
+
     /** 无 AI 的女仆经真实交互驯服到玩家名下（失败记一条），第一个饰品槽放入 bauble。 */
     public static EntityMaid ownedMaid(SceneContext ctx, ServerPlayer player, int dx, int dy, int dz, String bauble) {
         EntityMaid maid = Actors.stillMaid(ctx, dx, dy, dz);

@@ -22,6 +22,16 @@ public final class Reflect {
         }
     }
 
+    public static void set(Object target, Class<?> owner, String name, Object value) {
+        try {
+            Field field = owner.getDeclaredField(name);
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("无法写入 " + owner.getName() + "#" + name, e);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     public static <T> T call(Object target, Class<?> owner, String name, Class<?>[] types, Object... args) {
         try {

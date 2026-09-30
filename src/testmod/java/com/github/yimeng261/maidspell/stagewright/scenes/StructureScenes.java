@@ -477,9 +477,26 @@ public final class StructureScenes {
     /** 已知缺陷：模板里的方块都应来自已注册的方块（没有声明依赖的模组方块会变成空气）。 */
     private static void onlyRegisteredBlocks(SceneContext ctx) {
         List<String> missing = new ArrayList<>();
-        StructureSnapshots.TEMPLATES.forEach((template, snapshot) -> snapshot.specialBlocks().stream()
-                .filter(block -> !BuiltInRegistries.BLOCK.containsKey(ResourceLocation.parse(block)))
-                .forEach(block -> missing.add(template + ": " + block)));
+        for (String template : StructureSnapshots.TEMPLATES.keySet()) {
+            ResourceLocation id = ResourceLocation.parse(template);
+            ResourceLocation file = ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "structure/" + id.getPath() + ".nbt");
+            try (var stream = ctx.server().getResourceManager().getResourceOrThrow(file).open()) {
+                CompoundTag nbt = net.minecraft.nbt.NbtIo.readCompressed(stream, net.minecraft.nbt.NbtAccounter.unlimitedHeap());
+                List<ListTag> palettes = new ArrayList<>();
+                palettes.add(nbt.getList("palette", Tag.TAG_COMPOUND));
+                for (Tag alternative : nbt.getList("palettes", Tag.TAG_LIST)) palettes.add((ListTag) alternative);
+                for (ListTag palette : palettes) {
+                    for (Tag entry : palette) {
+                        String block = ((CompoundTag) entry).getString("Name");
+                        if (!BuiltInRegistries.BLOCK.containsKey(ResourceLocation.parse(block))) {
+                            missing.add(template + ": " + block);
+                        }
+                    }
+                }
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        }
         ctx.check(missing).as("引用了未注册方块的模板").isEmpty();
     }
 }

@@ -258,13 +258,13 @@ public final class RetreatScenes {
             ctx.record("entry", entryPos.toShortString());
             Structure structure = Worldgen.structure(level, HIDDEN_RETREAT).value();
             // 与真实玩家到达时一样：落点周围的候选区块推进到 STRUCTURE_STARTS，第一个成功的就是本维度唯一的隐世之境
-            List<ChunkPos> around = Worldgen.candidates(level, Worldgen.structureSet(level, HIDDEN_RETREAT_SET).value(), entry, 1);
+            List<ChunkPos> around = Worldgen.candidates(level, Worldgen.structureSet(level, HIDDEN_RETREAT_SET).value(), entry, 8);
             List<ChunkPos> generated = new ArrayList<>();
             Batch.runAsync(ctx, around, chunk -> Worldgen.startAt(level, structure, chunk).thenApply(start -> {
                 if (start != null) {
                     generated.add(start.getChunkPos());
                 }
-                return false;
+                return start != null;
             }), 600, () -> {
                 ctx.record("generatedNearEntry", generated.toString());
                 ctx.check(generated.size()).as("落点附近生成的隐世之境数").isEqualTo(1);

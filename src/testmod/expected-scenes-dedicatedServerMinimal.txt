@@ -1,0 +1,10 @@
+# dedicatedServerMinimal 拓扑的场景清单（只装车万女仆与本模组）
+# 只装车万女仆：可选联动的资源与内容
+touhou_little_maid_spell.minimal.noDataLoadErrors
+touhou_little_maid_spell.minimal.ironsContentNotRegistered
+touhou_little_maid_spell.minimal.ironsStructuresNotRegistered
+touhou_little_maid_spell.minimal.goetyStructuresNotRegistered
+touhou_little_maid_spell.minimal.baseStructuresRegistered
+touhou_little_maid_spell.minimal.retreatChestsFallBack
+touhou_little_maid_spell.minimal.maidSpawnsAndTames
+touhou_little_maid_spell.minimal.dreamCrystalWithoutCurios

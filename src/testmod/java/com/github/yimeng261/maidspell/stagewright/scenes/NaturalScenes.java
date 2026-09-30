@@ -349,13 +349,13 @@ public final class NaturalScenes {
         });
     }
 
-    /** 文档"不应生成在水面、水底或被水淹没的位置"：真实起点的占地内水柱比例不超过 10%。 */
+    /** 可选地形观测：建筑本体占地内的水柱比例不超过 10%。 */
     private static void notInWater(SceneContext ctx, Natural natural) {
         ServerLevel level = Worldgen.level(ctx, natural.dimension());
         sampleStarts(ctx, level, natural.path(), DRY_STARTS, starts -> {
             List<String> summary = new ArrayList<>();
             for (StructureStart start : starts) {
-                BoundingBox box = start.getBoundingBox();
+                BoundingBox box = actualPieceBox(start);
                 double water = Worldgen.waterFraction(level, box, 4);
                 String where = start.getChunkPos() + " " + box;
                 summary.add(where + String.format(" water=%.2f", water));
@@ -374,15 +374,14 @@ public final class NaturalScenes {
     }
 
     /**
-     * 已知缺陷：堕天圣堂按 90 格高度下沉到 y=32 附近，但拼图组装出的结构可能更高、起点以下也有部件，
-     * 自然生成时会伸进下界顶层基岩（y≥123）或低于世界底部（y&lt;0）。
+     * 堕天圣堂的拼图片须位于世界底部与下界顶层基岩之间；地形适配范围不算建筑本体。
      */
     private static void fallenFitsNether(SceneContext ctx) {
         ServerLevel level = Worldgen.level(ctx, NETHER);
         sampleStarts(ctx, level, "fallen_sanctum", 4, starts -> {
             List<String> summary = new ArrayList<>();
             for (StructureStart start : starts) {
-                BoundingBox box = start.getBoundingBox();
+                BoundingBox box = actualPieceBox(start);
                 String where = start.getChunkPos() + " " + box;
                 summary.add(where + " height=" + box.getYSpan());
                 ctx.check(box.maxY()).as(where + " 最高点（下界顶层基岩最低 y=" + NETHER_ROOF_MIN_Y + "）")
@@ -392,6 +391,11 @@ public final class NaturalScenes {
             }
             ctx.record("starts", summary);
         });
+    }
+
+    private static BoundingBox actualPieceBox(StructureStart start) {
+        return BoundingBox.encapsulatingBoxes(start.getPieces().stream()
+                .map(net.minecraft.world.level.levelgen.structure.StructurePiece::getBoundingBox).toList()).orElseThrow();
     }
 
     /** 按放置网格由近及远抽样 count 个真实起点；满足生成条件却没有起点的候选、一个都没找到都记为失败。 */

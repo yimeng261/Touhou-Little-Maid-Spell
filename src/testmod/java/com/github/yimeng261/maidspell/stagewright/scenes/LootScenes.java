@@ -2,23 +2,15 @@ package com.github.yimeng261.maidspell.stagewright.scenes;
 
 import com.github.yimeng261.maidspell.stagewright.data.LootSnapshots;
 import com.github.yimeng261.maidspell.stagewright.support.Checks;
+import com.github.yimeng261.maidspell.stagewright.support.Kills;
 import com.github.yimeng261.maidspell.stagewright.support.LootReach;
 import net.magicterra.stagewright.contract.Terrain;
 import net.magicterra.stagewright.scene.Scene;
 import net.magicterra.stagewright.scene.SceneContext;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.phys.AABB;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.common.util.FakePlayerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,48 +66,18 @@ public final class LootScenes {
     }
 
     /** 用假玩家击杀若干次，掉落物都应来自该实体的掉落表，且并集非空。 */
-    private static void checkKillDrops(SceneContext ctx, String entityId, String table) {
-        ServerLevel level = ctx.level();
+    static void checkKillDrops(SceneContext ctx, String entityId, String table) {
         MinecraftServer server = ctx.server();
-        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.parse(entityId));
-        FakePlayer killer = FakePlayerFactory.getMinecraft(level);
-        BlockPos spawn = ctx.rel(0, 1, 0);
-        Set<String> dropped = new TreeSet<>();
-        Set<String> equipment = new TreeSet<>();
-        int stillAlive = 0;
-        for (int i = 0; i < KILLS; i++) {
-            Entity entity = type.create(level);
-            if (!(entity instanceof LivingEntity living)) {
-                ctx.fail(entityId + " 不是可击杀的生物");
-                return;
-            }
-            living.moveTo(spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0, 0);
-            level.addFreshEntity(living);
-            living.getAllSlots().forEach(stack -> {
-                if (!stack.isEmpty()) {
-                    equipment.add(LootReach.keyOf(stack, server));
-                }
-            });
-            DamageSource source = level.damageSources().playerAttack(killer);
-            living.setLastHurtByPlayer(killer);
-            living.hurt(source, Float.MAX_VALUE);
-            if (living.isAlive()) {
-                stillAlive++;
-                living.setHealth(0);
-                living.die(source);
-            }
-            living.discard();
-            AABB box = new AABB(spawn).inflate(4);
-            for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, box)) {
-                dropped.add(LootReach.keyOf(item.getItem(), server));
-                item.discard();
-            }
+        Kills.Result result = Kills.drops(ctx, entityId, KILLS);
+        if (result == null) {
+            return;
         }
+        Set<String> dropped = result.dropKeys(server);
         ctx.record("drops", dropped);
-        ctx.record("equipment", equipment);
-        ctx.record("survivedLethalHit", stillAlive);
+        ctx.record("equipment", result.equipment());
+        ctx.record("survivedLethalHit", result.stillAlive());
         Set<String> allowed = new TreeSet<>(LootReach.reachable(server, table));
-        allowed.addAll(equipment);
+        allowed.addAll(result.equipment());
         Set<String> foreign = new TreeSet<>(dropped);
         foreign.removeAll(allowed);
         ctx.check(dropped).as(entityId + " 击杀 " + KILLS + " 次的掉落").isNotEmpty();

@@ -1,0 +1,6 @@
+# dedicatedServerWithClient 拓扑的场景清单（专用服 + 经网络加入的真实客户端）
+# 末影腰包远程（真实网络）
+touhou_little_maid_spell.remote.openFarMaidOverNetwork
+touhou_little_maid_spell.remote.openCrossDimensionMaidOverNetwork
+touhou_little_maid_spell.remote.fullListStaysConnected
+touhou_little_maid_spell.remote.remoteDataPushedWhileOpen

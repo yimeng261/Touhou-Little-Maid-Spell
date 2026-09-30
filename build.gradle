@@ -1,3 +1,5 @@
+import net.darkhax.curseforgegradle.TaskPublishCurseForge
+
 plugins {
     id 'java-library'
     id 'maven-publish'
@@ -89,12 +91,36 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+// main 的运行时类路径去掉 dropped 选中的模块（含它们各自的构件，不含其他模块间接引入的同名构件）
+def mainRuntimeWithout(Closure<Boolean> dropped) {
+    return configurations.runtimeClasspath.incoming.artifactView {
+        componentFilter { id -> !(id instanceof ModuleComponentIdentifier) || !dropped(id) }
+    }.files
+}
+
+// 除车万女仆以外的模组坐标（含联动模组间接引入的 JEI、TerraBlender、Curios、GeckoLib 等）
+def optionalModGroups = ['io.redspace', 'maven.modrinth', 'vazkii.patchouli', 'software.bernie.geckolib',
+                         'top.theillusivec4.curios', 'mezz.jei', 'com.github.glitchfiend', 'com.hollingsworth.nuggets']
+
 // StageWright 测试场景放在 testmod 源集，不进发布 jar，继承 main 的开发类路径。
+// testmodMinimal / testmodNoFarmersDelight 没有自己的源码，复用 testmod 的场景，只换运行时模组组合。
 // clientTest 是纯 JVM 的 JUnit 源集，通过 worlddriver RPC 附着到 hold 住的客户端做界面测试。
 sourceSets {
     testmod {
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+    testmodMinimal {
+        runtimeClasspath = sourceSets.testmod.output + sourceSets.main.output + configurations.testmodRuntimeClasspath +
+                mainRuntimeWithout { id ->
+                    id.group in optionalModGroups || id.group.startsWith('com.hollingsworth')
+                            || (id.group == 'curse.maven' && !id.module.startsWith('touhou-little-maid-'))
+                }
+    }
+    testmodNoFarmersDelight {
+        runtimeClasspath = sourceSets.testmod.output + sourceSets.main.output + configurations.testmodRuntimeClasspath +
+                // 妖怪的归家强依赖农夫乐事，一并去掉
+                mainRuntimeWithout { id -> id.group == 'maven.modrinth' && id.module in ['farmers-delight', 'youkaishomecoming'] }
     }
     clientTest
 }
@@ -118,6 +144,22 @@ stagewright {
             runTask = 'runStagewrightIntegratedServerShared'
             expectFile = file('src/testmod/expected-scenes-integratedServerShared.txt')
             client = true
+        }
+        // 只装车万女仆：可选联动全部缺席时的加载、资源条件与结构
+        dedicatedServerMinimal {
+            runTask = 'runStagewrightDedicatedServerMinimal'
+            expectFile = file('src/testmod/expected-scenes-dedicatedServerMinimal.txt')
+        }
+        dedicatedServerNoFarmersDelight {
+            runTask = 'runStagewrightDedicatedServerNoFarmersDelight'
+            expectFile = file('src/testmod/expected-scenes-dedicatedServerNoFarmersDelight.txt')
+        }
+        // 专用服 + 经网络加入的真实客户端：数据包真正编码、传输、解码
+        dedicatedServerWithClient {
+            runTask = 'runStagewrightDedicatedServerWithClient'
+            companionRunTask = 'runStagewrightJoiningClient'
+            companionResultsFile = file('run-stagewright-joiningClient/stagewright/stagewright-client-results.jsonl')
+            expectFile = file('src/testmod/expected-scenes-dedicatedServerWithClient.txt')
         }
     }
 }
@@ -154,16 +196,35 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
-        // StageWright 运行配置：类路径取 testmod 源集，测试框架和 worlddriver 只在这些运行里加载
-        stagewrightDedicatedServer {
-            server()
+        // StageWright 专用服运行配置：类路径取 testmod 系列源集，测试框架和 worlddriver 只在这些运行里加载。
+        // 端口避开本机其它开发服常用的 25565；带客户端的拓扑等客户端进服后再开跑场景
+        [
+                dedicatedServer                : [sourceSets.testmod, '25591'],
+                dedicatedServerMinimal         : [sourceSets.testmodMinimal, '25593'],
+                dedicatedServerNoFarmersDelight: [sourceSets.testmodNoFarmersDelight, '25594'],
+                dedicatedServerWithClient      : [sourceSets.testmod, '25595'],
+        ].each { topology, setup ->
+            create("stagewright${topology.capitalize()}") {
+                server()
+                sourceSet = setup[0]
+                gameDirectory = file("run-stagewright-${topology}")
+                programArgument '--nogui'
+                programArguments.addAll '--port', setup[1]
+                systemProperty 'stagewright.autorun', 'true'
+                systemProperty 'maidspell.test.topology', topology
+                if (topology == 'dedicatedServerWithClient') {
+                    systemProperty 'stagewright.awaitPlayer', 'true'
+                }
+            }
+        }
+
+        // dedicatedServerWithClient 的客户端一侧：经网络加入上面的专用服，服务端场景跑完停服后退出
+        stagewrightJoiningClient {
+            client()
             sourceSet = sourceSets.testmod
-            gameDirectory = file('run-stagewright-dedicatedServer')
-            programArgument '--nogui'
-            // 避开本机其它开发服常用的 25565
-            programArguments.addAll '--port', '25591'
-            systemProperty 'stagewright.autorun', 'true'
-            systemProperty 'maidspell.test.topology', 'dedicatedServer'
+            gameDirectory = file('run-stagewright-joiningClient')
+            systemProperty 'stagewright.client.connect', '127.0.0.1:25595'
+            systemProperty 'maidspell.test.topology', 'dedicatedServerWithClient'
         }
 
         // 集成拓扑；共享归隐之地模式的配置由 prepareStagewrightIntegratedServerSharedFiles 写入
@@ -233,6 +294,7 @@ dependencies {
     // StageWright 测试框架与 worlddriver 驱动：只进 testmod 类路径，不影响 runClient 和发布
     testmodImplementation "net.magicterra:mc_stagewright-api:${stagewrightVersion}:dev"
     testmodRuntimeOnly "net.magicterra:mc_stagewright-neoforge:${stagewrightVersion}"
+    testmodCompileOnly "net.magicterra:worlddriver-neoforge:${worlddriverVersion}"
     testmodRuntimeOnly "net.magicterra:worlddriver-neoforge:${worlddriverVersion}"
     testmodRuntimeOnly 'dev.architectury:architectury-neoforge:13.0.8'
 
@@ -279,19 +341,21 @@ dependencies {
     runtimeOnly("maven.modrinth:youkaishomecoming:${youkaishomecoming_version}")
 }
 
-// 集成拓扑运行目录的种子文件（Provision 会清空运行目录，之后再写入）：客户端选项跳过首次启动的辅助功能引导页、
-// 失焦不暂停；共享归隐之地拓扑另写入关闭私人维度的通用配置（其余配置项由 NeoForge 补默认值）
+// 客户端运行目录的种子文件（Provision 会清空运行目录，之后再写入）：客户端选项跳过首次启动的辅助功能引导页、
+// 失焦不暂停；共享归隐之地拓扑另写入关闭私人维度的通用配置（其余配置项由 NeoForge 补默认值）。
+// 加入专用服的客户端由服务端运行任务带起（不经它自己的运行任务），种子文件挂在服务端运行任务上
 [
-        IntegratedServer      : [:],
-        IntegratedServerShared: ['src/testmod/run-config/integratedServerShared': 'config'],
-].each { topology, extra ->
-    def prepare = tasks.register("prepareStagewright${topology}Files", Copy) {
-        into 'run-stagewright-' + topology.uncapitalize()
+        IntegratedServer      : [runTask: 'IntegratedServer', extra: [:]],
+        IntegratedServerShared: [runTask: 'IntegratedServerShared', extra: ['src/testmod/run-config/integratedServerShared': 'config']],
+        JoiningClient         : [runTask: 'DedicatedServerWithClient', extra: [:]],
+].each { directory, setup ->
+    def prepare = tasks.register("prepareStagewright${directory}Files", Copy) {
+        into 'run-stagewright-' + directory.uncapitalize()
         from 'src/testmod/run-config/client'
-        extra.each { source, target -> from(source) { into target } }
-        mustRunAfter "stagewright${topology}Provision"
+        setup.extra.each { source, target -> from(source) { into target } }
+        mustRunAfter "stagewright${setup.runTask}Provision"
     }
-    tasks.matching { it.name == "runStagewright${topology}" }.configureEach {
+    tasks.matching { it.name == "runStagewright${setup.runTask}" }.configureEach {
         dependsOn prepare
     }
 }
@@ -302,7 +366,14 @@ tasks.register('clientTest', Test) {
     description = 'Attaches JUnit client tests to a held StageWright integratedServer game'
     testClassesDirs = sourceSets.clientTest.output.classesDirs
     classpath = sourceSets.clientTest.runtimeClasspath
-    useJUnitPlatform()
+    // crossSave 会离开 hold 住的存档，只在带 -PcrossSave 时单独跑
+    useJUnitPlatform {
+        if (project.hasProperty('crossSave')) {
+            includeTags 'crossSave'
+        } else {
+            excludeTags 'crossSave'
+        }
+    }
     environment 'TESTKIT_ENDPOINT', System.getenv('TESTKIT_ENDPOINT') ?: ''
     outputs.upToDateWhen { false }
 }
@@ -403,7 +474,7 @@ modrinth {
     }
 }
 
-task publishCurseForge(type: net.darkhax.curseforgegradle.TaskPublishCurseForge) {
+tasks.register('publishCurseForge', TaskPublishCurseForge) {
     apiToken = System.getenv("CURSEFORGE_TOKEN")
     def mainFile = upload(curseforge_project, jar)
     mainFile.changelog = getChangelogForVersion(mod_version)
