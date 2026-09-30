@@ -252,6 +252,9 @@ public class IronsSpellbooksProvider extends ISpellBookProvider<MaidIronsSpellDa
             // 检查前置条件
             if (!spell.checkPreCastConditions(maid.level(), spellData.getLevel(), maid, magicData)) {
                 LOGGER.debug("spell check failed : {}", spellData.getSpell().getSpellId());
+                data.switchTargetToOrigin();
+                // 没开始施法，这道法术可以把玩家当目标的状态也一并清掉
+                data.clearCurrentSpellPlayerTargetState();
                 return;
             }
 
