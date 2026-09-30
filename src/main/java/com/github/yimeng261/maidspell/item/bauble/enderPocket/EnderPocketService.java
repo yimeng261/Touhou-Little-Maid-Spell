@@ -91,6 +91,16 @@ public class EnderPocketService {
                 )
         );
 
+        public static final StreamCodec<ByteBuf, List<EnderPocketMaidInfo>> LIST_STREAM_CODEC =
+                ByteBufCodecs.collection(ArrayList::new, STREAM_CODEC, MAX_MAID_INFOS);
+
+        /**
+         * 截到 {@link #LIST_STREAM_CODEC} 能编码的条数并复制为不可变列表。
+         */
+        public static List<EnderPocketMaidInfo> copyLimited(List<EnderPocketMaidInfo> infos) {
+            return List.copyOf(infos.subList(0, Math.min(infos.size(), MAX_MAID_INFOS)));
+        }
+
         public EnderPocketMaidInfo(UUID maidUUID, String maidName, ResourceKey<Level> levelKey, int maidEntityId,
                                    float health, float maxHealth, int armor, double x, double y, double z,
                                    boolean hasAnchorCore, String modelId) {

@@ -15,7 +15,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -26,14 +25,14 @@ import java.util.List;
  */
 public record S2CEnderPocketMaidList(List<EnderPocketService.EnderPocketMaidInfo> maidInfos, boolean fromMaidBackpack) implements CustomPacketPayload {
     public S2CEnderPocketMaidList {
-        maidInfos = List.copyOf(maidInfos.subList(0, Math.min(maidInfos.size(), EnderPocketService.MAX_MAID_INFOS)));
+        maidInfos = EnderPocketService.EnderPocketMaidInfo.copyLimited(maidInfos);
     }
 
     public static final Type<S2CEnderPocketMaidList> TYPE
             = new Type<>(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "ender_pocket_response_maid_list"));
 
     public static final StreamCodec<ByteBuf, S2CEnderPocketMaidList> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.collection(ArrayList::new, EnderPocketService.EnderPocketMaidInfo.STREAM_CODEC, EnderPocketService.MAX_MAID_INFOS),
+            EnderPocketService.EnderPocketMaidInfo.LIST_STREAM_CODEC,
             S2CEnderPocketMaidList::maidInfos,
             ByteBufCodecs.BOOL,
             S2CEnderPocketMaidList::fromMaidBackpack,
