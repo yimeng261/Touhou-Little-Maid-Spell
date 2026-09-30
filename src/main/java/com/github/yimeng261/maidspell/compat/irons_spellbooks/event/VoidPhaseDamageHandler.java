@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.Win
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.VoidPhaseSpell;
+import com.github.yimeng261.maidspell.mixin.LivingEntityAccessor;
 import io.redspace.ironsspellbooks.capabilities.magic.MagicManager;
 import io.redspace.ironsspellbooks.util.ParticleHelper;
 import net.minecraft.world.damagesource.DamageSource;
@@ -62,6 +63,9 @@ public final class VoidPhaseDamageHandler {
         }
 
         APPLYING_VOID_DAMAGE.set(true);
+        // 追加伤害走一次完整的 hurt，会把 lastHurt 改成追加量；受击间隔内的下一击按 lastHurt 比较，必须还原成主伤害。
+        LivingEntityAccessor target = (LivingEntityAccessor) event.getEntity();
+        float previousLastHurt = target.maidspell$getLastHurt();
         int previousInvulnerabilityTime = event.getEntity().invulnerableTime;
         Vec3 previousMotion = event.getEntity().getDeltaMovement();
         try {
@@ -73,6 +77,7 @@ public final class VoidPhaseDamageHandler {
                     event.getEntity().getX(), event.getEntity().getY(0.5D), event.getEntity().getZ(),
                     12, 0.25D, 0.35D, 0.25D, 0.08D, true);
         } finally {
+            target.maidspell$setLastHurt(previousLastHurt);
             event.getEntity().invulnerableTime = previousInvulnerabilityTime;
             event.getEntity().setDeltaMovement(previousMotion);
             APPLYING_VOID_DAMAGE.set(false);
