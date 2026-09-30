@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.worldgen.structure;
 
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
@@ -33,6 +34,7 @@ import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.pools.alias.PoolAliasLookup;
 import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
@@ -139,19 +141,6 @@ public class HiddenRetreatStructure extends Structure {
             return;
         }
 
-        UUID privateRetreatOwner = null;
-        if (Config.enablePrivateDimensions) {
-            String dimPath = dimKey.location().getPath();
-            if (dimPath.startsWith("the_retreat_")) {
-                try {
-                    String uuidStr = dimPath.substring("the_retreat_".length()).replace('_', '-');
-                    privateRetreatOwner = UUID.fromString(uuidStr);
-                } catch (IllegalArgumentException e) {
-                    MaidSpellMod.LOGGER.warn("afterPlace: 无法从维度路径解析玩家 UUID: {}", dimPath);
-                }
-            }
-        }
-
         // 共享模式：addReference 标记结构为"已定位"，防止重复搜索到
         if (!Config.enablePrivateDimensions) {
             // 通过当前装饰区块的 STRUCTURE_REFERENCES 回溯到 StructureStart 所在区块
@@ -165,18 +154,27 @@ public class HiddenRetreatStructure extends Structure {
             }
         }
 
-        // afterPlace 可能在世界生成线程执行，SavedData 与区块票据只能在服务端主线程修改
+        // afterPlace 可能在世界生成线程执行，区块票据只能在服务端主线程修改
         MinecraftServer server = serverLevel.getServer();
-        UUID ownerToPersist = privateRetreatOwner;
         server.execute(() -> {
-            if (server.getLevel(dimKey) != serverLevel) {
-                return;
+            if (server.getLevel(dimKey) == serverLevel) {
+                RetreatManager.unforceLoadStructureChunks(dimKey, structureCenter);
             }
-            if (ownerToPersist != null) {
-                RetreatDimensionData.get(server).markStructureGenerated(ownerToPersist);
-            }
-            RetreatManager.unforceLoadStructureChunks(dimKey, structureCenter);
         });
+    }
+
+    /**
+     * 起点一选定就落盘：StructureStart 随区块保存，重启后照样放置；
+     * 只等 afterPlace 再记的话，起点区块没推进到 FEATURES 就停服会让名额重新开放。
+     * 调用方在世界生成线程，SavedData 回主线程写。
+     */
+    private static void persistPrivateStructure(ResourceKey<Level> dimKey, BlockPos pos) {
+        UUID owner = PlayerRetreatManager.getPrivateDimensionOwner(dimKey);
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (owner == null || server == null) {
+            return;
+        }
+        server.execute(() -> RetreatDimensionData.get(server).markStructureGenerated(owner, pos));
     }
 
     @Override
@@ -197,8 +195,16 @@ public class HiddenRetreatStructure extends Structure {
                     }
                     MaidSpellMod.LOGGER.debug("首次在维度 {} 尝试生成结构，区块 {}", dimKey.location(), pChunkPos);
 
-                    StructureStart result = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
-                            pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+                    StructureStart result;
+                    try {
+                        result = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                                pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+                    } catch (Exception e) {
+                        // 拼图内部异常同样回退标记，否则本会话里这个维度再也不会生成
+                        MaidSpellMod.LOGGER.warn("私人模式结构生成异常 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos, e);
+                        RetreatManager.unmarkStructureGenerated(dimKey);
+                        return StructureStart.INVALID_START;
+                    }
 
                     if (!hasValidBoundingBox(result, pHeightAccessor)) {
                         // 生成失败或 BoundingBox 溢出，回退标记
@@ -211,6 +217,7 @@ public class HiddenRetreatStructure extends Structure {
                         return StructureStart.INVALID_START;
                     }
 
+                    persistPrivateStructure(dimKey, pChunkPos.getMiddleBlockPosition(0));
                     return result;
                 }
 

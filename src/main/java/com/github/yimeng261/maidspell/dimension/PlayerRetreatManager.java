@@ -476,6 +476,14 @@ public class PlayerRetreatManager {
         return new PlayerDataRetreatReferences(retreatDimensions, referencedPlayers);
     }
 
+    /**
+     * 私人归隐之地的主人；共享维度或其它维度返回 null。
+     */
+    @Nullable
+    public static UUID getPrivateDimensionOwner(ResourceKey<Level> dimensionKey) {
+        return resolvePlayerDimensionOwner(dimensionKey, null);
+    }
+
     @Nullable
     private static UUID resolvePlayerDimensionOwner(ResourceKey<Level> dimensionKey,
                                                     @Nullable UUID fallbackPlayerUUID) {

@@ -47,7 +47,7 @@ public class RetreatDimensionData extends SavedData {
         // 共享模式专属字段
         public int structureQuota;      // 结构配额（0=无配额，1=有一个配额）
         @Nullable
-        public BlockPos foundStructurePos; // 已找到的结构位置（持久化，共享模式下用于重复查看）
+        public BlockPos foundStructurePos; // 已知的结构位置（共享模式用于重复查看；私人模式为生成时的起点，用作搜索中心）
 
         // 私人模式专属字段
         public boolean structureGenerated; // 结构是否已生成（持久化，防止重启后重复生成）
@@ -308,14 +308,15 @@ public class RetreatDimensionData extends SavedData {
     }
 
     /**
-     * 标记玩家维度的结构已生成（私人模式持久化）
+     * 标记玩家维度的结构已生成并记下位置（私人模式持久化），位置供寻风之铃作搜索中心
      */
-    public void markStructureGenerated(UUID playerUUID) {
+    public void markStructureGenerated(UUID playerUUID, BlockPos pos) {
         DimensionInfo info = playerDimensions.get(playerUUID);
         if (info != null && !info.structureGenerated) {
             info.structureGenerated = true;
+            info.foundStructurePos = pos;
             setDirty();
-            MaidSpellMod.LOGGER.info("Persisted structure generated flag for player: {}", playerUUID);
+            MaidSpellMod.LOGGER.info("Persisted structure generated flag for player {} at {}", playerUUID, pos);
         }
     }
 
