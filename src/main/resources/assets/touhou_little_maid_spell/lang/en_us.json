@@ -403,6 +403,7 @@
   "death.attack.touhou_little_maid_spell.sword_prison": "%1$s was pierced by %2$s's starshadow sword array",
   "death.attack.touhou_little_maid_spell.teleport_modified": "%1$s was struck by the missiles released during %2$s's teleport",
   "entity.touhou_little_maid_spell.star_shadow_strike": "Starshadow Strike",
+  "entity.touhou_little_maid_spell.modified_magic_missile": "Magic Missile",
   "entity.touhou_little_maid_spell.winefox_sword_projectile": "Summoned Sword Projectile",
   "entity.touhou_little_maid_spell.stellar_witch": "Stellar Witch",
   "entity.touhou_little_maid_spell.stellar_witch.bossbar": "%s",

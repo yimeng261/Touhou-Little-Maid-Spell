@@ -7,6 +7,7 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model.GenericSpellHumanoidModel;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.CompanionBlackHoleRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.GenericSpellHumanoidRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.ModifiedMagicMissileRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.SpellbreakingEchoRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.StarShadowSpearRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.StarShadowStrikeRenderer;
@@ -71,6 +72,8 @@ public final class IronsSpellbooksCompatClient {
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_STARFALL_CLOUD.get(), NoopRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_STARFALL_COMET.get(), context ->
                 new CometRenderer(context, 0.75F));
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_MAGIC_MISSILE.get(),
+                ModifiedMagicMissileRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.WINEFOX_SWORD_PROJECTILE.get(),
                 WinefoxSwordProjectileRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.STAR_SHADOW_STRIKE.get(),

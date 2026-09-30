@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell;
 
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.MagicShotgunSpell;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
@@ -8,7 +9,6 @@ import io.redspace.ironsspellbooks.api.util.Utils;
 import io.redspace.ironsspellbooks.capabilities.magic.MagicManager;
 import io.redspace.ironsspellbooks.damage.DamageSources;
 import io.redspace.ironsspellbooks.entity.spells.AbstractMagicProjectile;
-import io.redspace.ironsspellbooks.registries.EntityRegistry;
 import io.redspace.ironsspellbooks.util.ParticleHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -17,7 +17,6 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -31,11 +30,14 @@ public class ModifiedMagicMissileEntity extends AbstractMagicProjectile {
 
     private ResourceLocation damageSpellId;
 
-    @SuppressWarnings("unchecked")
-    public ModifiedMagicMissileEntity(Level level, LivingEntity owner, AbstractSpell damageSpell) {
-        super((EntityType<? extends Projectile>) (EntityType<?>) EntityRegistry.MAGIC_MISSILE_PROJECTILE.get(), level);
-        setOwner(owner);
+    public ModifiedMagicMissileEntity(EntityType<? extends ModifiedMagicMissileEntity> entityType, Level level) {
+        super(entityType, level);
         setNoGravity(true);
+    }
+
+    public ModifiedMagicMissileEntity(Level level, LivingEntity owner, AbstractSpell damageSpell) {
+        this(IronsSpellbooksCompatEntities.MODIFIED_MAGIC_MISSILE.get(), level);
+        setOwner(owner);
         this.damageSpellId = damageSpell.getSpellResource();
     }
 

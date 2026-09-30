@@ -9,6 +9,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.GuardianWit
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.HolyConstructEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ShadowAssassinEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.CompanionBlackHoleEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedMagicMissileEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCloudEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCometEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SpellbreakingEchoEntity;
@@ -85,6 +86,13 @@ public final class IronsSpellbooksCompatEntities {
                             .clientTrackingRange(64)
                             .updateInterval(1)
                             .build("starfall_modified_comet"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<ModifiedMagicMissileEntity>> MODIFIED_MAGIC_MISSILE =
+            ENTITY_TYPES.register("modified_magic_missile",
+                    () -> EntityType.Builder.<ModifiedMagicMissileEntity>of(ModifiedMagicMissileEntity::new, MobCategory.MISC)
+                            .sized(0.5F, 0.5F)
+                            .clientTrackingRange(64)
+                            .build("modified_magic_missile"));
 
     public static final DeferredHolder<EntityType<?>, EntityType<WinefoxSwordProjectileEntity>> WINEFOX_SWORD_PROJECTILE =
             ENTITY_TYPES.register("winefox_sword_projectile",
