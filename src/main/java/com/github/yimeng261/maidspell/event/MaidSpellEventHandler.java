@@ -156,6 +156,7 @@ public class MaidSpellEventHandler {
             // checkAndFixPlayerDimension(player);
 
             // 为该玩家拥有的女仆恢复区块加载状态
+            ChunkLoadingData.onOwnerLogin(player);
             restorePlayerMaidChunkLoading(player);
 
             try {
@@ -187,6 +188,7 @@ public class MaidSpellEventHandler {
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             EnderPocketService.clearRemoteSession(player);
+            ChunkLoadingData.onOwnerLogout(player);
             MinecraftServer server = player.getServer();
             if (server == null) {
                 return;

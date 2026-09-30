@@ -73,7 +73,9 @@ public class AnchorCoreBauble implements IMaidBauble {
         anchoredEntityMaid.maidSpell$setAnchored(true);
 
         ServerLevel serverLevel = (ServerLevel) maid.level();
-        ChunkLoadingData chunkLoadingData = Optional.ofNullable(maid.getOwner())
+        // 主人在别的维度时 getOwner() 取不到，按玩家列表找
+        ChunkLoadingData chunkLoadingData = Optional.ofNullable(maid.getOwnerUUID())
+                .map(serverLevel.getServer().getPlayerList()::getPlayer)
                 .map(o -> o.getData(ChunkLoadingData.ATTACHMENT_TYPE))
                 .orElse(null);
         var currentLevelAndChunkPos = Pair.of(serverLevel, maid.chunkPosition());
@@ -117,9 +119,10 @@ public class AnchorCoreBauble implements IMaidBauble {
             return;
         }
 
-        Optional.ofNullable(maid.getOwner())
-                .map(o -> o.getData(ChunkLoadingData.ATTACHMENT_TYPE))
-                .ifPresent(data -> data.maidChunks().remove(maid.getUUID()));
+        UUID ownerId = maid.getOwnerUUID();
+        if (ownerId != null && maid.getServer() != null) {
+            ChunkLoadingData.removeRecord(maid.getServer(), ownerId, maid.getUUID());
+        }
 
         var levelAndChunkPos = maidLastKnownChunkPos.remove(maid.getUUID());
         if (levelAndChunkPos != null) {
@@ -153,6 +156,7 @@ public class AnchorCoreBauble implements IMaidBauble {
         if (bauble instanceof AnchorCoreBauble anchorCoreBauble) {
             anchorCoreBauble.maidLastKnownChunkPos.clear();
         }
+        ChunkLoadingData.clearSessionCache();
     }
 
     public static boolean isCallerAllowed(String className) {

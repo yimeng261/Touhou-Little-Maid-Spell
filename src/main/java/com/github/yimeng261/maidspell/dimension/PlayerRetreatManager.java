@@ -4,19 +4,13 @@ import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
-import com.mojang.serialization.Dynamic;
+import com.github.yimeng261.maidspell.player.OfflinePlayerDataScan;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.dimension.DimensionType;
-import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -27,8 +21,6 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import javax.annotation.Nullable;
-import java.io.File;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -458,43 +450,22 @@ public class PlayerRetreatManager {
     private static PlayerDataRetreatReferences scanRetreatDimensionsFromPlayerData(MinecraftServer server) {
         Map<ResourceKey<Level>, UUID> retreatDimensions = new LinkedHashMap<>();
         Set<UUID> referencedPlayers = new HashSet<>();
-        File playerDataDir = server.getWorldPath(LevelResource.PLAYER_DATA_DIR).toFile();
-        File[] playerFiles = playerDataDir.listFiles((dir, name) -> name.endsWith(".dat"));
-        if (playerFiles == null) {
-            return new PlayerDataRetreatReferences(retreatDimensions, referencedPlayers);
-        }
-
-        for (File playerFile : playerFiles) {
-            UUID playerUUID = parsePlayerUuid(playerFile.getName());
-            if (playerUUID == null) {
-                continue;
+        OfflinePlayerDataScan.playerDimensions(server).forEach((playerUUID, dimensionKey) -> {
+            if (TheRetreatDimension.isRetreatDimension(dimensionKey.location())) {
+                referencedPlayers.add(playerUUID);
+                retreatDimensions.putIfAbsent(dimensionKey, resolvePlayerDimensionOwner(dimensionKey, playerUUID));
             }
+        });
 
-            CompoundTag tag;
-            try {
-                tag = NbtIo.readCompressed(playerFile.toPath(), NbtAccounter.unlimitedHeap());
-            } catch (IOException e) {
-                MaidSpellMod.LOGGER.warn("Failed to read player data while scanning retreat dimensions: {}", playerFile.getName(), e);
-                continue;
-            }
-
-            // 锚定核心女仆所在的归隐之地也要预载，否则其中的强加载区块开服后不会恢复
-            for (ChunkLoadingData.LevelAndChunkPos anchor : ChunkLoadingData.readFromPlayerTag(tag).values()) {
+        // 锚定核心女仆所在的归隐之地也要预载，否则其中的强加载区块开服后不会恢复
+        ChunkLoadingData.collectAllByOwner(server).forEach((owner, anchors) -> {
+            for (ChunkLoadingData.LevelAndChunkPos anchor : anchors.values()) {
                 ResourceKey<Level> anchorKey = anchor.levelKey();
                 if (TheRetreatDimension.isRetreatDimension(anchorKey.location())) {
-                    retreatDimensions.putIfAbsent(anchorKey, resolvePlayerDimensionOwner(anchorKey, playerUUID));
+                    retreatDimensions.putIfAbsent(anchorKey, resolvePlayerDimensionOwner(anchorKey, owner));
                 }
             }
-
-            ResourceKey<Level> dimensionKey = parseDimensionKey(tag);
-            if (dimensionKey == null || !TheRetreatDimension.isRetreatDimension(dimensionKey.location())) {
-                continue;
-            }
-
-            referencedPlayers.add(playerUUID);
-            UUID ownerUUID = resolvePlayerDimensionOwner(dimensionKey, playerUUID);
-            retreatDimensions.putIfAbsent(dimensionKey, ownerUUID);
-        }
+        });
 
         return new PlayerDataRetreatReferences(retreatDimensions, referencedPlayers);
     }
@@ -535,26 +506,6 @@ public class PlayerRetreatManager {
         return null;
     }
 
-    @Nullable
-    private static UUID parsePlayerUuid(String fileName) {
-        String normalized = fileName.endsWith(".dat") ? fileName.substring(0, fileName.length() - 4) : fileName;
-        try {
-            return UUID.fromString(normalized);
-        } catch (IllegalArgumentException ignored) {
-            return null;
-        }
-    }
-
-    @Nullable
-    private static ResourceKey<Level> parseDimensionKey(CompoundTag tag) {
-        if (tag == null || !tag.contains("Dimension")) {
-            return null;
-        }
-
-        return DimensionType.parseLegacy(new Dynamic<>(NbtOps.INSTANCE, tag.get("Dimension")))
-                .resultOrPartial(MaidSpellMod.LOGGER::error)
-                .orElse(null);
-    }
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Pre event) {
