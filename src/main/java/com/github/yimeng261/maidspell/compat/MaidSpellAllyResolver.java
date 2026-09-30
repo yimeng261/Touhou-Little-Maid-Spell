@@ -1,17 +1,25 @@
 package com.github.yimeng261.maidspell.compat;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.compat.goety.GoetyMinionOwners;
+import com.github.yimeng261.maidspell.compat.goety.GoetySpellEntityOwners;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellEntityOwners;
+import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
+import net.minecraft.world.entity.TraceableEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.scores.Team;
+import net.neoforged.fml.ModList;
+import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -22,16 +30,16 @@ import java.util.concurrent.ConcurrentHashMap;
  * Central friendly-fire and target-alliance resolver for player/maid summon ecosystems.
  */
 public final class MaidSpellAllyResolver {
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final int OWNER_TRACE_LIMIT = 8;
 
-    private static final String IRONS_MAGIC_SUMMON = "io.redspace.ironsspellbooks.entity.mobs.IMagicSummon";
     private static final String ARS_SUMMON = "com.hollingsworth.arsnouveau.api.entity.ISummon";
-    private static final String GOETY_OWNED = "com.Polarice3.Goety.api.entities.IOwned";
     private static final String SLASHBLADE_SHOOTABLE = "mods.flammpfeil.slashblade.entity.IShootable";
-
     private static final Map<String, Optional<Class<?>>> OPTIONAL_TYPES = new ConcurrentHashMap<>();
     private static final Map<MethodKey, Optional<Method>> METHODS = new ConcurrentHashMap<>();
     private static final Map<Class<?>, Boolean> OWNER_CAPABLE_CACHE = new ConcurrentHashMap<>();
+    /** 每类实体在各桥接表里命中的表项，按表序；常见实体为空表 */
+    private static final Map<Class<?>, List<BridgedGetter>> BRIDGED_GETTERS = new ConcurrentHashMap<>();
 
     private MaidSpellAllyResolver() {
     }
@@ -174,14 +182,16 @@ public final class MaidSpellAllyResolver {
 
     @Nullable
     private static Entity getDirectOwner(Entity entity) {
-        if (entity instanceof Player) {
+        // 按类缓存的判断先挡掉不可能有主人的实体，普通生物不用走下面整串 instanceof
+        if (!couldHaveOwner(entity) || entity instanceof Player) {
             return null;
-        } else if (isOptionalInstance(entity, IRONS_MAGIC_SUMMON)) {
-            return invokeOptionalEntity(entity, IRONS_MAGIC_SUMMON, "getSummoner");
-        } else if (isOptionalInstance(entity, GOETY_OWNED)) {
-            Entity owner = invokeOptionalEntity(entity, GOETY_OWNED, "getTrueOwner");
-            return owner != null ? owner : invokeOptionalEntity(entity, GOETY_OWNED, "getMasterOwner");
-        } else if (isOptionalInstance(entity, ARS_SUMMON)) {
+        }
+        // 铁魔法召唤物、Goety 仆从和两边的法术实体按桥接表取，排在原版 OwnableEntity 之前
+        Entity bridged = getBridgedOwner(entity);
+        if (bridged != null) {
+            return bridged;
+        }
+        if (isOptionalInstance(entity, ARS_SUMMON)) {
             Entity owner = invokeOptionalEntity(entity, ARS_SUMMON, "getOwnerAlt");
             if (owner != null) {
                 return owner;
@@ -191,8 +201,55 @@ public final class MaidSpellAllyResolver {
             return ownable.getOwner();
         } else if (isOptionalInstance(entity, SLASHBLADE_SHOOTABLE)) {
             return invokeOptionalEntity(entity, SLASHBLADE_SHOOTABLE, "getShooter");
-        } else if (entity instanceof Projectile projectile) {
-            return projectile.getOwner();
+        } else if (entity instanceof TraceableEntity traceable) {
+            return traceable.getOwner();
+        }
+        return null;
+    }
+
+    /** 按表序取第一个非空的主人；某张表给出空值时交给下一张 */
+    @Nullable
+    private static Entity getBridgedOwner(Entity entity) {
+        for (BridgedGetter bridged : bridgedGetters(entity.getClass())) {
+            if (!bridged.bridge().enabled) {
+                continue;
+            }
+            try {
+                Entity owner = bridged.getter().ownerOf(entity);
+                if (owner != null) {
+                    return owner;
+                }
+            } catch (LinkageError e) {
+                bridged.bridge().disable(e);
+            }
+        }
+        return null;
+    }
+
+    private static List<BridgedGetter> bridgedGetters(Class<?> type) {
+        return BRIDGED_GETTERS.computeIfAbsent(type, MaidSpellAllyResolver::findBridgedGetters);
+    }
+
+    private static List<BridgedGetter> findBridgedGetters(Class<?> type) {
+        List<BridgedGetter> found = new ArrayList<>();
+        for (OwnerBridge bridge : OwnerBridge.values()) {
+            EntityOwnerGetter<?> getter = bridge.lookup(type);
+            if (getter != null) {
+                found.add(new BridgedGetter(bridge, getter));
+            }
+        }
+        return found.isEmpty() ? List.of() : List.copyOf(found);
+    }
+
+    @Nullable
+    private static UUID getGoetyOwnerId(Entity entity) {
+        OwnerBridge bridge = OwnerBridge.GOETY_MINIONS;
+        if (bridge.enabled) {
+            try {
+                return GoetyMinionOwners.getOwnerId(entity);
+            } catch (LinkageError e) {
+                bridge.disable(e);
+            }
         }
         return null;
     }
@@ -203,14 +260,16 @@ public final class MaidSpellAllyResolver {
             return maid.getOwnerUUID();
         } else if (isOptionalInstance(entity, ARS_SUMMON)) {
             return invokeOptionalUuid(entity, ARS_SUMMON, "getOwnerUUID");
-        } else if (isOptionalInstance(entity, GOETY_OWNED)) {
-            return invokeOptionalUuid(entity, GOETY_OWNED, "getOwnerId");
+        }
+        UUID goetyOwnerId = getGoetyOwnerId(entity);
+        if (goetyOwnerId != null) {
+            return goetyOwnerId;
         } else if (entity instanceof Player) {
             return null;
         } else if (entity instanceof OwnableEntity ownable) {
             return ownable.getOwnerUUID();
-        } else if (entity instanceof Projectile projectile) {
-            Entity owner = projectile.getOwner();
+        } else if (entity instanceof TraceableEntity traceable) {
+            Entity owner = traceable.getOwner();
             return owner != null ? owner.getUUID() : null;
         }
         return null;
@@ -295,17 +354,13 @@ public final class MaidSpellAllyResolver {
     private static boolean checkOwnerCapable(Class<?> type) {
         if (EntityMaid.class.isAssignableFrom(type)
                 || OwnableEntity.class.isAssignableFrom(type)
-                || Projectile.class.isAssignableFrom(type)
+                || TraceableEntity.class.isAssignableFrom(type)
                 || Player.class.isAssignableFrom(type)) {
             return true;
         }
-        if (isTypeAssignableTo(type, IRONS_MAGIC_SUMMON)
-                || isTypeAssignableTo(type, GOETY_OWNED)
+        return !bridgedGetters(type).isEmpty()
                 || isTypeAssignableTo(type, ARS_SUMMON)
-                || isTypeAssignableTo(type, SLASHBLADE_SHOOTABLE)) {
-            return true;
-        }
-        return false;
+                || isTypeAssignableTo(type, SLASHBLADE_SHOOTABLE);
     }
 
     private static boolean isTypeAssignableTo(Class<?> type, String className) {
@@ -315,5 +370,62 @@ public final class MaidSpellAllyResolver {
     }
 
     private record MethodKey(Class<?> type, String name, Class<?> returnType) {
+    }
+
+    private record BridgedGetter(OwnerBridge bridge, EntityOwnerGetter<?> getter) {
+    }
+
+    /**
+     * 可选模组的主人桥接表，各自独立失效：模组版本对不上时首次访问会抛 LinkageError，只停用出错的那一张。
+     */
+    private enum OwnerBridge {
+        IRONS("irons_spellbooks", "铁魔法的召唤物和法术实体") {
+            @Override
+            EntityOwnerGetter<?> find(Class<?> type) {
+                return IronsSpellEntityOwners.getterFor(type);
+            }
+        },
+        GOETY_MINIONS("goety", "Goety 的仆从") {
+            @Override
+            EntityOwnerGetter<?> find(Class<?> type) {
+                return GoetyMinionOwners.getterFor(type);
+            }
+        },
+        GOETY_SPELLS("goety", "Goety 的法术实体") {
+            @Override
+            EntityOwnerGetter<?> find(Class<?> type) {
+                return GoetySpellEntityOwners.getterFor(type);
+            }
+        };
+
+        private final String description;
+        private volatile boolean enabled;
+
+        OwnerBridge(String modId, String description) {
+            this.description = description;
+            this.enabled = ModList.get().isLoaded(modId);
+        }
+
+        @Nullable
+        abstract EntityOwnerGetter<?> find(Class<?> type);
+
+        @Nullable
+        EntityOwnerGetter<?> lookup(Class<?> type) {
+            if (enabled) {
+                try {
+                    return find(type);
+                } catch (LinkageError e) {
+                    disable(e);
+                }
+            }
+            return null;
+        }
+
+        void disable(LinkageError e) {
+            if (enabled) {
+                enabled = false;
+                LOGGER.warn("[MaidSpell] 桥接类加载失败，友方判定不再识别{}", description, e);
+            }
+        }
     }
 }
