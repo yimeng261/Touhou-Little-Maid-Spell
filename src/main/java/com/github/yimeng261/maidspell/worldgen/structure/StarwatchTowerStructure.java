@@ -51,8 +51,9 @@ public class StarwatchTowerStructure extends Structure {
 
     /**
      * 模板底下垫的地基层数。25x21 的平底建筑摆在起伏地形上，总有几列的地面比落点低一格，露出来就是塔底一圈缝。
-     * {@code starwatch_tower_1.nbt} 最底下那层末地石由 {@code tools/extend_structure_base.py} 垫在轮廓内，专门填这种一格的缝：
-     * 贴合处顶掉的本来就是末地石，悬空处把缝补上；落差两格以上的断崖它管不了。层数要从落点里减掉，否则整座塔会跟着抬高一格。
+     * {@code starwatch_tower_1.nbt} 的 y=0 是一层垫在塔身轮廓内的末地石地基，取自上游 3a4b2ed2 版模板的 y=0，专门填这种一格的缝：
+     * 贴合处顶掉的本来就是末地石，悬空处把缝补上；落差两格以上的断崖它管不了。层数要从落点里减掉，否则整座塔会跟着抬高一格；
+     * 重存模板时这一层也得一起保存，缺了它塔身会陷进地面一格。
      */
     private static final int BASE_SKIRT_LAYERS = 1;
 
