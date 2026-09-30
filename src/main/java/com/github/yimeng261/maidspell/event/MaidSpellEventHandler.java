@@ -605,12 +605,13 @@ public class MaidSpellEventHandler {
         if (!(event.getEntity() instanceof EntityMaid maid) || maid.level().isClientSide()) {
             return;
         }
-        cleanupMaidBaubleRuntimeState(maid.getUUID());
         if (event.isCanceled()) {
+            // 被复活取消的死亡：魂之书、破愈咒锋、紫荆银冠的运行态保持不变
             MaidReviveEffectCleanup.cleanupAfterCanceledDeath(maid);
             return;
         }
 
+        cleanupMaidBaubleRuntimeState(maid.getUUID());
         SpellBookManager.getOrCreateManager(maid).removeMaidData(maid);
         MaidReviveEffectCleanup.cleanupBeforeNormalDeath(maid);
         Global.updateMaidInfo(maid,false);
