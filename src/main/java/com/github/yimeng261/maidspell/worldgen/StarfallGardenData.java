@@ -142,7 +142,7 @@ public class StarfallGardenData extends SavedData {
 
     /**
      * 放置窗口用完了：没落下就退回 {@code OPEN}，让世界生成照常出候选；
-     * {@link #markPlaced} 已经关闸时保持 {@code CLOSED}。
+     * {@link #tryMarkPlaced} 已经关闸时保持 {@code CLOSED}。
      *
      * <p>必须成对调用，用 {@code try/finally} 包住，别让一次生成异常把世界生成永久挡在窗口外。
      */
@@ -152,13 +152,28 @@ public class StarfallGardenData extends SavedData {
     }
 
     /**
-     * 结构真的生成之后调用，见 {@code StarfallGardenStructure#generate}。
+     * 抢占唯一名额，见 {@code StarfallGardenStructure#generate} 和补生成的放置。
      *
-     * <p>先把内存闸门关上：并发跑的其他候选区块必须立刻看到「已经有了」，否则同一个 tick 里就能多放几座。
-     * 落盘是异步的、必须在主线程，所以这里只排一个任务。
+     * <p>世界生成线程只能从 {@code OPEN} 关闸，补生成线程只能从自己打开的 {@code UNLOCKED_FOR_RETROFIT} 关闸。
+     * 并发通过 {@code findGenerationPoint} 的几个候选只有一个能抢到，其余返回 false，调用方必须放弃这一座。
      */
+    public static boolean tryMarkPlaced(BlockPos pos) {
+        Gate expected = isRetrofitThread() ? Gate.UNLOCKED_FOR_RETROFIT : Gate.OPEN;
+        if (!GATE.compareAndSet(expected, Gate.CLOSED)) {
+            return false;
+        }
+        persistPlaced(pos);
+        return true;
+    }
+
+    /** 认领存档里已有的庭院：无条件关闸并落盘。 */
     public static void markPlaced(BlockPos pos) {
         GATE.set(Gate.CLOSED);
+        persistPlaced(pos);
+    }
+
+    /** 落盘必须在主线程，这里只排一个任务。 */
+    private static void persistPlaced(BlockPos pos) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) {
             // 数据生成 / 结构模板校验这类没有服务器实例的场合：内存闸门照关，但没有存档可写，只能放弃持久化。

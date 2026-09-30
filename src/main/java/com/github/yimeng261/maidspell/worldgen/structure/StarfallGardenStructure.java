@@ -2,14 +2,17 @@ package com.github.yimeng261.maidspell.worldgen.structure;
 
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.github.yimeng261.maidspell.worldgen.StarfallGardenData;
+import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
@@ -32,8 +35,8 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 /**
- * 星落之庭按出生点水平距离选址，再按地表高度抬升为空岛。
- * 距离平方使用 long；只有结构确实生成后才写入单实例标记。
+ * 星落之庭只在主世界生成，按出生点水平距离选址，再按地表高度抬升为空岛。
+ * 距离平方使用 long；只有结构确实生成后才占用单实例名额。
  */
 public class StarfallGardenStructure extends Structure {
     public static final MapCodec<StarfallGardenStructure> CODEC = RecordCodecBuilder.mapCodec(instance ->
@@ -142,6 +145,13 @@ public class StarfallGardenStructure extends Structure {
         if (StarfallGardenData.isPlaced()) {
             return Optional.empty();
         }
+        // 名额和出生点都属于主世界，其他维度（包括放开全部结构的归隐之地）不能占用
+        if (context.chunkGenerator() instanceof ChunkGeneratorAccessor accessor) {
+            ResourceKey<Level> dimension = accessor.maidspell$getDimensionKey();
+            if (dimension != null && !dimension.equals(Level.OVERWORLD)) {
+                return Optional.empty();
+            }
+        }
 
         int centerX = context.chunkPos().getMiddleBlockX();
         int centerZ = context.chunkPos().getMiddleBlockZ();
@@ -197,9 +207,9 @@ public class StarfallGardenStructure extends Structure {
     }
 
     /**
-     * 只在 StructureStart 有效时标记已生成。findGenerationPoint 可能被试探性调用，
-     * 不能在那里占用名额；手动 /place structure 同样计入一座。
-     * 补生成线程上不标记：补生成超出区块预算会放弃这座，真正写完方块后由它自己标记。
+     * 只在 StructureStart 有效时占用名额。findGenerationPoint 可能被试探性调用，
+     * 不能在那里占用；手动 /place structure 同样计入一座。抢占规则见 {@link StarfallGardenData#tryMarkPlaced}。
+     * 补生成线程上不占用：补生成超出区块预算会放弃这座，通过预算检查后由它自己占用。
      */
     @Override
     public @NotNull StructureStart generate(RegistryAccess registryAccess, ChunkGenerator chunkGenerator,
@@ -209,8 +219,9 @@ public class StarfallGardenStructure extends Structure {
                                            Predicate<Holder<Biome>> validBiome) {
         StructureStart start = super.generate(registryAccess, chunkGenerator, biomeSource, randomState,
                 templateManager, seed, chunkPos, references, heightAccessor, validBiome);
-        if (start.isValid() && !StarfallGardenData.isRetrofitThread()) {
-            StarfallGardenData.markPlaced(start.getBoundingBox().getCenter());
+        if (start.isValid() && !StarfallGardenData.isRetrofitThread()
+                && !StarfallGardenData.tryMarkPlaced(start.getBoundingBox().getCenter())) {
+            return StructureStart.INVALID_START;
         }
         return start;
     }

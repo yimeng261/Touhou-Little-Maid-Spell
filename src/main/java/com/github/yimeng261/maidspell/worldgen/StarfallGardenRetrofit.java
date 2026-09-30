@@ -176,7 +176,7 @@ public final class StarfallGardenRetrofit {
      * 第二段：把庭院真正放进旧存档。
      *
      * <p>逐候选尝试，第一个能生成出合法 {@code StructureStart} 且不超区块预算的候选就落。
-     * 生成失败不记 {@code markPlaced}，换下一个候选继续；选定之后先 {@code markPlaced} 关闸再写方块，
+     * 生成失败不占名额，换下一个候选继续；选定之后先占名额关闸再写方块，
      * 写入中途失败也只留这一座，世界生成不会再放第二座。
      */
     private static void placeInto(ServerLevel overworld, StarfallGardenStructure garden,
@@ -195,9 +195,15 @@ public final class StarfallGardenRetrofit {
             StructureStart start;
             ChunkPos min;
             ChunkPos max;
-            // 补生成窗口只包住生成和预算检查：其间只有本线程能出候选，世界生成照旧视为已有庭院。
+            BoundingBox box;
+            // 补生成窗口只包住生成和预算检查：其间只有本线程能出候选和关闸，世界生成照旧视为已有庭院。
             StarfallGardenData.unlockForRetrofit();
             try {
+                if (!StarfallGardenData.isRetrofitThread()) {
+                    // 开窗之前世界生成已经放下一座并关了闸
+                    MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
+                    return;
+                }
                 try {
                     start = garden.generate(overworld.registryAccess(), chunkGenerator,
                             chunkGenerator.getBiomeSource(), randomState, overworld.getStructureManager(),
@@ -210,13 +216,7 @@ public final class StarfallGardenRetrofit {
                     // 距离带 / 高度夹取不通过，或者这个候选本来就不该长。正常情况，换下一个。
                     continue;
                 }
-                if (!StarfallGardenData.isRetrofitThread()) {
-                    // 开窗之前已经通过检查的世界生成抢先放下一座并关了闸。
-                    MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
-                    return;
-                }
-
-                BoundingBox box = start.getBoundingBox();
+                box = start.getBoundingBox();
                 min = new ChunkPos(SectionPos.blockToSectionCoord(box.minX()),
                         SectionPos.blockToSectionCoord(box.minZ()));
                 max = new ChunkPos(SectionPos.blockToSectionCoord(box.maxX()),
@@ -230,9 +230,10 @@ public final class StarfallGardenRetrofit {
                             candidate, chunkCount, MAX_PLACEMENT_CHUNKS);
                     return;
                 }
-                StarfallGardenData.markPlaced(box.getCenter());
+                // 窗口里世界生成线程的抢占必定失败，这里一定能占到
+                StarfallGardenData.tryMarkPlaced(box.getCenter());
             } finally {
-                // markPlaced 之后保持 CLOSED；其余情况退回 OPEN，世界生成仍可自然生成。
+                // 占到名额后保持 CLOSED；其余情况退回 OPEN，世界生成仍可自然生成。
                 StarfallGardenData.relockAfterRetrofit();
             }
 
@@ -254,7 +255,7 @@ public final class StarfallGardenRetrofit {
                 }
                 MaidSpellMod.LOGGER.info(
                         "星落之庭补生成：已在旧存档落下一座（锚点区块 {}，覆盖 {} 个区块，高度 {}~{}）",
-                        candidate, placedChunks, start.getBoundingBox().minY(), start.getBoundingBox().maxY());
+                        candidate, placedChunks, box.minY(), box.maxY());
             } catch (RuntimeException e) {
                 MaidSpellMod.LOGGER.error("星落之庭补生成：写入候选 {} 时失败，已写 {} 个区块，庭院可能不完整",
                         candidate, placedChunks, e);
