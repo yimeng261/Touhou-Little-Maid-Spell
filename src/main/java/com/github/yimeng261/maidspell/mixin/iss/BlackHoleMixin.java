@@ -42,16 +42,8 @@ public abstract class BlackHoleMixin {
 
     /** 友方判定覆盖队伍与主人链，仅对弹射物生效。 */
     private boolean maidspell$isImmuneToBlackHole(Entity entity, @Nullable Entity caster) {
-        if (entity.isSpectator()) {
-            return true;
-        }
-        if (entity instanceof Player player && player.isCreative()) {
-            return true;
-        }
-        if (!(entity instanceof Projectile) || caster == null) {
-            return false;
-        }
-        return MaidSpellAllyResolver.areFriendly(caster, entity)
-                || MaidSpellAllyResolver.isOwnedBy(entity, caster.getClass());
+        return entity.isSpectator()
+                || entity instanceof Player player && player.isCreative()
+                || entity instanceof Projectile && MaidSpellAllyResolver.areFriendly(caster, entity);
     }
 }
