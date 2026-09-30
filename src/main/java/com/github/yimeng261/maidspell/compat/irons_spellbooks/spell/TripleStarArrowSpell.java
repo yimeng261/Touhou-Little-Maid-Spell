@@ -109,7 +109,7 @@ public class TripleStarArrowSpell extends AbstractSpell implements BossExclusive
                 if (shot == 0) {
                     fireArrow(serverLevel, caster, damage, index);
                 } else {
-                    SwordRingScheduler.schedule(serverLevel, SHOT_INTERVAL_TICKS, true,
+                    SwordRingScheduler.schedule(serverLevel, shot * SHOT_INTERVAL_TICKS,
                             () -> fireArrow(serverLevel, caster, damage, index));
                 }
             }

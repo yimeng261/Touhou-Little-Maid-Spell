@@ -152,8 +152,8 @@ public class SwordPrisonSpell extends AbstractSpell implements BossExclusiveSpel
             if (ring == 0) {
                 launchRing(level, caster, landingPoints, damage);
             } else {
-                // chain=true：第 n 圈接在第 n-1 圈之后 0.25 秒，而不是都从施法那一刻起算。
-                SwordRingScheduler.schedule(level, RING_INTERVAL_TICKS, true,
+                // 第 n 圈在施法后 n × 0.25 秒落下
+                SwordRingScheduler.schedule(level, ring * RING_INTERVAL_TICKS,
                         () -> launchRing(level, caster, landingPoints, damage));
             }
         }

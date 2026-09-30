@@ -1801,7 +1801,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         serverLevel.sendParticles(ParticleTypes.END_ROD, this.getX(), this.getY(0.8D), this.getZ(),
             12, 0.25D, 0.25D, 0.25D, 0.02D);
         this.playSound(SoundEvents.ENDER_EYE_LAUNCH, 1.0F, 1.4F);
-        SwordRingScheduler.schedule(serverLevel, VOW_CHARM_FLIGHT_TICKS, false, () -> {
+        SwordRingScheduler.schedule(serverLevel, VOW_CHARM_FLIGHT_TICKS, () -> {
             // 玩家可能在延迟期间下线。
             ServerPlayer receiver = serverLevel.getServer().getPlayerList().getPlayer(playerId);
             if (receiver == null) {
