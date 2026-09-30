@@ -8,6 +8,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
@@ -26,10 +27,11 @@ public final class StellarWitchStarterMaid {
     private static final ResourceLocation TEMPLATE = ResourceLocation.fromNamespaceAndPath(
             "touhou_little_maid_spell", "maid/stellar_witch_maid.snbt");
 
-    /** 缓存内置模板；失败后不再重复读取和记录错误。 */
+    /** 按资源管理器缓存模板；/reload 或换存档会换资源管理器，缓存随之失效。失败结果同样缓存，不重复记录错误。 */
+    @Nullable
+    private static ResourceManager cachedFor;
     @Nullable
     private static CompoundTag cached;
-    private static boolean loadFailed;
 
     private StellarWitchStarterMaid() {
     }
@@ -61,24 +63,30 @@ public final class StellarWitchStarterMaid {
     }
 
     /**
-     * 从数据包读模板并缓存。
+     * 从数据包读模板，按资源管理器缓存。
      *
      * <p>{@code TagParser.parseTag} 就是原版 {@code /give ... {…}} 用的那个解析器，
      * 所以作者给的 SNBT（含 {@code 1b}、{@code 0.08d}、{@code [I; …]} 这类字面量）它原样认。
      */
     @Nullable
     private static synchronized CompoundTag template() {
-        if (cached != null || loadFailed) {
-            return cached;
-        }
         var server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) {
             return null;
         }
+        ResourceManager resourceManager = server.getResourceManager();
+        if (resourceManager != cachedFor) {
+            cachedFor = resourceManager;
+            cached = readTemplate(resourceManager);
+        }
+        return cached;
+    }
+
+    @Nullable
+    private static CompoundTag readTemplate(ResourceManager resourceManager) {
         try {
-            Optional<Resource> resource = server.getResourceManager().getResource(TEMPLATE);
+            Optional<Resource> resource = resourceManager.getResource(TEMPLATE);
             if (resource.isEmpty()) {
-                loadFailed = true;
                 com.github.yimeng261.maidspell.MaidSpellMod.LOGGER.error(
                         "誓约信物：找不到女仆模板 {}，驯服奖励将退化为空", TEMPLATE);
                 return null;
@@ -92,10 +100,8 @@ public final class StellarWitchStarterMaid {
                 }
                 snbt = sb.toString();
             }
-            cached = TagParser.parseTag(snbt);
-            return cached;
+            return TagParser.parseTag(snbt);
         } catch (IOException | CommandSyntaxException | RuntimeException e) {
-            loadFailed = true;
             com.github.yimeng261.maidspell.MaidSpellMod.LOGGER.error(
                     "誓约信物：女仆模板解析失败，驯服奖励将退化为空", e);
             return null;
