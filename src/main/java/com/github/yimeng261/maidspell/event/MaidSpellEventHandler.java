@@ -83,6 +83,9 @@ import java.util.*;
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class MaidSpellEventHandler {
     private static final Logger LOGGER = LogUtils.getLogger();
+    /** 锚定女仆所在区块的临时加载票据，女仆 tick 起来后由锚定核心接手强加载。 */
+    private static final TicketType<ChunkPos> MAID_ANCHOR_TICKET =
+            TicketType.create("maid_anchor", Comparator.comparingLong(ChunkPos::toLong), 300);
 
     // 女仆步高属性修饰符的UUID
     private static final ResourceLocation MAID_STEP_HEIGHT_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "maid_step_height");
@@ -285,8 +288,7 @@ public class MaidSpellEventHandler {
                     // 预加载目标区块
                     if(maid.level() instanceof ServerLevel level) {
                         ChunkPos chunkPos = new ChunkPos(SectionPos.blockToSectionCoord(event.getTargetX()), SectionPos.blockToSectionCoord(event.getTargetZ()));
-                        TicketType<ChunkPos> maidTicket = TicketType.create("maid_anchor", Comparator.comparingLong(ChunkPos::toLong), 300);
-                        level.getChunkSource().addRegionTicket(maidTicket, chunkPos, 3, chunkPos);
+                        level.getChunkSource().addRegionTicket(MAID_ANCHOR_TICKET, chunkPos, 3, chunkPos);
                         Global.LOGGER.debug("预加载女仆 {} 传送目标区块", maidId);
                     }
 
@@ -330,9 +332,8 @@ public class MaidSpellEventHandler {
                         if (newMaid instanceof EntityMaid newMaidEntity) {
                             AnchoredEntityMaid newAnchoredMaid = (AnchoredEntityMaid) newMaidEntity;
                             ChunkPos chunkPos = newMaidEntity.chunkPosition();
-                            TicketType<ChunkPos> maidTicket = TicketType.create("maid_anchor", Comparator.comparingLong(ChunkPos::toLong), 300);
                             ServerLevel targetLevel = Objects.requireNonNull(server.getLevel(event.getDimension()));
-                            targetLevel.getChunkSource().addRegionTicket(maidTicket, chunkPos, 3, chunkPos);
+                            targetLevel.getChunkSource().addRegionTicket(MAID_ANCHOR_TICKET, chunkPos, 3, chunkPos);
                             Global.LOGGER.debug("女仆 {} 跨维度传送完成，启用新维度区块加载", maidId);
                         }
 
@@ -730,63 +731,31 @@ public class MaidSpellEventHandler {
     }
 
     /**
-     * 为玩家拥有的女仆恢复区块加载状态
-     * 现在此方法主要用于检查和日志记录
-     * 实际的区块恢复已在服务器启动时由 ChunkLoadingManager.onServerStarting 完成
+     * 玩家登录时临时加载其锚定女仆所在区块，让女仆 tick 起来由锚定核心接手强加载。
+     * 记录只由锚定核心维护（换区块时覆盖，卸下或失效时删除），这里只读不删。
      */
     private static void restorePlayerMaidChunkLoading(ServerPlayer player) {
-        // 区块加载已在服务器启动时统一恢复，无需在每次玩家登录时重复操作
-        // if (ChunkLoadingManager.isChunkLoadingRestored()) {
-        //     LOGGER.debug("玩家 {} 登录，区块加载已在服务器启动时恢复", player.getName().getString());
-        //     return;
-        // }
-
-        // 如果服务器启动时恢复失败，则尝试恢复（备用逻辑）
         try {
-            ChunkLoadingData chunkLoadingData = player.getData(ChunkLoadingData.ATTACHMENT_TYPE);
-            var savedPositions = chunkLoadingData.maidChunks();
-
+            var savedPositions = player.getData(ChunkLoadingData.ATTACHMENT_TYPE).maidChunks();
             if (savedPositions.isEmpty()) {
-                return; // 没有需要恢复的数据
+                return;
             }
 
             int restoredCount = 0;
-            int totalCount = savedPositions.size();
-
-            LOGGER.info("开始为玩家 {} 恢复 {} 个女仆的区块加载状态", player.getName().getString(), totalCount);
-
-            MinecraftServer server = player.server;
-            for (var iterator = savedPositions.entrySet().iterator(); iterator.hasNext(); ) {
-                var entry = iterator.next();
-                iterator.remove();
-                UUID maidId = entry.getKey();
+            for (var entry : savedPositions.entrySet()) {
                 var info = entry.getValue();
-
-                try {
-                    // 获取对应维度的服务器世界
-                    ServerLevel targetLevel = server.getLevel(info.levelKey());
-                    if (targetLevel == null) {
-                        LOGGER.warn("无法找到维度 {} 来恢复女仆 {} 的区块加载", null, maidId);
-                        continue;
-                    }
-
-                    // 直接加载该区块
-                    ChunkPos chunkPos = new ChunkPos(info.chunkX(), info.chunkZ());
-                    TicketType<ChunkPos> maidTicket = TicketType.create("maid_anchor", Comparator.comparingLong(ChunkPos::toLong), 300);
-                    targetLevel.getChunkSource().addRegionTicket(maidTicket, chunkPos, 3, chunkPos);
-                    restoredCount++;
-                } catch (Exception e) {
-                    LOGGER.warn("恢复女仆 {} 区块加载时发生错误: {}", maidId, e.getMessage());
+                ServerLevel targetLevel = player.server.getLevel(info.levelKey());
+                if (targetLevel == null) {
+                    LOGGER.warn("无法找到维度 {} 来恢复女仆 {} 的区块加载", info.levelKey().location(), entry.getKey());
+                    continue;
                 }
+                ChunkPos chunkPos = new ChunkPos(info.chunkX(), info.chunkZ());
+                targetLevel.getChunkSource().addRegionTicket(MAID_ANCHOR_TICKET, chunkPos, 3, chunkPos);
+                restoredCount++;
             }
 
-            if (restoredCount > 0) {
-                LOGGER.info("为玩家 {} 成功恢复了 {}/{} 个女仆的区块加载",
-                    player.getName().getString(), restoredCount, totalCount);
-            } else {
-                LOGGER.warn("为玩家 {} 恢复女仆区块加载失败，没有成功恢复任何女仆",
-                    player.getName().getString());
-            }
+            LOGGER.info("为玩家 {} 恢复了 {}/{} 个女仆的区块加载",
+                player.getName().getString(), restoredCount, savedPositions.size());
         } catch (Exception e) {
             LOGGER.error("为玩家 {} 恢复女仆区块加载时发生严重错误", player.getName().getString(), e);
         }

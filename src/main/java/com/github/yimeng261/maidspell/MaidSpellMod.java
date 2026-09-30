@@ -63,7 +63,7 @@ public class MaidSpellMod {
         // 注册额外物品数据标签
         MaidSpellDataComponents.DATA_COMPONENTS.register(modEventBus);
 
-        Registry.register(NeoForgeRegistries.ATTACHMENT_TYPES, ResourceLocation.fromNamespaceAndPath(MOD_ID, "maid-chunks"), ChunkLoadingData.ATTACHMENT_TYPE);
+        Registry.register(NeoForgeRegistries.ATTACHMENT_TYPES, ChunkLoadingData.ATTACHMENT_ID, ChunkLoadingData.ATTACHMENT_TYPE);
 
         // 手动注册事件处理器，确保事件能被正确监听
         NeoForge.EVENT_BUS.register(MaidSpellEventHandler.class);

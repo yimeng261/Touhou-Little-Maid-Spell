@@ -20,6 +20,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.progress.ChunkProgressListener;
 import net.minecraft.util.thread.ReentrantBlockableEventLoop;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.ForcedChunksSavedData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.dimension.LevelStem;
@@ -27,6 +28,7 @@ import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.ServerLevelData;
 import net.minecraft.world.level.storage.WorldData;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.common.world.chunk.ForcedChunkManager;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -163,6 +165,15 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
 
             // 触发 Forge 的世界加载事件，这是确保世界正常 Tick 和实体加载的关键
             NeoForge.EVENT_BUS.post(new LevelEvent.Load(newLevel));
+
+            // 动态创建的维度错过了 prepareLevels 里的强加载恢复，照原版补上（含锚定核心用的 NeoForge 票据）
+            ForcedChunksSavedData forcedChunks = newLevel.getDataStorage().get(ForcedChunksSavedData.factory(), "chunks");
+            if (forcedChunks != null) {
+                for (long chunk : forcedChunks.getChunks()) {
+                    newLevel.getChunkSource().updateChunkForced(new ChunkPos(chunk), true);
+                }
+                ForcedChunkManager.reinstatePersistentChunks(newLevel, forcedChunks);
+            }
 
             // 确保新维度的数据目录被创建
             try {

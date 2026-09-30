@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.dimension;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
+import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.mojang.serialization.Dynamic;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -233,6 +234,7 @@ public class PlayerRetreatManager {
                 return;
             }
 
+            restoreStructureGenerated(server, dimensionKey, playerUUID);
             @SuppressWarnings("null")
             boolean success = ((MinecraftServerAccessor) server).maidspell$createWorld(dimensionKey, RETREAT_TEMPLATE);
             if (!success) {
@@ -343,11 +345,23 @@ public class PlayerRetreatManager {
                                              @Nullable UUID ownerUUID) {
         if (ownerUUID != null) {
             RetreatManager.cachePlayerRetreat(ownerUUID, level);
-            RetreatDimensionData.DimensionInfo info = RetreatDimensionData.get(level.getServer())
-                .getDimensionInfo(ownerUUID);
-            if (info != null && info.structureGenerated) {
-                RetreatManager.restoreStructureGenerated(dimensionKey);
-            }
+            restoreStructureGenerated(level.getServer(), dimensionKey, ownerUUID);
+        }
+    }
+
+    /**
+     * 私人维度已经生成过结构时恢复内存里的名额。建维度之前就要调用：
+     * createWorld 恢复强加载后立即派发区块生成，名额没恢复的话，新推进到 STRUCTURE_STARTS 的候选区块会再放一座。
+     */
+    private static void restoreStructureGenerated(MinecraftServer server, ResourceKey<Level> dimensionKey,
+                                                  @Nullable UUID playerUUID) {
+        UUID ownerUUID = resolvePlayerDimensionOwner(dimensionKey, playerUUID);
+        if (ownerUUID == null) {
+            return;
+        }
+        RetreatDimensionData.DimensionInfo info = RetreatDimensionData.get(server).getDimensionInfo(ownerUUID);
+        if (info != null && info.structureGenerated) {
+            RetreatManager.restoreStructureGenerated(dimensionKey);
         }
     }
 
@@ -407,6 +421,7 @@ public class PlayerRetreatManager {
             return loaded;
         }
 
+        restoreStructureGenerated(server, dimensionKey, playerUUID);
         @SuppressWarnings("null")
         boolean success = ((MinecraftServerAccessor) server).maidspell$createWorld(dimensionKey, RETREAT_TEMPLATE);
         if (!success) {
@@ -460,6 +475,14 @@ public class PlayerRetreatManager {
             } catch (IOException e) {
                 MaidSpellMod.LOGGER.warn("Failed to read player data while scanning retreat dimensions: {}", playerFile.getName(), e);
                 continue;
+            }
+
+            // 锚定核心女仆所在的归隐之地也要预载，否则其中的强加载区块开服后不会恢复
+            for (ChunkLoadingData.LevelAndChunkPos anchor : ChunkLoadingData.readFromPlayerTag(tag).values()) {
+                ResourceKey<Level> anchorKey = anchor.levelKey();
+                if (TheRetreatDimension.isRetreatDimension(anchorKey.location())) {
+                    retreatDimensions.putIfAbsent(anchorKey, resolvePlayerDimensionOwner(anchorKey, playerUUID));
+                }
             }
 
             ResourceKey<Level> dimensionKey = parseDimensionKey(tag);

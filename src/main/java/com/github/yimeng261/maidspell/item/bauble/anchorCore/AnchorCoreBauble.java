@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.neoforged.neoforge.common.world.chunk.RegisterTicketControllersEvent;
 import net.neoforged.neoforge.common.world.chunk.TicketController;
+import net.neoforged.neoforge.common.world.chunk.TicketHelper;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,12 +30,36 @@ import java.util.UUID;
  */
 public class AnchorCoreBauble implements IMaidBauble {
     private static final TicketController CHUNK_TICKET_CONTROLLER = new TicketController(
-            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "anchor_core"));
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "anchor_core"),
+            AnchorCoreBauble::validateTickets);
 
     private final Map<UUID, Pair<ServerLevel, ChunkPos>> maidLastKnownChunkPos = new HashMap<>();
 
     public static void registerTicketController(RegisterTicketControllersEvent event) {
         event.register(CHUNK_TICKET_CONTROLLER);
+    }
+
+    /**
+     * 读档恢复持久票据前剔除能证明过期的票据：主人的锚定记录指向别的维度或区块时，这里的票据是女仆换区块后留下的旧票据。
+     * 没有记录的票据保留：旧版本登录时会删记录，女仆没换区块就不会写回，这些票据仍在锚定女仆。
+     */
+    private static void validateTickets(ServerLevel level, TicketHelper helper) {
+        Map<UUID, ChunkLoadingData.LevelAndChunkPos> records = ChunkLoadingData.collectAll(level.getServer());
+        helper.getEntityTickets().forEach((maidId, tickets) -> {
+            ChunkLoadingData.LevelAndChunkPos record = records.get(maidId);
+            if (record == null) {
+                return;
+            }
+            boolean recordedHere = record.levelKey().equals(level.dimension());
+            long recordedChunk = recordedHere ? ChunkPos.asLong(record.chunkX(), record.chunkZ()) : 0L;
+            for (boolean ticking : new boolean[] {false, true}) {
+                for (long chunk : ticking ? tickets.ticking() : tickets.nonTicking()) {
+                    if (!recordedHere || chunk != recordedChunk) {
+                        helper.removeTicket(maidId, chunk, ticking);
+                    }
+                }
+            }
+        });
     }
 
     @Override
