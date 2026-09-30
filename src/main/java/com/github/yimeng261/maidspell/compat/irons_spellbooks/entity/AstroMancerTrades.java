@@ -112,7 +112,7 @@ public final class AstroMancerTrades {
         }
         return result.is(MaidSpellItems.STARANCHOR_PEARL.get())
                 ? STARANCHOR_PEARL_DAILY_LIMIT
-                : GuardianWitchEntity.DAILY_TRADE_MAX_USES;
+                : NpcMerchantTrading.DAILY_TRADE_MAX_USES;
     }
 
     /**

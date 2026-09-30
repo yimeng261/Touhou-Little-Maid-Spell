@@ -14,7 +14,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -27,7 +26,6 @@ import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.ResetUniversalAngerTargetGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.raid.Raider;
-import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
@@ -38,12 +36,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.OptionalInt;
 
 public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchantWizard {
-    private static final int DAILY_TRADE_MAX_USES = 5;
-    /** 交易对象离开这么多格就放开交易。 */
-    private static final int TRADING_MAX_DISTANCE = 8;
     @Nullable
     private Player tradingPlayer;
     @Nullable
@@ -153,46 +147,16 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
 
     @Override
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {
-        boolean preventTrade = isAggressive() || this.getTarget() != null || (!this.level().isClientSide && this.getOffers().isEmpty());
-        // 已有人在交易时按普通交互处理，与原版村民一致，也不会关掉前一个玩家的界面
-        if (preventTrade || this.isTrading()) {
+        if (!NpcMerchantTrading.tryOpenTrade(this, player)) {
             return super.mobInteract(player, hand);
         }
-        Level level = this.level();
-        if (!level.isClientSide) {
-            if (shouldRestock()) {
-                restock();
-            }
-            this.startTrading(player);
-        }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.sidedSuccess(this.level().isClientSide);
     }
 
-    /** 打开菜单失败时清除交易对象，避免后续交易被锁住。 */
-    private void startTrading(Player player) {
-        this.setTradingPlayer(player);
-        OptionalInt containerId = player.openMenu(new SimpleMenuProvider(
-            (id, inventory, opener) -> new MerchantMenu(id, inventory, this), this.getDisplayName()));
-        if (containerId.isEmpty()) {
-            this.setTradingPlayer(null);
-            return;
-        }
-        MerchantOffers current = this.getOffers();
-        if (!current.isEmpty()) {
-            player.sendMerchantOffers(containerId.getAsInt(), current, 0,
-                this.getVillagerXp(), this.showProgressBar(), this.canRestock());
-        }
-    }
-
-    /** 交易对象死亡、下线、换维度或走出 {@value #TRADING_MAX_DISTANCE} 格后放开交易，NPC 不会一直被占着。 */
     @Override
     public void aiStep() {
         super.aiStep();
-        Player trader = this.getTradingPlayer();
-        if (trader != null && !this.level().isClientSide && (!trader.isAlive() || trader.level() != this.level()
-                || this.distanceToSqr(trader) > TRADING_MAX_DISTANCE * TRADING_MAX_DISTANCE)) {
-            this.stopTrading();
-        }
+        NpcMerchantTrading.releaseAbsentTrader(this);
     }
 
     /** 真正死亡后放开交易对象让界面随之关闭；死亡被取消时照常交易。尸体要过一会儿才移出世界，不能只靠 {@link #onRemovedFromLevel}。 */
@@ -220,7 +184,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(MaidSpellItems.YUE_LINGLAN.get()),
                 0,
-                DAILY_TRADE_MAX_USES,
+                NpcMerchantTrading.DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -229,7 +193,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(ItemRegistry.NATURE_RUNE.get()),
                 0,
-                DAILY_TRADE_MAX_USES,
+                NpcMerchantTrading.DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -238,7 +202,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(Items.HONEY_BOTTLE),
                 0,
-                DAILY_TRADE_MAX_USES,
+                NpcMerchantTrading.DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -247,7 +211,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(Items.POISONOUS_POTATO, 3),
                 0,
-                DAILY_TRADE_MAX_USES,
+                NpcMerchantTrading.DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -351,8 +315,8 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
             offer.getItemCostA(),
             offer.getItemCostB(),
             offer.getResult().copy(),
-            Math.min(offer.getUses(), DAILY_TRADE_MAX_USES),
-            DAILY_TRADE_MAX_USES,
+            Math.min(offer.getUses(), NpcMerchantTrading.DAILY_TRADE_MAX_USES),
+            NpcMerchantTrading.DAILY_TRADE_MAX_USES,
             offer.getXp(),
             offer.getPriceMultiplier(),
             offer.getDemand()

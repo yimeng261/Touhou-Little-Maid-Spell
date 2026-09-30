@@ -18,7 +18,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -27,7 +26,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.SpawnGroupData;
-import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
@@ -48,7 +46,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalInt;
 
 /**
  * 观星塔的中立法师守卫，使用加权施法与交易系统。
@@ -65,17 +62,6 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
      */
     private static final int SPELL_ATTACK_INTERVAL_MIN = 30;
     private static final int SPELL_ATTACK_INTERVAL_MAX = 60;
-
-    /** 交易对象离开这么多格就放开交易。 */
-    private static final int TRADING_MAX_DISTANCE = 8;
-
-    /**
-     * 报价的默认每日上限。与 {@code ElfTemplarEntity} 取同一个值：交易界面里 {@code maxUses} 就是它，
-     * 卖完要等半天补货。
-     *
-     * <p>不是全表统一：星锚珍珠按 {@code AstroMancerTrades#dailyLimitFor} 只给 1，星陨石那一条更是全局一次。
-     */
-    static final int DAILY_TRADE_MAX_USES = 5;
 
     @Nullable
     private Player tradingPlayer;
@@ -201,31 +187,16 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
      */
     @Override
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {
-        boolean preventTrade = this.isAggressive() || this.getTarget() != null
-            || (!this.level().isClientSide && this.getOffers().isEmpty());
-        // 已有人在交易时按普通交互处理，与原版村民一致，也不会关掉前一个玩家的界面
-        if (preventTrade || this.isTrading()) {
+        if (!NpcMerchantTrading.tryOpenTrade(this, player)) {
             return super.mobInteract(player, hand);
         }
-        Level level = this.level();
-        if (!level.isClientSide) {
-            if (shouldRestock()) {
-                restock();
-            }
-            this.startTrading(player);
-        }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.sidedSuccess(this.level().isClientSide);
     }
 
-    /** 交易对象死亡、下线、换维度或走出 {@value #TRADING_MAX_DISTANCE} 格后放开交易，NPC 不会一直被占着。 */
     @Override
     public void aiStep() {
         super.aiStep();
-        Player trader = this.getTradingPlayer();
-        if (trader != null && !this.level().isClientSide && (!trader.isAlive() || trader.level() != this.level()
-                || this.distanceToSqr(trader) > TRADING_MAX_DISTANCE * TRADING_MAX_DISTANCE)) {
-            this.stopTrading();
-        }
+        NpcMerchantTrading.releaseAbsentTrader(this);
     }
 
     /** 真正死亡后放开交易对象让界面随之关闭；死亡被取消时照常交易。尸体要过一会儿才移出世界，不能只靠 {@link #onRemovedFromLevel}。 */
@@ -244,21 +215,6 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
         this.stopTrading();
     }
 
-    /** 打开菜单失败时清除交易对象，避免后续交易被锁住。 */
-    private void startTrading(Player player) {
-        this.setTradingPlayer(player);
-        OptionalInt containerId = player.openMenu(new SimpleMenuProvider(
-            (id, inventory, opener) -> new MerchantMenu(id, inventory, this), this.getDisplayName()));
-        if (containerId.isEmpty()) {
-            this.setTradingPlayer(null);
-            return;
-        }
-        MerchantOffers current = this.getOffers();
-        if (!current.isEmpty()) {
-            player.sendMerchantOffers(containerId.getAsInt(), current, 0,
-                this.getVillagerXp(), this.showProgressBar(), this.canRestock());
-        }
-    }
 
     /**
      * 交易表只算一次，之后一直挂在字段上。

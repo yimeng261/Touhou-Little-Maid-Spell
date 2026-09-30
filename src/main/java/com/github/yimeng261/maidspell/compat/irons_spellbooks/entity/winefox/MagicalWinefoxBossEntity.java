@@ -15,6 +15,7 @@ import com.github.yimeng261.maidspell.compat.touhou_little_maid.StellarWitchStar
 import com.github.yimeng261.maidspell.client.animation.MagicCastingAnimateState;
 import com.github.yimeng261.maidspell.client.spell.CastingAnimateStateAccessor;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.SwordRingScheduler;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.NpcMerchantTrading;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
@@ -96,10 +97,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.trading.Merchant;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
-import net.minecraft.world.SimpleMenuProvider;
-import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.sounds.SoundEvent;
-import java.util.OptionalInt;
 import net.minecraft.world.effect.MobEffectInstance;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.Config;
@@ -1110,6 +1108,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (this.level().isClientSide) {
             return;
         }
+        NpcMerchantTrading.releaseAbsentTrader(this);
         // 每 tick 清除燃烧状态，不影响火系法术的直接伤害。
         if (this.getRemainingFireTicks() > 0) {
             this.clearFire();
@@ -1826,22 +1825,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     // ==================== 战败之后的交易 ====================
 
-    /** 菜单打开失败时清除交易对象，避免后续无法再次交易。 */
     private void startTrading(Player player) {
-        this.setTradingPlayer(player);
-        OptionalInt containerId = player.openMenu(new SimpleMenuProvider(
-                (id, inventory, opener) -> new MerchantMenu(id, inventory, this), this.getDisplayName()));
-        if (containerId.isEmpty()) {
-            // 未打开的菜单不会调用 MerchantMenu.removed()。
-            this.setTradingPlayer(null);
-            return;
-        }
-        MerchantOffers current = this.getOffers();
-        WinefoxTrades.refreshDailyQuota(current);
-        if (!current.isEmpty()) {
-            player.sendMerchantOffers(containerId.getAsInt(), current, 1,
-                    this.getVillagerXp(), this.showProgressBar(), this.canRestock());
-        }
+        WinefoxTrades.refreshDailyQuota(this.getOffers());
+        NpcMerchantTrading.startTrading(this, player, 1);
     }
 
     @Override
