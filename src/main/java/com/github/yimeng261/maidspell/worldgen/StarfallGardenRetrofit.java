@@ -185,49 +185,41 @@ public final class StarfallGardenRetrofit {
             }
             tried++;
 
+            if (StarfallGardenData.isPlaced()) {
+                MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
+                return;
+            }
             StructureStart start;
-            ChunkPos min;
-            ChunkPos max;
-            BoundingBox box;
-            // 补生成窗口只包住生成和预算检查：其间只有本线程能出候选和关闸，世界生成照旧视为已有庭院。
-            StarfallGardenData.unlockForRetrofit();
             try {
-                if (!StarfallGardenData.isRetrofitThread()) {
-                    // 开窗之前世界生成已经放下一座并关了闸
-                    MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
-                    return;
-                }
-                try {
-                    start = garden.generate(overworld.registryAccess(), chunkGenerator,
-                            chunkGenerator.getBiomeSource(), randomState, overworld.getStructureManager(),
-                            seed, candidate, 0, overworld, holder -> true);
-                } catch (RuntimeException e) {
-                    MaidSpellMod.LOGGER.warn("星落之庭补生成：候选 {} 生成失败，换下一个", candidate, e);
-                    continue;
-                }
-                if (start == null || !start.isValid()) {
-                    // 距离带 / 高度夹取不通过，或者这个候选本来就不该长。正常情况，换下一个。
-                    continue;
-                }
-                box = start.getBoundingBox();
-                min = new ChunkPos(SectionPos.blockToSectionCoord(box.minX()),
-                        SectionPos.blockToSectionCoord(box.minZ()));
-                max = new ChunkPos(SectionPos.blockToSectionCoord(box.maxX()),
-                        SectionPos.blockToSectionCoord(box.maxZ()));
-                long chunkCount = (long) (max.x - min.x + 1) * (max.z - min.z + 1);
-                if (chunkCount > MAX_PLACEMENT_CHUNKS) {
-                    // 超出预算就整个放弃，不做「放一半」：半座岛比没有岛更糟。
-                    MaidSpellMod.LOGGER.error(
-                            "星落之庭补生成：候选 {} 的落点需要 {} 个区块，超过上限 {}，放弃补生成。"
-                                    + "把数据包里的 max_distance_from_center 调小可以收窄覆盖范围",
-                            candidate, chunkCount, MAX_PLACEMENT_CHUNKS);
-                    return;
-                }
-                // 窗口里世界生成线程的抢占必定失败，这里一定能占到
-                StarfallGardenData.tryMarkPlaced(box.getCenter());
-            } finally {
-                // 占到名额后保持 CLOSED；其余情况退回 OPEN，世界生成仍可自然生成。
-                StarfallGardenData.relockAfterRetrofit();
+                start = garden.computeStart(overworld.registryAccess(), chunkGenerator,
+                        chunkGenerator.getBiomeSource(), randomState, overworld.getStructureManager(),
+                        seed, candidate, 0, overworld, holder -> true);
+            } catch (RuntimeException e) {
+                MaidSpellMod.LOGGER.warn("星落之庭补生成：候选 {} 生成失败，换下一个", candidate, e);
+                continue;
+            }
+            if (!start.isValid()) {
+                // 距离带 / 高度夹取不通过，或者这个候选本来就不该长。正常情况，换下一个。
+                continue;
+            }
+            BoundingBox box = start.getBoundingBox();
+            ChunkPos min = new ChunkPos(SectionPos.blockToSectionCoord(box.minX()),
+                    SectionPos.blockToSectionCoord(box.minZ()));
+            ChunkPos max = new ChunkPos(SectionPos.blockToSectionCoord(box.maxX()),
+                    SectionPos.blockToSectionCoord(box.maxZ()));
+            long chunkCount = (long) (max.x - min.x + 1) * (max.z - min.z + 1);
+            if (chunkCount > MAX_PLACEMENT_CHUNKS) {
+                // 超出预算就整个放弃，不做「放一半」：半座岛比没有岛更糟。
+                MaidSpellMod.LOGGER.error(
+                        "星落之庭补生成：候选 {} 的落点需要 {} 个区块，超过上限 {}，放弃补生成。"
+                                + "把数据包里的 max_distance_from_center 调小可以收窄覆盖范围",
+                        candidate, chunkCount, MAX_PLACEMENT_CHUNKS);
+                return;
+            }
+            if (!StarfallGardenData.tryMarkPlaced(box.getCenter())) {
+                // 选点期间世界生成先占到了名额
+                MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
+                return;
             }
 
             int placedChunks = 0;

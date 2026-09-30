@@ -207,7 +207,6 @@ public class StarfallGardenStructure extends Structure {
     /**
      * 只在 StructureStart 有效时占用名额。findGenerationPoint 可能被试探性调用，
      * 不能在那里占用；手动 /place structure 同样计入一座。抢占规则见 {@link StarfallGardenData#tryMarkPlaced}。
-     * 补生成线程上不占用：补生成超出区块预算会放弃这座，通过预算检查后由它自己占用。
      */
     @Override
     public @NotNull StructureStart generate(RegistryAccess registryAccess, ChunkGenerator chunkGenerator,
@@ -215,13 +214,25 @@ public class StarfallGardenStructure extends Structure {
                                            StructureTemplateManager templateManager, long seed, ChunkPos chunkPos,
                                            int references, LevelHeightAccessor heightAccessor,
                                            Predicate<Holder<Biome>> validBiome) {
-        StructureStart start = super.generate(registryAccess, chunkGenerator, biomeSource, randomState,
+        StructureStart start = computeStart(registryAccess, chunkGenerator, biomeSource, randomState,
                 templateManager, seed, chunkPos, references, heightAccessor, validBiome);
-        if (start.isValid() && !StarfallGardenData.isRetrofitThread()
-                && !StarfallGardenData.tryMarkPlaced(start.getBoundingBox().getCenter())) {
+        if (start.isValid() && !StarfallGardenData.tryMarkPlaced(start.getBoundingBox().getCenter())) {
             return StructureStart.INVALID_START;
         }
         return start;
+    }
+
+    /**
+     * 按世界生成的同一套落点算出结构起点，不占名额。补生成用它选点，
+     * 两条路落点一致；通过区块预算检查后再由补生成自己占名额。
+     */
+    public @NotNull StructureStart computeStart(RegistryAccess registryAccess, ChunkGenerator chunkGenerator,
+                                                BiomeSource biomeSource, RandomState randomState,
+                                                StructureTemplateManager templateManager, long seed, ChunkPos chunkPos,
+                                                int references, LevelHeightAccessor heightAccessor,
+                                                Predicate<Holder<Biome>> validBiome) {
+        return super.generate(registryAccess, chunkGenerator, biomeSource, randomState,
+                templateManager, seed, chunkPos, references, heightAccessor, validBiome);
     }
 
     @Override

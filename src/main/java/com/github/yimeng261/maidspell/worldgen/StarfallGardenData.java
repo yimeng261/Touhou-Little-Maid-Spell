@@ -13,7 +13,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 记录星落之庭是否已生成，保证一份存档只有一座。
@@ -23,21 +22,8 @@ import java.util.concurrent.atomic.AtomicReference;
 public class StarfallGardenData extends SavedData {
     private static final String DATA_NAME = MaidSpellMod.MOD_ID + "_starfall_garden";
 
-    /** 世界生成和旧存档补生成需要不同的开闸状态。 */
-    private enum Gate {
-        /** 世界生成可出候选。 */
-        OPEN,
-        /** 世界生成停止出候选。 */
-        CLOSED,
-        /** 仅允许补生成所在线程出候选，世界生成线程仍视为已有庭院。 */
-        UNLOCKED_FOR_RETROFIT
-    }
-
-    private static final AtomicReference<Gate> GATE = new AtomicReference<>(Gate.OPEN);
-
-    /** 打开补生成窗口的线程，只在 {@code UNLOCKED_FOR_RETROFIT} 期间有意义。 */
-    @Nullable
-    private static volatile Thread retrofitThread;
+    /** 内存闸门：唯一的名额是否已被占用。世界生成和补生成都靠它抢名额。 */
+    private static final AtomicBoolean PLACED = new AtomicBoolean(false);
 
     /** 本次服务器会话是否已经从存档读过一次；避免重复读盘，也避免读失败时反复重试。 */
     private static final AtomicBoolean RESTORED = new AtomicBoolean(false);
@@ -110,57 +96,17 @@ public class StarfallGardenData extends SavedData {
 
     // ========== 运行期闸门 ==========
 
-    /**
-     * 当前线程是否该认为已经有庭院了。{@code CLOSED} 对所有线程成立；
-     * {@code UNLOCKED_FOR_RETROFIT} 只对补生成以外的线程成立，世界生成不会和补生成抢名额。
-     */
+    /** 名额是否已被占用。 */
     public static boolean isPlaced() {
-        return switch (GATE.get()) {
-            case OPEN -> false;
-            case CLOSED -> true;
-            case UNLOCKED_FOR_RETROFIT -> !isRetrofitThread();
-        };
-    }
-
-    /** 当前线程是否处在补生成的放置窗口里。 */
-    public static boolean isRetrofitThread() {
-        return GATE.get() == Gate.UNLOCKED_FOR_RETROFIT && Thread.currentThread() == retrofitThread;
-    }
-
-    /**
-     * 补生成专用的放置窗口：闸门从 {@code OPEN} 抬到 {@code UNLOCKED_FOR_RETROFIT}，
-     * 只放行调用线程；已经 {@code CLOSED} 时保持不变。
-     *
-     * <p>为什么不能直接绕开闸门去造 {@code StructureStart}：落点必须由 mod 自己的
-     * {@code structure.generate(...)} 算出来，否则「补生成放的那一座」和「世界生成会放的那一座」
-     * 会落在不同位置 —— 补生成一跑，存档里就多出一座谁也算不出来的东西。补生成照样走
-     * {@code generate} 和闸门判定，只是窗口期间放行本线程，两条路用的是同一套落点算术。
-     */
-    public static void unlockForRetrofit() {
-        retrofitThread = Thread.currentThread();
-        GATE.compareAndSet(Gate.OPEN, Gate.UNLOCKED_FOR_RETROFIT);
-    }
-
-    /**
-     * 放置窗口用完了：没落下就退回 {@code OPEN}，让世界生成照常出候选；
-     * {@link #tryMarkPlaced} 已经关闸时保持 {@code CLOSED}。
-     *
-     * <p>必须成对调用，用 {@code try/finally} 包住，别让一次生成异常把世界生成永久挡在窗口外。
-     */
-    public static void relockAfterRetrofit() {
-        GATE.compareAndSet(Gate.UNLOCKED_FOR_RETROFIT, Gate.OPEN);
-        retrofitThread = null;
+        return PLACED.get();
     }
 
     /**
      * 抢占唯一名额，见 {@code StarfallGardenStructure#generate} 和补生成的放置。
-     *
-     * <p>世界生成线程只能从 {@code OPEN} 关闸，补生成线程只能从自己打开的 {@code UNLOCKED_FOR_RETROFIT} 关闸。
-     * 并发通过 {@code findGenerationPoint} 的几个候选只有一个能抢到，其余返回 false，调用方必须放弃这一座。
+     * 并发的几个候选只有一个能抢到，其余返回 false，调用方必须放弃这一座。
      */
     public static boolean tryMarkPlaced(BlockPos pos) {
-        Gate expected = isRetrofitThread() ? Gate.UNLOCKED_FOR_RETROFIT : Gate.OPEN;
-        if (!GATE.compareAndSet(expected, Gate.CLOSED)) {
+        if (!PLACED.compareAndSet(false, true)) {
             return false;
         }
         persistPlaced(pos);
@@ -169,7 +115,7 @@ public class StarfallGardenData extends SavedData {
 
     /** 认领存档里已有的庭院：无条件关闸并落盘。 */
     public static void markPlaced(BlockPos pos) {
-        GATE.set(Gate.CLOSED);
+        PLACED.set(true);
         persistPlaced(pos);
     }
 
@@ -232,8 +178,7 @@ public class StarfallGardenData extends SavedData {
      * 新会话开始：清掉内存状态。必须在读存档之前调用，否则上一个存档的「已有庭院」会带到这一个存档来。
      */
     public static void resetSession() {
-        GATE.set(Gate.OPEN);
-        retrofitThread = null;
+        PLACED.set(false);
         RESTORED.set(false);
     }
 
@@ -246,7 +191,7 @@ public class StarfallGardenData extends SavedData {
         }
         try {
             StarfallGardenData data = dataOrNull(server);
-            GATE.set(data != null && data.isGenerated() ? Gate.CLOSED : Gate.OPEN);
+            PLACED.set(data != null && data.isGenerated());
         } catch (RuntimeException e) {
             RESTORED.set(false);
             MaidSpellMod.LOGGER.error("读取星落之庭存档标记失败，本次服务器会话不启用「一存档一座」限制", e);
