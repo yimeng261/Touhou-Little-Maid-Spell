@@ -1380,9 +1380,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.entityData.set(RESTRICTED, false);
         this.entityData.set(BATTLE_MUSIC, true);
         this.bossEvent.setVisible(true);
-        // 这里原先会把交易表置空，「限制标志刚被清零、旧表作废」。但限制标志影响的只是补给那一列的
-        // 价格档，<b>报价集合本身没变</b>；置空的真正后果是把当天的限购次数一起抹掉 ——
-        // 买完法帽再邀战一次、再买一顶。现在表由 getOffers() 按 tradingUnlocked 的变化决定要不要重算，
+        // 不置空交易表：限制标志只影响补给那一列的价格档，报价集合不变，置空会把当天的限购次数一起抹掉
+        // （买完法帽再邀战一次就能再买一顶）。表由 getOffers() 按 tradingUnlocked 的变化决定要不要重算，
         // 这里只把交易界面收掉。
         this.setTradingPlayer(null);
     }
@@ -1925,7 +1924,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.resetBattleTally();
         this.entityData.set(RESTRICTED, false);
         this.entityData.set(CURTSYING, false);
-        // 同 adoptChallengeFrom：置空会连当天限购次数一起抹掉，而报价集合并没有变。
+        // 同 adoptChallengeFrom：不置空交易表，只把交易界面收掉。
         this.setTradingPlayer(null);
         this.challengerId = challenger.getUUID();
         WinefoxChallengeProgress.markChallengeActive(this.getServer(), challenger.getUUID());
@@ -2531,7 +2530,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
         // 不置空交易表：这场胜利可能刚把 tradingUnlocked 翻成 true（上面那一行 |=），
         // 而 getOffers() 会自己发现这个变化并把「战胜后才摆出来」的那一档补上，
-        // 同时保住已经卖掉的次数。以前在这里置空 = 每打赢一场就把当天限购刷一遍。
+        // 同时保住已经卖掉的次数；置空会让每打赢一场都把当天限购刷一遍。
         this.returnHomeTicks = DEFEAT_RETURN_HOME_TICKS;
     }
 
