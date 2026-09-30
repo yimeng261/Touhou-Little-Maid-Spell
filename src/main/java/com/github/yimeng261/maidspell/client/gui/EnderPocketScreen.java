@@ -13,6 +13,7 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -34,10 +35,16 @@ public class EnderPocketScreen extends Screen {
     private static final int CENTER_SOURCE_WIDTH = ORIGINAL_GUI_WIDTH - LEFT_CAP_WIDTH - RIGHT_CAP_WIDTH;
     private static final int ACTION_SEPARATOR_X = 98;
     private static final int ACTION_SEPARATOR_COLOR = 0xFF544C3B;
+    private static final int VISIBLE_ROWS = 8;
+    private static final int ROW_HEIGHT = 16;
+    private static final int LIST_TOP = 16;
+    private static final int SCROLLBAR_COLOR = 0xFFE0CA9F;
 
     private List<EnderPocketService.EnderPocketMaidInfo> maidInfos;
     private static final int GUI_WIDTH = 150;
     private static final int GUI_HEIGHT = 153;
+    /** 列表超过 {@link #VISIBLE_ROWS} 行时，第一行显示的女仆下标 */
+    private int scrollOffset;
 
 
     public EnderPocketScreen(List<EnderPocketService.EnderPocketMaidInfo> maidInfos) {
@@ -66,16 +73,13 @@ public class EnderPocketScreen extends Screen {
         this.maidInfos = newMaidInfos;
         // 按钮布局有变化时才重新初始化界面
         if (widgetsChanged) {
-            this.init();
+            this.rebuildWidgets();
         }
     }
 
     @Override
     protected void init() {
         super.init();
-
-        // 清除之前的按钮
-        this.clearWidgets();
 
         int startX = (this.width - GUI_WIDTH) / 2;
         int startY = (this.height - GUI_HEIGHT) / 2;
@@ -88,13 +92,13 @@ public class EnderPocketScreen extends Screen {
                 Component.translatable("gui.maidspell.ender_pocket.hud_settings"),
                 button -> openHudEditor()));
 
-        // 为每个女仆创建按钮
-        for (int i = 0; i < maidInfos.size() && i < 8; i++) { // 最多显示8个女仆
-            EnderPocketService.EnderPocketMaidInfo maidInfo = maidInfos.get(i);
+        // 为可见的每个女仆创建按钮，超出的用滚轮翻
+        this.scrollOffset = Mth.clamp(this.scrollOffset, 0, maxScroll());
+        for (int row = 0; row < visibleRows(); row++) {
+            EnderPocketService.EnderPocketMaidInfo maidInfo = maidInfos.get(scrollOffset + row);
 
             int rowX = startX + 6;
-            int buttonHeight = 16;
-            int buttonY = startY + 16 + (i * buttonHeight);
+            int buttonY = startY + LIST_TOP + (row * ROW_HEIGHT);
             int nameButtonX = rowX + 18;
             int nameButtonRight = maidInfo.hasAnchorCore
                     ? startX + ACTION_SEPARATOR_X - 2
@@ -103,7 +107,7 @@ public class EnderPocketScreen extends Screen {
             this.addRenderableWidget(new MaidHudVisibilityButton(
                     rowX, buttonY, maidInfo.maidUUID));
             Button maidButton = new TransparentButton(
-                nameButtonX, buttonY, nameButtonRight - nameButtonX, buttonHeight,
+                nameButtonX, buttonY, nameButtonRight - nameButtonX, ROW_HEIGHT,
                 Component.literal(maidInfo.maidName),
                 button -> openMaidInventory(maidInfo.maidUUID)
             );
@@ -112,13 +116,35 @@ public class EnderPocketScreen extends Screen {
 
             if (maidInfo.hasAnchorCore) {
                 Button teleportButton = new TransparentButton(
-                        startX + ACTION_SEPARATOR_X + 2, buttonY, 43, buttonHeight,
+                        startX + ACTION_SEPARATOR_X + 2, buttonY, 43, ROW_HEIGHT,
                         Component.translatable("gui.maidspell.ender_pocket.teleport"),
                         button -> teleportToMaid(maidInfo.maidUUID));
                 this.addRenderableWidget(teleportButton);
             }
         }
 
+    }
+
+    private int maxScroll() {
+        return Math.max(0, maidInfos.size() - VISIBLE_ROWS);
+    }
+
+    /** 当前显示的行数，第 row 行是下标 scrollOffset + row 的女仆 */
+    private int visibleRows() {
+        return Math.min(VISIBLE_ROWS, maidInfos.size() - scrollOffset);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (maxScroll() > 0 && scrollY != 0) {
+            int next = Mth.clamp(scrollOffset - (int) Math.signum(scrollY), 0, maxScroll());
+            if (next != scrollOffset) {
+                scrollOffset = next;
+                this.rebuildWidgets();
+            }
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     private void openMaidInventory(UUID maidUuid) {
@@ -173,6 +199,7 @@ public class EnderPocketScreen extends Screen {
 
         renderExtendedBackground(guiGraphics, startX, startY);
         renderActionSeparators(guiGraphics, startX, startY);
+        renderScrollbar(guiGraphics, startX, startY);
 
         // 渲染标题（无阴影）
         int titleX = this.width / 2 - this.font.width(this.title) / 2;
@@ -204,15 +231,28 @@ public class EnderPocketScreen extends Screen {
     }
 
     private void renderActionSeparators(GuiGraphics graphics, int x, int y) {
-        int visibleMaids = Math.min(maidInfos.size(), 8);
-        for (int i = 0; i < visibleMaids; i++) {
-            if (!maidInfos.get(i).hasAnchorCore) {
+        for (int row = 0; row < visibleRows(); row++) {
+            if (!maidInfos.get(scrollOffset + row).hasAnchorCore) {
                 continue;
             }
-            int rowY = y + 16 + i * 16;
+            int rowY = y + LIST_TOP + row * ROW_HEIGHT;
             graphics.fill(x + ACTION_SEPARATOR_X, rowY + 2,
                     x + ACTION_SEPARATOR_X + 1, rowY + 14, ACTION_SEPARATOR_COLOR);
         }
+    }
+
+    /** 列表可滚动时在右边框内画出当前位置 */
+    private void renderScrollbar(GuiGraphics graphics, int x, int y) {
+        int max = maxScroll();
+        if (max == 0) {
+            return;
+        }
+        int trackTop = y + LIST_TOP;
+        int trackHeight = VISIBLE_ROWS * ROW_HEIGHT;
+        int thumbHeight = Math.max(8, trackHeight * VISIBLE_ROWS / maidInfos.size());
+        int thumbTop = trackTop + (trackHeight - thumbHeight) * scrollOffset / max;
+        int barX = x + GUI_WIDTH - RIGHT_CAP_WIDTH + 2;
+        graphics.fill(barX, thumbTop, barX + 2, thumbTop + thumbHeight, SCROLLBAR_COLOR);
     }
 
     @Override
