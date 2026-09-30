@@ -59,14 +59,20 @@ public class WinefoxChallengeConfigMenu extends AbstractContainerMenu {
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
                 int index = row * 9 + column;
-                slots.set(index, new Slot(inventory, column + row * 9 + 9,
-                        9 + column * 18, inventoryY + row * 18));
+                replaceSlot(index, column + row * 9 + 9,
+                        9 + column * 18, inventoryY + row * 18);
             }
         }
         for (int column = 0; column < 9; column++) {
-            slots.set(27 + column, new Slot(inventory, column,
-                    9 + column * 18, inventoryY + 58));
+            replaceSlot(27 + column, column, 9 + column * 18, inventoryY + 58);
         }
+    }
+
+    /** 替换进来的 Slot 不经过 addSlot，需要补上菜单下标，点击包才会指向这一格。 */
+    private void replaceSlot(int index, int inventorySlot, int x, int y) {
+        Slot slot = new Slot(inventory, inventorySlot, x, y);
+        slot.index = index;
+        slots.set(index, slot);
     }
 
     public int getItemSlot() {
