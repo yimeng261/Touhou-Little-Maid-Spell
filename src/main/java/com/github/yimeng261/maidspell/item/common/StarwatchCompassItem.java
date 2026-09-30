@@ -11,12 +11,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.CompassItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.component.LodestoneTracker;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -36,19 +38,17 @@ public class StarwatchCompassItem extends CompassItem {
             Registries.STRUCTURE, ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "stellar_endshore"));
 
     /**
-     * 搜索半径（区块）。和原版探险家地图取同一个值。
+     * 搜索半径。random_spread 结构集按格点计，一格是结构集的 spacing 个区块，半径 r 共扫 (2r+1)² 个格点。
      *
-     * <p>{@code findNearestMapStructure} 是**同步**跑在服务端主线程上的：
-     * 半径每翻一倍要试的候选区域翻四倍，每个候选都要拿地形生成器做一次落点校验。
-     * 星途终岸的 spacing 是 34，100 已经够扫到三环开外，正常种子第一二环就命中；
-     * 而没命中时整条搜索会跑满，全服跟着卡住，所以这个数只能往小了给。
+     * <p>{@code findNearestMapStructure} 同步跑在服务端主线程上。未命中的格点只做一次存档扫描和群系采样，
+     * 代价低；命中尚未生成的区块时，要同步把那个区块生成到结构起点。
      */
-    private static final int SEARCH_RADIUS_CHUNKS = 100;
+    private static final int SEARCH_RADIUS = 4;
 
     /** 右键冷却，防止连点把搜索反复跑起来。 */
     private static final int USE_COOLDOWN_TICKS = 40;
 
-    /** 没找到时的冷却。命中一次就够，落空却要把半径扫满，不能让人两秒一次地扫。 */
+    /** 没找到时的冷却：结果短时间内不会变，不必反复扫满整个半径。 */
     private static final int MISS_COOLDOWN_TICKS = 400;
 
     public StarwatchCompassItem() {
@@ -76,10 +76,8 @@ public class StarwatchCompassItem extends CompassItem {
         }
 
         BlockPos found = serverLevel.findNearestMapStructure(
-                STELLAR_ENDSHORE, player.blockPosition(), SEARCH_RADIUS_CHUNKS, false);
+                STELLAR_ENDSHORE, player.blockPosition(), SEARCH_RADIUS, false);
         if (found == null) {
-            // 没找到那一次是把整个半径扫满了才得出的结论，而这个结论两秒内不会变。
-            // 冷却按未命中另算，免得有人在末地空地上一直点、一直卡服。
             player.getCooldowns().addCooldown(this, MISS_COOLDOWN_TICKS);
             player.displayClientMessage(
                     Component.translatable("item.touhou_little_maid_spell.starwatch_compass.not_found")
@@ -96,6 +94,12 @@ public class StarwatchCompassItem extends CompassItem {
                                 found.getX(), found.getZ())
                         .withStyle(ChatFormatting.LIGHT_PURPLE), true);
         return InteractionResultHolder.success(stack);
+    }
+
+    /** 不认磁石：父类会把指针改成磁石坐标。放行后按普通右键走 {@link #use} 搜索。 */
+    @Override
+    public @NotNull InteractionResult useOn(@NotNull UseOnContext context) {
+        return InteractionResult.PASS;
     }
 
     /** 固定物品名；带 ItemStack 的父类方法会返回磁石罗盘名称。 */
