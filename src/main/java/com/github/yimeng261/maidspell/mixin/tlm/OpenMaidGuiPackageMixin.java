@@ -33,7 +33,7 @@ public class OpenMaidGuiPackageMixin {
     )
     private static Entity maidspell$resolveRemoteMaid(Level level, int entityId, Operation<Entity> original,
                                                       @Local(argsOnly = true) ServerPlayer sender) {
-        return EnderPocketService.resolvePacketEntity(original.call(level, entityId), entityId, sender);
+        return EnderPocketService.resolvePacketEntity(original.call(level, entityId), entityId, sender, true);
     }
 
     /**

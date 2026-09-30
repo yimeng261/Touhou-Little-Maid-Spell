@@ -19,6 +19,7 @@
     "accessor.LivingEntityInvoker",
     "accessor.MobFlagsAccessor",
     "accessor.StructureManagerAccessor",
+    "accessor.SynchedEntityDataAccessor",
     "accessor.ThrownTridentAccessor",
     "LivingEntityAccessor",
     "LivingEntityMixin",
@@ -66,6 +67,7 @@
     "tlm.OpenMaidGuiPackageMixin",
     "tlm.RefreshMaidBrainPackageMixin",
     "tlm.RemoteMaidPackageMixin",
+    "tlm.RequestEffectPackageMixin",
     "tlm.SetAttackListPackageMixin",
     "usefulmagic.FriendFilterHelperMixin",
     "usefulmagic.HealthMagicMixin"

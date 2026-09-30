@@ -2,9 +2,12 @@ package com.github.yimeng261.maidspell.item.bauble.enderPocket;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.TabIndex;
+import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.mixin.accessor.SynchedEntityDataAccessor;
 import com.github.yimeng261.maidspell.network.message.MaidEntityRestoreMessage;
+import com.github.yimeng261.maidspell.network.message.S2CEnderPocketMaidData;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketMaidSnapshot;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import io.netty.buffer.ByteBuf;
@@ -14,6 +17,7 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -34,6 +38,8 @@ import java.util.concurrent.TimeUnit;
 public class EnderPocketService {
     public static final int MAX_MAID_INFOS = 64;
     private static final long PREPARE_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(5);
+    /** 远程会话期间开着这只女仆的界面时，即使没有操作也每秒把她的同步数据推给客户端代理一次 */
+    private static final int REMOTE_DATA_SYNC_INTERVAL_TICKS = 20;
     private static final long SESSION_TIMEOUT_NANOS = TimeUnit.MINUTES.toNanos(10);
     private static final Map<UUID, RemoteSession> REMOTE_SESSIONS = new ConcurrentHashMap<>();
 
@@ -246,15 +252,26 @@ public class EnderPocketService {
     }
 
     /**
-     * TLM 服务端数据包按实体 ID 查找女仆：本地找不到时回退到发送者自己已激活的远程会话
+     * TLM 服务端数据包按实体 ID 查找女仆：本地找不到时回退到发送者自己已激活的远程会话。
+     * 实体 ID 正是会话里那只女仆时，不论本地能否找到都续期会话；{@code changesMaid} 为 true 时还在本 tick 末
+     * 把改动推给客户端代理（同维度但超出追踪范围的女仆不会被原版同步），只读的请求传 false。
      */
     @Nullable
-    public static Entity resolvePacketEntity(@Nullable Entity local, int entityId, @Nullable Player sender) {
-        if (local instanceof EntityMaid || !(sender instanceof ServerPlayer player)) {
+    public static Entity resolvePacketEntity(@Nullable Entity local, int entityId, @Nullable Player sender,
+                                             boolean changesMaid) {
+        if (!(sender instanceof ServerPlayer player)) {
             return local;
         }
         EntityMaid maid = resolveRemoteMaid(player, entityId);
-        return maid != null ? maid : local;
+        if (maid == null || (local instanceof EntityMaid && local != maid)) {
+            return local;
+        }
+        // 数据包处理完后在本 tick 末把改动推给客户端代理
+        RemoteSession session = changesMaid ? REMOTE_SESSIONS.get(player.getUUID()) : null;
+        if (session != null) {
+            session.dataDirty = true;
+        }
+        return maid;
     }
 
     public static boolean isRemoteSessionActive(ServerPlayer player, EntityMaid maid) {
@@ -289,6 +306,28 @@ public class EnderPocketService {
             return session.server == server && (session.isExpired(now)
                     || server.getPlayerList().getPlayer(session.playerId) == null);
         });
+        boolean periodic = server.getTickCount() % REMOTE_DATA_SYNC_INTERVAL_TICKS == 0;
+        for (RemoteSession session : REMOTE_SESSIONS.values()) {
+            if (session.server != server || !session.active || !(session.dataDirty || periodic)) {
+                continue;
+            }
+            boolean dirty = session.dataDirty;
+            session.dataDirty = false;
+            ServerPlayer player = server.getPlayerList().getPlayer(session.playerId);
+            EntityMaid maid = player == null ? null : validateSessionMaid(player, session);
+            if (maid == null) {
+                REMOTE_SESSIONS.remove(session.playerId, session);
+                continue;
+            }
+            if (!dirty && !(player.containerMenu instanceof AbstractMaidContainer menu && menu.getMaid() == maid)) {
+                continue;
+            }
+            List<SynchedEntityData.DataValue<?>> values = new ArrayList<>();
+            for (SynchedEntityData.DataItem<?> item : ((SynchedEntityDataAccessor) maid.getEntityData()).maidspell$getItemsById()) {
+                values.add(item.value());
+            }
+            player.connection.send(new S2CEnderPocketMaidData(maid.getId(), values));
+        }
     }
 
     /**
@@ -410,6 +449,7 @@ public class EnderPocketService {
         private volatile long expiresAtNanos;
         private volatile boolean active;
         private volatile boolean fallbackLogged;
+        private volatile boolean dataDirty;
 
         private RemoteSession(MinecraftServer server, UUID playerId, UUID maidId, int entityId,
                               UUID sessionId, long expiresAtNanos) {

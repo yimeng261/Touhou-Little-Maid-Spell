@@ -45,4 +45,12 @@ final class EnderPocketMaidSnapshotClientHandler {
             minecraft.getConnection().send(new C2SEnderPocketMaidReady(message.sessionId()));
         }
     }
+
+    static void handleData(S2CEnderPocketMaidData message) {
+        ClientLevel level = Minecraft.getInstance().level;
+        EntityMaid proxy = level == null ? null : EnderPocketMaidProxyCache.find(level, message.entityId());
+        if (proxy != null) {
+            proxy.getEntityData().assignValues(message.values());
+        }
+    }
 }

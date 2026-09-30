@@ -11,6 +11,7 @@ import com.github.yimeng261.maidspell.network.message.MaidClientRemovalGuardMess
 import com.github.yimeng261.maidspell.network.message.MaidEntityRestoreMessage;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketHudUpdate;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketMaidList;
+import com.github.yimeng261.maidspell.network.message.S2CEnderPocketMaidData;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketMaidSnapshot;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.network.message.TransmogNecklaceMessage;
@@ -45,6 +46,7 @@ public class NetworkHandler {
         registrar.playToClient(S2CEnderPocketPushUpdate.TYPE, S2CEnderPocketPushUpdate.STREAM_CODEC, NetworkHandler::handleEnderPocketPushUpdate);
         registrar.playToClient(S2CEnderPocketHudUpdate.TYPE, S2CEnderPocketHudUpdate.STREAM_CODEC, NetworkHandler::handleEnderPocketHudUpdate);
         registrar.playToClient(S2CEnderPocketMaidSnapshot.TYPE, S2CEnderPocketMaidSnapshot.STREAM_CODEC, NetworkHandler::handleEnderPocketMaidSnapshot);
+        registrar.playToClient(S2CEnderPocketMaidData.TYPE, S2CEnderPocketMaidData.STREAM_CODEC, NetworkHandler::handleEnderPocketMaidData);
         registrar.playToClient(MaidClientRemovalGuardMessage.TYPE, MaidClientRemovalGuardMessage.STREAM_CODEC, NetworkHandler::handleMaidClientRemovalGuard);
         registrar.playToClient(MaidEntityRestoreMessage.TYPE, MaidEntityRestoreMessage.STREAM_CODEC, NetworkHandler::handleMaidEntityRestore);
         registrar.playToClient(WinefoxStructureMusicMessage.TYPE, WinefoxStructureMusicMessage.STREAM_CODEC, NetworkHandler::handleWinefoxStructureMusic);
@@ -73,6 +75,10 @@ public class NetworkHandler {
     }
 
     public static void handleEnderPocketMaidSnapshot(S2CEnderPocketMaidSnapshot packet, IPayloadContext context) {
+        packet.handle();
+    }
+
+    public static void handleEnderPocketMaidData(S2CEnderPocketMaidData packet, IPayloadContext context) {
         packet.handle();
     }
 

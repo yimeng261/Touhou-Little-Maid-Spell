@@ -25,6 +25,10 @@ public final class MaidEntityRestoreMessage implements CustomPacketPayload {
     public static final StreamCodec<RegistryFriendlyByteBuf, MaidEntityRestoreMessage> STREAM_CODEC =
             StreamCodec.of(MaidEntityRestoreMessage::encode, MaidEntityRestoreMessage::decode);
 
+    /** 实体同步数据：先写条数（不超过 {@link #MAX_ENTITY_DATA_VALUES}），再逐条按原版格式读写 */
+    public static final StreamCodec<RegistryFriendlyByteBuf, List<SynchedEntityData.DataValue<?>>> DATA_VALUES_CODEC =
+            StreamCodec.of(MaidEntityRestoreMessage::encodeDataValues, MaidEntityRestoreMessage::decodeDataValues);
+
     private final int entityId;
     private final UUID uuid;
     private final ResourceLocation entityTypeId;
@@ -91,13 +95,7 @@ public final class MaidEntityRestoreMessage implements CustomPacketPayload {
         buf.writeUUID(message.uuid);
         buf.writeUtf(message.entityTypeId.toString(), MAX_ENTITY_TYPE_ID_LENGTH);
         buf.writeNbt(message.entityTag);
-        if (message.entityData.size() > MAX_ENTITY_DATA_VALUES) {
-            throw new IllegalArgumentException("Entity data count exceeds limit: " + message.entityData.size());
-        }
-        buf.writeVarInt(message.entityData.size());
-        for (SynchedEntityData.DataValue<?> dataValue : message.entityData) {
-            dataValue.write(buf);
-        }
+        DATA_VALUES_CODEC.encode(buf, message.entityData);
         buf.writeDouble(message.x);
         buf.writeDouble(message.y);
         buf.writeDouble(message.z);
@@ -114,15 +112,7 @@ public final class MaidEntityRestoreMessage implements CustomPacketPayload {
             throw new DecoderException("Invalid entity type id: " + entityTypeIdString);
         }
         CompoundTag entityTag = buf.readNbt();
-        int entityDataSize = buf.readVarInt();
-        if (entityDataSize < 0 || entityDataSize > MAX_ENTITY_DATA_VALUES) {
-            throw new DecoderException("Entity data count exceeds limit: " + entityDataSize);
-        }
-        List<SynchedEntityData.DataValue<?>> entityData = new ArrayList<>(entityDataSize);
-        for (int i = 0; i < entityDataSize; i++) {
-            int dataId = buf.readUnsignedByte();
-            entityData.add(SynchedEntityData.DataValue.read(buf, dataId));
-        }
+        List<SynchedEntityData.DataValue<?>> entityData = DATA_VALUES_CODEC.decode(buf);
         return new MaidEntityRestoreMessage(
                 entityId,
                 uuid,
@@ -135,6 +125,29 @@ public final class MaidEntityRestoreMessage implements CustomPacketPayload {
                 buf.readFloat(),
                 buf.readFloat()
         );
+    }
+
+    private static void encodeDataValues(RegistryFriendlyByteBuf buf, List<SynchedEntityData.DataValue<?>> values) {
+        if (values.size() > MAX_ENTITY_DATA_VALUES) {
+            throw new IllegalArgumentException("Entity data count exceeds limit: " + values.size());
+        }
+        buf.writeVarInt(values.size());
+        for (SynchedEntityData.DataValue<?> dataValue : values) {
+            dataValue.write(buf);
+        }
+    }
+
+    private static List<SynchedEntityData.DataValue<?>> decodeDataValues(RegistryFriendlyByteBuf buf) {
+        int size = buf.readVarInt();
+        if (size < 0 || size > MAX_ENTITY_DATA_VALUES) {
+            throw new DecoderException("Entity data count exceeds limit: " + size);
+        }
+        List<SynchedEntityData.DataValue<?>> values = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            int dataId = buf.readUnsignedByte();
+            values.add(SynchedEntityData.DataValue.read(buf, dataId));
+        }
+        return values;
     }
 
     public int entityId() {

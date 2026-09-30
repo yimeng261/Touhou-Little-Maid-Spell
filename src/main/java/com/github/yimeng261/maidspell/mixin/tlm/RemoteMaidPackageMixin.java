@@ -4,7 +4,6 @@ import com.github.tartaricacid.touhoulittlemaid.network.message.MaidConfigPackag
 import com.github.tartaricacid.touhoulittlemaid.network.message.MaidModelPackage;
 import com.github.tartaricacid.touhoulittlemaid.network.message.MaidSubConfigPackage;
 import com.github.tartaricacid.touhoulittlemaid.network.message.MaidTaskPackage;
-import com.github.tartaricacid.touhoulittlemaid.network.message.RequestEffectPackage;
 import com.github.tartaricacid.touhoulittlemaid.network.message.SendNameTagPackage;
 import com.github.tartaricacid.touhoulittlemaid.network.message.ServantBellSetPackage;
 import com.github.tartaricacid.touhoulittlemaid.network.message.SetMaidSoundIdPackage;
@@ -28,7 +27,6 @@ import org.spongepowered.asm.mixin.injection.At;
         MaidModelPackage.class,
         MaidSubConfigPackage.class,
         MaidTaskPackage.class,
-        RequestEffectPackage.class,
         SendNameTagPackage.class,
         ServantBellSetPackage.class,
         SetMaidSoundIdPackage.class,
@@ -42,7 +40,6 @@ public class RemoteMaidPackageMixin {
                     "lambda$handle$0(Lnet/neoforged/neoforge/network/handling/IPayloadContext;Lcom/github/tartaricacid/touhoulittlemaid/network/message/MaidModelPackage;)V",
                     "lambda$handle$0(Lnet/neoforged/neoforge/network/handling/IPayloadContext;Lcom/github/tartaricacid/touhoulittlemaid/network/message/MaidSubConfigPackage;)V",
                     "lambda$handle$0(Lnet/neoforged/neoforge/network/handling/IPayloadContext;Lcom/github/tartaricacid/touhoulittlemaid/network/message/MaidTaskPackage;)V",
-                    "lambda$handle$0(Lnet/neoforged/neoforge/network/handling/IPayloadContext;Lcom/github/tartaricacid/touhoulittlemaid/network/message/RequestEffectPackage;)V",
                     "lambda$handle$0(Lnet/neoforged/neoforge/network/handling/IPayloadContext;Lcom/github/tartaricacid/touhoulittlemaid/network/message/SendNameTagPackage;)V",
                     "lambda$handle$0(Lnet/neoforged/neoforge/network/handling/IPayloadContext;Lcom/github/tartaricacid/touhoulittlemaid/network/message/ServantBellSetPackage;)V",
                     "lambda$handle$0(Lnet/neoforged/neoforge/network/handling/IPayloadContext;Lcom/github/tartaricacid/touhoulittlemaid/network/message/SetMaidSoundIdPackage;)V",
@@ -58,6 +55,6 @@ public class RemoteMaidPackageMixin {
     )
     private static Entity maidspell$resolveRemoteMaid(Level level, int entityId, Operation<Entity> original,
                                                       @Local(argsOnly = true) IPayloadContext context) {
-        return EnderPocketService.resolvePacketEntity(original.call(level, entityId), entityId, context.player());
+        return EnderPocketService.resolvePacketEntity(original.call(level, entityId), entityId, context.player(), true);
     }
 }
