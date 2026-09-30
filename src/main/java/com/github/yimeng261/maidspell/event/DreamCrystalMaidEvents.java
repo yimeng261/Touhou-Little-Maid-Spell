@@ -18,6 +18,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.EntityTravelToDimensionEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
@@ -111,6 +112,17 @@ public class DreamCrystalMaidEvents {
         // 特定伤害类型免疫
         if (isImmuneTo(source)) {
             event.setCanceled(true);
+        }
+    }
+
+    /**
+     * 离开归隐之地时留一段无敌余量，最低优先级且不接收已取消的事件，只在真正换维度时写入
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onMaidTravelToDimension(EntityTravelToDimensionEvent event) {
+        if (event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
+            DreamCatCrystalBauble.extendInvulnerableOnRetreatExit(maid,
+                    DreamCatCrystalBauble.findDreamCrystalStack(maid), event.getDimension().location());
         }
     }
 

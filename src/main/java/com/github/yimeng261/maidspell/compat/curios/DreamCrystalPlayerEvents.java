@@ -4,7 +4,6 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
-import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.event.DreamCrystalMaidEvents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
@@ -27,6 +26,7 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.common.damagesource.DamageContainer;
+import net.neoforged.neoforge.event.entity.EntityTravelToDimensionEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
@@ -108,8 +108,16 @@ public final class DreamCrystalPlayerEvents {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         ItemStack crystal = DreamCrystalCurios.findCrystal(player);
         if (crystal.isEmpty() || event.getSource().is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return;
-        if (TheRetreatDimension.isInRetreat(player) || DreamCatCrystalBauble.isInvulnerable(crystal)
+        if (DreamCatCrystalBauble.isInvulnerable(player, crystal)
             || DreamCrystalMaidEvents.isImmuneTo(event.getSource())) event.setCanceled(true);
+    }
+
+    /** 离开归隐之地时留一段无敌余量，最低优先级且不接收已取消的事件，只在真正换维度时写入 */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void travel(EntityTravelToDimensionEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        DreamCatCrystalBauble.extendInvulnerableOnRetreatExit(player, DreamCrystalCurios.findCrystal(player),
+            event.getDimension().location());
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)

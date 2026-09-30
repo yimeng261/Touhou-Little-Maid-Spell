@@ -68,6 +68,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     private static final int REVIVE_CLOCK_VERSION = 1;
     private static final int MAX_REVIVE_TIMESTAMPS = 10;
     private static final long REVIVE_WINDOW_TICKS = 2400L;
+    private static final long REVIVE_INVULNERABLE_TICKS = 300L;
+    private static final long RETREAT_EXIT_INVULNERABLE_TICKS = 40L;
 
     // ========== 属性修饰符 ResourceLocation ==========
     private static final ResourceLocation DC_HP_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "dream_crystal_hp");
@@ -193,8 +195,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
         int tick = maid.tickCount;
 
-        // ========== 每 tick：无敌倒计时 ==========
-        handleInvulnerable(baubleItem);
+        // ========== 每 tick：无敌到期 ==========
+        handleInvulnerable(maid, baubleItem);
 
         if (tick % 20 != 3) return;
 
@@ -251,6 +253,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         if (maid.level().isClientSide()) return;
         // 卸下时清除无敌状态
         baubleItem.remove(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS);
+        baubleItem.remove(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_UNTIL);
         removeWearerEffects(maid);
     }
 
@@ -308,7 +311,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         maid.setHealth(healAmount);
 
         // 设置 15 秒无敌（300 tick）
-        setInvulnerableTicks(baubleStack, 300);
+        baubleStack.set(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_UNTIL,
+                PortableTimerMath.saturatingAdd(currentTime, REVIVE_INVULNERABLE_TICKS));
 
         maid.playSound(SoundEvents.TOTEM_USE, 1.0f, 1.0f);
 
@@ -317,13 +321,53 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         return true;
     }
 
-    // ========== 无敌倒计时处理 ==========
-    private void handleInvulnerable(ItemStack baubleItem) {
-        int invulTime = baubleItem.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS, 0);
-        if (invulTime > 1) {
-            baubleItem.set(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS, invulTime - 1);
-        } else if (invulTime == 1) {
-            baubleItem.remove(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS);
+    // ========== 无敌到期处理 ==========
+    /**
+     * 无敌按截止时间判断，物品组件只在复活、离开归隐之地和到期时改写，Curios 不会因此反复触发卸下、装备。
+     */
+    private void handleInvulnerable(LivingEntity wearer, ItemStack baubleItem) {
+        MinecraftServer server = wearer.getServer();
+        if (server == null) {
+            return;
+        }
+        long now = globalGameTime(server);
+        migrateLegacyInvulnerableTicks(baubleItem, now);
+        Long until = baubleItem.get(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_UNTIL);
+        if (until != null && now >= until) {
+            baubleItem.remove(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_UNTIL);
+        }
+    }
+
+    /**
+     * 佩戴者从归隐之地去往别的维度时，无敌截止时间至少延到 2 秒后，落地瞬间不会受伤。
+     * 只在换维度时写一次组件，已有更晚的截止时间（如复活无敌）时不动。
+     */
+    public static void extendInvulnerableOnRetreatExit(LivingEntity wearer, ItemStack stack, ResourceLocation destination) {
+        MinecraftServer server = wearer.getServer();
+        if (stack.isEmpty() || server == null || !TheRetreatDimension.isInRetreat(wearer)
+                || TheRetreatDimension.isRetreatDimension(destination)) {
+            return;
+        }
+        long now = globalGameTime(server);
+        migrateLegacyInvulnerableTicks(stack, now);
+        extendInvulnerableUntil(stack, PortableTimerMath.saturatingAdd(now, RETREAT_EXIT_INVULNERABLE_TICKS));
+    }
+
+    /** 旧版按剩余 tick 记的无敌换成截止时间，剩余时间最多按一次复活无敌算 */
+    private static void migrateLegacyInvulnerableTicks(ItemStack stack, long now) {
+        Integer legacyTicks = stack.get(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS);
+        if (legacyTicks != null) {
+            stack.remove(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS);
+            extendInvulnerableUntil(stack, PortableTimerMath.saturatingAdd(now,
+                    PortableTimerMath.clampRemaining(legacyTicks, REVIVE_INVULNERABLE_TICKS, 0L)));
+        }
+    }
+
+    /** 已有更晚的截止时间时不动 */
+    private static void extendInvulnerableUntil(ItemStack stack, long until) {
+        Long current = stack.get(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_UNTIL);
+        if (current == null || current < until) {
+            stack.set(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_UNTIL, until);
         }
     }
 
@@ -347,13 +391,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     // ========== 维度特定 Buff ==========
     private void applyDimensionBuffs(LivingEntity maid, ItemStack baubleStack) {
-        // 归隐之地：无敌
+        // 归隐之地里的无敌由 isInvulnerable 按所在维度判断
         if (TheRetreatDimension.isInRetreat(maid)) {
-            // 归隐之地期间持续刷新无敌计时（2 秒窗口，每 20tick 刷新），不缩短复活后的无敌时间
-            if (!baubleStack.isEmpty()) {
-                setInvulnerableTicks(baubleStack, Math.max(40,
-                        baubleStack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS, 0)));
-            }
             return;
         }
 
@@ -552,11 +591,29 @@ public class DreamCatCrystalBauble implements IMaidBauble {
      * 检查女仆是否处于无敌状态
      */
     public static boolean isInvulnerable(EntityMaid maid) {
-        return isInvulnerable(findDreamCrystalStack(maid));
+        return isInvulnerable(maid, findDreamCrystalStack(maid));
     }
 
-    public static boolean isInvulnerable(ItemStack stack) {
-        return !stack.isEmpty() && stack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS, 0) > 0;
+    /**
+     * 佩戴者身处归隐之地，或在复活后的无敌时间内
+     */
+    public static boolean isInvulnerable(LivingEntity wearer, ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        if (TheRetreatDimension.isInRetreat(wearer)) {
+            return true;
+        }
+        MinecraftServer server = wearer.getServer();
+        if (server == null) {
+            return false;
+        }
+        long now = globalGameTime(server);
+        Long until = stack.get(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_UNTIL);
+        if (until != null) {
+            return now < until;
+        }
+        return stack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS, 0) > 0;
     }
 
     public static ItemStack findDreamCrystalStack(EntityMaid maid) {
@@ -635,16 +692,6 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         }
     }
 
-    private static void setInvulnerableTicks(ItemStack stack, int ticks) {
-        if (stack.isEmpty()) {
-            return;
-        }
-        if (ticks > 0) {
-            stack.set(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS, ticks);
-        } else {
-            stack.remove(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_TICKS);
-        }
-    }
 
     // ========== Curios 槽位 ==========
 
