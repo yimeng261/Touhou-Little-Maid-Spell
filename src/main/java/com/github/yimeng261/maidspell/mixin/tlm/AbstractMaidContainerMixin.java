@@ -44,12 +44,7 @@ public class AbstractMaidContainerMixin {
             return;
         }
         if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
-            boolean isValid = maid.isOwnedBy(playerIn) && !maid.isSleeping() && maid.isAlive();
-            if (isValid && playerIn instanceof ServerPlayer serverPlayer
-                    && maid.level() != serverPlayer.level()) {
-                isValid = EnderPocketService.isRemoteSessionActive(serverPlayer, maid);
-            }
-            cir.setReturnValue(isValid);
+            cir.setReturnValue(EnderPocketService.isGuiStillValid(playerIn, maid));
         }
     }
 

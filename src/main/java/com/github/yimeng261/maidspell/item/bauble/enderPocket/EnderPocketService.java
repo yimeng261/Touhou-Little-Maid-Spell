@@ -279,6 +279,18 @@ public class EnderPocketService {
         return resolved == maid;
     }
 
+    /**
+     * 装备末影腰包的女仆，界面有效与否不看距离：玩家是主人、女仆醒着且存活；
+     * 服务端上女仆与玩家不在同一维度时，还要有玩家自己已激活的远程会话。
+     */
+    public static boolean isGuiStillValid(Player player, EntityMaid maid) {
+        if (!maid.isOwnedBy(player) || maid.isSleeping() || !maid.isAlive()) {
+            return false;
+        }
+        return !(player instanceof ServerPlayer serverPlayer) || maid.level() == serverPlayer.level()
+                || isRemoteSessionActive(serverPlayer, maid);
+    }
+
     public static void syncRemoteProxyBeforeMenu(ServerPlayer player, EntityMaid maid) {
         RemoteSession session = REMOTE_SESSIONS.get(player.getUUID());
         if (session == null || !session.active || session.entityId != maid.getId()

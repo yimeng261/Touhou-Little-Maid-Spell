@@ -43,8 +43,7 @@ public class OpenMaidGuiPackageMixin {
     @Inject(method = "stillValid", at = @At("HEAD"), cancellable = true, remap = false)
     private static void stillValid(Player playerIn, EntityMaid maid, CallbackInfoReturnable<Boolean> cir) {
         if(maid.getMaidBauble().containsItem(MaidSpellItems.ENDER_POCKET.get())) {
-            boolean isValid = maid.isOwnedBy(playerIn) && !maid.isSleeping() && maid.isAlive();
-            cir.setReturnValue(isValid);
+            cir.setReturnValue(EnderPocketService.isGuiStillValid(playerIn, maid));
         }
     }
 }
