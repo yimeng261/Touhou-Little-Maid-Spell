@@ -262,13 +262,6 @@ public class RetreatDimensionData extends SavedData {
     }
 
     /**
-     * 获取所有玩家维度信息
-     */
-    public Map<UUID, DimensionInfo> getAllDimensions() {
-        return new HashMap<>(playerDimensions);
-    }
-    
-    /**
      * 清理长时间未访问的维度记录（可选功能）
      */
     public int cleanupOldDimensions(long maxInactiveTime, Set<UUID> protectedPlayers) {

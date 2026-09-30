@@ -207,10 +207,6 @@ public class SpellBookManager {
         return providerMap.get(modId);
     }
 
-    public static boolean hasProvider(String modId) {
-        return providerMap.containsKey(modId);
-    }
-
     public static List<String> getLoadedMods() {
         return new ArrayList<>(providerMap.keySet());
     }
