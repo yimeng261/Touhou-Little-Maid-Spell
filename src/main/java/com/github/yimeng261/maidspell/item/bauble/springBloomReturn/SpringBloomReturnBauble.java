@@ -40,7 +40,7 @@ public class SpringBloomReturnBauble implements IMaidBauble {
     public void onPutOn(EntityMaid maid, ItemStack baubleItem) {
         refreshEquippedSlotCache(maid, baubleItem);
         if (!maid.level().isClientSide() && !baubleItem.isEmpty()) {
-            long now = getServerGameTime(maid);
+            long now = PortableTimerMath.overworldGameTime(maid.getServer());
             prepareTimerState(baubleItem, maid, now);
         }
     }
@@ -60,7 +60,7 @@ public class SpringBloomReturnBauble implements IMaidBauble {
             return;
         }
 
-        long now = getServerGameTime(maid);
+        long now = PortableTimerMath.overworldGameTime(maid.getServer());
         TimerState state = prepareTimerState(stack, maid, now);
         if (!state.writable()) {
             return;
@@ -108,7 +108,7 @@ public class SpringBloomReturnBauble implements IMaidBauble {
             return;
         }
 
-        long now = getServerGameTime(maid);
+        long now = PortableTimerMath.overworldGameTime(maid.getServer());
         TimerState state = prepareTimerState(stack, maid, now);
         if (!state.writable()) {
             return;
@@ -158,7 +158,7 @@ public class SpringBloomReturnBauble implements IMaidBauble {
         if (stack.isEmpty()) {
             return 0;
         }
-        long now = getServerGameTime(maid);
+        long now = PortableTimerMath.overworldGameTime(maid.getServer());
         TimerState state = prepareTimerState(stack, maid, now);
         if (!state.writable()) {
             return 0;
@@ -202,10 +202,6 @@ public class SpringBloomReturnBauble implements IMaidBauble {
                 .max(Comparator.comparingInt(MobEffectInstance::getDuration))
                 .map(MobEffectInstance::getEffect)
                 .ifPresent(entity::removeEffect);
-    }
-
-    private static long getServerGameTime(EntityMaid maid) {
-        return maid.level().getServer().overworld().getGameTime();
     }
 
     private static TimerState prepareTimerState(ItemStack stack, EntityMaid maid, long serverNow) {

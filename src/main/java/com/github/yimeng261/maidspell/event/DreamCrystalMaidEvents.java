@@ -177,7 +177,7 @@ public class DreamCrystalMaidEvents {
         }
         UUID maidUUID = maid.getUUID();
         UUID bossUUID = boss.getUUID();
-        long currentTime = globalGameTime(server);
+        long currentTime = PortableTimerMath.overworldGameTime(server);
 
         Map<UUID, Long> attackedBosses = MAID_ATTACKED_BOSSES.computeIfAbsent(maidUUID, k -> new HashMap<>());
         attackedBosses.entrySet().removeIf(entry ->
@@ -193,7 +193,7 @@ public class DreamCrystalMaidEvents {
         }
         UUID maidUUID = maid.getUUID();
         UUID bossUUID = boss.getUUID();
-        long currentTime = globalGameTime(server);
+        long currentTime = PortableTimerMath.overworldGameTime(server);
         Map<UUID, Long> bosses = MAID_ATTACKED_BOSSES.get(maidUUID);
         if (bosses == null) {
             return false;
@@ -211,9 +211,5 @@ public class DreamCrystalMaidEvents {
         if (bosses.isEmpty()) {
             MAID_ATTACKED_BOSSES.remove(maidUUID);
         }
-    }
-
-    private static long globalGameTime(MinecraftServer server) {
-        return server.overworld().getGameTime();
     }
 }

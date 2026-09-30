@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.event.DreamCrystalMaidEvents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
 import com.github.yimeng261.maidspell.utils.DamageAbsorption;
+import com.github.yimeng261.maidspell.utils.PortableTimerMath;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.core.component.DataComponents;
@@ -93,7 +94,7 @@ public final class DreamCrystalPlayerEvents {
             if (player.getCooldowns().isOnCooldown(item)) player.getCooldowns().removeCooldown(item);
         }
         if (player.tickCount % 20 == 0) {
-            long now = player.server.overworld().getGameTime();
+            long now = PortableTimerMath.overworldGameTime(player.server);
             Map<UUID, Long> history = ATTACKED_BOSSES.get(player.getUUID());
             if (history != null) history.values().removeIf(time -> now - time >= BOSS_RETALIATION_TICKS);
             for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(48),
@@ -149,7 +150,7 @@ public final class DreamCrystalPlayerEvents {
         if (MaidSpellAllyResolver.areFriendly(player, target)) return;
         if (target.getType().is(Tags.EntityTypes.BOSSES)) {
             ATTACKED_BOSSES.computeIfAbsent(player.getUUID(), ignored -> new HashMap<>())
-                .put(target.getUUID(), player.server.overworld().getGameTime());
+                .put(target.getUUID(), PortableTimerMath.overworldGameTime(player.server));
         }
         if (Config.dreamCrystalExtraTrueDamageEnabled) {
             TrueDamageUtil.dealTrueDamage(target, baseDamage, player);
@@ -207,7 +208,7 @@ public final class DreamCrystalPlayerEvents {
         if (BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).getPath().equals("stellar_witch")) return true;
         Long time = ATTACKED_BOSSES.getOrDefault(player.getUUID(), Map.of()).get(mob.getUUID());
         return mob.getType().is(Tags.EntityTypes.BOSSES) && time != null
-            && player.server.overworld().getGameTime() - time < BOSS_RETALIATION_TICKS;
+            && PortableTimerMath.overworldGameTime(player.server) - time < BOSS_RETALIATION_TICKS;
     }
 
     @SubscribeEvent

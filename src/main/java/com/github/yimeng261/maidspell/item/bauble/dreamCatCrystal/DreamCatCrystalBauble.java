@@ -294,7 +294,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         }
 
         // 获取并过滤最近 120 秒（2400 tick）内的复活时间戳
-        long currentTime = globalGameTime(server);
+        long currentTime = PortableTimerMath.overworldGameTime(server);
         ReviveHistory history = readReviveHistory(baubleStack, currentTime);
         if (history == null) {
             return false;
@@ -339,7 +339,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         if (server == null) {
             return;
         }
-        long now = globalGameTime(server);
+        long now = PortableTimerMath.overworldGameTime(server);
         migrateLegacyInvulnerableTicks(baubleItem, now);
         Long until = baubleItem.get(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_UNTIL);
         if (until != null && now >= until) {
@@ -357,7 +357,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 || TheRetreatDimension.isRetreatDimension(destination)) {
             return;
         }
-        long now = globalGameTime(server);
+        long now = PortableTimerMath.overworldGameTime(server);
         migrateLegacyInvulnerableTicks(stack, now);
         extendInvulnerableUntil(stack, PortableTimerMath.saturatingAdd(now, RETREAT_EXIT_INVULNERABLE_TICKS));
     }
@@ -430,7 +430,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         if (server == null) {
             return;
         }
-        long expiry = PortableTimerMath.saturatingAdd(globalGameTime(server), 40L); // 40 tick 有效期（比 20tick 扫描间隔多 20tick 缓冲）
+        long expiry = PortableTimerMath.saturatingAdd(PortableTimerMath.overworldGameTime(server), 40L); // 40 tick 有效期（比 20tick 扫描间隔多 20tick 缓冲）
 
         // 扫描 20 格内的女仆（排除自身）
         List<EntityMaid> nearbyMaids = sourceMaid.level().getEntitiesOfClass(
@@ -617,7 +617,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         if (server == null) {
             return false;
         }
-        long now = globalGameTime(server);
+        long now = PortableTimerMath.overworldGameTime(server);
         Long until = stack.get(MaidSpellDataComponents.DREAM_CRYSTAL_INVULNERABLE_UNTIL);
         if (until != null) {
             return now < until;
@@ -682,7 +682,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             return;
         }
 
-        ReviveHistory history = readReviveHistory(baubleItem, globalGameTime(server));
+        ReviveHistory history = readReviveHistory(baubleItem, PortableTimerMath.overworldGameTime(server));
         if (history != null && history.changed()) {
             saveReviveHistory(baubleItem, history.timestamps());
         }
@@ -714,7 +714,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     // ========== 调度器 ==========
 
     public static void processScheduledEffects(MinecraftServer server) {
-        long currentTime = globalGameTime(server);
+        long currentTime = PortableTimerMath.overworldGameTime(server);
         processFrozenTargets(currentTime);
         processBoostedMaids(currentTime);
     }
@@ -741,7 +741,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         if (mob.isNoAi() && !data.contains(FROZEN_UNTIL_TAG, Tag.TAG_LONG)) {
             return;
         }
-        long expiry = PortableTimerMath.saturatingAdd(globalGameTime(server), FREEZE_TICKS);
+        long expiry = PortableTimerMath.saturatingAdd(PortableTimerMath.overworldGameTime(server), FREEZE_TICKS);
         mob.setNoAi(true);
         data.putLong(FROZEN_UNTIL_TAG, Math.max(expiry, data.getLong(FROZEN_UNTIL_TAG)));
         scheduleUnfreeze(mob, expiry);
@@ -775,7 +775,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             return;
         }
         long expiry = data.getLong(FROZEN_UNTIL_TAG);
-        if (globalGameTime(server) >= expiry) {
+        if (PortableTimerMath.overworldGameTime(server) >= expiry) {
             unfreeze(mob);
         } else {
             scheduleUnfreeze(mob, expiry);
@@ -818,7 +818,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             return false;
         }
         state.maid = maid;
-        return globalGameTime(server) < state.expiry;
+        return PortableTimerMath.overworldGameTime(server) < state.expiry;
     }
 
     private static void applyOrRefreshMaidBoost(EntityMaid maid, long expiry) {
@@ -874,10 +874,6 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     }
 
     private record ReviveHistory(List<Long> timestamps, boolean changed) {
-    }
-
-    private static long globalGameTime(MinecraftServer server) {
-        return server.overworld().getGameTime();
     }
 
     private static final class FrozenTargetState {

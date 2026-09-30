@@ -1,10 +1,17 @@
 package com.github.yimeng261.maidspell.utils;
 
+import net.minecraft.server.MinecraftServer;
+
 /**
- * 与时钟无关的计时运算，用于迁移已持久化的游戏时间计时器
+ * 持久化计时器共用的时钟，以及与时钟无关的计时运算（含迁移已持久化的游戏时间计时器）
  */
 public final class PortableTimerMath {
     private PortableTimerMath() {
+    }
+
+    /** 持久化计时器统一按主世界的 gameTime 记，各维度共用，换维度不跳变 */
+    public static long overworldGameTime(MinecraftServer server) {
+        return server.overworld().getGameTime();
     }
 
     public static long saturatingAdd(long left, long right) {
