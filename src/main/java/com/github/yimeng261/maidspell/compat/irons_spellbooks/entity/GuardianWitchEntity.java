@@ -271,6 +271,7 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
             offer.updateDemand();
             offer.resetUses();
         }
+        this.setLastRestockGameTime(this.level().getGameTime());
         this.setRestocksToday(this.getRestocksToday() + 1);
     }
 
