@@ -8,10 +8,19 @@ import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 
+import java.util.Iterator;
+import java.util.Set;
+
 /**
  * Shared decision layer for anchor core entity protections.
  */
 public final class AnchorCoreProtection {
+    private static final Set<String> VANILLA_PERSISTENCE_FRAMES = Set.of(
+            "net.minecraft.world.level.chunk.storage.EntityStorage#storeEntities",
+            "net.minecraft.world.entity.Entity#restoreFrom",
+            "net.minecraft.server.players.PlayerList#save"
+    );
+
     private AnchorCoreProtection() {
     }
 
@@ -55,7 +64,7 @@ public final class AnchorCoreProtection {
             return false;
         }
 
-        String illegalCaller = AnchorCoreBauble.findIllegalCaller();
+        String illegalCaller = findIllegalCallerOutsideVanillaPersistence();
         if (illegalCaller == null) {
             return false;
         }
@@ -64,6 +73,28 @@ public final class AnchorCoreProtection {
         Global.LOGGER.warn("[MaidSpell] Illegal {} called for {} by {} (anchor_core protection)",
                 method, maid.getUUID(), illegalCaller);
         return true;
+    }
+
+    /**
+     * 一次遍历调用栈，返回第一个不在白名单中的类名；全部合法，或处在原版的区块实体存盘、换维度复制、
+     * 玩家下线时连同坐骑存盘中时返回 null。
+     * 这些原版路径不会把女仆从世界里带走，即使栈上还有其他模组的帧（例如由管理面板触发的 save-all）也放行。
+     */
+    private static String findIllegalCallerOutsideVanillaPersistence() {
+        return StackWalker.getInstance().walk(frames -> {
+            String illegalCaller = null;
+            for (Iterator<StackWalker.StackFrame> it = frames.iterator(); it.hasNext(); ) {
+                StackWalker.StackFrame frame = it.next();
+                String className = frame.getClassName();
+                if (VANILLA_PERSISTENCE_FRAMES.contains(className + "#" + frame.getMethodName())) {
+                    return null;
+                }
+                if (illegalCaller == null && !AnchorCoreBauble.isCallerAllowed(className)) {
+                    illegalCaller = className;
+                }
+            }
+            return illegalCaller;
+        });
     }
 
     public static boolean shouldBlockEntitySerialization(Entity entity, CompoundTag compound, String method) {
