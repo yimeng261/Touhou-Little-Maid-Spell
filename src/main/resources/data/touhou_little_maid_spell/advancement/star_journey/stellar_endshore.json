@@ -5,6 +5,7 @@
       "item": "touhou_little_maid_spell:star_witch_hat"
     }
   ],
+  "parent": "touhou_little_maid_spell:star_journey/departure_place",
   "display": {
     "icon": {
       "id": "touhou_little_maid_spell:star_witch_hat"
@@ -16,7 +17,6 @@
       "translate": "advancements.touhou_little_maid_spell.star_journey.stellar_endshore.description"
     },
     "frame": "challenge",
-    "background": "minecraft:textures/gui/advancements/backgrounds/end.png",
     "show_toast": true,
     "announce_to_chat": true,
     "hidden": false
