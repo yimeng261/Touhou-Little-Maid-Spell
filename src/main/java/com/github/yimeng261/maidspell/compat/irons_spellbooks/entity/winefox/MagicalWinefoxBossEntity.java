@@ -1854,6 +1854,13 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         return this.tradingPlayer;
     }
 
+    /** 授权清除、卸载或换维度后，旧实体不能再成交。 */
+    @Override
+    public void onRemovedFromLevel() {
+        super.onRemovedFromLevel();
+        this.setTradingPlayer(null);
+    }
+
     /** 缓存有状态的报价表；解锁新报价时重建并保留已有使用次数。 */
     @Override
     public @NotNull MerchantOffers getOffers() {

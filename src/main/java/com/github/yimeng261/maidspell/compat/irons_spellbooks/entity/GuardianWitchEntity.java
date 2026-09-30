@@ -19,6 +19,7 @@ import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -64,6 +65,9 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
      */
     private static final int SPELL_ATTACK_INTERVAL_MIN = 30;
     private static final int SPELL_ATTACK_INTERVAL_MAX = 60;
+
+    /** 交易对象离开这么多格就放开交易。 */
+    private static final int TRADING_MAX_DISTANCE = 8;
 
     /**
      * 报价的默认每日上限。与 {@code ElfTemplarEntity} 取同一个值：交易界面里 {@code maxUses} 就是它，
@@ -199,7 +203,8 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {
         boolean preventTrade = this.isAggressive() || this.getTarget() != null
             || (!this.level().isClientSide && this.getOffers().isEmpty());
-        if (preventTrade) {
+        // 已有人在交易时按普通交互处理，与原版村民一致，也不会关掉前一个玩家的界面
+        if (preventTrade || this.isTrading()) {
             return super.mobInteract(player, hand);
         }
         Level level = this.level();
@@ -210,6 +215,33 @@ public class GuardianWitchEntity extends NeutralWizard implements IMerchantWizar
             this.startTrading(player);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /** 交易对象死亡、下线、换维度或走出 {@value #TRADING_MAX_DISTANCE} 格后放开交易，NPC 不会一直被占着。 */
+    @Override
+    public void aiStep() {
+        super.aiStep();
+        Player trader = this.getTradingPlayer();
+        if (trader != null && !this.level().isClientSide && (!trader.isAlive() || trader.level() != this.level()
+                || this.distanceToSqr(trader) > TRADING_MAX_DISTANCE * TRADING_MAX_DISTANCE)) {
+            this.stopTrading();
+        }
+    }
+
+    /** 真正死亡后放开交易对象让界面随之关闭；死亡被取消时照常交易。尸体要过一会儿才移出世界，不能只靠 {@link #onRemovedFromLevel}。 */
+    @Override
+    public void die(DamageSource source) {
+        super.die(source);
+        if (this.isDeadOrDying()) {
+            this.stopTrading();
+        }
+    }
+
+    /** 换维度（/tp 会直接移除旧实体）、卸载或被清除后，旧实体不能再成交。 */
+    @Override
+    public void onRemovedFromLevel() {
+        super.onRemovedFromLevel();
+        this.stopTrading();
     }
 
     /** 打开菜单失败时清除交易对象，避免后续交易被锁住。 */
