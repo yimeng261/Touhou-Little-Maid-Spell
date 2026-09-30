@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 观星术士的购入与出售报价。普通商品每日限购 5 次并补货，
- * 星锚珍珠每日 1 件，星陨石只出售一次。
+ * 观星术士的购入与出售报价。补货周期是半天：普通商品每次补货限购 5 次，
+ * 星锚珍珠每次补货 1 件，星陨石只出售一次。
  */
 public final class AstroMancerTrades {
 
@@ -31,22 +31,15 @@ public final class AstroMancerTrades {
     /** 卷轴上的那一发魔法霰弹的等级。 */
     private static final int SCROLL_LEVEL = 1;
 
-    /**
-     * 星锚珍珠的每日上限，按《NPC交易栏》那一列：1 件。
-     *
-     * <p>注意她的补货周期是<b>半天</b>（{@code IMerchantWizard#shouldRestock} 的 12000 tick 窗口，与
-     * {@code ElfTemplarEntity} 同源），所以这一条实际是「每次补货 1 件、一天最多两次」。
-     * 要严格一天一件，得把整台补货机器的窗口改成 24000 tick —— 那会一起改掉她所有报价，
-     * 也会和精灵守卫分家，不在这里动。
-     */
+    /** 星锚珍珠每次补货可买的件数。 */
     private static final int STARANCHOR_PEARL_DAILY_LIMIT = 1;
 
     /** 只可交易一次的那一条（星陨石）用掉的次数上限，见 {@link #isOnceEver}。 */
     private static final int ONCE_EVER_USES = 1;
 
-    /** 成交给的经验与要价系数：她不是村民，经验只走界面显示，需求涨跌不改价。 */
+    /** 成交给的经验与要价系数：她不是村民，经验只走界面显示；系数为 0，需求涨跌不改价。 */
     private static final int XP_PER_TRADE = 1;
-    private static final float PRICE_MULTIPLIER = 0.05F;
+    private static final float PRICE_MULTIPLIER = 0.0F;
 
     /**
      * 「原版食物」那一行的实体。
@@ -108,7 +101,7 @@ public final class AstroMancerTrades {
     }
 
     /**
-     * 每档报价的每日上限，按「她卖出去的东西」认行。
+     * 每档报价每次补货的限购次数，按「她卖出去的东西」认行。
      *
      * <p>认东西而不是认报价对象：存档里那张表是由 {@code MerchantOffers.CODEC} 解码回来的，
      * 任何自定义标记都过不了这一关，只有 {@code uses}／{@code maxUses}／物品本身留得下来。
@@ -126,7 +119,7 @@ public final class AstroMancerTrades {
      * 「只可交易一次」的那一行：星陨石。
      *
      * <p>它靠 {@code maxUses = 1} 加上「补货时跳过它」实现（见 {@code GuardianWitchEntity#restock}）：
-     * {@code uses}／{@code maxUses} 都会随交易表落盘，所以读档回来仍是卖光，不会变成每天一颗。
+     * {@code uses}／{@code maxUses} 都会随交易表落盘，所以读档回来仍是卖光，不会随补货再刷出来。
      * 只要以后没有别的行卖星陨石，按东西认行就够用。
      */
     public static boolean isOnceEver(ItemStack result) {
@@ -145,8 +138,7 @@ public final class AstroMancerTrades {
                     previous == null ? 0 : Math.min(previous.getUses(), current.getMaxUses()),
                     current.getMaxUses(),
                     current.getXp(),
-                    current.getPriceMultiplier(),
-                    previous == null ? 0 : previous.getDemand()));
+                    current.getPriceMultiplier()));
         }
         return rebuilt;
     }
@@ -164,7 +156,7 @@ public final class AstroMancerTrades {
     }
 
     /**
-     * {@code maxUses} 就是这一行的每日限额，见 {@link #dailyLimitFor}；第 4 个参数是「已经用掉几次」的初值，
+     * {@code maxUses} 就是这一行每次补货的限购次数，见 {@link #dailyLimitFor}；第 4 个参数是「已经用掉几次」的初值，
      * 不是上限（{@code (costA, costB, result, uses, maxUses, xp, priceMultiplier)}）。
      */
     private static MerchantOffer offer(ItemStack costA, ItemStack costB, ItemStack result, int maxUses) {
@@ -176,7 +168,7 @@ public final class AstroMancerTrades {
         return new ItemCost(stack.getItem(), stack.getCount());
     }
 
-    /** 走每日限额的那条路：上限按卖的东西现查。 */
+    /** 走补货限购的那条路：上限按卖的东西现查。 */
     private static MerchantOffer offer(ItemStack costA, ItemStack costB, ItemStack result) {
         return offer(costA, costB, result, dailyLimitFor(result));
     }
