@@ -1,12 +1,12 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "neoforge:mod_loaded",
-      "modid": "irons_spellbooks"
-    }
-  ],
   "pools": [
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 1,
       "entries": [
         {
@@ -21,6 +21,12 @@
       ]
     },
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 1,
       "entries": [
         {
@@ -35,6 +41,12 @@
       ]
     },
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 1,
       "entries": [
         {
@@ -49,6 +61,12 @@
       ]
     },
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 1,
       "entries": [
         {
@@ -63,6 +81,12 @@
       ]
     },
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 1,
       "entries": [
         {
@@ -77,6 +101,12 @@
       ]
     },
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 1,
       "entries": [
         {
@@ -91,6 +121,12 @@
       ]
     },
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 1,
       "entries": [
         {
@@ -105,6 +141,12 @@
       ]
     },
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 1,
       "entries": [
         {
@@ -119,6 +161,12 @@
       ]
     },
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 1,
       "entries": [
         {
@@ -229,7 +277,98 @@
           "weight": 75
         }
       ]
+    },
+    {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:not",
+          "value": {
+            "type": "neoforge:mod_loaded",
+            "modid": "irons_spellbooks"
+          }
+        }
+      ],
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "touhou_little_maid:nimble_fabric",
+          "weight": 25
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 75
+        }
+      ]
+    },
+    {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:not",
+          "value": {
+            "type": "neoforge:mod_loaded",
+            "modid": "irons_spellbooks"
+          }
+        }
+      ],
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "touhou_little_maid:item_magnet_bauble",
+          "weight": 25
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 75
+        }
+      ]
+    },
+    {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:not",
+          "value": {
+            "type": "neoforge:mod_loaded",
+            "modid": "irons_spellbooks"
+          }
+        }
+      ],
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "touhou_little_maid:substitute_jizo",
+          "weight": 10
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 90
+        }
+      ]
+    },
+    {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:not",
+          "value": {
+            "type": "neoforge:mod_loaded",
+            "modid": "irons_spellbooks"
+          }
+        }
+      ],
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:totem_of_undying",
+          "weight": 10
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 90
+        }
+      ]
     }
   ]
 }
-

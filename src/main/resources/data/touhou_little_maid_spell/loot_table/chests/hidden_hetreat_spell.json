@@ -1,12 +1,12 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "neoforge:mod_loaded",
-      "modid": "irons_spellbooks"
-    }
-  ],
   "pools": [
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 5,
       "entries": [
         {
@@ -21,6 +21,12 @@
       ]
     },
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 7,
       "entries": [
         {
@@ -35,6 +41,12 @@
       ]
     },
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 10,
       "entries": [
         {
@@ -49,6 +61,12 @@
       ]
     },
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        }
+      ],
       "rolls": 10,
       "entries": [
         {
@@ -75,7 +93,103 @@
           "weight": 50
         }
       ]
+    },
+    {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:not",
+          "value": {
+            "type": "neoforge:mod_loaded",
+            "modid": "irons_spellbooks"
+          }
+        }
+      ],
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:book",
+          "weight": 30,
+          "functions": [
+            {
+              "function": "minecraft:enchant_randomly"
+            }
+          ]
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 70
+        }
+      ]
+    },
+    {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:not",
+          "value": {
+            "type": "neoforge:mod_loaded",
+            "modid": "irons_spellbooks"
+          }
+        }
+      ],
+      "rolls": 7,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:book",
+          "weight": 30
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 70
+        }
+      ]
+    },
+    {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:not",
+          "value": {
+            "type": "neoforge:mod_loaded",
+            "modid": "irons_spellbooks"
+          }
+        }
+      ],
+      "rolls": 10,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:lapis_lazuli",
+          "weight": 50
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 50
+        }
+      ]
+    },
+    {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:not",
+          "value": {
+            "type": "neoforge:mod_loaded",
+            "modid": "irons_spellbooks"
+          }
+        }
+      ],
+      "rolls": 10,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:experience_bottle",
+          "weight": 30
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 70
+        }
+      ]
     }
   ]
 }
-
