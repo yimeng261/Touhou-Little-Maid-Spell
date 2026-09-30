@@ -14,9 +14,10 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.attachment.AttachmentHolder;
 import net.neoforged.neoforge.attachment.AttachmentType;
 
+import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -51,9 +52,8 @@ public record ChunkLoadingData(Map<UUID, LevelAndChunkPos> maidChunks) {
                 .orElseGet(Map::of);
     }
 
-    /** 离线玩家存档里的锚定记录，每次开服只读一遍，之后随登录、下线更新 */
+    /** 离线玩家存档里的锚定记录，每次开服只读一遍，之后随登录、下线和离线期间的变更更新 */
     private static final Map<UUID, Map<UUID, LevelAndChunkPos>> OFFLINE_RECORDS = new HashMap<>();
-    private static boolean offlineRecordsLoaded;
 
     /** 全服的锚定记录（女仆 → 位置）：在线玩家以内存为准，离线玩家读存档。 */
     public static Map<UUID, LevelAndChunkPos> collectAll(MinecraftServer server) {
@@ -64,7 +64,7 @@ public record ChunkLoadingData(Map<UUID, LevelAndChunkPos> maidChunks) {
 
     /** 全服的锚定记录，按主人分组。 */
     public static Map<UUID, Map<UUID, LevelAndChunkPos>> collectAllByOwner(MinecraftServer server) {
-        loadOfflineRecords(server);
+        OfflinePlayerDataScan.scan(server);
         Map<UUID, Map<UUID, LevelAndChunkPos>> records = new HashMap<>();
         OFFLINE_RECORDS.forEach((owner, maids) -> records.put(owner, new HashMap<>(maids)));
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
@@ -74,40 +74,32 @@ public record ChunkLoadingData(Map<UUID, LevelAndChunkPos> maidChunks) {
         return records;
     }
 
-    private static void loadOfflineRecords(MinecraftServer server) {
-        if (!offlineRecordsLoaded) {
-            OfflinePlayerDataScan.scan(server);
-        }
-    }
-
     /**
-     * 收下离线玩家存档里读出的锚定记录，并在这时扣掉待删的记录；之后缓存里不会再有待删项，
-     * 离线期间的删除由 {@link #removeRecord} 同时改缓存和待删表。
+     * 收下离线玩家存档里读出的锚定记录，并在这时应用待变更；之后缓存与待变更一致，
+     * 离线期间的变更由 {@link #updateRecord}、{@link #removeRecord} 同时改缓存和待变更表。
      */
     static void acceptOfflineRecords(MinecraftServer server, Map<UUID, Map<UUID, LevelAndChunkPos>> fromPlayerData) {
-        offlineRecordsLoaded = true;
+        // 上次读到一半抛了异常时这里可能留有残缺的缓存
+        OFFLINE_RECORDS.clear();
         fromPlayerData.forEach((owner, maids) -> OFFLINE_RECORDS.put(owner, new HashMap<>(maids)));
-        AnchorPendingRemovalData.get(server).forEach((owner, maids) -> {
-            Map<UUID, LevelAndChunkPos> cached = OFFLINE_RECORDS.get(owner);
-            if (cached != null) {
-                cached.keySet().removeAll(maids);
+        AnchorPendingChangeData.get(server).forEach((owner, changes) -> {
+            if (server.getPlayerList().getPlayer(owner) == null) {
+                AnchorPendingChangeData.apply(changes, OFFLINE_RECORDS.computeIfAbsent(owner, key -> new HashMap<>()));
             }
         });
         OFFLINE_RECORDS.values().removeIf(Map::isEmpty);
     }
 
-    /** 主人登录：删掉离线期间记下的待删记录，之后以他身上的记录为准。 */
+    /** 主人登录：把离线期间记下的待变更写进他身上的记录，之后以他身上的记录为准。 */
     public static void onOwnerLogin(ServerPlayer player) {
         OFFLINE_RECORDS.remove(player.getUUID());
-        Set<UUID> removed = AnchorPendingRemovalData.get(player.server).take(player.getUUID());
-        if (!removed.isEmpty()) {
-            player.getData(ATTACHMENT_TYPE).maidChunks().keySet().removeAll(removed);
-        }
+        AnchorPendingChangeData.apply(AnchorPendingChangeData.get(player.server).take(player.getUUID()),
+                player.getData(ATTACHMENT_TYPE).maidChunks());
     }
 
     /** 主人下线：他身上的记录随存档保存，缓存里记一份。 */
     public static void onOwnerLogout(ServerPlayer player) {
-        if (!offlineRecordsLoaded) {
+        if (!OfflinePlayerDataScan.isScanned()) {
             return;
         }
         Map<UUID, LevelAndChunkPos> maids = player.getData(ATTACHMENT_TYPE).maidChunks();
@@ -118,24 +110,47 @@ public record ChunkLoadingData(Map<UUID, LevelAndChunkPos> maidChunks) {
         }
     }
 
-    /** 删掉一条锚定记录；主人不在线时先记为待删，等他登录再删。 */
-    public static void removeRecord(MinecraftServer server, UUID owner, UUID maid) {
+    /** 一条锚定记录；主人不在线时读缓存 */
+    @Nullable
+    public static LevelAndChunkPos getRecord(MinecraftServer server, UUID owner, UUID maid) {
         ServerPlayer player = server.getPlayerList().getPlayer(owner);
         if (player != null) {
-            player.getData(ATTACHMENT_TYPE).maidChunks().remove(maid);
+            return player.getData(ATTACHMENT_TYPE).maidChunks().get(maid);
+        }
+        OfflinePlayerDataScan.scan(server);
+        return OFFLINE_RECORDS.getOrDefault(owner, Map.of()).get(maid);
+    }
+
+    /** 记下女仆的新位置；主人不在线时先记为待变更，等他登录再写进他身上。 */
+    public static void updateRecord(MinecraftServer server, UUID owner, UUID maid, LevelAndChunkPos pos) {
+        changeRecord(server, owner, maid, Optional.of(pos));
+    }
+
+    /** 删掉一条锚定记录；主人不在线时先记为待变更，等他登录再删。 */
+    public static void removeRecord(MinecraftServer server, UUID owner, UUID maid) {
+        changeRecord(server, owner, maid, Optional.empty());
+    }
+
+    private static void changeRecord(MinecraftServer server, UUID owner, UUID maid, Optional<LevelAndChunkPos> pos) {
+        ServerPlayer player = server.getPlayerList().getPlayer(owner);
+        if (player != null) {
+            AnchorPendingChangeData.apply(Map.of(maid, pos), player.getData(ATTACHMENT_TYPE).maidChunks());
             return;
         }
-        loadOfflineRecords(server);
-        Map<UUID, LevelAndChunkPos> cached = OFFLINE_RECORDS.get(owner);
-        if (cached == null || cached.remove(maid) == null) {
-            return;
+        OfflinePlayerDataScan.scan(server);
+        Map<UUID, LevelAndChunkPos> cached = OFFLINE_RECORDS.computeIfAbsent(owner, key -> new HashMap<>());
+        LevelAndChunkPos previous = cached.get(maid);
+        AnchorPendingChangeData.apply(Map.of(maid, pos), cached);
+        if (cached.isEmpty()) {
+            OFFLINE_RECORDS.remove(owner);
         }
-        AnchorPendingRemovalData.get(server).add(owner, maid);
+        if (!Optional.ofNullable(previous).equals(pos)) {
+            AnchorPendingChangeData.get(server).put(owner, maid, pos);
+        }
     }
 
     public static void clearSessionCache() {
         OFFLINE_RECORDS.clear();
-        offlineRecordsLoaded = false;
         OfflinePlayerDataScan.clear();
     }
 

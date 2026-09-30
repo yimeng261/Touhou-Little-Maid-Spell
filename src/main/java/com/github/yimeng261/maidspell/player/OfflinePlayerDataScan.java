@@ -34,7 +34,7 @@ public final class OfflinePlayerDataScan {
     /** 单个存档读进来的字节上限：只统计取出的两项，跳过的部分既不分配也不计数；嵌套深度按原版上限 */
     private static final long MAX_COLLECTED_BYTES = 8L * 1024 * 1024;
 
-    /** 离线玩家存档里记的所在维度；null 表示本次开服还没读 */
+    /** 离线玩家存档里记的所在维度；null 表示本次开服还没读完，锚定记录也还没交给 {@link ChunkLoadingData} */
     @Nullable
     private static Map<UUID, ResourceKey<Level>> playerDimensions;
 
@@ -47,11 +47,17 @@ public final class OfflinePlayerDataScan {
         return Collections.unmodifiableMap(playerDimensions);
     }
 
+    /** 本次开服是否已读完，离线锚定记录已交给 {@link ChunkLoadingData} */
+    static synchronized boolean isScanned() {
+        return playerDimensions != null;
+    }
+
+    /** 已读完时直接返回；中途抛异常则保持未读完，下次调用重读 */
     static synchronized void scan(MinecraftServer server) {
         if (playerDimensions != null) {
             return;
         }
-        playerDimensions = new LinkedHashMap<>();
+        Map<UUID, ResourceKey<Level>> dimensions = new LinkedHashMap<>();
         Map<UUID, Map<UUID, ChunkLoadingData.LevelAndChunkPos>> anchors = new HashMap<>();
         File[] files = server.getWorldPath(LevelResource.PLAYER_DATA_DIR).toFile()
                 .listFiles((dir, name) -> name.endsWith(".dat"));
@@ -66,7 +72,7 @@ public final class OfflinePlayerDataScan {
             }
             ResourceKey<Level> dimension = parseDimensionKey(tag);
             if (dimension != null) {
-                playerDimensions.put(player, dimension);
+                dimensions.put(player, dimension);
             }
             Map<UUID, ChunkLoadingData.LevelAndChunkPos> maids = ChunkLoadingData.readFromPlayerTag(tag);
             if (!maids.isEmpty()) {
@@ -74,6 +80,7 @@ public final class OfflinePlayerDataScan {
             }
         }
         ChunkLoadingData.acceptOfflineRecords(server, anchors);
+        playerDimensions = dimensions;
     }
 
     static synchronized void clear() {
