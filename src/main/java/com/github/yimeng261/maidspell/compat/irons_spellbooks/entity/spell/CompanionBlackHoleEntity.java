@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell;
 
+import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import io.redspace.ironsspellbooks.entity.spells.black_hole.BlackHole;
@@ -95,9 +96,9 @@ public class CompanionBlackHoleEntity extends BlackHole {
                 center.x - reach, center.y - reach, center.z - reach,
                 center.x + reach, center.y + reach, center.z + reach);
 
+        var friendly = MaidSpellAllyResolver.friendlyTo(caster);
         for (Entity entity : this.level().getEntities(this, area,
-                candidate -> candidate instanceof Projectile projectile
-                             && projectile.getOwner() != caster)) {
+                candidate -> candidate instanceof Projectile && !friendly.test(candidate))) {
             Vec3 toCenter = center.subtract(entity.position());
             double distance = toCenter.length();
             if (distance > reach) {
@@ -138,13 +139,14 @@ public class CompanionBlackHoleEntity extends BlackHole {
                 center.x - reach, center.y - reach, center.z - reach,
                 center.x + reach, center.y + reach, center.z + reach);
 
+        var friendly = MaidSpellAllyResolver.friendlyTo(caster);
         for (Entity candidate : this.level().getEntities(this, search)) {
-            tryConsume(candidate, caster, center, radius);
+            tryConsume(candidate, friendly, center, radius);
         }
     }
 
     /** 多部件法术按部件判碰撞，但销毁父实体。 */
-    private void tryConsume(Entity candidate, Entity caster, Vec3 center, double radius) {
+    private void tryConsume(Entity candidate, java.util.function.Predicate<Entity> friendly, Vec3 center, double radius) {
         Entity target = candidate;
         if (candidate instanceof PartEntity<?> part) {
             target = part.getParent();
@@ -156,8 +158,8 @@ public class CompanionBlackHoleEntity extends BlackHole {
             return;
         }
         if (target instanceof Projectile projectile) {
-            // 保留施法者自己的弹射物。
-            if (projectile.getOwner() == caster) {
+            // 保留整个友方的弹射物。
+            if (friendly.test(projectile)) {
                 return;
             }
         } else {
@@ -166,7 +168,7 @@ public class CompanionBlackHoleEntity extends BlackHole {
             }
             // 仅消除能确认归属的敌方法术。
             Entity spellOwner = resolvedOwner(target);
-            if (spellOwner == null || spellOwner == caster) {
+            if (spellOwner == null || friendly.test(spellOwner)) {
                 return;
             }
         }

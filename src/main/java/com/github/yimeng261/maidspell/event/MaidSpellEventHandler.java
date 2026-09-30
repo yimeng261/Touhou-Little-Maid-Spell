@@ -614,6 +614,7 @@ public class MaidSpellEventHandler {
             return;
         }
 
+        AnchorCoreBauble.disableChunkLoading(maid);
         cleanupMaidBaubleRuntimeState(maid.getUUID());
         SpellBookManager.getOrCreateManager(maid).removeMaidData(maid);
         MaidReviveEffectCleanup.cleanupBeforeNormalDeath(maid);

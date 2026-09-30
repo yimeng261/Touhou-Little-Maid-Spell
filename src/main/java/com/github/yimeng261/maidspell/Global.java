@@ -218,9 +218,7 @@ public class Global {
         commonHurtHandlers.clear();
         commonHurtHandlers.add((event, maid) -> {
             LivingEntity entity = event.getEntity();
-            if (entity instanceof EntityMaid) {
-                event.setCanceled(true);
-            } else if (entity instanceof Player) {
+            if (com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver.areFriendly(maid, entity)) {
                 event.setCanceled(true);
             }
             return null;

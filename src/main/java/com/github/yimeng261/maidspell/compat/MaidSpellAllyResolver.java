@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.compat.goety.GoetyMinionOwners;
 import com.github.yimeng261.maidspell.compat.goety.GoetySpellEntityOwners;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellEntityOwners;
+import com.github.yimeng261.maidspell.compat.usefulmagic.UsefulMagicEntityOwners;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -55,24 +56,41 @@ public final class MaidSpellAllyResolver {
         if (!couldHaveOwner(first) && !couldHaveOwner(second)) {
             return false;
         }
-        return sharesAffinity(collectAffinityIds(first), second);
+        return sharesAffinity(affinity(first), second);
     }
 
     /**
      * 与 {@link #areFriendly} 判定相同，{@code caster} 一侧的主人链只算一次，供按同一个施法者过滤一批实体。
      */
     public static Predicate<Entity> friendlyTo(Entity caster) {
-        Set<UUID> casterIds = collectAffinityIds(caster);
+        Affinity casterAffinity = affinity(caster);
         boolean casterCouldHaveOwner = couldHaveOwner(caster);
         return target -> target == caster
                 || hasExplicitTeamAlliance(caster, target)
-                || ((casterCouldHaveOwner || couldHaveOwner(target)) && sharesAffinity(casterIds, target));
+                || ((casterCouldHaveOwner || couldHaveOwner(target)) && sharesAffinity(casterAffinity, target));
     }
 
-    private static boolean sharesAffinity(Set<UUID> firstIds, Entity second) {
-        for (UUID id : collectAffinityIds(second)) {
-            if (firstIds.contains(id)) {
-                return true;
+    private record Affinity(Set<UUID> ids, Set<Team> teams) { }
+
+    private static Affinity affinity(Entity entity) {
+        Set<UUID> ids = collectAffinityIds(entity);
+        Set<Team> teams = new HashSet<>();
+        if (entity.getTeam() != null) teams.add(entity.getTeam());
+        for (UUID id : ids) {
+            Entity member = findEntity(entity, id);
+            if (member != null && member.getTeam() != null) teams.add(member.getTeam());
+        }
+        return new Affinity(ids, teams);
+    }
+
+    private static boolean sharesAffinity(Affinity first, Entity second) {
+        Affinity other = affinity(second);
+        for (UUID id : other.ids()) {
+            if (first.ids().contains(id)) return true;
+        }
+        for (Team firstTeam : first.teams()) {
+            for (Team secondTeam : other.teams()) {
+                if (firstTeam.isAlliedTo(secondTeam) || secondTeam.isAlliedTo(firstTeam)) return true;
             }
         }
         return false;
@@ -446,6 +464,12 @@ public final class MaidSpellAllyResolver {
             @Override
             EntityOwnerGetter<?> find(Class<?> type) {
                 return GoetyMinionOwners.getterFor(type);
+            }
+        },
+        USEFUL_MAGIC("usefulmagic", "UsefulMagic 的核心和子眼") {
+            @Override
+            EntityOwnerGetter<?> find(Class<?> type) {
+                return UsefulMagicEntityOwners.getterFor(type);
             }
         },
         GOETY_SPELLS("goety", "Goety 的法术实体") {

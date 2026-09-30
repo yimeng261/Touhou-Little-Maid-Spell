@@ -110,9 +110,8 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
             // 避免共享主世界的 TimerQueue 导致 /schedule function 被重复执行
             ServerLevelData overworldLevelData = (ServerLevelData) overworld.getLevelData();
             WorldData worldData = server.getWorldData();
-            RetreatLevelData retreatLevelData = new RetreatLevelData(worldData, overworldLevelData);
-
             long seed = maidspell$stableDimensionSeed(overworld.getSeed(), key);
+            RetreatLevelData retreatLevelData = new RetreatLevelData(worldData, overworldLevelData, seed);
 
             // 创建一个简单的ChunkProgressListener
             ChunkProgressListener progressListener = new ChunkProgressListener() {

@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.dimension.RetreatLevelData;
 import com.github.yimeng261.maidspell.worldgen.accessor.RandomStateAccessor;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -15,6 +16,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -24,6 +26,15 @@ import java.util.concurrent.Executor;
  */
 @Mixin(ServerLevel.class)
 public class ServerLevelMixin {
+
+    /** 地形噪声和结构布局使用归隐维度自己的稳定种子。 */
+    @Inject(method = "getSeed", at = @At("HEAD"), cancellable = true)
+    private void maidspell$retreatGenerationSeed(CallbackInfoReturnable<Long> cir) {
+        ServerLevel level = (ServerLevel) (Object) this;
+        if (level.getLevelData() instanceof RetreatLevelData retreat) {
+            cir.setReturnValue(retreat.getGenerationSeed());
+        }
+    }
 
     /**
      * 在ServerLevel构造函数结束时，为RandomState设置维度信息
