@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Holder;
@@ -225,7 +226,7 @@ public class Global {
             return null;
         });
         commonHurtHandlers.add((hurtEvent, maid) -> {
-            if (maid.getTask().getUid().toString().startsWith("maidspell")) {
+            if (SpellCombatMeleeTask.UID.getNamespace().equals(maid.getTask().getUid().getNamespace())) {
                 hurtEvent.setAmount((float) (hurtEvent.getAmount() * Config.spellDamageMultiplier));
             }
             return null;
