@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
 /**
  * Central friendly-fire and target-alliance resolver for player/maid summon ecosystems.
@@ -54,14 +55,23 @@ public final class MaidSpellAllyResolver {
         if (!couldHaveOwner(first) && !couldHaveOwner(second)) {
             return false;
         }
+        return sharesAffinity(collectAffinityIds(first), second);
+    }
 
-        Set<UUID> firstOwners = collectAffinityIds(first);
-        Set<UUID> secondOwners = collectAffinityIds(second);
-        if (firstOwners.isEmpty() || secondOwners.isEmpty()) {
-            return false;
-        }
-        for (UUID id : firstOwners) {
-            if (secondOwners.contains(id)) {
+    /**
+     * 与 {@link #areFriendly} 判定相同，{@code caster} 一侧的主人链只算一次，供按同一个施法者过滤一批实体。
+     */
+    public static Predicate<Entity> friendlyTo(Entity caster) {
+        Set<UUID> casterIds = collectAffinityIds(caster);
+        boolean casterCouldHaveOwner = couldHaveOwner(caster);
+        return target -> target == caster
+                || hasExplicitTeamAlliance(caster, target)
+                || ((casterCouldHaveOwner || couldHaveOwner(target)) && sharesAffinity(casterIds, target));
+    }
+
+    private static boolean sharesAffinity(Set<UUID> firstIds, Entity second) {
+        for (UUID id : collectAffinityIds(second)) {
+            if (firstIds.contains(id)) {
                 return true;
             }
         }
