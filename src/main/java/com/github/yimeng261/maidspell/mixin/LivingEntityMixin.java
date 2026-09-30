@@ -41,6 +41,13 @@ import java.util.function.BiFunction;
  */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin {
+    @Inject(method = "getMaxHealth", at = @At("HEAD"), cancellable = true)
+    private void maidspell$readAuthoritativeMaxHealth(CallbackInfoReturnable<Float> cir) {
+        if ((Object) this instanceof IAuthoritativeHealth authority) {
+            cir.setReturnValue(authority.maidspell$authoritativeMaxHealth());
+        }
+    }
+
     @Final
     @Shadow
     private static EntityDataAccessor<Float> DATA_HEALTH_ID;

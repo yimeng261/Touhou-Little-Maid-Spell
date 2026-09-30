@@ -446,6 +446,13 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         return this.authoritativeHealth;
     }
 
+    /** 内部最大生命视图，不受公开属性值影响 */
+    @Override
+    public float maidspell$authoritativeMaxHealth() {
+        return this.authoritativeMaxHealthReady ? this.authoritativeMaxHealth
+            : (float) this.getAttributeValue(Attributes.MAX_HEALTH);
+    }
+
     /** Internal health view that is not rewritten by third-party getHealth transformers. */
     @Override
     public float maidspell$authoritativeHealth() {
@@ -464,6 +471,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     @Override
     public void tick() {
         this.maidspell$clearExpectedHealthWrite();
+        if (!this.level().isClientSide && this.authoritativeMaxHealthReady) {
+            this.maidspell$reconcileMaxHealthAttribute();
+        }
         super.tick();
     }
 
@@ -677,24 +687,59 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return this.authoritativeMaxHealth;
         }
         float value = this.entityData.get(BOSS_MAX_HEALTH);
-        return Float.isFinite(value) && value > 0.0F ? value : this.getMaxHealth();
+        return Float.isFinite(value) && value > 0.0F ? value
+            : (float) this.getAttributeValue(Attributes.MAX_HEALTH);
     }
 
     void maidspell$setMaxHealth(float requested) {
         float max = Float.isFinite(requested) && requested >= 1.0F ? requested : 600.0F;
         this.authoritativeMaxHealth = max;
         this.authoritativeMaxHealthReady = true;
-        AttributeInstance attribute = this.getAttribute(Attributes.MAX_HEALTH);
-        if (attribute != null) {
-            attribute.removeModifier(MAX_HEALTH_MODIFIER_ID);
-            double difference = max - attribute.getValue();
-            if (difference != 0.0D) {
-                attribute.addTransientModifier(new AttributeModifier(MAX_HEALTH_MODIFIER_ID,
-                    difference, AttributeModifier.Operation.ADD_VALUE));
-            }
-        }
+        this.maidspell$reconcileMaxHealthAttribute();
         if (!this.level().isClientSide) {
             BossLifecycleAccess.withDataWrite(this, () -> this.entityData.set(BOSS_MAX_HEALTH, max));
+        }
+    }
+
+    private void maidspell$reconcileMaxHealthAttribute() {
+        AttributeInstance attribute = this.getAttribute(Attributes.MAX_HEALTH);
+        if (attribute == null) {
+            return;
+        }
+        double base = attribute.getBaseValue();
+        double additions = 0.0D;
+        double multiplyBase = 0.0D;
+        double multiplyTotal = 1.0D;
+        for (AttributeModifier modifier : attribute.getModifiers()) {
+            if (MAX_HEALTH_MODIFIER_ID.equals(modifier.id())) {
+                continue;
+            }
+            switch (modifier.operation()) {
+                case ADD_VALUE -> additions += modifier.amount();
+                case ADD_MULTIPLIED_BASE -> multiplyBase += modifier.amount();
+                case ADD_MULTIPLIED_TOTAL -> multiplyTotal *= 1.0D + modifier.amount();
+            }
+        }
+        // 原版把 ADD_MULTIPLIED_BASE 作用在基础值加上全部 ADD_VALUE 之和上
+        double multiplier = (1.0D + multiplyBase) * multiplyTotal;
+        if (!Double.isFinite(multiplier) || multiplier <= 0.0D) {
+            return;
+        }
+        double difference = this.authoritativeMaxHealth / multiplier - base - additions;
+        if (!Double.isFinite(difference)) {
+            return;
+        }
+        AttributeModifier current = attribute.getModifier(MAX_HEALTH_MODIFIER_ID);
+        if (current != null && current.operation() == AttributeModifier.Operation.ADD_VALUE
+                && Math.abs(current.amount() - difference) < 1.0E-6D) {
+            return;
+        }
+        if (current != null) {
+            attribute.removeModifier(MAX_HEALTH_MODIFIER_ID);
+        }
+        if (Math.abs(difference) >= 1.0E-6D) {
+            attribute.addTransientModifier(new AttributeModifier(MAX_HEALTH_MODIFIER_ID,
+                difference, AttributeModifier.Operation.ADD_VALUE));
         }
     }
 

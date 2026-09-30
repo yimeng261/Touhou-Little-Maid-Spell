@@ -6,6 +6,8 @@ import net.minecraft.world.entity.LivingEntity;
 public interface IAuthoritativeHealth {
     float maidspell$authoritativeHealth();
 
+    float maidspell$authoritativeMaxHealth();
+
     static float health(LivingEntity entity) {
         return entity instanceof IAuthoritativeHealth authority
             ? authority.maidspell$authoritativeHealth() : entity.getHealth();
