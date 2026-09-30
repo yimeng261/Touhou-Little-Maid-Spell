@@ -28,11 +28,15 @@ public class StarfallGardenData extends SavedData {
         OPEN,
         /** 世界生成停止出候选。 */
         CLOSED,
-        /** 仅允许补生成主动放置。 */
+        /** 仅允许补生成所在线程出候选，世界生成线程仍视为已有庭院。 */
         UNLOCKED_FOR_RETROFIT
     }
 
     private static final AtomicReference<Gate> GATE = new AtomicReference<>(Gate.OPEN);
+
+    /** 打开补生成窗口的线程，只在 {@code UNLOCKED_FOR_RETROFIT} 期间有意义。 */
+    @Nullable
+    private static volatile Thread retrofitThread;
 
     /** 本次服务器会话是否已经从存档读过一次；避免重复读盘，也避免读失败时反复重试。 */
     private static final AtomicBoolean RESTORED = new AtomicBoolean(false);
@@ -106,34 +110,45 @@ public class StarfallGardenData extends SavedData {
     // ========== 运行期闸门 ==========
 
     /**
-     * 是否已经有庭院了 —— 世界生成预热用。{@code CLOSED} 与 {@code UNLOCKED_FOR_RETROFIT}
-     * 都算「有主了」，两条路都不该再出候选。
+     * 当前线程是否该认为已经有庭院了。{@code CLOSED} 对所有线程成立；
+     * {@code UNLOCKED_FOR_RETROFIT} 只对补生成以外的线程成立，世界生成不会和补生成抢名额。
      */
     public static boolean isPlaced() {
-        return GATE.get() != Gate.OPEN;
+        return switch (GATE.get()) {
+            case OPEN -> false;
+            case CLOSED -> true;
+            case UNLOCKED_FOR_RETROFIT -> !isRetrofitThread();
+        };
+    }
+
+    /** 当前线程是否处在补生成的放置窗口里。 */
+    public static boolean isRetrofitThread() {
+        return GATE.get() == Gate.UNLOCKED_FOR_RETROFIT && Thread.currentThread() == retrofitThread;
     }
 
     /**
-     * 补生成专用的放置窗口：把闸门从 {@code CLOSED} 抬到 {@code UNLOCKED_FOR_RETROFIT}。
+     * 补生成专用的放置窗口：闸门从 {@code OPEN} 抬到 {@code UNLOCKED_FOR_RETROFIT}，
+     * 只放行调用线程；已经 {@code CLOSED} 时保持不变。
      *
      * <p>为什么不能直接绕开闸门去造 {@code StructureStart}：落点必须由 mod 自己的
      * {@code structure.generate(...)} 算出来，否则「补生成放的那一座」和「世界生成会放的那一座」
-     * 会落在不同位置 —— 补生成一跑，存档里就多出一座谁也算不出来的东西。抬闸门而不是改判定，
-     * 保证两条路用的是同一套落点算术。
+     * 会落在不同位置 —— 补生成一跑，存档里就多出一座谁也算不出来的东西。补生成照样走
+     * {@code generate} 和闸门判定，只是窗口期间放行本线程，两条路用的是同一套落点算术。
      */
     public static void unlockForRetrofit() {
-        GATE.set(Gate.UNLOCKED_FOR_RETROFIT);
+        retrofitThread = Thread.currentThread();
+        GATE.compareAndSet(Gate.OPEN, Gate.UNLOCKED_FOR_RETROFIT);
     }
 
     /**
-     * 放置窗口用完了：立刻恢复到「已有主」。
+     * 放置窗口用完了：没落下就退回 {@code OPEN}，让世界生成照常出候选；
+     * {@link #markPlaced} 已经关闸时保持 {@code CLOSED}。
      *
-     * <p>必须成对调用，且要在 {@link #markPlaced} 之前或之后都行 —— 两个动作都把闸门留在
-     * 关闭侧，差别只在有没有落盘。用 {@code try/finally} 包住，别让一次生成异常把闸门
-     * 永久留在敞开状态（那会让整座存档到处长庭院）。
+     * <p>必须成对调用，用 {@code try/finally} 包住，别让一次生成异常把世界生成永久挡在窗口外。
      */
     public static void relockAfterRetrofit() {
-        GATE.set(Gate.CLOSED);
+        GATE.compareAndSet(Gate.UNLOCKED_FOR_RETROFIT, Gate.OPEN);
+        retrofitThread = null;
     }
 
     /**
@@ -184,6 +199,7 @@ public class StarfallGardenData extends SavedData {
      */
     public static void resetSession() {
         GATE.set(Gate.OPEN);
+        retrofitThread = null;
         RESTORED.set(false);
     }
 

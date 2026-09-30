@@ -199,6 +199,7 @@ public class StarfallGardenStructure extends Structure {
     /**
      * 只在 StructureStart 有效时标记已生成。findGenerationPoint 可能被试探性调用，
      * 不能在那里占用名额；手动 /place structure 同样计入一座。
+     * 补生成线程上不标记：补生成超出区块预算会放弃这座，真正写完方块后由它自己标记。
      */
     @Override
     public @NotNull StructureStart generate(RegistryAccess registryAccess, ChunkGenerator chunkGenerator,
@@ -208,7 +209,7 @@ public class StarfallGardenStructure extends Structure {
                                            Predicate<Holder<Biome>> validBiome) {
         StructureStart start = super.generate(registryAccess, chunkGenerator, biomeSource, randomState,
                 templateManager, seed, chunkPos, references, heightAccessor, validBiome);
-        if (start.isValid()) {
+        if (start.isValid() && !StarfallGardenData.isRetrofitThread()) {
             StarfallGardenData.markPlaced(start.getBoundingBox().getCenter());
         }
         return start;
