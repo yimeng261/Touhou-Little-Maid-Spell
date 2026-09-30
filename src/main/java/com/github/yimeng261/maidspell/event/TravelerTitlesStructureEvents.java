@@ -27,6 +27,8 @@ public final class TravelerTitlesStructureEvents {
             id("hidden_retreat")
     );
 
+    /** 结构查询按间隔进行，进入结构后的标题最多延后这么多 tick。 */
+    private static final int CHECK_INTERVAL_TICKS = 10;
     private static final Map<UUID, ResourceLocation> LAST_STRUCTURES = new HashMap<>();
 
     private TravelerTitlesStructureEvents() {
@@ -34,7 +36,7 @@ public final class TravelerTitlesStructureEvents {
 
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || player.tickCount % CHECK_INTERVAL_TICKS != 0) {
             return;
         }
         ResourceLocation current = findStructure(player);

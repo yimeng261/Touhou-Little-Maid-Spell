@@ -21,6 +21,8 @@ import java.util.UUID;
 public final class WinefoxStructureMusicEvents {
     private static final ResourceKey<Structure> STELLAR_ENDSHORE = ResourceKey.create(
             Registries.STRUCTURE, ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "stellar_endshore"));
+    /** 结构查询按间隔进行，进出结构的音乐切换最多延后这么多 tick。 */
+    private static final int CHECK_INTERVAL_TICKS = 10;
     private static final Map<UUID, Boolean> LAST_STATE = new HashMap<>();
 
     private WinefoxStructureMusicEvents() {
@@ -28,7 +30,7 @@ public final class WinefoxStructureMusicEvents {
 
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || player.tickCount % CHECK_INTERVAL_TICKS != 0) {
             return;
         }
 
