@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
+import com.github.yimeng261.maidspell.mixin.LivingEntityAccessor;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -23,6 +24,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
@@ -123,6 +125,13 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             }
 
             float damage = context.getAmount();
+            // 受击间隔内原版只结算超出上一次伤害的部分，整击被挡下时不追加真伤、时停和溅射
+            if (target.invulnerableTime > 10 && !context.getDamageSource().is(DamageTypeTags.BYPASSES_COOLDOWN)) {
+                damage -= ((LivingEntityAccessor) target).maidspell$getLastHurt();
+                if (damage <= 0.0F) {
+                    return;
+                }
+            }
 
             // 1. 真实伤害（额外等于攻击伤害）
             if (Config.dreamCrystalExtraTrueDamageEnabled) {
