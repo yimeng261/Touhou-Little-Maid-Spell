@@ -19,6 +19,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -245,30 +246,15 @@ public class EnderPocketService {
     }
 
     /**
-     * TLM 服务端数据包按实体 ID 查找女仆：本地找不到时回退到已激活的远程会话
+     * TLM 服务端数据包按实体 ID 查找女仆：本地找不到时回退到发送者自己已激活的远程会话
      */
     @Nullable
-    public static Entity resolvePacketEntity(Level lookupLevel, int entityId) {
-        Entity local = lookupLevel.getEntity(entityId);
-        if (local instanceof EntityMaid || !(lookupLevel instanceof ServerLevel serverLevel)) {
+    public static Entity resolvePacketEntity(@Nullable Entity local, int entityId, @Nullable Player sender) {
+        if (local instanceof EntityMaid || !(sender instanceof ServerPlayer player)) {
             return local;
         }
-
-        MinecraftServer server = serverLevel.getServer();
-        for (RemoteSession session : REMOTE_SESSIONS.values()) {
-            if (!session.active || session.server != server || session.entityId != entityId) {
-                continue;
-            }
-            ServerPlayer player = server.getPlayerList().getPlayer(session.playerId);
-            if (player == null || player.level() != lookupLevel) {
-                continue;
-            }
-            EntityMaid maid = resolveRemoteMaid(player, entityId);
-            if (maid != null) {
-                return maid;
-            }
-        }
-        return local;
+        EntityMaid maid = resolveRemoteMaid(player, entityId);
+        return maid != null ? maid : local;
     }
 
     public static boolean isRemoteSessionActive(ServerPlayer player, EntityMaid maid) {

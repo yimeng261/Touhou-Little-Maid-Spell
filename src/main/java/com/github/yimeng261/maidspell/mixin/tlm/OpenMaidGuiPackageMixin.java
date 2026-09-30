@@ -4,13 +4,16 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.network.message.OpenMaidGuiPackage;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -19,7 +22,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(value = OpenMaidGuiPackage.class, remap = false)
 public class OpenMaidGuiPackageMixin {
-    @Redirect(
+    @WrapOperation(
             method = "handle(Lcom/github/tartaricacid/touhoulittlemaid/network/message/OpenMaidGuiPackage;Lnet/minecraft/server/level/ServerPlayer;)V",
             at = @At(
                     value = "INVOKE",
@@ -28,8 +31,9 @@ public class OpenMaidGuiPackageMixin {
             ),
             remap = true
     )
-    private static Entity maidspell$resolveRemoteMaid(Level level, int entityId) {
-        return EnderPocketService.resolvePacketEntity(level, entityId);
+    private static Entity maidspell$resolveRemoteMaid(Level level, int entityId, Operation<Entity> original,
+                                                      @Local(argsOnly = true) ServerPlayer sender) {
+        return EnderPocketService.resolvePacketEntity(original.call(level, entityId), entityId, sender);
     }
 
     /**
