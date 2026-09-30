@@ -41,6 +41,7 @@ import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.wrapper.InvWrapper;
 import org.slf4j.Logger;
 
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -63,7 +64,6 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     private static final int REVIVE_CLOCK_VERSION = 1;
     private static final int MAX_REVIVE_TIMESTAMPS = 10;
     private static final long REVIVE_WINDOW_TICKS = 2400L;
-    private static final long LEGACY_TIMESTAMP_GRACE_TICKS = 20L;
 
     // ========== 属性修饰符 ResourceLocation ==========
     private static final ResourceLocation DC_HP_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "dream_crystal_hp");
@@ -280,14 +280,13 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         if (server == null) {
             return false;
         }
-        int storedClockVersion = baubleStack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_CLOCK_VERSION, 0);
-        if (storedClockVersion > REVIVE_CLOCK_VERSION) {
-            return false;
-        }
 
         // 获取并过滤最近 120 秒（2400 tick）内的复活时间戳
         long currentTime = globalGameTime(server);
-        ReviveHistory history = loadReviveHistory(baubleStack, storedClockVersion, maid.level().getGameTime(), currentTime);
+        ReviveHistory history = readReviveHistory(baubleStack, currentTime);
+        if (history == null) {
+            return false;
+        }
         List<Long> timestamps = history.timestamps();
 
         int n = timestamps.size();
@@ -571,26 +570,24 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         return ItemStack.EMPTY;
     }
 
-    private static ReviveHistory loadReviveHistory(ItemStack stack, int storedClockVersion,
-                                                   long legacyNow, long serverNow) {
+    /**
+     * 读取复活时间戳，只保留 120 秒窗口内的记录；记录来自更新的版本时返回 {@code null}，调用方不改动它。
+     * <p>
+     * 旧版本按各维度自己的时钟记录，无法可靠换算到主世界时钟，直接丢弃。
+     */
+    @Nullable
+    private static ReviveHistory readReviveHistory(ItemStack stack, long serverNow) {
+        int storedClockVersion = stack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_CLOCK_VERSION, 0);
+        if (storedClockVersion > REVIVE_CLOCK_VERSION) {
+            return null;
+        }
         List<Long> storedTimestamps = stack.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS, List.of());
         List<Long> normalized = new ArrayList<>(Math.min(storedTimestamps.size(), MAX_REVIVE_TIMESTAMPS));
         long oldestAllowed = PortableTimerMath.saturatingSubtract(serverNow, REVIVE_WINDOW_TICKS);
 
-        for (long storedTimestamp : storedTimestamps) {
-            long timestamp;
-            if (storedClockVersion < REVIVE_CLOCK_VERSION) {
-                timestamp = PortableTimerMath.migrateTimestamp(
-                        storedTimestamp,
-                        legacyNow,
-                        serverNow,
-                        REVIVE_WINDOW_TICKS,
-                        LEGACY_TIMESTAMP_GRACE_TICKS
-                );
-            } else {
-                timestamp = storedTimestamp;
-            }
-            timestamp = Math.min(timestamp, serverNow);
+        List<Long> current = storedClockVersion < REVIVE_CLOCK_VERSION ? List.of() : storedTimestamps;
+        for (long storedTimestamp : current) {
+            long timestamp = Math.min(storedTimestamp, serverNow);
             if (timestamp >= oldestAllowed) {
                 normalized.add(timestamp);
             }
@@ -614,23 +611,13 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 && !baubleItem.has(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_TIMESTAMPS)) {
             return;
         }
-
-        int storedClockVersion = baubleItem.getOrDefault(MaidSpellDataComponents.DREAM_CRYSTAL_REVIVE_CLOCK_VERSION, 0);
-        if (storedClockVersion > REVIVE_CLOCK_VERSION) {
-            return;
-        }
         MinecraftServer server = maid.getServer();
         if (server == null) {
             return;
         }
 
-        ReviveHistory history = loadReviveHistory(
-                baubleItem,
-                storedClockVersion,
-                maid.level().getGameTime(),
-                globalGameTime(server)
-        );
-        if (history.changed()) {
+        ReviveHistory history = readReviveHistory(baubleItem, globalGameTime(server));
+        if (history != null && history.changed()) {
             saveReviveHistory(baubleItem, history.timestamps());
         }
     }
