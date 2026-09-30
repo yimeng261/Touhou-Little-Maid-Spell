@@ -4,6 +4,8 @@ import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.utils.PortableTimerMath;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
@@ -14,6 +16,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.ForcedChunksSavedData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
@@ -450,6 +453,53 @@ public class RetreatManager {
         level.getChunkSource().addRegionTicket(STRUCTURE_TICKET, centerChunk, STRUCTURE_TICKET_RADIUS, centerChunk);
         MaidSpellMod.LOGGER.info("加载结构区块 - 维度: {}, 中心: {}, 半径: {}",
                 level.dimension().location(), centerChunk, STRUCTURE_TICKET_RADIUS);
+    }
+
+    /**
+     * 旧版寻风之铃用原版强加载拉起结构周围 5×5 区块，结构已存在或异常停服时不会释放。
+     * 读档时把归隐之地里完整的 5×5 强加载方块剔掉，免得它们被恢复后让维度一直 tick。
+     * 每个维度只清一次：之后玩家自己用 /forceload 圈的区域不会再被当成残留。
+     */
+    public static void releaseLegacyStructureForceloads(ServerLevel level) {
+        RetreatLegacyForceloadData migration = RetreatLegacyForceloadData.get(level);
+        if (migration.isReleased()) {
+            return;
+        }
+        migration.markReleased();
+        ForcedChunksSavedData data = level.getDataStorage().get(ForcedChunksSavedData.factory(), "chunks");
+        if (data == null) {
+            return;
+        }
+        LongSet forced = data.getChunks();
+        LongSet legacy = new LongOpenHashSet();
+        for (long chunk : forced) {
+            int centerX = ChunkPos.getX(chunk);
+            int centerZ = ChunkPos.getZ(chunk);
+            if (forcesWholeSquare(forced, centerX, centerZ)) {
+                for (int dx = -STRUCTURE_TICKET_RADIUS; dx <= STRUCTURE_TICKET_RADIUS; dx++) {
+                    for (int dz = -STRUCTURE_TICKET_RADIUS; dz <= STRUCTURE_TICKET_RADIUS; dz++) {
+                        legacy.add(ChunkPos.asLong(centerX + dx, centerZ + dz));
+                    }
+                }
+            }
+        }
+        if (!legacy.isEmpty()) {
+            forced.removeAll(legacy);
+            data.setDirty();
+            MaidSpellMod.LOGGER.info("清理旧版寻风之铃残留的强加载 - 维度: {}, 区块: {}",
+                    level.dimension().location(), legacy.size());
+        }
+    }
+
+    private static boolean forcesWholeSquare(LongSet forced, int centerX, int centerZ) {
+        for (int dx = -STRUCTURE_TICKET_RADIUS; dx <= STRUCTURE_TICKET_RADIUS; dx++) {
+            for (int dz = -STRUCTURE_TICKET_RADIUS; dz <= STRUCTURE_TICKET_RADIUS; dz++) {
+                if (!forced.contains(ChunkPos.asLong(centerX + dx, centerZ + dz))) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     @Nullable

@@ -19,6 +19,7 @@ import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
@@ -585,6 +586,15 @@ public class PlayerRetreatManager {
         RetreatManager.shutdown();
         activeServer = event.getServer();
         acceptingRequests = true;
+    }
+
+    /** 归隐之地读档时、恢复强加载之前，剔除旧版寻风之铃残留的强加载。 */
+    @SubscribeEvent
+    public static void onLevelLoad(LevelEvent.Load event) {
+        if (event.getLevel() instanceof ServerLevel level
+                && TheRetreatDimension.isRetreatDimension(level.dimension().location())) {
+            RetreatManager.releaseLegacyStructureForceloads(level);
+        }
     }
 
     @SubscribeEvent
