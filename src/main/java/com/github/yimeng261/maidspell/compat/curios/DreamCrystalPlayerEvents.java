@@ -146,8 +146,8 @@ public final class DreamCrystalPlayerEvents {
         if (Config.dreamCrystalExtraTrueDamageEnabled) {
             TrueDamageUtil.dealTrueDamage(target, baseDamage, player);
         }
-        if (Config.dreamCrystalSetNoAiEnabled && target instanceof Mob mob) {
-            DreamCatCrystalBauble.freezeTarget(mob, player.server.overworld().getGameTime() + 20);
+        if (target instanceof Mob mob) {
+            DreamCatCrystalBauble.freezeTarget(mob);
         }
         if (DreamCrystalCurios.hasItem(player, MaidSpellItems.CHAOS_BOOK.get())) {
             float damage = (float) Math.max(Config.chaosBookTrueDamageMin,

@@ -12,10 +12,12 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.Tags;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
@@ -121,6 +123,14 @@ public class DreamCrystalMaidEvents {
     public static void onServerTick(ServerTickEvent.Post event) {
         TrueDamageUtil.processQueuedTrueDamage();
         DreamCatCrystalBauble.processScheduledEffects(event.getServer());
+    }
+
+    /** 时停定身的目标一定是 NoAI，先按它筛掉普通生物，不给每只生物都建一份持久数据 */
+    @SubscribeEvent
+    public static void onMobJoinLevel(EntityJoinLevelEvent event) {
+        if (event.getEntity() instanceof Mob mob && mob.isNoAi() && event.getLevel().getServer() != null) {
+            DreamCatCrystalBauble.onFrozenTargetJoin(mob, event.getLevel().getServer());
+        }
     }
 
     @SubscribeEvent

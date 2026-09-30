@@ -17,6 +17,8 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -52,6 +54,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     // ========== 时停状态追踪 ==========
+    private static final String FROZEN_UNTIL_TAG = MaidSpellMod.MOD_ID + ":dream_crystal_frozen_until";
+    private static final long FREEZE_TICKS = 20L;
     private static final Map<UUID, FrozenTargetState> FROZEN_TARGETS = new HashMap<>();
     private static final PriorityQueue<ScheduledExpiry> FROZEN_TARGET_EXPIRIES =
             new PriorityQueue<>(Comparator.comparingLong(ScheduledExpiry::expiry));
@@ -126,11 +130,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             // 2. 时停 1 秒（仅在服务端执行）
             if (!maid.level().isClientSide() && IAuthoritativeHealth.combatAlive(target)
                     && target instanceof Mob mob) {
-                MinecraftServer server = maid.getServer();
-                if (server != null) {
-                    long unfreezeTime = PortableTimerMath.saturatingAdd(globalGameTime(server), 20L);
-                    freezeTarget(mob, unfreezeTime);
-                }
+                freezeTarget(mob);
             }
 
             // 3. 弹幕溅射：对目标周围 5 格内的敌方实体造成 10% 伤害
@@ -670,22 +670,59 @@ public class DreamCatCrystalBauble implements IMaidBauble {
         BOOSTED_MAID_EXPIRIES.clear();
     }
 
-    public static void freezeTarget(Mob mob, long expiry) {
+    /**
+     * 时停定身 1 秒。到期时间记在实体数据里，随区块卸载、换维度、停服一起保存；
+     * 实体重新进入世界时由 {@link #onFrozenTargetJoin} 接着计时或解除。
+     * <p>
+     * 配置关闭时不定身；本来就是 NoAI 的生物不打标记，到期也不会被解除。
+     */
+    public static void freezeTarget(Mob mob) {
+        MinecraftServer server = mob.getServer();
+        if (!Config.dreamCrystalSetNoAiEnabled || server == null) {
+            return;
+        }
+        CompoundTag data = mob.getPersistentData();
+        if (mob.isNoAi() && !data.contains(FROZEN_UNTIL_TAG, Tag.TAG_LONG)) {
+            return;
+        }
+        long expiry = PortableTimerMath.saturatingAdd(globalGameTime(server), FREEZE_TICKS);
+        mob.setNoAi(true);
+        data.putLong(FROZEN_UNTIL_TAG, Math.max(expiry, data.getLong(FROZEN_UNTIL_TAG)));
+        scheduleUnfreeze(mob, expiry);
+    }
+
+    private static void scheduleUnfreeze(Mob mob, long expiry) {
         UUID targetUUID = mob.getUUID();
         FrozenTargetState existing = FROZEN_TARGETS.get(targetUUID);
         if (existing != null && existing.expiry >= expiry) {
             existing.target = mob;
-            if (Config.dreamCrystalSetNoAiEnabled) {
-                mob.setNoAi(true);
-            }
             return;
         }
-
-        FrozenTargetState state = new FrozenTargetState(mob, expiry);
-        FROZEN_TARGETS.put(targetUUID, state);
+        FROZEN_TARGETS.put(targetUUID, new FrozenTargetState(mob, expiry));
         FROZEN_TARGET_EXPIRIES.add(new ScheduledExpiry(targetUUID, expiry));
-        if (Config.dreamCrystalSetNoAiEnabled) {
-            mob.setNoAi(true);
+    }
+
+    private static void unfreeze(Mob mob) {
+        CompoundTag data = mob.getPersistentData();
+        if (data.contains(FROZEN_UNTIL_TAG, Tag.TAG_LONG)) {
+            data.remove(FROZEN_UNTIL_TAG);
+            mob.setNoAi(false);
+        }
+    }
+
+    /**
+     * 被时停的生物重新进入世界（区块重新加载、换维度、重启服务器）：已到期就解除 NoAI，否则接着计时。
+     */
+    public static void onFrozenTargetJoin(Mob mob, MinecraftServer server) {
+        CompoundTag data = mob.getPersistentData();
+        if (!data.contains(FROZEN_UNTIL_TAG, Tag.TAG_LONG)) {
+            return;
+        }
+        long expiry = data.getLong(FROZEN_UNTIL_TAG);
+        if (globalGameTime(server) >= expiry) {
+            unfreeze(mob);
+        } else {
+            scheduleUnfreeze(mob, expiry);
         }
     }
 
@@ -711,9 +748,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
             FROZEN_TARGETS.remove(scheduled.entityId());
             FROZEN_TARGET_EXPIRIES.poll();
-            if (Config.dreamCrystalSetNoAiEnabled) {
-                target.setNoAi(false);
-            }
+            unfreeze(target);
         }
     }
 
