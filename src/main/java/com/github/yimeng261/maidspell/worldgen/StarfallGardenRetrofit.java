@@ -29,7 +29,6 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 为旧存档认领已有庭院，或在已探明区块主动放置一座。
@@ -54,9 +53,6 @@ public final class StarfallGardenRetrofit {
     /** 扫描的格点上限（spacing 网格）。超了就放弃，宁可不补也不能把开服变成几分钟。 */
     private static final long MAX_GRID_CELLS = 2_000_000L;
 
-    /** 每个服务器会话只排一次补生成任务。 */
-    private static final AtomicBoolean PASS_SCHEDULED = new AtomicBoolean(false);
-
     private StarfallGardenRetrofit() {
     }
 
@@ -64,7 +60,6 @@ public final class StarfallGardenRetrofit {
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
         StarfallGardenData.resetSession();
-        PASS_SCHEDULED.set(false);
     }
 
     /** 出生点区块生成前恢复存档闸门，防止旧存档多生成一座。 */
@@ -79,22 +74,19 @@ public final class StarfallGardenRetrofit {
         StarfallGardenData.restore(level.getServer());
     }
 
-    /** 开服后再执行补生成，避免阻塞启动事件。 */
+    /**
+     * 开服完成后在主线程同步跑补生成，玩家要等它跑完才能进服：
+     * 认领阶段最多推进 {@value #MAX_CLAIM_CANDIDATES} 个候选区块，放置阶段最多写 {@value #MAX_PLACEMENT_CHUNKS} 个区块。
+     * 每个存档只跑一次，之后靠 RetrofitAttempted 直接跳过。
+     */
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
-        MinecraftServer server = event.getServer();
-        if (!PASS_SCHEDULED.compareAndSet(false, true)) {
-            return;
+        try {
+            runRetrofit(event.getServer());
+        } catch (RuntimeException e) {
+            // 补生成只是尽力而为，失败不能影响开服
+            MaidSpellMod.LOGGER.error("星落之庭旧存档补生成失败", e);
         }
-        server.execute(() -> {
-            try {
-                runRetrofit(server);
-            } catch (RuntimeException e) {
-                // 补生成只是尽力而为，绝不能因为它把服务器任务队列搞成崩溃报告。
-                StarfallGardenData.relockAfterRetrofit();
-                MaidSpellMod.LOGGER.error("星落之庭旧存档补生成失败", e);
-            }
-        });
     }
 
     private static void runRetrofit(MinecraftServer server) {
@@ -134,6 +126,7 @@ public final class StarfallGardenRetrofit {
 
         // 第二段：真放。这一段才是「旧存档找不到新结构」的解法，原理见类注释。
         if (garden.isRetrofitPlaceInExplored()) {
+            StarfallGardenData.markRetrofitAttemptedNow(server);
             placeInto(overworld, garden, candidates);
         } else {
             MaidSpellMod.LOGGER.info("星落之庭补生成：主动放置已在数据包里关闭（retrofit_place_in_explored=false）");

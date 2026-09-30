@@ -7,6 +7,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.neoforged.neoforge.common.IOUtilities;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -199,6 +200,24 @@ public class StarfallGardenData extends SavedData {
             if (data != null) {
                 data.setRetrofitAttempted();
             }
+        } catch (RuntimeException e) {
+            MaidSpellMod.LOGGER.error("写入星落之庭补生成标记失败，下次开服会再试一次", e);
+        }
+    }
+
+    /**
+     * 主线程调用：记账并立即写盘，不等自动保存。补生成放置阶段在开服时同步跑，
+     * 慢机器上可能超过看门狗时限被杀掉；先落盘这一笔，重启后就不会再跑一遍，不会反复崩服。
+     */
+    public static void markRetrofitAttemptedNow(MinecraftServer server) {
+        try {
+            StarfallGardenData data = dataOrNull(server);
+            if (data == null) {
+                return;
+            }
+            data.setRetrofitAttempted();
+            server.overworld().getDataStorage().save();
+            IOUtilities.waitUntilIOWorkerComplete();
         } catch (RuntimeException e) {
             MaidSpellMod.LOGGER.error("写入星落之庭补生成标记失败，下次开服会再试一次", e);
         }
