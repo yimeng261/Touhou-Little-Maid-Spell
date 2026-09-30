@@ -12,7 +12,7 @@
   "size": 1,
   "spawn_overrides": {},
   "start_height": {
-    "absolute": 0
+    "absolute": -1
   },
   "start_pool": "touhou_little_maid_spell:enchantress_footsteps/mushroom_fields",
   "step": "surface_structures",
