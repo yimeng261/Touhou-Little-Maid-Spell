@@ -12,6 +12,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -20,6 +21,7 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStruct
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 
 import javax.annotation.Nullable;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -35,12 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class RetreatManager {
 
-    // ========== 维度注册 ==========
-
-    /**
-     * 维度 ResourceKey → ServerLevel 映射
-     */
-    private static final Map<ResourceKey<Level>, ServerLevel> dimensionRegistry = new ConcurrentHashMap<>();
+    // ========== 维度状态 ==========
 
     /**
      * 已生成隐世之境结构的维度集合
@@ -60,9 +57,11 @@ public class RetreatManager {
     private static final Map<StructureCacheKey, CacheEntry> structureCache = new ConcurrentHashMap<>();
 
     /**
-     * 强制加载的结构区块：维度 ResourceKey → 区块位置集合
+     * 搜到结构后加载结构起点周围区块用的票据：只在内存里，60 秒到期自动释放，崩溃或 kill -9 也不会残留。
      */
-    private static final Map<ResourceKey<Level>, Set<ChunkPos>> forceLoadedChunks = new ConcurrentHashMap<>();
+    private static final TicketType<ChunkPos> STRUCTURE_TICKET = TicketType.create(
+            MaidSpellMod.MOD_ID + ":retreat_structure", Comparator.comparingLong(ChunkPos::toLong), 60 * 20);
+    private static final int STRUCTURE_TICKET_RADIUS = 2;
 
     /**
      * 结构搜索信号量（计数器）。
@@ -130,115 +129,32 @@ public class RetreatManager {
     }
 
     /**
-     * 无可用服务器实例时的静态兜底清理。
+     * 会话替换或停服时取消进行中的搜索并清空静态状态。
      */
     public static void shutdown() {
-        cancelRuntimeWork();
+        ongoingSearches.values().forEach(StructureSearchWorker::cancel);
+        HiddenRetreatStructure.cleanupProcessedStructures("");
         clearAll();
         MaidSpellMod.LOGGER.info("RetreatManager static state cleared");
     }
 
-    /**
-     * 服务器关闭时调用。必须先归还本管理器创建的 vanilla 强加载，再清理静态状态。
-     */
-    public static void shutdown(MinecraftServer server) {
-        if (server == null) {
-            shutdown();
-            return;
-        }
-        if (!server.isSameThread()) {
-            server.execute(() -> shutdown(server));
-            return;
-        }
-
-        cancelRuntimeWork();
-        releaseAllForcedChunks(server);
-        clearAll();
-        MaidSpellMod.LOGGER.info("RetreatManager shutdown");
-    }
-
-    private static void cancelRuntimeWork() {
-        ongoingSearches.values().forEach(StructureSearchWorker::cancel);
-        HiddenRetreatStructure.cleanupProcessedStructures("");
-    }
-
-    public static void releaseAllForcedChunks(MinecraftServer server) {
-        if (server == null) {
-            return;
-        }
-        if (!server.isSameThread()) {
-            server.execute(() -> releaseAllForcedChunks(server));
-            return;
-        }
-
-        int released = 0;
-        for (Map.Entry<ResourceKey<Level>, Set<ChunkPos>> entry : forceLoadedChunks.entrySet()) {
-            ResourceKey<Level> dimensionKey = entry.getKey();
-            try {
-                ServerLevel level = server.getLevel(dimensionKey);
-                if (level == null) {
-                    ServerLevel registeredLevel = dimensionRegistry.get(dimensionKey);
-                    if (registeredLevel != null && registeredLevel.getServer() == server) {
-                        level = registeredLevel;
-                    }
-                }
-                if (level == null) {
-                    MaidSpellMod.LOGGER.warn("无法在停服时释放归隐之地强加载区块，维度不存在: {}",
-                            dimensionKey.location());
-                    continue;
-                }
-
-                for (ChunkPos chunkPos : entry.getValue()) {
-                    try {
-                        level.setChunkForced(chunkPos.x, chunkPos.z, false);
-                        released++;
-                    } catch (Exception e) {
-                        MaidSpellMod.LOGGER.error("释放归隐之地强加载区块失败: dimension={}, chunk={}",
-                                dimensionKey.location(), chunkPos, e);
-                    }
-                }
-            } catch (Exception e) {
-                MaidSpellMod.LOGGER.error("释放归隐之地维度强加载状态失败: {}", dimensionKey.location(), e);
-            }
-        }
-        forceLoadedChunks.clear();
-        MaidSpellMod.LOGGER.info("停服时释放了 {} 个归隐之地强加载区块", released);
-    }
-
     private static void clearAll() {
-        dimensionRegistry.clear();
         generatedDimensions.clear();
         playerRetreats.clear();
         structureCache.clear();
         ongoingSearches.clear();
-        forceLoadedChunks.clear();
         cachedStructureSet = null;
         searchingCounter.set(0);
         generatedStructurePositions.clear();
     }
 
-    // ========== 维度注册 API ==========
-
-    public static void registerDimension(ResourceKey<Level> key, ServerLevel level) {
-        dimensionRegistry.put(key, level);
-        MaidSpellMod.LOGGER.debug("Registered dimension: {}", key.location());
-    }
+    // ========== 维度注销 API ==========
 
     public static void unregisterDimension(ResourceKey<Level> key) {
-        ServerLevel level = dimensionRegistry.remove(key);
         generatedDimensions.remove(key);
 
         structureCache.keySet().removeIf(cacheKey -> cacheKey.dimension().equals(key));
         playerRetreats.entrySet().removeIf(entry -> entry.getValue().dimension().equals(key));
-
-        // 清理强制加载的区块
-        Set<ChunkPos> forcedChunks = forceLoadedChunks.remove(key);
-        if (forcedChunks != null && level != null) {
-            for (ChunkPos chunkPos : forcedChunks) {
-                level.setChunkForced(chunkPos.x, chunkPos.z, false);
-            }
-            MaidSpellMod.LOGGER.info("清理维度强制加载区块 - 维度: {}, 数量: {}", key.location(), forcedChunks.size());
-        }
 
         // 清理已生成结构位置缓存
         generatedStructurePositions.remove(key);
@@ -527,75 +443,13 @@ public class RetreatManager {
     }
 
     /**
-     * 强制加载结构所在区块，触发结构生成。
+     * 加载结构起点周围区块，推动结构生成。票据到期自动释放。
      */
-    public static void forceLoadStructureChunks(ServerLevel level, BlockPos structureCenter) {
+    public static void loadStructureChunks(ServerLevel level, BlockPos structureCenter) {
         ChunkPos centerChunk = new ChunkPos(structureCenter);
-        ResourceKey<Level> dimKey = level.dimension();
-
-        int loadRadius = 2;
-        Set<ChunkPos> forcedChunks = forceLoadedChunks.computeIfAbsent(
-                dimKey, k -> ConcurrentHashMap.newKeySet());
-
-        int newlyForced = 0;
-        int alreadyForced = 0;
-
-        for (int dx = -loadRadius; dx <= loadRadius; dx++) {
-            for (int dz = -loadRadius; dz <= loadRadius; dz++) {
-                ChunkPos chunkPos = new ChunkPos(centerChunk.x + dx, centerChunk.z + dz);
-
-                if (level.getForcedChunks().contains(chunkPos.toLong())) {
-                    alreadyForced++;
-                    continue;
-                }
-
-                boolean success = level.setChunkForced(chunkPos.x, chunkPos.z, true);
-                if (success) {
-                    forcedChunks.add(chunkPos);
-                    newlyForced++;
-                }
-            }
-        }
-
-        MaidSpellMod.LOGGER.info("强制加载结构区块 - 中心: {}, 范围: {}x{}, 新加载: {}, 已加载: {}, 总计: {}",
-                centerChunk, loadRadius * 2 + 1, loadRadius * 2 + 1, newlyForced, alreadyForced,
-                (loadRadius * 2 + 1) * (loadRadius * 2 + 1));
-    }
-
-    /**
-     * 取消结构区块的强制加载
-     */
-    public static void unforceLoadStructureChunks(ResourceKey<Level> dimKey, BlockPos structureCenter) {
-        ServerLevel level = dimensionRegistry.get(dimKey);
-        if (level == null) {
-            MaidSpellMod.LOGGER.warn("取消强制加载失败：维度未注册 - {}", dimKey);
-            return;
-        }
-
-        Set<ChunkPos> forcedChunks = forceLoadedChunks.get(dimKey);
-        if (forcedChunks == null || forcedChunks.isEmpty()) {
-            return;
-        }
-
-        ChunkPos centerChunk = new ChunkPos(structureCenter);
-        int loadRadius = 2;
-        int unforced = 0;
-
-        for (int dx = -loadRadius; dx <= loadRadius; dx++) {
-            for (int dz = -loadRadius; dz <= loadRadius; dz++) {
-                ChunkPos chunkPos = new ChunkPos(
-                        centerChunk.x + dx,
-                        centerChunk.z + dz
-                );
-
-                if (forcedChunks.remove(chunkPos)) {
-                    level.setChunkForced(chunkPos.x, chunkPos.z, false);
-                    unforced++;
-                }
-            }
-        }
-
-        MaidSpellMod.LOGGER.info("取消强制加载结构区块 - 中心: {}, 取消: {} 个区块", centerChunk, unforced);
+        level.getChunkSource().addRegionTicket(STRUCTURE_TICKET, centerChunk, STRUCTURE_TICKET_RADIUS, centerChunk);
+        MaidSpellMod.LOGGER.info("加载结构区块 - 维度: {}, 中心: {}, 半径: {}",
+                level.dimension().location(), centerChunk, STRUCTURE_TICKET_RADIUS);
     }
 
     @Nullable

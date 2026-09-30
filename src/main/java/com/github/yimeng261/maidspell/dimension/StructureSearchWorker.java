@@ -400,7 +400,7 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
     }
 
     /**
-     * 搜索完成（找到结构），强制加载区块并返回结果
+     * 搜索完成（找到结构），加载结构区块并返回结果
      */
     private void completeSearch(BlockPos structurePos) {
         finished = true;
@@ -409,8 +409,8 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
         MaidSpellMod.LOGGER.info("分帧搜索完成 - 位置: {}, 搜索了 {} 环, {} 个候选, 耗时 {}ms",
                 structurePos, currentRing, samples, elapsed);
 
-        // 强制加载结构附近区块以触发完整生成（从而触发 afterPlace）
-        RetreatManager.forceLoadStructureChunks(level, structurePos);
+        // 加载结构附近区块，推动结构生成
+        RetreatManager.loadStructureChunks(level, structurePos);
 
         resultFuture.complete(structurePos);
     }

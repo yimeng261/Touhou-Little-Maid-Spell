@@ -15,7 +15,6 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.*;
 import net.minecraft.world.level.biome.Biome;
@@ -114,19 +113,11 @@ public class HiddenRetreatStructure extends Structure {
     @Override
     public void afterPlace(WorldGenLevel pLevel, StructureManager pStructureManager, ChunkGenerator pChunkGenerator,
                            RandomSource pRandom, BoundingBox pBoundingBox, ChunkPos pChunkPos, PiecesContainer pPieces) {
-        ServerLevel serverLevel;
-        if (pLevel instanceof ServerLevel sl) {
-            serverLevel = sl;
-        } else {
-            try {
-                serverLevel = pLevel.getLevel();
-            } catch (Exception e) {
-                MaidSpellMod.LOGGER.error("afterPlace: 无法获取 ServerLevel", e);
-                return;
-            }
+        // 私人模式在 generate 选定起点时已经落盘，这里只处理共享模式
+        if (Config.enablePrivateDimensions) {
+            return;
         }
-
-        ResourceKey<Level> dimKey = serverLevel.dimension();
+        ResourceKey<Level> dimKey = pLevel.getLevel().dimension();
 
         // 去重：afterPlace 对每个拼图块调用一次，只需处理一次
         BoundingBox structureBounds = pPieces.calculateBoundingBox();
@@ -141,26 +132,16 @@ public class HiddenRetreatStructure extends Structure {
             return;
         }
 
-        // 共享模式：addReference 标记结构为"已定位"，防止重复搜索到
-        if (!Config.enablePrivateDimensions) {
-            // 通过当前装饰区块的 STRUCTURE_REFERENCES 回溯到 StructureStart 所在区块
-            // pChunkPos 是 placeInChunk 传入的当前装饰区块，其引用链一定在 WorldGenRegion 内
-            for (StructureStart start : pStructureManager.startsForStructure(
-                    SectionPos.bottomOf(pLevel.getChunk(pChunkPos.x, pChunkPos.z)), this)) {
-                if (start.isValid() && start.canBeReferenced()) {
-                    pStructureManager.addReference(start);
-                    break;
-                }
+        // addReference 标记结构为"已定位"，防止重复搜索到
+        // 通过当前装饰区块的 STRUCTURE_REFERENCES 回溯到 StructureStart 所在区块
+        // pChunkPos 是 placeInChunk 传入的当前装饰区块，其引用链一定在 WorldGenRegion 内
+        for (StructureStart start : pStructureManager.startsForStructure(
+                SectionPos.bottomOf(pLevel.getChunk(pChunkPos.x, pChunkPos.z)), this)) {
+            if (start.isValid() && start.canBeReferenced()) {
+                pStructureManager.addReference(start);
+                break;
             }
         }
-
-        // afterPlace 可能在世界生成线程执行，区块票据只能在服务端主线程修改
-        MinecraftServer server = serverLevel.getServer();
-        server.execute(() -> {
-            if (server.getLevel(dimKey) == serverLevel) {
-                RetreatManager.unforceLoadStructureChunks(dimKey, structureCenter);
-            }
-        });
     }
 
     /**

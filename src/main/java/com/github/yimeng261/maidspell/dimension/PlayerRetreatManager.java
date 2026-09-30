@@ -192,7 +192,7 @@ public class PlayerRetreatManager {
                     && cached.getServer() == server
                     && cached.dimension().equals(dimensionKey)
                     && server.getLevel(dimensionKey) == cached) {
-                cacheAndRegisterDimension(dimensionKey, cached, ownerUUID);
+                cachePlayerDimension(dimensionKey, cached, ownerUUID);
                 if (updateAccessTime) {
                     touchPlayerDimension(server, ownerUUID);
                 }
@@ -202,7 +202,7 @@ public class PlayerRetreatManager {
 
         ServerLevel existingLevel = server.getLevel(dimensionKey);
         if (existingLevel != null) {
-            cacheAndRegisterDimension(dimensionKey, existingLevel, ownerUUID);
+            cachePlayerDimension(dimensionKey, existingLevel, ownerUUID);
             if (updateAccessTime) {
                 touchPlayerDimension(server, ownerUUID);
             }
@@ -259,8 +259,8 @@ public class PlayerRetreatManager {
                 return;
             }
 
-            cacheAndRegisterDimension(dimensionKey, newLevel, playerUUID);
             UUID ownerUUID = resolvePlayerDimensionOwner(dimensionKey, playerUUID);
+            cachePlayerDimension(dimensionKey, newLevel, ownerUUID);
             registerPlayerDimension(server, ownerUUID);
             logCreationSuccess(ownerUUID);
             creationFuture.complete(newLevel);
@@ -338,11 +338,9 @@ public class PlayerRetreatManager {
         return true;
     }
 
-    private static void cacheAndRegisterDimension(ResourceKey<Level> dimensionKey,
-                                                  ServerLevel level,
-                                                  @Nullable UUID playerUUID) {
-        UUID ownerUUID = resolvePlayerDimensionOwner(dimensionKey, playerUUID);
-        RetreatManager.registerDimension(dimensionKey, level);
+    private static void cachePlayerDimension(ResourceKey<Level> dimensionKey,
+                                             ServerLevel level,
+                                             @Nullable UUID ownerUUID) {
         if (ownerUUID != null) {
             RetreatManager.cachePlayerRetreat(ownerUUID, level);
             RetreatDimensionData.DimensionInfo info = RetreatDimensionData.get(level.getServer())
@@ -428,8 +426,9 @@ public class PlayerRetreatManager {
             return null;
         }
 
-        cacheAndRegisterDimension(dimensionKey, createdLevel, playerUUID);
-        registerPlayerDimension(server, resolvePlayerDimensionOwner(dimensionKey, playerUUID));
+        UUID ownerUUID = resolvePlayerDimensionOwner(dimensionKey, playerUUID);
+        cachePlayerDimension(dimensionKey, createdLevel, ownerUUID);
+        registerPlayerDimension(server, ownerUUID);
         return createdLevel;
     }
 
@@ -581,7 +580,7 @@ public class PlayerRetreatManager {
         }
 
         invalidateSession("Server stopped before retreat dimension creation completed");
-        RetreatManager.shutdown(server);
+        RetreatManager.shutdown();
     }
 
     @SubscribeEvent

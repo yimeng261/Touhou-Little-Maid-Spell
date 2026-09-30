@@ -1,6 +1,5 @@
 package com.github.yimeng261.maidspell.mixin;
 
-import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatLevelData;
@@ -149,9 +148,6 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
             );
 
             RetreatLevelStateData.get(newLevel).attach(retreatLevelData);
-
-            RetreatManager.registerDimension(key, newLevel);
-            Global.LOGGER.debug("Registered dimension: {}", newLevel.dimension().location());
 
             // 设置ChunkGenerator的维度信息，用于结构生成判断
             if (newLevel.getChunkSource().getGenerator() instanceof ChunkGeneratorAccessor accessor) {
