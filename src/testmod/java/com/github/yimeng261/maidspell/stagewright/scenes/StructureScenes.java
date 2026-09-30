@@ -73,13 +73,9 @@ public final class StructureScenes {
 
     /** 不逐键比对的（模板, "方块#键"）：格式变化由语义场景覆盖，已知缺陷由 required=false 的场景单独断言。 */
     private static final BiPredicate<String, String> KNOWN_BE_DEFECTS = (template, key) ->
-            // 1.20 旧格式流体键，Goety 换了存储格式但仍是水（structure.yin_yang_altar.hauntedJugHasWater）
+            // Goety 1.21 的缠魂水槽固定是无限水，不读模板里的 FluidName/Amount（structure.yin_yang_altar.hauntedJugHasWater）
             template.equals("touhou_little_maid_spell:yin_yang_altar/yin_yang_altar")
-                    && (key.equals("goety:haunted_jug#FluidName") || key.equals("goety:haunted_jug#Amount"))
-            // 1.20 旧格式流体，墨水丢失（knownDefect.villagePlainsCauldronKeepsInk）
-            || template.equals(VILLAGE + "plains_house") && key.equals("irons_spellbooks:alchemist_cauldron#Results")
-            // 1.20 旧格式带 tag 的物品，附魔/名字/法术丢失（knownDefect.villageTaigaPedestalRapierKeepsData）
-            || template.equals(VILLAGE + "taiga_house") && key.equals("irons_spellbooks:pedestal#heldItem");
+                    && (key.equals("goety:haunted_jug#FluidName") || key.equals("goety:haunted_jug#Amount"));
 
     /** 模板里嵌在方块中的实体（已知缺陷，见 knownDefect.villagePlainsHouseChairsNotInBlocks）。 */
     private static final String CHAIR = "touhou_little_maid:chair";
@@ -116,11 +112,9 @@ public final class StructureScenes {
         scenes.add(Checks.superflat("knownDefect.hiddenCherryTreeFoxOnGround", 20, StructureScenes::foxOnGround)
                 .withChunkRadius(2).withRequired(false));
         scenes.add(structureScene("structure.yin_yang_altar.hauntedJugHasWater", 2, StructureScenes::hauntedJugHasWater));
+        scenes.add(structureScene("village.plains.house.cauldronKeepsInk", 2, StructureScenes::cauldronKeepsInk));
+        scenes.add(structureScene("village.taiga.house.pedestalRapierKeepsData", 2, StructureScenes::rapierKeepsData));
         scenes.add(Checks.scene("knownDefect.templatesUseOnlyRegisteredBlocks", 20, StructureScenes::onlyRegisteredBlocks)
-                .withRequired(false));
-        scenes.add(structureScene("knownDefect.villagePlainsCauldronKeepsInk", 2, StructureScenes::cauldronKeepsInk)
-                .withRequired(false));
-        scenes.add(structureScene("knownDefect.villageTaigaPedestalRapierKeepsData", 2, StructureScenes::rapierKeepsData)
                 .withRequired(false));
         scenes.add(structureScene("knownDefect.villagePlainsHouseChairsNotInBlocks", 2, StructureScenes::chairsNotInBlocks)
                 .withRequired(false));
@@ -272,7 +266,7 @@ public final class StructureScenes {
         return element instanceof SinglePoolElement single ? Worldgen.templateId(single) : "";
     }
 
-    /** 阴阳祭坛的缠魂水槽装着水（模板是 1.20 旧格式流体键，逐键比对跳过，这里按能力检查语义）。 */
+    /** 阴阳祭坛的缠魂水槽装着水（模板里的流体键 Goety 不读，逐键比对跳过，这里按能力检查语义）。 */
     private static void hauntedJugHasWater(SceneContext ctx) {
         StructureStage.Placed placed = StructureStage.place(ctx, "touhou_little_maid_spell:yin_yang_altar");
         for (StructureStage.Piece piece : WorldExtract.ownPieces(placed)) {
@@ -289,7 +283,7 @@ public final class StructureScenes {
         }
     }
 
-    /** 已知缺陷：平原房屋炼药锅应有 250mb 罕见墨水（模板是 1.20 的 FluidName/Amount 格式，放置后为空）。 */
+    /** 平原房屋炼药锅有 250mb 罕见墨水。 */
     private static void cauldronKeepsInk(SceneContext ctx) {
         for (CompoundTag saved : savedBlockEntities(ctx, placeHouse(ctx, "plains"), "irons_spellbooks:alchemist_cauldron")) {
             ListTag results = saved.getList("Results", Tag.TAG_COMPOUND);
@@ -301,7 +295,7 @@ public final class StructureScenes {
         }
     }
 
-    /** 已知缺陷：泰加房屋展示台上的紫晶细剑应保留名字、锋利 II 和召唤剑刃 2 级（模板是 1.20 带 tag 的物品格式）。 */
+    /** 泰加房屋展示台上的紫晶细剑保留名字、锋利 II 和召唤剑刃 2 级。 */
     private static void rapierKeepsData(SceneContext ctx) {
         for (CompoundTag saved : savedBlockEntities(ctx, placeHouse(ctx, "taiga"), "irons_spellbooks:pedestal")) {
             CompoundTag components = saved.getCompound("heldItem").getCompound("components");
