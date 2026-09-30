@@ -1,7 +1,7 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
+import com.github.yimeng261.maidspell.worldgen.accessor.RandomStateAccessor;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -20,13 +20,13 @@ import java.util.List;
 import java.util.concurrent.Executor;
 
 /**
- * Mixin到ServerLevel，在创建时自动为ChunkGenerator设置维度信息
+ * Mixin到ServerLevel，在创建时自动为RandomState设置维度信息
  */
 @Mixin(ServerLevel.class)
 public class ServerLevelMixin {
 
     /**
-     * 在ServerLevel构造函数结束时，为ChunkGenerator设置维度信息
+     * 在ServerLevel构造函数结束时，为RandomState设置维度信息
      */
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onServerLevelInit(
@@ -46,11 +46,10 @@ public class ServerLevelMixin {
     ) {
         ServerLevel level = (ServerLevel) (Object) this;
 
-        // 为ChunkGenerator设置维度信息
-        if (level.getChunkSource().getGenerator() instanceof ChunkGeneratorAccessor accessor) {
-            accessor.maidspell$setDimensionKey(dimension);
-            MaidSpellMod.LOGGER.debug("Initialized ChunkGenerator with dimension key: {}", dimension.location());
-        }
+        // RandomState 每个维度一份，ChunkGenerator 可能被多个维度共用，维度信息只能记在前者上
+        RandomStateAccessor accessor = (RandomStateAccessor) (Object) level.getChunkSource().randomState();
+        accessor.maidspell$setDimensionKey(dimension);
+        MaidSpellMod.LOGGER.debug("Initialized RandomState with dimension key: {}", dimension.location());
     }
 }
 

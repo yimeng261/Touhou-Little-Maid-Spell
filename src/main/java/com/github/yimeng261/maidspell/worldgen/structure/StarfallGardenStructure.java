@@ -2,7 +2,7 @@ package com.github.yimeng261.maidspell.worldgen.structure;
 
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.github.yimeng261.maidspell.worldgen.StarfallGardenData;
-import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
+import com.github.yimeng261.maidspell.worldgen.accessor.RandomStateAccessor;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -146,11 +146,9 @@ public class StarfallGardenStructure extends Structure {
             return Optional.empty();
         }
         // 名额和出生点都属于主世界，其他维度（包括放开全部结构的归隐之地）不能占用
-        if (context.chunkGenerator() instanceof ChunkGeneratorAccessor accessor) {
-            ResourceKey<Level> dimension = accessor.maidspell$getDimensionKey();
-            if (dimension != null && !dimension.equals(Level.OVERWORLD)) {
-                return Optional.empty();
-            }
+        ResourceKey<Level> dimension = RandomStateAccessor.dimensionOf(context.randomState());
+        if (dimension != null && !dimension.equals(Level.OVERWORLD)) {
+            return Optional.empty();
         }
 
         int centerX = context.chunkPos().getMiddleBlockX();

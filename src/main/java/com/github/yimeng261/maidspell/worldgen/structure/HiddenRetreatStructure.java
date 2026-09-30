@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
+import com.github.yimeng261.maidspell.worldgen.accessor.RandomStateAccessor;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -164,91 +165,87 @@ public class HiddenRetreatStructure extends Structure {
                                             StructureTemplateManager pStructureTemplateManager, long pSeed,
                                             ChunkPos pChunkPos, int pReferences, LevelHeightAccessor pHeightAccessor,
                                             Predicate<Holder<Biome>> pValidBiome) {
-        // 通过 ChunkGenerator 获取当前维度，确认是归隐之地维度
-        if (pChunkGenerator instanceof com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor accessor) {
-            ResourceKey<Level> dimKey = accessor.maidspell$getDimensionKey();
-            if (dimKey != null && dimKey.location().getNamespace().equals(MaidSpellMod.MOD_ID)
-                    && dimKey.location().getPath().startsWith("the_retreat")) {
-                // 私人模式：每个维度只允许生成一个结构
-                if (Config.enablePrivateDimensions) {
-                    if (!RetreatManager.tryMarkStructureGenerated(dimKey)) {
-                        return StructureStart.INVALID_START;
-                    }
-                    MaidSpellMod.LOGGER.debug("首次在维度 {} 尝试生成结构，区块 {}", dimKey.location(), pChunkPos);
-
-                    StructureStart result;
-                    try {
-                        result = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
-                                pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
-                    } catch (Exception e) {
-                        // 拼图内部异常同样回退标记，否则本会话里这个维度再也不会生成
-                        MaidSpellMod.LOGGER.warn("私人模式结构生成异常 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos, e);
-                        RetreatManager.unmarkStructureGenerated(dimKey);
-                        return StructureStart.INVALID_START;
-                    }
-
-                    if (!hasValidBoundingBox(result, pHeightAccessor)) {
-                        // 生成失败或 BoundingBox 溢出，回退标记
-                        if (result.isValid()) {
-                            MaidSpellMod.LOGGER.warn("BoundingBox 溢出，丢弃结构 - 维度: {}, 区块: {}, box: {}",
-                                    dimKey.location(), pChunkPos, result.getBoundingBox());
-                        }
-                        RetreatManager.unmarkStructureGenerated(dimKey);
-                        MaidSpellMod.LOGGER.debug("结构生成失败，回退标记 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos);
-                        return StructureStart.INVALID_START;
-                    }
-
-                    persistPrivateStructure(dimKey, pChunkPos.getMiddleBlockPosition(0));
-                    return result;
-                }
-
-                // 共享模式：CAS 获取搜索许可，保证并发安全
-                if (Config.enableSharedQuotaLimit) {
-                    if (!RetreatManager.tryAcquireSearchPermit()) {
-                        // 没有搜索在进行，或许可已被其他并发 generate() 消费
-                        return StructureStart.INVALID_START;
-                    }
-                    // 许可已获取，执行生成（try-finally 保护许可释放，防止异常导致泄漏）
-                    StructureStart sharedResult;
-                    try {
-                        sharedResult = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
-                                pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
-                    } catch (Exception e) {
-                        // JigsawPlacement 等内部异常（如 BoundingBox 溢出）：归还许可
-                        MaidSpellMod.LOGGER.warn("共享模式结构生成异常 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos, e);
-                        RetreatManager.releaseSearchPermit();
-                        return StructureStart.INVALID_START;
-                    }
-                    if (hasValidBoundingBox(sharedResult, pHeightAccessor)) {
-                        // 生成成功：许可已消费，存储位置让 SearchWorker 立即感知
-                        BlockPos structurePos = new BlockPos(pChunkPos.getMinBlockX(), 0, pChunkPos.getMinBlockZ());
-                        RetreatManager.setGeneratedStructurePos(dimKey, structurePos);
-                        MaidSpellMod.LOGGER.debug("共享模式结构生成成功 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos);
-                    } else {
-                        // 生成失败、BoundingBox 溢出等：归还许可，允许后续候选区块重试
-                        if (sharedResult.isValid()) {
-                            MaidSpellMod.LOGGER.warn("BoundingBox 溢出，丢弃结构并归还许可 - 维度: {}, 区块: {}, box: {}",
-                                    dimKey.location(), pChunkPos, sharedResult.getBoundingBox());
-                        }
-                        RetreatManager.releaseSearchPermit();
-                        return StructureStart.INVALID_START;
-                    }
-                    return sharedResult;
-                }
-                // 共享模式但未启用配额限制：直接生成
-                StructureStart unlimitedResult = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
-                        pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
-                if (!hasValidBoundingBox(unlimitedResult, pHeightAccessor)) {
-                    if (unlimitedResult.isValid()) {
-                        MaidSpellMod.LOGGER.warn("BoundingBox 溢出，丢弃结构 - 维度: {}, 区块: {}, box: {}",
-                                dimKey.location(), pChunkPos, unlimitedResult.getBoundingBox());
-                    }
+        // 通过 RandomState 获取当前维度，确认是归隐之地维度
+        ResourceKey<Level> dimKey = RandomStateAccessor.dimensionOf(pRandomState);
+        if (dimKey != null && dimKey.location().getNamespace().equals(MaidSpellMod.MOD_ID)
+                && dimKey.location().getPath().startsWith("the_retreat")) {
+            // 私人模式：每个维度只允许生成一个结构
+            if (Config.enablePrivateDimensions) {
+                if (!RetreatManager.tryMarkStructureGenerated(dimKey)) {
                     return StructureStart.INVALID_START;
                 }
-                return unlimitedResult;
+                MaidSpellMod.LOGGER.debug("首次在维度 {} 尝试生成结构，区块 {}", dimKey.location(), pChunkPos);
+
+                StructureStart result;
+                try {
+                    result = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                            pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+                } catch (Exception e) {
+                    // 拼图内部异常同样回退标记，否则本会话里这个维度再也不会生成
+                    MaidSpellMod.LOGGER.warn("私人模式结构生成异常 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos, e);
+                    RetreatManager.unmarkStructureGenerated(dimKey);
+                    return StructureStart.INVALID_START;
+                }
+
+                if (!hasValidBoundingBox(result, pHeightAccessor)) {
+                    // 生成失败或 BoundingBox 溢出，回退标记
+                    if (result.isValid()) {
+                        MaidSpellMod.LOGGER.warn("BoundingBox 溢出，丢弃结构 - 维度: {}, 区块: {}, box: {}",
+                                dimKey.location(), pChunkPos, result.getBoundingBox());
+                    }
+                    RetreatManager.unmarkStructureGenerated(dimKey);
+                    MaidSpellMod.LOGGER.debug("结构生成失败，回退标记 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos);
+                    return StructureStart.INVALID_START;
+                }
+
+                persistPrivateStructure(dimKey, pChunkPos.getMiddleBlockPosition(0));
+                return result;
             }
-        } else {
-            MaidSpellMod.LOGGER.warn("ChunkGenerator 不是 ChunkGeneratorAccessor 实例 - 区块: {}, 类型: {}", pChunkPos, pChunkGenerator.getClass().getName());
+
+            // 共享模式：CAS 获取搜索许可，保证并发安全
+            if (Config.enableSharedQuotaLimit) {
+                if (!RetreatManager.tryAcquireSearchPermit()) {
+                    // 没有搜索在进行，或许可已被其他并发 generate() 消费
+                    return StructureStart.INVALID_START;
+                }
+                // 许可已获取，执行生成（try-finally 保护许可释放，防止异常导致泄漏）
+                StructureStart sharedResult;
+                try {
+                    sharedResult = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                            pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+                } catch (Exception e) {
+                    // JigsawPlacement 等内部异常（如 BoundingBox 溢出）：归还许可
+                    MaidSpellMod.LOGGER.warn("共享模式结构生成异常 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos, e);
+                    RetreatManager.releaseSearchPermit();
+                    return StructureStart.INVALID_START;
+                }
+                if (hasValidBoundingBox(sharedResult, pHeightAccessor)) {
+                    // 生成成功：许可已消费，存储位置让 SearchWorker 立即感知
+                    BlockPos structurePos = new BlockPos(pChunkPos.getMinBlockX(), 0, pChunkPos.getMinBlockZ());
+                    RetreatManager.setGeneratedStructurePos(dimKey, structurePos);
+                    MaidSpellMod.LOGGER.debug("共享模式结构生成成功 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos);
+                } else {
+                    // 生成失败、BoundingBox 溢出等：归还许可，允许后续候选区块重试
+                    if (sharedResult.isValid()) {
+                        MaidSpellMod.LOGGER.warn("BoundingBox 溢出，丢弃结构并归还许可 - 维度: {}, 区块: {}, box: {}",
+                                dimKey.location(), pChunkPos, sharedResult.getBoundingBox());
+                    }
+                    RetreatManager.releaseSearchPermit();
+                    return StructureStart.INVALID_START;
+                }
+                return sharedResult;
+            }
+            // 共享模式但未启用配额限制：直接生成
+            StructureStart unlimitedResult = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
+                    pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
+            if (!hasValidBoundingBox(unlimitedResult, pHeightAccessor)) {
+                if (unlimitedResult.isValid()) {
+                    MaidSpellMod.LOGGER.warn("BoundingBox 溢出，丢弃结构 - 维度: {}, 区块: {}, box: {}",
+                            dimKey.location(), pChunkPos, unlimitedResult.getBoundingBox());
+                }
+                return StructureStart.INVALID_START;
+            }
+            return unlimitedResult;
         }
         return StructureStart.INVALID_START;
     }
