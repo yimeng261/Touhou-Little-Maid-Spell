@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.api.IBossDamageClamp;
+import com.github.yimeng261.maidspell.utils.DamageAbsorption;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.world.entity.LivingEntity;
@@ -46,7 +47,7 @@ public abstract class WinefoxDamageClampMixin {
         if (!(entity instanceof IBossDamageClamp clamp)) {
             return damage;
         }
-        float absorbed = Math.max(0.0F, Math.min(entity.getAbsorptionAmount(), damage));
+        float absorbed = DamageAbsorption.absorbedPart(entity, damage);
         float finalDamage = damage - absorbed;
         // 0 是"这一击完全被吸收/取消"，不能被抬起来；非有限值原样放行，避免把 NaN 变成合法伤害。
         if (finalDamage <= 0.0F || !Float.isFinite(finalDamage)) {

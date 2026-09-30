@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpel
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.VoidPhaseSpell;
 import com.github.yimeng261.maidspell.mixin.LivingEntityAccessor;
+import com.github.yimeng261.maidspell.utils.DamageAbsorption;
 import io.redspace.ironsspellbooks.capabilities.magic.MagicManager;
 import io.redspace.ironsspellbooks.util.ParticleHelper;
 import net.minecraft.world.damagesource.DamageSource;
@@ -55,7 +56,7 @@ public final class VoidPhaseDamageHandler {
         // 正赛里追加伤害与主伤害共用"削到地板为止"的额度；本处理器优先级最低，拿到的是守则削过的数。
         // Pre 阶段尚未扣吸收，主伤害只按吸收之后真正扣血的部分计入。
         float pendingDamage = event.getNewDamage()
-                - WinefoxNonLethalGuard.absorbedPart(event.getEntity(), event.getNewDamage());
+                - DamageAbsorption.absorbedPart(event.getEntity(), event.getNewDamage());
         bonusDamage = WinefoxNonLethalGuard.duelFollowUpLimit(
                 event.getEntity(), event.getSource(), pendingDamage, bonusDamage);
         if (bonusDamage <= 0.0F) {

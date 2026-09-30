@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.event.DreamCrystalMaidEvents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
+import com.github.yimeng261.maidspell.utils.DamageAbsorption;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.core.component.DataComponents;
@@ -117,7 +118,7 @@ public final class DreamCrystalPlayerEvents {
             || DreamCrystalCurios.findCrystal(player).isEmpty()
             || event.getSource().is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return;
         // 只裁剪扣除吸收后会写进血量的部分，吸收量原样加回由随后的吸收结算扣掉
-        float absorbed = Math.min(player.getAbsorptionAmount(), event.getNewDamage());
+        float absorbed = DamageAbsorption.absorbedPart(player, event.getNewDamage());
         float amount = Math.min((event.getNewDamage() - absorbed) * 0.7F, 40.0F);
         if (DreamCrystalCurios.hasItem(player, MaidSpellItems.DOUBLE_HEART_CHAIN.get())) amount *= 0.5F;
         event.setNewDamage(amount + absorbed);

@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.tartaricacid.touhoulittlemaid.api.event.InteractMaidEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.utils.DamageAbsorption;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -87,14 +88,14 @@ public final class WinefoxNonLethalGuard {
         if (victim instanceof Player player && (player.isCreative() || player.isSpectator())) {
             return;
         }
-        float absorbed = absorbedPart(victim, event.getNewDamage());
+        float absorbed = DamageAbsorption.absorbedPart(victim, event.getNewDamage());
         if (maidSide && event.getNewDamage() - absorbed > 0.0F) {
             // 放在地板判定之前，理由见方法注释。追不到她就一点不动：这一发不是她打的。
             MagicalWinefoxBossEntity attacker = findBoss(event.getSource());
             if (attacker != null) {
                 float scaled = (float) ((event.getNewDamage() - absorbed) * attacker.maidspell$damageToMaidMultiplier());
                 event.setNewDamage(scaled + absorbed);
-                absorbed = absorbedPart(victim, event.getNewDamage());
+                absorbed = DamageAbsorption.absorbedPart(victim, event.getNewDamage());
             }
         }
         MagicalWinefoxBossEntity boss = resolveDuelBoss(victim, event.getSource());
@@ -142,11 +143,6 @@ public final class WinefoxNonLethalGuard {
         }
         float room = victim.getHealth() - pendingDamage - MagicalWinefoxBossEntity.duelSurvivalFloor();
         return Math.max(0.0F, Math.min(bonus, room));
-    }
-
-    /** 这次伤害里会先被吸收生命值抵掉的部分。 */
-    public static float absorbedPart(LivingEntity victim, float damage) {
-        return Math.max(0.0F, Math.min(victim.getAbsorptionAmount(), damage));
     }
 
     /** 找出伤害来源对应的酒狐：直接来源、弹体，或召唤物 owner 链。 */
