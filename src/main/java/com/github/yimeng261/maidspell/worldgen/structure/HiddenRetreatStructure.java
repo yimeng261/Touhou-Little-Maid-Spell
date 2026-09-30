@@ -181,7 +181,7 @@ public class HiddenRetreatStructure extends Structure {
                     result = callSuperGenerate(pRegistryAccess, pChunkGenerator, pBiomeSource, pRandomState,
                             pStructureTemplateManager, pSeed, pChunkPos, pReferences, pHeightAccessor, pValidBiome);
                 } catch (Exception e) {
-                    // 拼图内部异常同样回退标记，否则本会话里这个维度再也不会生成
+                    // 拼图内部异常同样回退标记，否则本次服务器运行期间这个维度再也不会生成
                     MaidSpellMod.LOGGER.warn("私人模式结构生成异常 - 维度: {}, 区块: {}", dimKey.location(), pChunkPos, e);
                     RetreatManager.unmarkStructureGenerated(dimKey);
                     return StructureStart.INVALID_START;

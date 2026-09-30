@@ -48,7 +48,7 @@ public final class WinefoxTrades {
     private static final int STAR_GLOW_PRICE = 1;
 
     /**
-     * 每日限购次数，按《NPC交易栏》那一列抄：三件装备各 1 件，星锚珍珠与传说墨水各 3 件。
+     * 每日限购次数：三件装备各 1 件，星锚珍珠与传说墨水各 3 件。
      *
      * <p>每条报价的上限是各自写在 {@code maxUses} 上的 —— 一张表里三种上限（1／3／不限）并存，
      * 所以不能拿一个表级常量统一盖。

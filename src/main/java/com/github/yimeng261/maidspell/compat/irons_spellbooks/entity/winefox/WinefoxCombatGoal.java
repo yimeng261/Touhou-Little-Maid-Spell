@@ -24,13 +24,12 @@ import org.jetbrains.annotations.Nullable;
 /**
  * 万法酒狐的战斗 AI：走位、近战连段、选法术、爆发点名、卡住了跳一下。
  *
- * <p>原先是 {@link MagicalWinefoxBossEntity} 里的一个私有静态内部类，占了那个文件三分之一，搬出来之后实体那边只剩状态与同步。
- * 搬迁本身没改行为，只是把它够得着的那几样从 {@code private} 放宽到包内可见（{@code isViableTarget}、{@code isBusyCombatAction}、{@code teleportAwayFrom}、
- * {@code recallSummons}、{@code cancelSwordRing}），它们仍然只有这个类在用。
+ * <p>{@link MagicalWinefoxBossEntity} 只管状态与同步，战斗决策都在这里。实体上供它调用的几样（{@code isViableTarget}、{@code isBusyCombatAction}、
+ * {@code teleportAwayFrom}、{@code recallSummons}、{@code cancelSwordRing}）是包内可见的，只有这个类在用。
  */
 final class WinefoxCombatGoal extends Goal {
     /**
-     * 拉开距离用的传送距离。只有战斗 AI 会传送，所以跟着一起搬过来了。
+     * 拉开距离用的传送距离。只有战斗 AI 会传送，所以放在这里。
      */
     private static final double COMBAT_TELEPORT_DISTANCE = 15.0D;
 

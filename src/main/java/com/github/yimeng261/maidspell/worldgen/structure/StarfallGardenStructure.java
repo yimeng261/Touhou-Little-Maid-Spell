@@ -60,7 +60,7 @@ public class StarfallGardenStructure extends Structure {
                             .optionalFieldOf("height_offset", 72)
                             .forGetter(structure -> structure.heightOffset),
                     // 旧存档补生成开关。放数据包而不是 Config：这是世界生成语义，该跟着存档/整合包走；
-                    // Config 是全局的，改一次会影响所有存档，而且别的 agent 正在动 Config。
+                    // Config 是全局的，改一次会影响所有存档。
                     Codec.BOOL
                             .optionalFieldOf("retrofit_on_load", true)
                             .forGetter(structure -> structure.retrofitOnLoad),

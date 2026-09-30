@@ -39,7 +39,7 @@ public enum WinefoxAction {
      * 战败。<b>它属于顶层的「战败」状态，不属于动作区域</b>，不由 {@code beginAction} 发起，而由 {@code DEFEATED} 同步标志驱动；
      * 遍历 {@code values()} 做动作逻辑时要和 {@link #NONE} 一样过滤掉。
      *
-     * <p>动画名是模型包作者起的 {@code death}（我们这边原先叫 {@code defeat}）。新版模型包把它收束为 5 秒，服务端的归位等待也从该时长推导，
+     * <p>动画名是模型包里的 {@code death}，时长 5 秒，服务端的归位等待也从该时长推导，
      * 确保战败演出完整播放后再回秋千。
      */
     DEFEAT("death", 100, WinefoxTermination.HOLD_LAST_FRAME),
