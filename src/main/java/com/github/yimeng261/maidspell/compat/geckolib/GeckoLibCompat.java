@@ -1,8 +1,10 @@
 package com.github.yimeng261.maidspell.compat.geckolib;
 
 import com.github.yimeng261.maidspell.compat.geckolib.client.GeckoLibCompatClient;
+import com.github.yimeng261.maidspell.compat.geckolib.entity.GeckoLibCompatSpear;
 import com.github.yimeng261.maidspell.compat.geckolib.registry.GeckoLibCompatEntities;
 import com.github.yimeng261.maidspell.compat.geckolib.registry.GeckoLibCompatItems;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
@@ -40,6 +42,14 @@ public final class GeckoLibCompat {
         }
         GeckoLibCompatItems.register(eventBus);
         GeckoLibCompatEntities.register(eventBus);
+    }
+
+    /** 酒狐的投枪攻击仅在 GeckoLib 存在时加载投枪实体类。 */
+    public static void spawnBossSpear(LivingEntity boss, LivingEntity target) {
+        if (!isLoaded()) {
+            return;
+        }
+        GeckoLibCompatSpear.spawn(boss, target);
     }
 
     /** 注册投枪的实体渲染器，从通用的实体渲染器注册事件里调进来。 */
