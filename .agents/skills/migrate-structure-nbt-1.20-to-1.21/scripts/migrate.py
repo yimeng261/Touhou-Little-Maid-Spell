@@ -266,8 +266,24 @@ def _migrate_enchantments_list(lst: List) -> Compound:
     levels = Compound()
     for ench in lst:
         if isinstance(ench, Compound) and 'id' in ench and 'lvl' in ench:
-            levels[str(ench['id'])] = Int(int(ench['lvl']))
+            enchantment = str(ench['id'])
+            if enchantment == 'minecraft:sweeping':
+                enchantment = 'minecraft:sweeping_edge'
+            levels[enchantment] = Int(int(ench['lvl']))
     return Compound({'levels': levels})
+
+
+def _rename_enchantment_components(components: Compound) -> None:
+    """Normalize enchantment identifiers in 1.21 item components."""
+    for key in ('minecraft:enchantments', 'minecraft:stored_enchantments'):
+        enchantments = components.get(key)
+        if not isinstance(enchantments, Compound):
+            continue
+        levels = enchantments.get('levels')
+        if isinstance(levels, Compound) and 'minecraft:sweeping' in levels:
+            level = levels.pop('minecraft:sweeping')
+            current = levels.get('minecraft:sweeping_edge', Int(0))
+            levels['minecraft:sweeping_edge'] = Int(max(int(current), int(level)))
 
 
 def _pages_to_book_content(pages: List, *, written: bool, extra: Compound | None = None) -> Compound:
@@ -510,6 +526,9 @@ def migrate_item(item: Compound) -> Compound:
     # migrate_items_in_list (called for HandItems/ArmorItems/Items/Inventory) calls
     # migrate_item unconditionally, and would otherwise drop components on re-runs.
     if 'count' in item and 'Count' not in item and 'tag' not in item:
+        components = item.get('components')
+        if isinstance(components, Compound):
+            _rename_enchantment_components(components)
         return item
 
     out = Compound()
@@ -880,9 +899,12 @@ def migrate_items_anywhere(node: Any) -> Any:
     - Nested entity NBT (e.g. TLM block-entity `ExtraData` / `auto-serial` carrying a
       serialised maid) — recurses into `migrate_entity_nbt`.
 
-    Already-migrated entries are skipped (the per-element migrators are no-ops on new shapes).
+    Already-migrated item components keep their data; enchantment identifiers are normalized.
     """
     if isinstance(node, Compound):
+        components = node.get('components')
+        if isinstance(components, Compound):
+            _rename_enchantment_components(components)
         for k in list(node.keys()):
             v = node[k]
             if isinstance(v, Compound):

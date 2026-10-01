@@ -333,6 +333,7 @@ touhou_little_maid_spell.dream_crystal.altarRecipesUseNebulaCore
 # 星途终岸、观星塔、画、成就页、观星罗盘、星落之庭
 touhou_little_maid_spell.stellar_endshore.placedWithWitch
 touhou_little_maid_spell.starwatch_tower.placedWithAstroMancer
+touhou_little_maid_spell.starwatch_tower.bookshelfKeepsSweepingEdge
 touhou_little_maid_spell.lang.astroMancerName
 touhou_little_maid_spell.paintings.placeableAndTitled
 touhou_little_maid_spell.advancements.tabs

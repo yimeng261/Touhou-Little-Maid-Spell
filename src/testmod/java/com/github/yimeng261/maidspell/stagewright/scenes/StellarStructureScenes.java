@@ -25,11 +25,15 @@ import net.minecraft.tags.PaintingVariantTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.decoration.PaintingVariant;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.LodestoneTracker;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.ChiseledBookShelfBlockEntity;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.util.FakePlayer;
@@ -57,6 +61,8 @@ public final class StellarStructureScenes {
         List<Scene> scenes = new ArrayList<>();
         scenes.add(Checks.superflat("stellar_endshore.placedWithWitch", 80, StellarStructureScenes::endshore).withChunkRadius(5));
         scenes.add(Checks.superflat("starwatch_tower.placedWithAstroMancer", 80, StellarStructureScenes::tower).withChunkRadius(4));
+        scenes.add(Checks.superflat("starwatch_tower.bookshelfKeepsSweepingEdge", 80, StellarStructureScenes::sweepingEdgeBook)
+                .withChunkRadius(4));
         scenes.add(Checks.scene("lang.astroMancerName", 5, StellarStructureScenes::astroName));
         scenes.add(Checks.scene("paintings.placeableAndTitled", 5, StellarStructureScenes::paintings));
         scenes.add(Checks.scene("advancements.tabs", 5, StellarStructureScenes::advancements));
@@ -81,6 +87,31 @@ public final class StellarStructureScenes {
         long astro = WorldExtract.entities(ctx.level(), placed).stream()
                 .filter(e -> BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString().equals(NS + "astro_mancer")).count();
         ctx.check(astro).as("塔里的观星术士数").isEqualTo(1L);
+    }
+
+    private static void sweepingEdgeBook(SceneContext ctx) {
+        StructureStage.Placed placed = StructureStage.place(ctx, NS + "starwatch_tower");
+        var sweepingEdge = ctx.level().registryAccess().registryOrThrow(Registries.ENCHANTMENT)
+                .getHolderOrThrow(Enchantments.SWEEPING_EDGE);
+        List<Integer> levels = new ArrayList<>();
+        for (StructureStage.Piece piece : WorldExtract.ownPieces(placed)) {
+            for (var block : piece.blocks()) {
+                if (!(ctx.level().getBlockEntity(block.pos()) instanceof ChiseledBookShelfBlockEntity bookshelf)) {
+                    continue;
+                }
+                for (int slot = 0; slot < bookshelf.getContainerSize(); slot++) {
+                    ItemStack book = bookshelf.getItem(slot);
+                    int level = book.getOrDefault(DataComponents.STORED_ENCHANTMENTS, ItemEnchantments.EMPTY)
+                            .getLevel(sweepingEdge);
+                    if (level > 0) {
+                        ctx.check(book.is(Items.ENCHANTED_BOOK)).as("横扫之刃所在物品是附魔书").isTrue();
+                        ctx.check(book.getCount()).as("横扫之刃附魔书数量").isEqualTo(1);
+                        levels.add(level);
+                    }
+                }
+            }
+        }
+        ctx.check(levels).as("放置后的观星塔书架有一本横扫之刃 III 附魔书").isEqualTo(List.of(3));
     }
 
     private static void astroName(SceneContext ctx) {
