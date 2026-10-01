@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.client.EnderPocketClientConfig;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
+import com.github.yimeng261.maidspell.compat.geckolib.GeckoLibCompat;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidLegacyModelPackCleaner;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
@@ -76,6 +77,7 @@ public class MaidSpellMod {
         MaidSpellEntities.register(modBus);
         MaidSpellPaintings.register(modBus);
         IronsSpellbooksCompat.init(modBus);
+        GeckoLibCompat.init(modBus);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modBus);
         MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modBus);

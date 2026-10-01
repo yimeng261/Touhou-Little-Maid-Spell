@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 import com.github.yimeng261.maidspell.winefox.WinefoxChallengeConfig;
 import com.github.yimeng261.maidspell.winefox.WinefoxSpellChoice;
 
+import com.github.yimeng261.maidspell.compat.geckolib.GeckoLibCompat;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SpellbreakingEchoEntity;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -513,7 +514,7 @@ final class WinefoxCombatGoal extends Goal {
         }
 
         if (this.spearCheckCooldown <= 0) {
-            if (this.boss.getRandom().nextFloat() < SPEAR_THROW_CHANCE) {
+            if (GeckoLibCompat.isLoaded() && this.boss.getRandom().nextFloat() < SPEAR_THROW_CHANCE) {
                 // 退不开就不投。投枪是远程点名技，贴脸甩出去只是白白挨一刀换一下普攻；
                 // 而失败的唯一原因是 15 格到 3 格之间所有落点都被占住（房间、地道、
                 // 建筑群），此刻她多半正贴着人 —— 那就先不打，退开一小会儿再试。

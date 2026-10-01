@@ -12,7 +12,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.SwordRingScheduler
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
-import com.github.yimeng261.maidspell.entity.StarShadowSpearEntity;
+import com.github.yimeng261.maidspell.compat.geckolib.GeckoLibCompat;
 import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityHealthAccessor;
 import com.github.yimeng261.maidspell.api.IPersistentEncounterEntity;
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
@@ -1098,12 +1098,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (target == null || !target.isAlive() || target.level() != this.level()) {
             return;
         }
-        StarShadowSpearEntity spear = new StarShadowSpearEntity(this.level(), this,
-            new ItemStack(MaidSpellItems.STAR_SHADOW_SPEAR.get()));
-        spear.setBossProjectile();
-        Vec3 direction = target.getBoundingBox().getCenter().subtract(spear.position());
-        spear.shoot(direction.x, direction.y, direction.z, 3.5F, 0.0F);
-        this.level().addFreshEntity(spear);
+        GeckoLibCompat.spawnBossSpear(this, target);
     }
 
     /**

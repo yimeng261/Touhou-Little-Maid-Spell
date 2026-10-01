@@ -1,8 +1,8 @@
-package com.github.yimeng261.maidspell.client.renderer.entity;
+package com.github.yimeng261.maidspell.compat.geckolib.client.renderer.entity;
 
 import com.github.yimeng261.maidspell.client.model.item.StarEquipmentGeoModel;
-import com.github.yimeng261.maidspell.entity.StarShadowSpearEntity;
-import com.github.yimeng261.maidspell.item.common.StarShadowSpearItem;
+import com.github.yimeng261.maidspell.compat.geckolib.entity.StarShadowSpearEntity;
+import com.github.yimeng261.maidspell.compat.geckolib.item.StarShadowSpearItem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;

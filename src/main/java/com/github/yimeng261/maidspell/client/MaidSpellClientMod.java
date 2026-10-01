@@ -8,7 +8,7 @@ import com.github.yimeng261.maidspell.client.particle.VoidSpellParticle;
 import com.github.yimeng261.maidspell.client.renderer.entity.WindSeekingBellRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.travelerstitles.client.TravelerTitlesStructureClient;
-import com.github.yimeng261.maidspell.client.renderer.entity.StarShadowSpearRenderer;
+import com.github.yimeng261.maidspell.compat.geckolib.GeckoLibCompat;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
@@ -43,7 +43,7 @@ public class MaidSpellClientMod {
         event.enqueueWork(() -> {
             MenuScreens.register(MaidSpellContainers.SPELL_WHITE_LIST_CONTAINER.get(), SpellWhiteListScreen::new);
             MenuScreens.register(MaidSpellContainers.WINEFOX_CHALLENGE_CONFIG.get(), WinefoxChallengeConfigScreen::new);
-            registerSpearThrowingProperty();
+            GeckoLibCompat.initClientSetup();
             registerCompassAngleProperty();
             registerTravelerTitlesCompat();
         });
@@ -74,19 +74,6 @@ public class MaidSpellClientMod {
                                 : null));
     }
 
-    /**
-     * 星影投枪蓄力时换用另一份物品模型，和原版三叉戟一样。
-     *
-     * <p>原版第三人称的投掷姿势和握持姿势差了整整一个方向（{@code trident_throwing.json}），
-     * 少了这份 override，蓄力时枪头就是反的。判据名沿用原版的 {@code throwing}，
-     * 属性是按物品注册的，不会和三叉戟冲突。
-     */
-    private static void registerSpearThrowingProperty() {
-        ItemProperties.register(MaidSpellItems.STAR_SHADOW_SPEAR.get(), new ResourceLocation("throwing"),
-                (stack, level, entity, seed) ->
-                        entity != null && entity.isUsingItem() && entity.getUseItem() == stack ? 1.0F : 0.0F);
-    }
-
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KeyBinds.OPEN_ENDER_POCKET_GUI);
@@ -111,8 +98,8 @@ public class MaidSpellClientMod {
     @SubscribeEvent
     public static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(MaidSpellEntities.WIND_SEEKING_BELL.get(), WindSeekingBellRenderer::new);
-        event.registerEntityRenderer(MaidSpellEntities.STAR_SHADOW_SPEAR.get(), StarShadowSpearRenderer::new);
         IronsSpellbooksCompat.initClient(event);
+        GeckoLibCompat.initClient(event);
     }
 
     @SubscribeEvent

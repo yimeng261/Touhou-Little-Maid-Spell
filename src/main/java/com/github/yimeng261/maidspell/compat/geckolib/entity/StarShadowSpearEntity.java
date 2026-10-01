@@ -1,6 +1,7 @@
-package com.github.yimeng261.maidspell.entity;
+package com.github.yimeng261.maidspell.compat.geckolib.entity;
 
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.compat.geckolib.registry.GeckoLibCompatEntities;
+import com.github.yimeng261.maidspell.compat.geckolib.registry.GeckoLibCompatItems;
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxSpearImpactEffects;
@@ -25,7 +26,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.ForgeEventFactory;
-import net.minecraftforge.fml.ModList;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.core.animation.AnimatableManager;
@@ -56,7 +56,7 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
     public StarShadowSpearEntity(EntityType<? extends ThrownTrident> entityType, Level level) {
         super(entityType, level);
         // 父类默认塞的是原版三叉戟，换成自己人，免得 /summon 出来的枪被捡起来变成三叉戟。
-        this.tridentItem = new ItemStack(MaidSpellItems.STAR_SHADOW_SPEAR.get());
+        this.tridentItem = new ItemStack(GeckoLibCompatItems.STAR_SHADOW_SPEAR.get());
     }
 
     /**
@@ -65,13 +65,15 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
      * 的构造链把定位、主人、拾取方式补齐。
      */
     public StarShadowSpearEntity(Level level, LivingEntity shooter, ItemStack stack) {
-        this(MaidSpellEntities.STAR_SHADOW_SPEAR.get(), level);
+        this(GeckoLibCompatEntities.STAR_SHADOW_SPEAR.get(), level);
         this.setPos(shooter.getX(), shooter.getEyeY() - 0.1D, shooter.getZ());
         this.setOwner(shooter);
         if (shooter instanceof Player) {
             this.pickup = Pickup.ALLOWED;
         }
         this.tridentItem = stack.copy();
+        // 名字取拾取物的自定义名，未改名则为空。
+        this.setCustomName(stack.hasCustomHoverName() ? stack.getHoverName() : null);
         this.entityData.set(ID_LOYALTY, (byte) EnchantmentHelper.getLoyalty(stack));
         this.entityData.set(ID_FOIL, stack.hasFoil());
     }
@@ -194,9 +196,7 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
         level.playSound(null, impact.x, impact.y, impact.z,
             net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME,
             net.minecraft.sounds.SoundSource.HOSTILE, 1.0F, 1.4F);
-        if (ModList.get().isLoaded("irons_spellbooks")) {
-            WinefoxSpearImpactEffects.spawnEchoBlast(level, impact, 3.0F);
-        }
+        WinefoxSpearImpactEffects.spawnEchoBlast(level, impact, 3.0F);
         if (directTarget == null) {
             this.setPos(impact.x, impact.y, impact.z);
             this.setNoGravity(true);
