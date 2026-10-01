@@ -18,10 +18,11 @@ public enum WinefoxAction {
     STAFF_ATTACK_1("staff_attack_1", 20, WinefoxTermination.ONE_SHOT),
     STAFF_ATTACK_2("staff_attack_2", 20, WinefoxTermination.ONE_SHOT),
 
-    SWORD_ATTACK_1("sword_attack_1", 30, WinefoxTermination.ONE_SHOT, Event.sound(2, "atk3")),
-    SWORD_ATTACK_2("sword_attack_2", 20, WinefoxTermination.ONE_SHOT, Event.sound(2, "atk2")),
-    SWORD_ATTACK_3("sword_attack_3", 18, WinefoxTermination.ONE_SHOT, Event.sound(1, "atk3")),
-    SWORD_ATTACK_4("sword_attack_4", 19, WinefoxTermination.ONE_SHOT, Event.sound(4, "atk3")),
+    // Chain after the strike; only the last swing plays its full recovery.
+    SWORD_ATTACK_1("sword_attack_1", 30, 12, WinefoxTermination.ONE_SHOT, Event.sound(2, "atk3")),
+    SWORD_ATTACK_2("sword_attack_2", 20, 12, WinefoxTermination.ONE_SHOT, Event.sound(2, "atk2")),
+    SWORD_ATTACK_3("sword_attack_3", 18, 12, WinefoxTermination.ONE_SHOT, Event.sound(1, "atk3")),
+    SWORD_ATTACK_4("sword_attack_4", 19, 12, WinefoxTermination.ONE_SHOT, Event.sound(4, "atk3")),
 
     /**
      * 转阶段：第 55t 半径 5 格击退，同一 tick 把主手换成本阶段该拿的那把。
@@ -68,13 +69,20 @@ public enum WinefoxAction {
 
     private final String animationName;
     private final int durationTicks;
+    private final int followUpTicks;
     private final WinefoxTermination termination;
     private final List<Event> events;
 
     WinefoxAction(String animationName, int durationTicks, WinefoxTermination termination,
                   Event... events) {
+        this(animationName, durationTicks, durationTicks, termination, events);
+    }
+
+    WinefoxAction(String animationName, int durationTicks, int followUpTicks,
+                  WinefoxTermination termination, Event... events) {
         this.animationName = animationName;
         this.durationTicks = durationTicks;
+        this.followUpTicks = followUpTicks;
         this.termination = termination;
         this.events = List.of(events);
     }
@@ -95,6 +103,16 @@ public enum WinefoxAction {
      */
     public int durationTicks() {
         return this.durationTicks;
+    }
+
+    /** Earliest tick at which another melee animation may replace this action. */
+    public int followUpTicks() {
+        return this.followUpTicks;
+    }
+
+    /** The final swing recovers fully, without an additional spell-decision delay. */
+    public int meleeCooldownTicks(boolean continuingCombo) {
+        return continuingCombo ? this.followUpTicks : this.durationTicks;
     }
 
     public WinefoxTermination termination() {

@@ -74,7 +74,11 @@ public final class WinefoxBossHealthController {
             syncMirrors(boss);
             return;
         }
+        float previous = boss.maidspell$authoritativeHealth();
         withCause(boss, Cause.EXTERNAL_UNKNOWN, () -> write(boss, requested));
+        if (boss.maidspell$authoritativeHealth() == previous) {
+            syncMirrors(boss);
+        }
     }
 
     /** Restore the authoritative maximum-health mirror after an external write. */
@@ -115,11 +119,7 @@ public final class WinefoxBossHealthController {
         // 原版结算链负责护甲、抗性、吸收与事件；Mixin 将链内读血改为权威值，
         // setHealth 仍回到 write()，上限与间隔在那里执行。
         boss.maidspell$runVanillaDamagePipeline(source, adjusted);
-        boolean changed = boss.maidspell$authoritativeHealth() < previous;
-        if (changed) {
-            boss.maidspell$markEffectiveHit();
-        }
-        return changed;
+        return boss.maidspell$authoritativeHealth() < previous;
     }
 
     /** 施加对 Boss 的伤害倍率：全局一层，女仆与二阶段各自再叠一层。 */
@@ -158,6 +158,10 @@ public final class WinefoxBossHealthController {
 
         if (health < previous) {
             if (isCappedCause(cause)) {
+                if (cause == Cause.EXTERNAL_UNKNOWN
+                        && (state != WinefoxEncounterState.COMBAT || boss.isTransitioning())) {
+                    return;
+                }
                 if (isWithinHitInterval(boss)) {
                     return;
                 }
@@ -199,6 +203,9 @@ public final class WinefoxBossHealthController {
     private static void restore(MagicalWinefoxBossEntity boss, float health,
                                 float previous, Cause cause) {
         boss.maidspell$setAuthoritativeHealth(health);
+        if (health < previous && isCappedCause(cause)) {
+            boss.maidspell$markEffectiveHit();
+        }
         BossLifecycleAccess.withDataWrite(boss, () -> {
             boss.getEntityData().set(MagicalWinefoxBossEntity.BOSS_HEALTH, health);
             boss.getEntityData().set(LivingEntityHealthAccessor.maidspell$getHealthAccessor(), 1.0F);

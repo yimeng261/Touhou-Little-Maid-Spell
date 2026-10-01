@@ -11,6 +11,7 @@ import io.redspace.ironsspellbooks.api.registry.SchoolRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.CastSource;
 import io.redspace.ironsspellbooks.api.spells.CastType;
+import io.redspace.ironsspellbooks.api.spells.SpellAnimations;
 import io.redspace.ironsspellbooks.api.spells.SpellRarity;
 import io.redspace.ironsspellbooks.api.util.AnimationHolder;
 import io.redspace.ironsspellbooks.api.util.Utils;
@@ -53,13 +54,19 @@ public class SwordPrisonSpell extends AbstractSpell implements BossExclusiveSpel
     private static final double DEFAULT_CASTER_HALF_WIDTH = 0.3D;
 
     /**
-     * 举枪。玩家施法时由 PlayerAnimator 播，资源在 {@code assets/touhou_little_maid_spell/player_animation/spear_throw.json}。
+     * 单手持剑横斩，直接借铁魔法自带的 {@code SLASH_ANIMATION}（{@code irons_spellbooks:instant_slash}）。
      *
-     * <p>铁魔法给 INSTANT 法术的默认动画 {@code ANIMATION_INSTANT_CAST} 是一个 0.1875 秒的抬手，配不上"召出一圈剑把人围死"。
-     * 酒狐那边不走这条：她是 Mob，用的是自己模型包上的 {@code iss:spear_throw}（骨骼完全不同），由她的动作表单独指定；两边是同一个动作的两份实现，改表演时记得一起改。
+     * <p>一份 ResourceLocation 同时喂两条路，这是有意的：玩家侧由 PlayerAnimator 按全名取
+     * {@code assets/irons_spellbooks/player_animation/casting_animations.json} 里的 {@code instant_slash}；
+     * Mob 侧走 TLM，{@code AnimationHolder} 只取 path、命名空间被丢掉，再由
+     * {@code ISSCastingAnimationProvider} 补 {@code iss:} 前缀，落到模型包里的 {@code iss:instant_slash}。
+     * 即同一名字在两侧各自解析，不需要为本法术单独做资源。
+     *
+     * <p>铁魔法给 INSTANT 的默认动画 {@code ANIMATION_INSTANT_CAST} 是一个 0.1875 秒的抬手，
+     * 而这里要的是"挥剑召阵"，所以换成本模组其它剑系法术也在用的 SLASH 这一条。
+     * 模型包缺轨道时由 provider 回退到 {@code iss:instant_projectile}。
      */
-    private static final AnimationHolder CAST_START_ANIMATION =
-            new AnimationHolder(new ResourceLocation(MaidSpellMod.MOD_ID, "spear_throw"), true);
+    private static final AnimationHolder CAST_START_ANIMATION = SpellAnimations.SLASH_ANIMATION;
 
     /** 剑从落点上方的斜上方扑向落点，避免远距离施法时被施法者自身高度遮挡。 */
     private static final double LAUNCH_HEIGHT = 8.0D;

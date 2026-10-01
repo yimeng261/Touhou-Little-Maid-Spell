@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.util.Mth;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
@@ -95,9 +94,6 @@ final class WinefoxCombatGoal extends Goal {
      * 水平再近也够不着 —— 表现为二阶段一刀都不砍。站定前必须把高度也收进这个带里。
      */
     private static final double PHASE_TWO_MELEE_VERTICAL_TOLERANCE = 1.0D;
-
-    /** 近战出手间隔。 */
-    private static final int BASE_MELEE_COOLDOWN_TICKS = 12;
 
     /**
      * 「深渊庇佑」的血量档位：每跌 10% 记一档，每档掷一次 50%。
@@ -557,15 +553,13 @@ final class WinefoxCombatGoal extends Goal {
         }
 
         if (this.meleeCooldown <= 0 && this.boss.distanceToSqr(target) <= 9.0D
-            && this.boss.getSensing().hasLineOfSight(target)) {
+            && this.boss.getSensing().hasLineOfSight(target)
+            && this.boss.tryMeleeAttack(target)) {
             if (this.meleeComboRemaining == 0) {
                 this.meleeComboRemaining = 3 + this.boss.getRandom().nextInt(2);
             }
-            this.boss.swing(InteractionHand.MAIN_HAND);
-            this.boss.doHurtTarget(target);
             --this.meleeComboRemaining;
-            this.meleeCooldown = this.meleeComboRemaining > 0
-                ? BASE_MELEE_COOLDOWN_TICKS : this.boss.animationAction().durationTicks() + SPELL_DECISION_INTERVAL;
+            this.meleeCooldown = this.boss.animationAction().meleeCooldownTicks(this.meleeComboRemaining > 0);
             if (this.meleeComboRemaining == 0) {
                 this.spellDecisionCooldown = this.boss.animationAction().durationTicks();
             }

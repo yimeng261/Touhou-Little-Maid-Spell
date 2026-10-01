@@ -473,6 +473,11 @@ public class Config {
                 obj -> obj instanceof String
             );
 
+    private static final ForgeConfigSpec.IntValue DREAM_CRYSTAL_EFFECT_BLACKLIST_MIGRATION_VERSION = BUILDER
+            .comment("梦云水晶黑名单默认值迁移版本；请勿手动修改")
+            .comment("Dream Crystal blacklist default migration version; do not edit manually.")
+            .defineInRange("dreamCrystalEffectBlacklistMigrationVersion", 0, 0, 1);
+
     static {
         BUILDER.comment("");
     }
@@ -754,6 +759,30 @@ public class Config {
     public static double winefoxPhaseTwoDamageMultiplier;
     public static double winefoxDuelSurvivalFloor;
 
+    /**
+     * Existing TOML files keep their old list when a new default entry is added.
+     * Migrate only an untouched pre-migration default so custom blacklists remain
+     * under the user's control.
+     */
+    private static void migrateDreamCrystalEffectBlacklist(ModConfigEvent event) {
+        if (DREAM_CRYSTAL_EFFECT_BLACKLIST_MIGRATION_VERSION.get() >= 1) {
+            return;
+        }
+
+        List<? extends String> configured = DREAM_CRYSTAL_EFFECT_BLACKLIST.get();
+        List<String> previousDefaults = DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST.subList(
+                0, DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST.size() - 1);
+        if (configured.equals(previousDefaults)) {
+            List<String> migrated = new ArrayList<>(configured);
+            migrated.add(DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST.get(
+                    DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST.size() - 1));
+            DREAM_CRYSTAL_EFFECT_BLACKLIST.set(migrated);
+        }
+
+        DREAM_CRYSTAL_EFFECT_BLACKLIST_MIGRATION_VERSION.set(1);
+        event.getConfig().save();
+    }
+
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
@@ -814,6 +843,7 @@ public class Config {
         floatingFoxLeafOwnerRange = FLOATING_FOX_LEAF_OWNER_RANGE.get();
         moltenFoxLeafOwnerRange = MOLTEN_FOX_LEAF_OWNER_RANGE.get();
 
+        migrateDreamCrystalEffectBlacklist(event);
         dreamCrystalEffectBlacklist = new java.util.ArrayList<>(DREAM_CRYSTAL_EFFECT_BLACKLIST.get());
         dreamCrystalUseEffectWhitelist = DREAM_CRYSTAL_USE_EFFECT_WHITELIST.get();
         dreamCrystalEffectWhitelist = new java.util.ArrayList<>(DREAM_CRYSTAL_EFFECT_WHITELIST.get());

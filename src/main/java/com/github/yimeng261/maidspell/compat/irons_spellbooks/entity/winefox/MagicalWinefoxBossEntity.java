@@ -1473,13 +1473,24 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             SoundEvents.BELL_BLOCK, this.getSoundSource(), 1.0F, 1.0F);
     }
 
-    /** 避免未结束的动作反复重载动画；只限制新动画，不限制攻击伤害。 */
+    /** Sword combos may replace recovery frames once the follow-up window opens. */
     private boolean canStartNewComboAction() {
         WinefoxAction action = this.currentAction();
         if (!action.hasOwnAnimation()) {
             return true;
         }
-        return this.tickCount - this.actionStartTick >= action.durationTicks();
+        return this.tickCount - this.actionStartTick >= action.followUpTicks();
+    }
+
+    /** Count and damage a melee swing only when its animation can actually start. */
+    boolean tryMeleeAttack(LivingEntity target) {
+        if (this.level().isClientSide || !this.isPhaseTwo() || this.isCasting()
+            || this.isBusyCombatAction() || !this.canStartNewComboAction()) {
+            return false;
+        }
+        this.swing(InteractionHand.MAIN_HAND);
+        this.doHurtTarget(target);
+        return true;
     }
 
     /**
