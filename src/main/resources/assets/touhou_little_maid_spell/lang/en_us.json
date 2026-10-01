@@ -700,5 +700,7 @@
   "touhou_little_maid_spell.configuration.winefoxMaidDamageMultiplier": "Maid Damage against Winefox Multiplier",
   "touhou_little_maid_spell.configuration.winefoxDamageToMaidMultiplier": "Winefox Damage against Maids Multiplier",
   "touhou_little_maid_spell.configuration.winefoxPhaseTwoDamageMultiplier": "Winefox Second Phase Damage Multiplier",
-  "touhou_little_maid_spell.configuration.winefoxDuelSurvivalFloor": "Winefox Duel Survival Health Floor"
+  "touhou_little_maid_spell.configuration.winefoxDuelSurvivalFloor": "Winefox Duel Survival Health Floor",
+  "command.maidspell.retreat.reset.no_record": "This player has no Retreat dimension record to reset.",
+  "command.maidspell.retreat.reset.success": "Reset the Retreat dimension record for %s."
 }

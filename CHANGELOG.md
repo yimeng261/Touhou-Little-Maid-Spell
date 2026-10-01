@@ -1,5 +1,94 @@
 # Changelog / 变更日志
 
+## 1.9.0-neoforge
+
+### 新增功能 / New Features
+
+- 新增「星之魔女」Boss：两阶段挑战、自定义血条与音乐、星芒短剑挑战配置、奖励及誓约女仆 /
+  Added the Stellar Witch boss with a two-phase challenge, custom boss bar and music, Starglint Dagger challenge
+  settings, rewards and an oath that grants a Stellar Witch maid
+- 新增观星术士与观星罗盘：观星术士提供交易，罗盘可在末地寻找星途终岸 /
+  Added the Astro Mancer merchant and Starwatch Compass, which locates Stellar Endshore in the End
+- 新增末地结构「观星塔」「星途终岸」，包含观星术士、星之魔女、战利品和日记 /
+  Added Starwatch Tower and Stellar Endshore structures in the End, featuring the Astro Mancer, Stellar Witch,
+  loot and journals
+- 新增主世界结构「星落之庭」与「启程之地」「星途终岸」进度；每份存档只生成一座庭院，并支持旧存档补生成 /
+  Added Starfall Garden in the Overworld and the Where the Journey Begins and Stellar Endshore advancements;
+  one garden generates per save, with retroactive generation supported for existing worlds
+- 新增 9 个星之魔女系列铁魔法法术，其中「伴星黑洞」「破法回响」可正常获取，其余 7 个为专属法术 /
+  Added nine Stellar Witch spells for Iron's Spells 'n Spellbooks: Companion Black Hole and Spellbreaking Echo
+  are normally obtainable, while the other seven are exclusive spells
+- 新增星影长剑、星影法杖、星之魔女法帽、星芒短剑，以及星锚珍珠、星云核心、星陨石、仪式剑柄与归星 /
+  Added Starshadow Longsword, Starshadow Staff, Stellar Witch's Hat, Starglint Dagger,
+  Staranchor Pearl, Nebula Core, Star Meteorite, Ritual Hilt and Returning Star
+- 梦云水晶支持玩家通过 Curios 佩戴，提供属性强化、伤害保护、冷却清除、复活、耐久修复与饰品组合效果；祭坛配方改用星云核心 /
+  Dreamcloud Crystal can now be worn by players through Curios, granting attribute bonuses, damage protection,
+  cooldown resets, revival, durability repair and bauble synergies; its altar recipes now use Nebula Core
+- 末影腰包支持视距外与跨维度远程管理女仆、滚动列表，以及女仆状态栏、位置编辑与逐只显示开关；装备锚定核心的女仆可作为传送目标 /
+  Ender Pocket now supports maid management at long distances and across dimensions, a scrollable list,
+  a maid HUD with position editing and per-maid visibility, and teleportation to maids equipped with an Anchor Core
+- 新增魔女足迹-绿洲、天体／流星／魔法酒狐／星空花海四幅画作、星荧花簇，以及女仆手册里的「万法皆通」分类与条目 /
+  Added Enchantress' Footsteps - Oasis, four paintings (Astronomical Object, Falling Star, Magic Wine Fox and
+  Starry Flower Sea), Starshine Flower Cluster and the Mastery of All Spells category and entries in the maid handbook
+
+### 修复 / Bug Fixes
+
+- 修复女仆施法中收纳、卸载、跨维度、死亡或复活后的法术状态与冷却清理，避免状态串到其他存档；修复部分施法动画 /
+  Fixed spell-state and cooldown handling when maids are stored, unloaded, change dimensions, die or revive,
+  prevented state leaking between saves and corrected casting animations
+- 修复铁魔法白名单增益法术在战斗中指向敌人、施放后未恢复攻击目标的问题 /
+  Fixed whitelisted Iron's Spells 'n Spellbooks buffs targeting enemies during combat and failing to restore
+  the combat target afterward
+- 修复女仆佩戴梦云水晶时在受击间隔内重复追加伤害、时停生物卸载或重启后永久失去 AI 的问题 /
+  Fixed maid Dreamcloud Crystal attacks adding damage during blocked hits and frozen mobs permanently losing AI
+  after unloading or restarting
+- 修复饰品卸下、女仆离开世界与真正死亡后的残留状态；被复活救下时保留仍应有效的饰品状态 /
+  Fixed residual bauble state after unequipping, leaving the world or actual death, while preserving valid
+  bauble state when revival prevents death
+- 修复锚定女仆存盘、跨维度与重启后的数据和区块加载；主人离线时也能更新女仆位置，并正确移除失效锚定记录 /
+  Fixed anchored maid data and chunk loading across saves, dimension changes and restarts; maid positions
+  now update while owners are offline, and stale anchor records are removed correctly
+- 修复私人归隐之地随机种子未独立生效、隐世之境重复生成、寻风之铃搜索中心错误与强加载区块残留；修正共享模式首次进入提示 /
+  Fixed private Retreat seeds not taking effect independently, duplicate Hidden Retreat generation,
+  incorrect Wind Seeking Bell search origins and lingering forced chunks; corrected shared-mode entry messages
+- 修复已有结构模板中的物品、流体、女仆步高、效果属性与椅子数据，修正隐世樱花树高度、魔女足迹地基层与挂画位置 /
+  Fixed item, fluid, maid step-height, effect-attribute and chair data in existing structure templates,
+  and corrected Hidden Cherry Tree height, Enchantress' Footsteps foundations and painting positions
+
+### 优化 / Improvements
+
+- 适配 Goety 3.1.4，完善六种法术联动的兼容与生命周期管理 /
+  Added compatibility with Goety 3.1.4 and improved compatibility and lifecycle handling across six spell integrations
+- 完善玩家、女仆、宠物、召唤物与法术实体的友方识别，支持实用魔法召唤物；铁魔法黑洞与雷暴遵循友方归属 /
+  Improved ally resolution for players, maids, pets, summons and spell entities, including UsefulMagic summons;
+  Iron's Spells 'n Spellbooks Black Hole and Thunderstorm now respect ally ownership
+- 完善可选模组缺席时的结构、配方、标签与战利品加载；未安装铁魔法时，隐世之境相关箱子提供替代战利品 /
+  Improved structure, recipe, tag and loot handling when optional mods are absent; relevant Hidden Retreat chests
+  provide fallback loot without Iron's Spells 'n Spellbooks
+- 完善结构、物品与配置的中英文文本，补充旅行日记、入魔骑士日记和《女仆与前文明研究记录》的本地化与分页 /
+  Improved English and Chinese structure, item and configuration text, and localized and repaginated travel journals,
+  the Corrupted Knight diary and Maids and the Previous Civilization: Research Records
+- 创造模式物品栏拆分为「饰品」「杂项」两页；优化结构搜索缓存、结构检测频率与归隐数据回写 /
+  Split creative inventory content into Baubles and Miscellaneous tabs; improved structure-search caching,
+  structure detection frequency and Retreat data updates
+- 新增专用服、集成服、共享归隐、最小依赖与真实客户端回归测试，覆盖法术、饰品、结构及远程管理 /
+  Added dedicated-server, integrated-server, shared-Retreat, minimal-dependency and real-client regression
+  tests covering spells, baubles, structures and remote management
+
+### 升级说明 / Upgrade Notes
+
+- 星之魔女、观星术士、观星塔、星途终岸及新增铁魔法装备与法术需要安装铁魔法；星落之庭和画作不依赖铁魔法 /
+  Stellar Witch, Astro Mancer, Starwatch Tower, Stellar Endshore and the associated equipment and spells require
+  Iron's Spells 'n Spellbooks; Starfall Garden and paintings do not
+- 车万女仆最低版本为 1.5.3；使用其自带的精灵酒狐与圣女酒狐模型，并自动清理旧版内置模型包；新增「星之魔女酒狐」模型包 /
+  Touhou Little Maid 1.5.3 or newer is required; its built-in Elf Wine Fox and Saint Wine Fox models replace
+  the old bundled pack, which is cleaned up automatically; a Stellar Witch Winefox model pack is added
+- 网络协议已更新，客户端与服务端需一起升级；旧版自动结盟配置已移除，遗留的自动结盟队伍会自动清理 /
+  The network protocol has changed, so clients and servers must upgrade together; automatic-alliance
+  configuration was removed, and legacy automatically created alliance teams are cleaned up
+
+---
+
 ## 1.8.4-neoforge
 
 ### 新增功能 / New Features

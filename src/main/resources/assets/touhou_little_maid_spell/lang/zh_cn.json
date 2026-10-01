@@ -661,7 +661,7 @@
   "travelerstitles.structure.touhou_little_maid_spell.hidden_retreat": "隐世之境",
   "travelerstitles.structure.touhou_little_maid_spell.hidden_retreat.color": "f2b7d9",
   "patchouli.touhou_little_maid.book.categories.wanfa_jietong.name": "万法皆通",
-  "patchouli.touhou_little_maid.book.categories.wanfa_jietong.description": "车万女仆：万法皆通为车万女仆附属模组，添加了让女仆使用其他模组中的法术技能的能力。目前已兼容女仆对 Iron 的法术与魔法书、诡厄巫法、新生魔艺、Psi、拔刀剑：重锋（SA使用）、UsefulMagic 中法术战斗的支持，同时添加了更多的女仆饰品和自然生成结构，以及添加了部分冒险探索内容。$(br2)声明：本模组中涉及女仆的部分世界观与设定仅适用于本模组，不代表《车万女仆》本体及其他附属模组的设定或立场。相关新增设定已获得本体作者酒石酸菌的过目与许可，若设定与本体后续更新冲突，请以本体为准。",
+  "patchouli.touhou_little_maid.book.categories.wanfa_jietong.description": "车万女仆：万法皆通为车万女仆附属模组，添加了让女仆使用其他模组中的法术技能的能力。目前已兼容女仆对 Iron 的法术与魔法书、诡厄巫法、新生魔艺、Psi、拔刀剑：重锋（SA使用）、实用魔法中法术战斗的支持，同时添加了更多的女仆饰品和自然生成结构，以及添加了部分冒险探索内容。$(br2)声明：本模组中涉及女仆的部分世界观与设定仅适用于本模组，不代表《车万女仆》本体及其他附属模组的设定或立场。相关新增设定已获得本体作者酒石酸菌的过目与许可，若设定与本体后续更新冲突，请以本体为准。",
   "patchouli.touhou_little_maid.book.entries.wanfa_jietong.work_modes.name": "法术工作模式",
   "patchouli.touhou_little_maid.book.entries.wanfa_jietong.work_modes.pages.0.text": "此模组为女仆新增两个工作模式：法术战斗与远程法术。$(br2)法术战斗：女仆会贴近敌人同时进行近战与施法。$(br2)远程法术：女仆会和敌人保持一定的距离同时进行游走与施法。",
   "patchouli.touhou_little_maid.book.entries.wanfa_jietong.work_modes.pages.1.text": "在女仆的工作模式列表里就能找到这两个新模式，图标样式如上图。",
@@ -700,5 +700,7 @@
   "touhou_little_maid_spell.configuration.winefoxMaidDamageMultiplier": "女仆对酒狐伤害倍率",
   "touhou_little_maid_spell.configuration.winefoxDamageToMaidMultiplier": "酒狐对女仆伤害倍率",
   "touhou_little_maid_spell.configuration.winefoxPhaseTwoDamageMultiplier": "酒狐第二阶段伤害倍率",
-  "touhou_little_maid_spell.configuration.winefoxDuelSurvivalFloor": "酒狐决斗存活生命值下限"
+  "touhou_little_maid_spell.configuration.winefoxDuelSurvivalFloor": "酒狐决斗存活生命值下限",
+  "command.maidspell.retreat.reset.no_record": "该玩家没有可重置的归隐之地维度记录。",
+  "command.maidspell.retreat.reset.success": "已重置玩家 %s 的归隐之地维度记录。"
 }
