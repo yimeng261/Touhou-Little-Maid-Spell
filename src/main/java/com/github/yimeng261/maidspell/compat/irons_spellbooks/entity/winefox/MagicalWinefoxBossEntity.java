@@ -1487,13 +1487,24 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             SoundEvents.BELL_BLOCK, this.getSoundSource(), 1.0F, 1.0F);
     }
 
-    /** 避免未结束的动作反复重载动画；只限制新动画，不限制攻击伤害。 */
+    /** 避免未结束的动作反复重载动画；剑系连段在接续窗口打开后可以顶替收招帧；近战伤害也以它为前提，见 {@link #tryMeleeAttack}。 */
     private boolean canStartNewComboAction() {
         WinefoxAction action = this.currentAction();
         if (!action.hasOwnAnimation()) {
             return true;
         }
-        return this.tickCount - this.actionStartTick >= action.durationTicks();
+        return this.tickCount - this.actionStartTick >= action.followUpTicks();
+    }
+
+    /** 只在近战动画真能开始时才计一次挥击并结算伤害。 */
+    boolean tryMeleeAttack(LivingEntity target) {
+        if (this.level().isClientSide || !this.isPhaseTwo() || this.isCasting()
+            || this.isBusyCombatAction() || !this.canStartNewComboAction()) {
+            return false;
+        }
+        this.swing(InteractionHand.MAIN_HAND);
+        this.doHurtTarget(target);
+        return true;
     }
 
     /**
