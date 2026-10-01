@@ -1,8 +1,8 @@
-package com.github.yimeng261.maidspell.item.common;
+package com.github.yimeng261.maidspell.compat.geckolib.item;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.renderer.item.StarEquipmentClientExtensions;
-import com.github.yimeng261.maidspell.entity.StarShadowSpearEntity;
+import com.github.yimeng261.maidspell.compat.geckolib.entity.StarShadowSpearEntity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
