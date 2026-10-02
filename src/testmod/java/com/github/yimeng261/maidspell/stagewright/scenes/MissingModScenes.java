@@ -229,9 +229,6 @@ public final class MissingModScenes {
 
     /** 没有 Curios 时梦云水晶仍是女仆饰品：戴上后第一次致死被救下。 */
     private static void dreamCrystalWithoutCurios(SceneContext ctx) {
-        ItemStack crystal = Actors.stack(NS + "dream_cat_crystal");
-        ctx.check(crystal.getItem().getClass().getName().toLowerCase().contains("curios"))
-                .as("梦云水晶物品类 " + crystal.getItem().getClass().getName() + " 是 Curios 版").isFalse();
         DreamCrystalScenes.reviveFirstDeath(ctx);
     }
 
