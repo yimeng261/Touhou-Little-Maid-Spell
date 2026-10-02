@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 书的每页在成书界面里放得下：按客户端字体折行后不超过一页的行数，中英文都一样。
+ * 书的每页在成书界面里放得下：按客户端字体折行后不超过一页的行数，中英日文都一样。
  */
 public final class BookClientScenes {
     /** 成书界面的文字区宽 114 像素、高 128 像素，一行 9 像素。 */
@@ -34,8 +34,10 @@ public final class BookClientScenes {
         ClientSide.call(ctx, () -> {
             Font font = Minecraft.getInstance().font;
             List<String> overflow = new ArrayList<>();
-            for (String code : List.of("en_us", "zh_cn")) {
-                ClientLanguage language = ClientSide.language(code);
+            // 日文缺的键与游戏里一样回落英文
+            for (List<String> codes : List.of(List.of("en_us"), List.of("zh_cn"), List.of("en_us", "ja_jp"))) {
+                String code = codes.get(codes.size() - 1);
+                ClientLanguage language = ClientLanguage.loadFrom(Minecraft.getInstance().getResourceManager(), codes, false);
                 books.forEach((book, pages) -> {
                     for (int page = 1; page <= pages; page++) {
                         String key = book + ".page_" + page;

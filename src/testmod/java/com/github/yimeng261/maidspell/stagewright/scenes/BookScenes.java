@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
 /**
  * 结构里预置的书（旅行日记、魔女日记、研究记录）：每页、书名都用语言键，两种语言都有；
  * 旅行日记作者是 Stellar_Witch 并带旅行日记标记；书里的页与语言文件里的页一一对应。
- * 以及第 5 批改过的几处文案。
+ * 以及第 5 批改过的几处文案；日文语言包的日记页数、键集合与星落之庭译名。
  */
 public final class BookScenes {
     private static final String TRAVEL_DIARY = "item.touhou_little_maid_spell.loot.travel_diary.";
@@ -43,6 +43,8 @@ public final class BookScenes {
         scenes.add(Checks.scene("books.structureBooksUseLangKeys", 20, BookScenes::structureBooks));
         scenes.add(Checks.scene("books.samePageCountInBothLanguages", 5, BookScenes::pageCounts));
         scenes.add(Checks.scene("lang.batch5Wording", 5, BookScenes::wording));
+        scenes.add(Checks.scene("books.japanesePagesMatchEnglish", 5, BookScenes::japanesePages));
+        scenes.add(Checks.scene("lang.japaneseKeysAndNames", 5, BookScenes::japaneseKeys));
         return scenes;
     }
 
@@ -177,5 +179,34 @@ public final class BookScenes {
         List<String> wrong = zh.entrySet().stream().filter(e -> e.getValue().contains("星落之庭"))
                 .map(Map.Entry::getKey).filter(k -> !en.getOrDefault(k, "").contains("Starfall Garden")).toList();
         ctx.check(wrong).as("中文提到星落之庭、英文没写 Starfall Garden 的键").isEmpty();
+    }
+
+    /**
+     * 日文里有的书页数都与英文一致（不会前几页日文、后几页回落英文）；
+     * 入魔骑士日记和全部旅行日记都有日文正文。
+     */
+    private static void japanesePages(SceneContext ctx) {
+        Map<String, Integer> en = Lang.books(Lang.read("en_us"));
+        Map<String, Integer> ja = Lang.books(Lang.read("ja_jp"));
+        ctx.record("japaneseBooks", ja);
+        List<String> mismatched = ja.entrySet().stream().filter(e -> !e.getValue().equals(en.get(e.getKey())))
+                .map(e -> e.getKey() + "：日文 " + e.getValue() + " 页，英文 " + en.get(e.getKey()) + " 页").toList();
+        ctx.check(mismatched).as("日文与英文页数不同的书").isEmpty();
+        List<String> missing = en.keySet().stream()
+                .filter(book -> book.startsWith(TRAVEL_DIARY) || book.equals("item.touhou_little_maid_spell.loot.corrupted_knight_diary"))
+                .filter(book -> !ja.containsKey(book)).toList();
+        ctx.check(missing).as("没有日文正文的入魔骑士日记/旅行日记").isEmpty();
+    }
+
+    /** 日文没有英文里不存在的键；提到星落之庭的地方都译作「星降る庭園」，不再用旧名「星降る宮廷」。 */
+    private static void japaneseKeys(SceneContext ctx) {
+        Map<String, String> en = Lang.read("en_us");
+        Map<String, String> ja = Lang.read("ja_jp");
+        ctx.record("japaneseKeys", ja.size());
+        ctx.check(ja.keySet().stream().filter(k -> !en.containsKey(k)).toList()).as("英文里没有的日文键").isEmpty();
+        ctx.check(ja.entrySet().stream().filter(e -> e.getValue().contains("星降る宮廷")).map(Map.Entry::getKey).toList())
+                .as("日文里写「星降る宮廷」的键").isEmpty();
+        ctx.check(ja.getOrDefault("dialogue.touhou_little_maid_spell.winefox.chat_15", "").contains("星降る庭園"))
+                .as("酒狐对话 chat_15 写「星降る庭園」").isTrue();
     }
 }

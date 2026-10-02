@@ -1,6 +1,8 @@
 package com.github.yimeng261.maidspell.stagewright.scenes;
 
 import com.github.tartaricacid.touhoulittlemaid.crafting.AltarRecipe;
+import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.stagewright.support.Actors;
 import com.github.yimeng261.maidspell.stagewright.support.Checks;
 import com.github.yimeng261.maidspell.stagewright.support.Owners;
@@ -21,6 +23,8 @@ import net.minecraft.util.Unit;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.npc.Villager;
@@ -52,13 +56,14 @@ import java.util.TreeSet;
 import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
 
 /**
- * 观星术士、精灵圣卫、星之魔女这几个 NPC：交易互斥与放开、观星术士的报价与中立、星之魔女的属性/床/命令/保底，
+ * 观星术士、精灵圣卫、星之魔女这几个 NPC：交易互斥与放开、观星术士的报价与中立、星之魔女的属性/床/命令/保底/权威最大生命，
  * 以及星辉花簇和改用星云核心的梦云水晶祭坛配方。
  */
 public final class NpcScenes {
     private static final String ASTRO = NS + "astro_mancer";
     private static final String TEMPLAR = NS + "elf_templar";
     private static final String WITCH = NS + "stellar_witch";
+    private static final ResourceLocation MAX_HEALTH_PROBE = ResourceLocation.parse(NS + "test_max_health_probe");
 
     private NpcScenes() {
     }
@@ -80,6 +85,8 @@ public final class NpcScenes {
         scenes.add(Checks.superflat("stellar_witch.bedUnsafeNearby", 10, NpcScenes::witchBed));
         scenes.add(Checks.superflat("stellar_witch.survivesKill", 40, NpcScenes::witchSurvivesKill));
         scenes.add(Checks.scene("stellar_witch.lifecycleCommandNeedsOp", 5, NpcScenes::witchCommand));
+        scenes.add(Checks.superflat("stellar_witch.maxHealthIsAuthoritative", 20, NpcScenes::witchMaxHealth));
+        scenes.add(Checks.superflat("stellar_witch.otherMaxHealthUnaffected", 5, NpcScenes::otherMaxHealth));
         scenes.add(Checks.superflat("star_glow_flower_cluster.behavesLikePetals", 10, NpcScenes::flowerCluster));
         scenes.add(Checks.scene("dream_crystal.altarRecipesUseNebulaCore", 5, NpcScenes::altarRecipes));
         return scenes;
@@ -247,6 +254,59 @@ public final class NpcScenes {
             ctx.check(witch.isRemoved()).as("被移除").isFalse();
             ctx.check(witch.isDeadOrDying()).as("死亡").isFalse();
         });
+    }
+
+    /**
+     * 星之魔女的 getMaxHealth 返回权威最大生命（配置值），外部 max_health 修饰符改不动它；
+     * 每 tick 反推补偿量，属性值也回到权威值（不超过原版 1024 上限时）。
+     */
+    private static void witchMaxHealth(SceneContext ctx) {
+        Mob witch = npc(ctx, WITCH);
+        float expected = (float) Config.winefoxMaxHealth;
+        AttributeInstance attribute = witch.getAttribute(Attributes.MAX_HEALTH);
+        ctx.record("configuredMaxHealth", expected);
+        ctx.check(witch.getMaxHealth()).as("生成时 getMaxHealth").isCloseTo(expected, 1e-3);
+        ctx.check(((IAuthoritativeHealth) witch).maidspell$authoritativeMaxHealth()).as("权威最大生命").isCloseTo(expected, 1e-3);
+        List<AttributeModifier> probes = List.of(
+                new AttributeModifier(MAX_HEALTH_PROBE, 0.5, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL),
+                new AttributeModifier(MAX_HEALTH_PROBE, 0.5, AttributeModifier.Operation.ADD_MULTIPLIED_BASE),
+                new AttributeModifier(MAX_HEALTH_PROBE, 100, AttributeModifier.Operation.ADD_VALUE));
+        witchMaxHealthStep(ctx, witch, attribute, expected, probes, 0);
+    }
+
+    private static void witchMaxHealthStep(SceneContext ctx, Mob witch, AttributeInstance attribute, float expected,
+                                           List<AttributeModifier> probes, int index) {
+        attribute.removeModifier(MAX_HEALTH_PROBE);
+        if (index == probes.size()) {
+            Checks.after(ctx, 2, () -> {
+                ctx.check(witch.getMaxHealth()).as("去掉修饰后 getMaxHealth").isCloseTo(expected, 1e-3);
+                if (expected <= 1024) {
+                    ctx.check(attribute.getValue()).as("去掉修饰后属性值").isCloseTo(expected, 1e-3);
+                }
+            });
+            return;
+        }
+        AttributeModifier probe = probes.get(index);
+        String label = probe.operation().getSerializedName();
+        attribute.addTransientModifier(probe);
+        ctx.check(witch.getMaxHealth()).as(label + " 修饰刚加上时 getMaxHealth").isCloseTo(expected, 1e-3);
+        Checks.after(ctx, 2, () -> {
+            ctx.check(witch.getMaxHealth()).as(label + " 修饰两 tick 后 getMaxHealth").isCloseTo(expected, 1e-3);
+            if (expected <= 1024) {
+                ctx.check(attribute.getValue()).as(label + " 修饰两 tick 后属性值").isCloseTo(expected, 1e-3);
+            }
+            ctx.check(witch.getHealth() <= witch.getMaxHealth() + 1e-3).as(label + " 修饰后当前生命不超过最大生命").isTrue();
+            witchMaxHealthStep(ctx, witch, attribute, expected, probes, index + 1);
+        });
+    }
+
+    /** getMaxHealth 的注入只改星之魔女，其他生物仍按属性值计算。 */
+    private static void otherMaxHealth(SceneContext ctx) {
+        Mob zombie = Actors.spawn(ctx, "minecraft:zombie", 0, 0, 0, true);
+        AttributeInstance attribute = zombie.getAttribute(Attributes.MAX_HEALTH);
+        attribute.addTransientModifier(new AttributeModifier(MAX_HEALTH_PROBE, 0.5, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        ctx.check(zombie.getMaxHealth()).as("僵尸 getMaxHealth 等于属性值").isCloseTo(attribute.getValue(), 1e-3);
+        ctx.check(zombie.getMaxHealth()).as("僵尸加 50% 后的最大生命").isCloseTo(30, 1e-3);
     }
 
     private static void witchCommand(SceneContext ctx) {

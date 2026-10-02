@@ -12,6 +12,7 @@ import net.magicterra.stagewright.scene.Scene;
 import net.magicterra.stagewright.scene.SceneContext;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -19,16 +20,20 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.Vec3;
+import top.theillusivec4.curios.api.CuriosApi;
+import top.theillusivec4.curios.api.type.ISlotType;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
 
 /**
  * 梦云水晶（女仆佩戴）：时停 1 秒（含卸载、换维度、重进世界）、20 格范围强化、概率复活
- * （120 秒窗口、每次 -10%、最多 10 条记录、15 秒无敌、旧记录迁移）、Boss 中立、受击间隔内被挡下的一击不追加真伤。
+ * （120 秒窗口、每次 -10%、最多 10 条记录、15 秒无敌、旧记录迁移）、Boss 中立、受击间隔内被挡下的一击不追加真伤；
+ * 玩家不能通过 Curios 佩戴。
  * <p>计时都以主世界时间为准，在其他维度也一样。
  */
 public final class DreamCrystalScenes {
@@ -64,6 +69,7 @@ public final class DreamCrystalScenes {
         scenes.add(Checks.superflat("dream_crystal.revive.legacyInvulnerableTicksMigrate", 20, DreamCrystalScenes::legacyInvulnerable));
         scenes.add(Checks.superflat("dream_crystal.bossNeutral", 20, DreamCrystalScenes::bossNeutral));
         scenes.add(Checks.superflat("dream_crystal.blockedHitAddsNoTrueDamage", 20, DreamCrystalScenes::blockedHit));
+        scenes.add(Checks.superflat("dream_crystal.playersCannotWear", 5, DreamCrystalScenes::playersCannotWear));
         return scenes;
     }
 
@@ -328,5 +334,19 @@ public final class DreamCrystalScenes {
         pig.hurt(maid.damageSources().mobAttack(maid), 2);
         pig.hurt(maid.damageSources().mobAttack(maid), 2);
         Checks.after(ctx, 2, () -> ctx.check(pig.getHealth()).as("连打两下后猪的生命").isCloseTo(96, 1e-3));
+    }
+
+    /** 本模组不再给玩家加 curio 栏，梦云水晶和原先一起进 curios:curio 标签的饰品在玩家身上没有可放的栏位。 */
+    private static void playersCannotWear(SceneContext ctx) {
+        ServerPlayer player = Owners.visitor(ctx, "TlmsCurioPlayer", 2, 0, 0);
+        ctx.check(CuriosApi.getEntitySlots(player).containsKey("curio")).as("玩家有 curio 栏").isFalse();
+        List<String> wearable = new ArrayList<>();
+        for (String id : List.of("dream_cat_crystal", "sliver_cercis", "chaos_book", "double_heart_chain", "fragrant_ingenuity")) {
+            Map<String, ISlotType> slots = CuriosApi.getItemStackSlots(Actors.stack(NS + id), player);
+            if (!slots.isEmpty()) {
+                wearable.add(id + " → " + slots.keySet());
+            }
+        }
+        ctx.check(wearable).as("玩家能佩戴的本模组饰品").isEmpty();
     }
 }

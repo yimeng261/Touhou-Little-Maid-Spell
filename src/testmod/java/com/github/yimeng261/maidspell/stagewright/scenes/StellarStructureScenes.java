@@ -1,10 +1,12 @@
 package com.github.yimeng261.maidspell.stagewright.scenes;
 
+import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.stagewright.support.Actors;
 import com.github.yimeng261.maidspell.stagewright.support.Checks;
 import com.github.yimeng261.maidspell.stagewright.support.Lang;
 import com.github.yimeng261.maidspell.stagewright.support.StructureStage;
 import com.github.yimeng261.maidspell.stagewright.support.WorldExtract;
+import com.github.yimeng261.maidspell.worldgen.StarfallGardenData;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.magicterra.stagewright.scene.Scene;
@@ -19,7 +21,11 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtAccounter;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.PaintingVariantTags;
 import net.minecraft.world.InteractionHand;
@@ -34,21 +40,26 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChiseledBookShelfBlockEntity;
+import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
 
 /**
- * 星途终岸、观星塔、星落之庭相关：结构放置、观星术士名字、四幅新画、星之旅程与万法皆通两个成就页、观星罗盘。
+ * 星途终岸、观星塔、星落之庭相关：结构放置、观星术士名字、四幅新画、星之旅程与万法皆通两个成就页、观星罗盘、
+ * 星落之庭补生成的放置次数落盘。
  */
 public final class StellarStructureScenes {
     private static final String COMPASS = NS + "starwatch_compass";
@@ -70,6 +81,7 @@ public final class StellarStructureScenes {
         scenes.add(Checks.scene("starwatch_compass.endSearchFinishesQuickly", 40, StellarStructureScenes::compassEnd));
         scenes.add(Checks.superflat("starwatch_compass.lodestoneKeepsTargetAndName", 10, StellarStructureScenes::compassLodestone));
         scenes.add(Checks.scene("starfall_garden.onlyOnePerWorld", 200, StellarStructureScenes::onlyOneGarden));
+        scenes.add(Checks.scene("starfall_garden.placementAttemptSavedImmediately", 60, StellarStructureScenes::placementAttempt));
         return scenes;
     }
 
@@ -259,6 +271,41 @@ public final class StellarStructureScenes {
         } catch (CommandSyntaxException e) {
             ctx.record("failed: " + command, e.getMessage());
             return 0;
+        }
+    }
+
+    /**
+     * 补生成开始放置时计的次数当场提交写盘（不等自动保存，崩服也算一次；NeoForge 在 IO 线程上写，等它落到文件）；
+     * 正常停服退还的那一步把次数减回去。重启才能走到的上限分支归人工验收。
+     */
+    private static void placementAttempt(SceneContext ctx) {
+        MinecraftServer server = ctx.server();
+        int before = StarfallGardenData.placementAttempts(server);
+        ctx.record("attemptsBefore", before);
+        AtomicBoolean refunded = new AtomicBoolean();
+        Runnable refund = () -> {
+            if (refunded.compareAndSet(false, true)) {
+                StarfallGardenData.refundPlacementAttempt(server);
+            }
+        };
+        ctx.cleanup(refund);
+        ctx.check(StarfallGardenData.recordPlacementAttempt(server, ctx.rel(0, 0, 0))).as("记上一次放置").isTrue();
+        ctx.check(StarfallGardenData.placementAttempts(server)).as("内存里的放置次数").isEqualTo(before + 1);
+        Path file = server.getWorldPath(LevelResource.ROOT).resolve("data")
+                .resolve(MaidSpellMod.MOD_ID + "_starfall_garden.dat");
+        ctx.await(() -> savedAttempts(file) == before + 1).within(40).then(() -> {
+            refund.run();
+            ctx.check(StarfallGardenData.placementAttempts(server)).as("退还后的放置次数").isEqualTo(before);
+        });
+    }
+
+    /** 存档文件里的放置次数；文件还没写出来或读失败时返回 -1。 */
+    private static int savedAttempts(Path file) {
+        try {
+            CompoundTag saved = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
+            return saved.getCompound("data").getInt("RetrofitPlacementAttempts");
+        } catch (IOException e) {
+            return -1;
         }
     }
 }
