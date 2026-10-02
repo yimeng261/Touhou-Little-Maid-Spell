@@ -1,5 +1,33 @@
 # Changelog / 变更日志
 
+## 1.9.1-neoforge
+
+### 新增功能 / New Features
+
+- 新增日文语言包，日记正文按当前分页排版；配置界面、部分结构实体与战利品名、《女仆与前文明研究记录》等内容暂以英文显示 /
+  Added a Japanese translation with journals laid out to the current pagination; the configuration screen,
+  some structure entities and loot names, Maids and the Previous Civilization: Research Records and other
+  content still fall back to English
+
+### 修复 / Bug Fixes
+
+- 修复酒狐 Boss 的最大生命值读数与实际不一致的问题 /
+  Fixed the Winefox boss reporting a maximum health that differed from its actual value
+
+### 优化 / Improvements
+
+- 星落之庭不再限制生物群系；旧存档补生成改为分多个 tick 写入，开服不再长时间卡顿，写入失败或崩服累计 3 次后不再重试 /
+  Starfall Garden is no longer restricted by biome; retroactive generation for existing worlds now writes over
+  several ticks so server startup no longer stalls, and gives up after three failed or crashed attempts
+
+### 升级说明 / Upgrade Notes
+
+- 梦云水晶不再支持玩家通过 Curios 佩戴，仅女仆可用；玩家饰品栏中的梦云水晶请在升级前取下 /
+  Dreamcloud Crystal can no longer be worn by players through Curios and is now maid-only; remove it from
+  player curio slots before upgrading
+
+---
+
 ## 1.9.0-neoforge
 
 ### 新增功能 / New Features
