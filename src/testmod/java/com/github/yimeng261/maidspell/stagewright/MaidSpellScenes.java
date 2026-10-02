@@ -24,7 +24,6 @@ import com.github.yimeng261.maidspell.stagewright.scenes.ModelPackScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.NaturalScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.NpcScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.OwnerScenes;
-import com.github.yimeng261.maidspell.stagewright.scenes.PlayerCrystalScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.RetreatCacheScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.RetreatScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.SharedRetreatScenes;
@@ -76,7 +75,6 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(BaubleRuntimeScenes.integratedServer());
                 scenes.addAll(EnderPocketScenes.integratedServer());
                 scenes.addAll(AnchorScenes.integratedServer());
-                scenes.addAll(PlayerCrystalScenes.integratedServer());
                 scenes.addAll(RetreatCacheScenes.integratedServer());
                 scenes.addAll(EnderPocketClientScenes.integratedServer());
                 scenes.addAll(ModelPackClientScenes.integratedServer());
