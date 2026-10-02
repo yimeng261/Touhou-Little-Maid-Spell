@@ -68,7 +68,10 @@ public final class EnderPocketClientScenes {
         return IntStream.range(0, count).mapToObj(i -> info("TlmsHud" + i, false)).toList();
     }
 
-    /** 打开末影腰包面板；场景结束时关掉界面，并恢复状态栏开关与隐藏名单。 */
+    /**
+     * 打开末影腰包面板；场景结束时关掉界面，并恢复状态栏开关与隐藏名单。
+     * 服务端每秒的状态栏推送会把面板里的列表换成真实女仆，要检查面板控件的场景在同一次客户端调用里重开面板。
+     */
     private static void open(SceneContext ctx, List<EnderPocketService.EnderPocketMaidInfo> infos, Runnable then) {
         ClientSide.run(ctx, () -> {
             boolean enabled = EnderPocketClientConfig.HUD_ENABLED.get();
@@ -159,6 +162,7 @@ public final class EnderPocketClientScenes {
         List<EnderPocketService.EnderPocketMaidInfo> infos = infos(3);
         UUID first = infos.getFirst().maidUUID;
         open(ctx, infos, () -> ClientSide.call(ctx, () -> {
+            Minecraft.getInstance().setScreen(new EnderPocketScreen(infos));
             EnderPocketHudOverlay.update(infos);
             int before = EnderPocketHudOverlay.getEditorPreviewHeight(1000, 0);
             AbstractWidget box = ClientSide.widget(screen(), "gui.maidspell.ender_pocket.hud_maid_visible");
@@ -224,6 +228,7 @@ public final class EnderPocketClientScenes {
     private static void anchorRow(SceneContext ctx, ServerPlayer player) {
         List<EnderPocketService.EnderPocketMaidInfo> infos = List.of(info("TlmsAnchor", true), info("TlmsPlain", false));
         open(ctx, infos, () -> ClientSide.call(ctx, () -> {
+            Minecraft.getInstance().setScreen(new EnderPocketScreen(infos));
             Screen screen = screen();
             List<AbstractWidget> teleports = ClientSide.widgets(screen).stream()
                     .filter(w -> "gui.maidspell.ender_pocket.teleport".equals(ClientSide.key(w.getMessage()))).toList();

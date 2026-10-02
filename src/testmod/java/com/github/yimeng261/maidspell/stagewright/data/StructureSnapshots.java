@@ -80,7 +80,6 @@ public final class StructureSnapshots {
             List.of(
                 "irons_spellbooks:firefly_jar",
                 "irons_spellbooks:pedestal",
-                "monsters_and_girls:glow_berry_bush_unlit",
                 "touhou_little_maid_spell:yue_linglan"),
             List.of(
                 "irons_spellbooks:pedestal|items=irons_spellbooks:lesser_spell_slot_upgrade*1",

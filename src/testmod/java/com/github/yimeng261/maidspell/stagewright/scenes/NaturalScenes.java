@@ -118,7 +118,7 @@ public final class NaturalScenes {
             RETREAT, Set.of("enchantress_footsteps_outpost", "fairy_maid_cafe_set", "hidden_cherry_tree_set", "hidden_retreat_set",
                     "starfall_garden_set"));
 
-    /** 文档"不应生成在水面/水底"的检查：不检查、必须通过、已知缺陷（required=false）。 */
+    /** "不应生成在水面/水底"的检查：不检查、必须通过、已知缺陷（required=false）。 */
     private enum Dry { NONE, REQUIRED, KNOWN_DEFECT }
 
     /** 自然抽样的结构。隐世之境只在归隐之地由玩家搜索生成，另见 integratedServer 场景。 */
@@ -128,10 +128,10 @@ public final class NaturalScenes {
     private static final List<Natural> NATURAL = List.of(
             new Natural("hidden_cherry_tree", OVERWORLD, Dry.REQUIRED),
             // avoid_water 只看区块中心一列，占地边缘可以压在水上
-            new Natural("fairy_maid_cafe", OVERWORLD, Dry.KNOWN_DEFECT),
+            new Natural("fairy_maid_cafe", OVERWORLD, Dry.REQUIRED),
             new Natural("yin_yang_altar", OVERWORLD, Dry.NONE),
             // 与精灵秘境同一套 3×3 区块水域检查
-            new Natural("relic_sanctum", OVERWORLD, Dry.KNOWN_DEFECT),
+            new Natural("relic_sanctum", OVERWORLD, Dry.REQUIRED),
             new Natural("fallen_sanctum", NETHER, Dry.NONE),
             // 水域检查只覆盖 3×3 区块，结构本身远大于这个范围
             new Natural("elven_realm", OVERWORLD, Dry.KNOWN_DEFECT),
@@ -185,8 +185,7 @@ public final class NaturalScenes {
         // 精灵秘境与圣遗礼拜堂同为 relic_sanctum 类型，共用这段地形检查
         scenes.add(scene("knownDefect.relicSanctumTerrainCheckMatchesRealTerrain", 1200,
                 ctx -> terrainCheck(ctx, OVERWORLD, "relic_sanctum", RelicSanctumStructure.class, 1, 1)).withRequired(false));
-        scenes.add(scene("knownDefect.fallenSanctumFitsNetherHeight", 2400, NaturalScenes::fallenFitsNether)
-                .withRequired(false));
+        scenes.add(scene("natural.fallen_sanctum.fitsNetherHeight", 2400, NaturalScenes::fallenFitsNether));
         scenes.add(scene("natural.village.supplementAppears", 2400, NaturalScenes::villageSupplement)
                 .withRequired(false));
         return scenes;
@@ -339,7 +338,7 @@ public final class NaturalScenes {
                 BoundingBox box = start.getBoundingBox();
                 String where = start.getChunkPos() + " " + box;
                 summary.add(where + " pieces=" + start.getPieces().size());
-                // 下界的高度问题见 knownDefect.fallenSanctumFitsNetherHeight
+                // 下界的高度由 natural.fallen_sanctum.fitsNetherHeight 单独检查
                 if (!natural.dimension().equals(NETHER)) {
                     ctx.check(box.minY() >= level.getMinBuildHeight() && box.maxY() < level.getMaxBuildHeight())
                             .as(where + " 在建筑高度范围内").isTrue();

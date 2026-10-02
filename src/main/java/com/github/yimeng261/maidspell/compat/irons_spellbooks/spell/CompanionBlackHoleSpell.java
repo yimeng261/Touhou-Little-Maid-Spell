@@ -160,7 +160,7 @@ public class CompanionBlackHoleSpell extends AbstractSpell {
         return getSpellPower(spellLevel, caster) * 0.5F;
     }
 
-    /** 禁止在卷轴撰写台制作，保留酒狐交易和战利品来源。 */
+    /** 可在卷轴撰写台制作，另有酒狐交易和战利品来源。 */
     @Override
     public boolean allowCrafting() {
         return true;

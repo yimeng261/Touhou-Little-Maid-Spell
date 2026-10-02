@@ -57,7 +57,7 @@ public final class AllyScenes {
         scenes.add(Players.hostScene("ally.spellEntitiesTraceToCaster", 20, AllyScenes::spellEntitiesTraceToCaster));
         scenes.add(Players.hostScene("ally.wildTraceableHitsPets", 20, AllyScenes::wildTraceableHitsPets));
         // 结论交人工判断：UsefulMagic 召唤物是否需要额外适配
-        scenes.add(Players.hostScene("knownDefect.usefulMagicSummonsSpared", 20, AllyScenes::usefulMagicSummons).withRequired(false));
+        scenes.add(Players.hostScene("ally.usefulMagicSummonsSpared", 20, AllyScenes::usefulMagicSummons));
         scenes.add(Players.hostScene("friendlyFire.ownerIndirectSparesOwnSide", 20, AllyScenes::ownerIndirectSparesOwnSide));
         scenes.add(Players.hostScene("friendlyFire.ownerMeleeFollowsMaidRule", 20, AllyScenes::ownerMeleeFollowsMaidRule));
         scenes.add(Players.hostScene("friendlyFire.ownerHitsOthers", 20, AllyScenes::ownerHitsOthers));
@@ -204,7 +204,10 @@ public final class AllyScenes {
         ctx.check(Hits.lands(wolf, Hits.magic(fangs, null))).as("野生唤魔者的尖牙（无记账者）打主人的狼").isTrue();
     }
 
-    /** UsefulMagic 的召唤物：主人设为 P 后，P 的女仆是否打不到它（结论交人工判断是否需要适配）。 */
+    /**
+     * UsefulMagic 能设主人的召唤物（magic_heart_entity）：主人设为 P 后，P 的女仆打不到它。
+     * 其余实体是 Boss 或主人只能是生物，没有可设为玩家的主人，只记录不判定。
+     */
     private static void usefulMagicSummons(SceneContext ctx, ServerPlayer p) {
         EntityMaid caster = Owners.maid(ctx, p, 0, 0, 3);
         Map<String, Boolean> lands = new TreeMap<>();
@@ -232,6 +235,7 @@ public final class AllyScenes {
         }
         ctx.record("noOwnerSetter", unsupported);
         ctx.record("maidHitsSummon", lands);
+        ctx.check(lands.keySet()).as("实际测到的 UsefulMagic 召唤物").isNotEmpty();
         ctx.check(lands.entrySet().stream().filter(Map.Entry::getValue).map(Map.Entry::getKey).toList())
                 .as("被主人自己的女仆打到的 UsefulMagic 召唤物").isEmpty();
     }

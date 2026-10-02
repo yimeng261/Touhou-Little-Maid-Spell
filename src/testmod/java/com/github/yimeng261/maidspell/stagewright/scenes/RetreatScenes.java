@@ -95,8 +95,8 @@ public final class RetreatScenes {
                 RetreatScenes::researchAfterCacheLoss));
         scenes.add(Players.hostScene("retreat.hiddenRetreat.tameMessage", ENTER_TICKS + SEARCH_TICKS + 1400,
                 RetreatScenes::tameMessage));
-        scenes.add(Checks.superflat("knownDefect.privateSearchFindsStructureAtFarEntry", ENTER_TICKS + FAR_SEARCH_TICKS + 1400,
-                RetreatScenes::farEntrySearch).withRequired(false));
+        scenes.add(Checks.superflat("retreat.windBell.searchFindsStructureAtFarEntry", ENTER_TICKS + FAR_SEARCH_TICKS + 1400,
+                RetreatScenes::farEntrySearch));
         return scenes;
     }
 
@@ -304,8 +304,8 @@ public final class RetreatScenes {
 
     /**
      * 移到主世界原点附近，用手上的铃进入归隐之地（不消耗），进入后把右键前取的消息标记交给 next。
-     * 归隐之地的落点与主世界坐标相同，隐世之境会生成在落点附近；而私人维度一旦生成过结构，
-     * 之后的搜索都以维度出生点为中心（见 knownDefect.privateSearchFindsStructureAtFarEntry），所以要在原点附近进入。
+     * 归隐之地的落点与主世界坐标相同，隐世之境会生成在落点附近。
+     * 远处落点进入后的搜索见 retreat.windBell.searchFindsStructureAtFarEntry。
      */
     static void enterFromOverworld(SceneContext ctx, ServerPlayer player, LongConsumer next) {
         player.setShiftKeyDown(false);

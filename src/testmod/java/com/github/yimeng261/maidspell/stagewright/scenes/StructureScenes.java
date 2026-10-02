@@ -64,7 +64,7 @@ public final class StructureScenes {
 
     private static final List<Spec> STRUCTURES = List.of(
             new Spec("hidden_retreat", 5, true),
-            // 狐狸按模板原高度生成、不随重力处理器落地（已知缺陷，见 knownDefect.hiddenCherryTreeFoxOnGround）
+            // 狐狸的落地高度由 structure.hidden_cherry_tree.foxOnGround 单独检查
             new Spec("hidden_cherry_tree", 2, false, Set.of("minecraft:fox")),
             new Spec("fairy_maid_cafe", 2, true),
             new Spec("yin_yang_altar", 2, false),
@@ -87,11 +87,8 @@ public final class StructureScenes {
             template.equals("touhou_little_maid_spell:yin_yang_altar/yin_yang_altar")
                     && (key.equals("goety:haunted_jug#FluidName") || key.equals("goety:haunted_jug#Amount"));
 
-    /** 模板里嵌在方块中的实体（已知缺陷，见 knownDefect.villagePlainsHouseChairsNotInBlocks）。 */
+    /** 平原房屋的椅子，由 village.plains.house.chairsNotInBlocks 单独检查。 */
     private static final String CHAIR = "touhou_little_maid:chair";
-
-    /** 模板引用了未安装模组的方块，放置后是空气（knownDefect.templatesUseOnlyRegisteredBlocks）。 */
-    private static final Set<String> KNOWN_UNREGISTERED_BLOCKS = Set.of("monsters_and_girls:glow_berry_bush_unlit");
 
     /** 实体放置后观察多少 tick 再检查存活/卡墙。 */
     private static final int SETTLE_TICKS = 40;
@@ -141,8 +138,8 @@ public final class StructureScenes {
                     .withRequired(!biome.equals("taiga")));
         }
         scenes.add(Checks.scene("village.poolInjection", 20, StructureScenes::poolInjection));
-        scenes.add(Checks.superflat("knownDefect.hiddenCherryTreeFoxOnGround", 20, StructureScenes::foxOnGround)
-                .withChunkRadius(2).withRequired(false));
+        scenes.add(Checks.superflat("structure.hidden_cherry_tree.foxOnGround", 20, StructureScenes::foxOnGround)
+                .withChunkRadius(2));
         scenes.add(structureScene("structure.yin_yang_altar.hauntedJugHasWater", 2, StructureScenes::hauntedJugHasWater));
         scenes.add(structureScene("village.plains.house.cauldronKeepsInk", 2, StructureScenes::cauldronKeepsInk));
         scenes.add(structureScene("village.taiga.house.pedestalRapierKeepsData", 2, StructureScenes::rapierKeepsData));
@@ -154,10 +151,8 @@ public final class StructureScenes {
                         + rotation.name().toLowerCase(Locale.ROOT), painting.radius(), ctx -> paintingsStayAnchored(ctx, painting, rotation)));
             }
         }
-        scenes.add(Checks.scene("knownDefect.templatesUseOnlyRegisteredBlocks", 20, StructureScenes::onlyRegisteredBlocks)
-                .withRequired(false));
-        scenes.add(structureScene("knownDefect.villagePlainsHouseChairsNotInBlocks", 2, StructureScenes::chairsNotInBlocks)
-                .withRequired(false));
+        scenes.add(Checks.scene("structure.templatesUseOnlyRegisteredBlocks", 20, StructureScenes::onlyRegisteredBlocks));
+        scenes.add(structureScene("village.plains.house.chairsNotInBlocks", 2, StructureScenes::chairsNotInBlocks));
         return scenes;
     }
 
@@ -200,9 +195,7 @@ public final class StructureScenes {
 
     private static void blocks(SceneContext ctx, StructureStage.Placed placed) {
         ServerLevel level = ctx.level();
-        List<String> expected = WorldExtract.expected(placed).specialBlocks().stream()
-                .filter(block -> !KNOWN_UNREGISTERED_BLOCKS.contains(block)).toList();
-        Checks.sameSet(ctx, "特殊方块", expected, WorldExtract.specialBlocks(level, placed));
+        Checks.sameSet(ctx, "特殊方块", WorldExtract.expected(placed).specialBlocks(), WorldExtract.specialBlocks(level, placed));
         Fidelity.blocks(ctx, level, placed);
     }
 
@@ -358,7 +351,7 @@ public final class StructureScenes {
                 PAINTING_TEMPLATES.stream().map(painting -> Checks.NS + painting.path()).toList(), withPaintings);
     }
 
-    /** 已知缺陷：隐世樱树的狐狸按模板原始高度生成，没有跟随重力处理器落到结构地面。 */
+    /** 隐世樱树的狐狸生成在结构地面附近，不悬空也不埋在地下。 */
     private static void foxOnGround(SceneContext ctx) {
         StructureStage.Placed placed = StructureStage.place(ctx, "touhou_little_maid_spell:hidden_cherry_tree");
         StructureStage.Piece piece = WorldExtract.ownPieces(placed).getFirst();
@@ -452,7 +445,7 @@ public final class StructureScenes {
         }
     }
 
-    /** 已知缺陷：平原房屋模板里的椅子不应嵌在实心方块里，也不应在同一位置重复。 */
+    /** 平原房屋模板里的椅子不嵌在实心方块里，也不在同一位置重复。 */
     private static void chairsNotInBlocks(SceneContext ctx) {
         StructureStage.Placed placed = placeHouse(ctx, "plains");
         List<String> embedded = new ArrayList<>();
@@ -474,7 +467,7 @@ public final class StructureScenes {
                 .isEqualTo((long) positions.size());
     }
 
-    /** 已知缺陷：模板里的方块都应来自已注册的方块（没有声明依赖的模组方块会变成空气）。 */
+    /** 模板里的方块都来自已注册的方块（没有声明依赖的模组方块会变成空气）。 */
     private static void onlyRegisteredBlocks(SceneContext ctx) {
         List<String> missing = new ArrayList<>();
         for (String template : StructureSnapshots.TEMPLATES.keySet()) {

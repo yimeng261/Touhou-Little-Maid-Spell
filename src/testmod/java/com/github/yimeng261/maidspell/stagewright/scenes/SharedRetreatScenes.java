@@ -54,8 +54,8 @@ public final class SharedRetreatScenes {
 
     public static List<Scene> integratedServerShared() {
         List<Scene> scenes = new ArrayList<>();
-        scenes.add(Players.hostScene("knownDefect.sharedFirstEntryNoticeVisible", ENTER_TICKS + 200,
-                SharedRetreatScenes::firstEntryNoticeVisible).withRequired(false));
+        scenes.add(Players.hostScene("shared.windBell.firstEntryNoticeVisible", ENTER_TICKS + 200,
+                SharedRetreatScenes::firstEntryNoticeVisible));
         scenes.add(Players.hostScene("shared.windBell.firstEntry", 2 * ENTER_TICKS + 100, SharedRetreatScenes::firstEntry));
         scenes.add(Players.hostScene("shared.windBell.switchItemDuringSearch", ENTER_TICKS + SEARCH_TICKS + 100,
                 SharedRetreatScenes::switchItemDuringSearch));

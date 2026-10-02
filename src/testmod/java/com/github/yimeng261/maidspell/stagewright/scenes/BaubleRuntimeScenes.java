@@ -27,13 +27,14 @@ import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
 
 /**
  * 饰品运行态按女仆隔离：魂之书主人保护（集成服，需要真实玩家）与受伤间隔、破愈咒锋禁疗记录、紫荆银冠计数；
- * 卸下、死亡、收进魂符、区块卸载时清理，被复活饰品救下时保留。
+ * 卸下、死亡、收进魂符、区块卸载时清理（戴锚定核心的女仆区块不卸载，保护保留），被复活饰品救下时保留。
  */
 public final class BaubleRuntimeScenes {
     private static final String SOUL_BOOK = NS + "soul_book";
     private static final String WOUND_RIME = NS + "wound_rime_blade";
     private static final String CERCIS = NS + "sliver_cercis";
     private static final String CRYSTAL = NS + "dream_cat_crystal";
+    private static final String ANCHOR = NS + "anchor_core";
     /** 远程女仆与玩家的距离：超出集成服视距，强加载解除后区块会卸载。 */
     private static final int REMOTE = 320;
 
@@ -62,6 +63,7 @@ public final class BaubleRuntimeScenes {
         scenes.add(Players.hostScene("bauble.soul_book.ownerProtectionEndsOnDeath", 20, BaubleRuntimeScenes::protectionDeath));
         scenes.add(Players.hostScene("bauble.soul_book.ownerProtectionEndsInSlab", 40, BaubleRuntimeScenes::protectionSlab));
         scenes.add(Players.hostScene("bauble.soul_book.ownerProtectionEndsOnUnload", 400, BaubleRuntimeScenes::protectionUnload));
+        scenes.add(Players.hostScene("bauble.soul_book.ownerProtectionKeptWhenAnchored", 400, BaubleRuntimeScenes::protectionAnchored));
         return scenes;
     }
 
@@ -136,6 +138,12 @@ public final class BaubleRuntimeScenes {
         }));
     }
 
+    /** 开家模式并把家设在女仆当前位置：不跟随主人，也不被传回默认的原点。 */
+    private static void stayHome(EntityMaid maid) {
+        maid.setHomeModeEnable(true);
+        maid.getSchedulePos().setHomeModeEnable(maid, maid.blockPosition());
+    }
+
     /** 女仆所在区块卸载后保护失效。 */
     private static void protectionUnload(SceneContext ctx, ServerPlayer player) {
         ServerLevel level = ctx.level();
@@ -143,13 +151,32 @@ public final class BaubleRuntimeScenes {
         level.setChunkForced(far.getX() >> 4, far.getZ() >> 4, true);
         ctx.cleanup(() -> level.setChunkForced(far.getX() >> 4, far.getZ() >> 4, false));
         EntityMaid maid = Players.ownedMaid(ctx, player, 0, 0, REMOTE, SOUL_BOOK);
-        maid.setHomeModeEnable(true);
+        stayHome(maid);
         ctx.check(directWriteBlocked(player)).as("远处女仆区块加载时受保护").isTrue();
         level.setChunkForced(far.getX() >> 4, far.getZ() >> 4, false);
         ctx.await(maid::isRemoved).within(360).then(() -> {
             ctx.record("removalReason", String.valueOf(maid.getRemovalReason()));
             ctx.check(maid.getRemovalReason()).as("女仆随区块卸载").isEqualTo(Entity.RemovalReason.UNLOADED_TO_CHUNK);
             ctx.check(directWriteBlocked(player)).as("女仆随区块卸载后受保护").isFalse();
+        });
+    }
+
+    /** 同时戴锚定核心的女仆，撤掉场景的强加载后区块仍由锚定核心保持加载，保护不失效。 */
+    private static void protectionAnchored(SceneContext ctx, ServerPlayer player) {
+        ServerLevel level = ctx.level();
+        BlockPos far = ctx.rel(0, 0, REMOTE);
+        level.setChunkForced(far.getX() >> 4, far.getZ() >> 4, true);
+        ctx.cleanup(() -> level.setChunkForced(far.getX() >> 4, far.getZ() >> 4, false));
+        EntityMaid maid = Players.ownedMaid(ctx, player, 0, 0, REMOTE, SOUL_BOOK);
+        Maids.putOn(maid, 1, Actors.stack(ANCHOR));
+        stayHome(maid);
+        ctx.check(directWriteBlocked(player)).as("远处女仆区块加载时受保护").isTrue();
+        Checks.after(ctx, 10, () -> {
+            level.setChunkForced(far.getX() >> 4, far.getZ() >> 4, false);
+            Checks.after(ctx, 360, () -> {
+                ctx.check(maid.isRemoved()).as("戴锚定核心的女仆随区块卸载").isFalse();
+                ctx.check(directWriteBlocked(player)).as("撤掉场景强加载后受保护").isTrue();
+            });
         });
     }
 
