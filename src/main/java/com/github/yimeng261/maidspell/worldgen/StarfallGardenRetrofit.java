@@ -26,6 +26,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.ArrayList;
@@ -58,6 +59,9 @@ public final class StarfallGardenRetrofit {
     /** 扫描的格点上限（spacing 网格）。超了就放弃，宁可不补也不能把开服变成几分钟。 */
     private static final long MAX_GRID_CELLS = 2_000_000L;
 
+    /** 分帧放置最多有几次没写完（正常停服不算）。某个区块稳定抛异常时，不让每次开服都把半座庭院重写一遍。 */
+    private static final int MAX_PLACEMENT_ATTEMPTS = 3;
+
     /** 正在分帧写入的放置任务，只在服务器主线程读写。 */
     private static PlacementTask pendingPlacement;
 
@@ -81,6 +85,16 @@ public final class StarfallGardenRetrofit {
         continuePlacement(event.getServer(), task);
     }
 
+    /** 放置途中正常停服不算失败，退还这次计数；同时放掉任务持有的主世界。 */
+    @SubscribeEvent
+    public static void onServerStopping(ServerStoppingEvent event) {
+        if (pendingPlacement == null) {
+            return;
+        }
+        pendingPlacement = null;
+        StarfallGardenData.refundPlacementAttempt(event.getServer());
+    }
+
     /** 出生点区块生成前恢复存档闸门，防止旧存档多生成一座。 */
     @SubscribeEvent
     public static void onLevelLoad(LevelEvent.Load event) {
@@ -96,7 +110,8 @@ public final class StarfallGardenRetrofit {
     /**
      * 开服完成后在主线程跑补生成：认领阶段同步推进最多 {@value #MAX_CLAIM_CANDIDATES} 个候选区块；
      * 放置阶段选定落点后，每 tick 写 {@value #CHUNKS_PER_PLACEMENT_TICK} 个区块，最多 {@value #MAX_PLACEMENT_CHUNKS} 个。
-     * 跑完一次就记 RetrofitAttempted，之后开服直接跳过；放置写入中途失败或停服则不记，下次开服重试。
+     * 跑完一次就记 RetrofitAttempted，之后开服直接跳过；放置写入中途失败或停服则不记，下次开服重试，
+     * 写入失败或崩服累计 {@value #MAX_PLACEMENT_ATTEMPTS} 次后放弃，并关闸防止世界生成再放一座。
      */
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
@@ -144,6 +159,12 @@ public final class StarfallGardenRetrofit {
         }
 
         // 第二段：真放。这一段才是「旧存档找不到新结构」的解法，原理见类注释。
+        if (StarfallGardenData.placementAttempts(server) >= MAX_PLACEMENT_ATTEMPTS) {
+            MaidSpellMod.LOGGER.error("星落之庭补生成：放置 {} 次都没能写完，不再重试；写到一半的庭院留在原处，不再另放一座",
+                    MAX_PLACEMENT_ATTEMPTS);
+            StarfallGardenData.giveUpPlacement(server);
+            return;
+        }
         if (garden.isRetrofitPlaceInExplored()) {
             if (placeInto(overworld, garden, candidates)) {
                 // 已排上分帧放置任务，写完后由 continuePlacement 记账。
@@ -239,8 +260,13 @@ public final class StarfallGardenRetrofit {
                         candidate, chunkCount, MAX_PLACEMENT_CHUNKS);
                 return false;
             }
+            MinecraftServer server = overworld.getServer();
+            if (!StarfallGardenData.recordPlacementAttempt(server, box.getCenter())) {
+                return false;
+            }
             if (!StarfallGardenData.tryReserve()) {
                 // 选点期间世界生成先占到了名额
+                StarfallGardenData.refundPlacementAttempt(server);
                 MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
                 return false;
             }
@@ -256,7 +282,7 @@ public final class StarfallGardenRetrofit {
 
     /**
      * 写入一批区块；没写完就把剩下的排到下一 tick，写完再登记起点、落盘名额并记账。
-     * 写入失败或停服时名额只在本次会话内保持占用，不落盘也不记账，下次开服重新补生成。
+     * 写入失败或停服时名额只在本次会话内保持占用，不落盘也不记账，下次开服重新补生成，次数受 {@value #MAX_PLACEMENT_ATTEMPTS} 限制。
      */
     private static void continuePlacement(MinecraftServer server, PlacementTask task) {
         if (!server.isRunning()) {

@@ -7,6 +7,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -36,6 +37,12 @@ public class StarfallGardenData extends SavedData {
     /** 记录补生成尝试，避免每次开服重复扫描候选区块。 */
     private boolean retrofitAttempted;
 
+    /**
+     * 补生成分帧放置没能写完的次数。开始放置时先计一次并写盘，崩服也算；
+     * 正常停服时退还，见 {@link #refundPlacementAttempt}。
+     */
+    private int placementAttempts;
+
     public StarfallGardenData() {
     }
 
@@ -46,6 +53,7 @@ public class StarfallGardenData extends SavedData {
             data.position = BlockPos.of(tag.getLong("Position"));
         }
         data.retrofitAttempted = tag.getBoolean("RetrofitAttempted");
+        data.placementAttempts = tag.getInt("RetrofitPlacementAttempts");
         return data;
     }
 
@@ -72,7 +80,7 @@ public class StarfallGardenData extends SavedData {
         return this.retrofitAttempted;
     }
 
-    public void setGenerated(BlockPos pos) {
+    public void setGenerated(@Nullable BlockPos pos) {
         this.generated = true;
         this.position = pos;
         this.setDirty();
@@ -90,6 +98,7 @@ public class StarfallGardenData extends SavedData {
             tag.putLong("Position", this.position.asLong());
         }
         tag.putBoolean("RetrofitAttempted", this.retrofitAttempted);
+        tag.putInt("RetrofitPlacementAttempts", this.placementAttempts);
         return tag;
     }
 
@@ -114,7 +123,8 @@ public class StarfallGardenData extends SavedData {
 
     /**
      * 补生成分帧放置专用：只在内存里抢占名额、不落盘，放置期间挡住世界生成。
-     * 方块全部写完后再调 {@link #markPlaced} 落盘；中途失败或停服则本次会话保持关闸，下次开服重试。
+     * 方块全部写完后再调 {@link #markPlaced} 落盘；中途失败或停服则本次会话保持关闸，下次开服重试，
+     * 没写完的次数由 {@link #recordPlacementAttempt} 计数限制。
      */
     public static boolean tryReserve() {
         return PLACED.compareAndSet(false, true);
@@ -161,6 +171,67 @@ public class StarfallGardenData extends SavedData {
     public static boolean isRetrofitAttempted(MinecraftServer server) {
         StarfallGardenData data = dataOrNull(server);
         return data != null && data.isRetrofitAttempted();
+    }
+
+    public static int placementAttempts(MinecraftServer server) {
+        StarfallGardenData data = dataOrNull(server);
+        return data == null ? 0 : data.placementAttempts;
+    }
+
+    /**
+     * 主线程调用：开始分帧放置前计一次并立即提交写盘（NeoForge 交给 IO 线程，几毫秒内落到文件）。
+     * 放置途中看门狗崩服或进程被杀时，自动保存来不及跑，不立即写盘这次尝试就不算数。
+     * 只写这一份记录，不连带主世界其他存档数据。
+     *
+     * @return 是否记上了；记不上时调用方不应开始放置，否则次数上限对它不起作用
+     */
+    public static boolean recordPlacementAttempt(MinecraftServer server, BlockPos pos) {
+        try {
+            StarfallGardenData data = dataOrNull(server);
+            if (data == null) {
+                return false;
+            }
+            data.placementAttempts++;
+            data.position = pos;
+            data.setDirty();
+            // 主世界的 data 目录就在存档根目录下，与 DimensionDataStorage 的路径一致
+            data.save(server.getWorldPath(LevelResource.ROOT).resolve("data").resolve(DATA_NAME + ".dat").toFile(),
+                    server.registryAccess());
+            return true;
+        } catch (RuntimeException e) {
+            MaidSpellMod.LOGGER.error("写入星落之庭补生成放置次数失败，本次不放置", e);
+            return false;
+        }
+    }
+
+    /** 主线程调用：放置途中正常停服，这次不算失败；随停服存档落盘。 */
+    public static void refundPlacementAttempt(MinecraftServer server) {
+        try {
+            StarfallGardenData data = dataOrNull(server);
+            if (data != null && data.placementAttempts > 0) {
+                data.placementAttempts--;
+                data.setDirty();
+            }
+        } catch (RuntimeException e) {
+            MaidSpellMod.LOGGER.error("退还星落之庭补生成放置次数失败", e);
+        }
+    }
+
+    /**
+     * 主线程调用：放置次数用完，放弃补生成。之前写到一半的庭院还留在地上，
+     * 所以照样关闸并落盘名额，免得世界生成再放一座。
+     */
+    public static void giveUpPlacement(MinecraftServer server) {
+        PLACED.set(true);
+        try {
+            StarfallGardenData data = dataOrNull(server);
+            if (data != null) {
+                data.setGenerated(data.position);
+                data.setRetrofitAttempted();
+            }
+        } catch (RuntimeException e) {
+            MaidSpellMod.LOGGER.error("写入星落之庭放弃补生成的标记失败，下次开服会再判断一次", e);
+        }
     }
 
     /**
