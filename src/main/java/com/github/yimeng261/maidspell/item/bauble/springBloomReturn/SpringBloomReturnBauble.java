@@ -7,6 +7,8 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
+import com.github.yimeng261.maidspell.utils.PortableTimerMath;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -19,10 +21,15 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 public class SpringBloomReturnBauble implements IMaidBauble {
+    private static final int CLOCK_VERSION = 1;
+    private static final int MAX_STORED_STACKS = 8;
+    private static final int MIGRATION_GRACE_TICKS = 20;
     private static final Map<UUID, Integer> EQUIPPED_SLOT_CACHE = new ConcurrentHashMap<>();
 
     public SpringBloomReturnBauble() {
@@ -32,6 +39,10 @@ public class SpringBloomReturnBauble implements IMaidBauble {
     @Override
     public void onPutOn(EntityMaid maid, ItemStack baubleItem) {
         refreshEquippedSlotCache(maid, baubleItem);
+        if (!maid.level().isClientSide() && !baubleItem.isEmpty()) {
+            long now = PortableTimerMath.overworldGameTime(maid.getServer());
+            prepareTimerState(baubleItem, maid, now);
+        }
     }
 
     @Override
@@ -43,27 +54,32 @@ public class SpringBloomReturnBauble implements IMaidBauble {
         if (maid == null || maid.level().isClientSide()) {
             return;
         }
+
         ItemStack stack = findEquippedStack(maid);
         if (stack.isEmpty()) {
             return;
         }
 
-        long now = maid.level().getGameTime();
-        pruneExpiredStacks(stack, now);
-        long lastGainTick = stack.getOrDefault(MaidSpellDataComponents.SPRING_BLOOM_RETURN_LAST_GAIN_TICK, 0L);
-        if (now - lastGainTick < Config.springBloomReturnGainCooldownTicks) {
+        long now = PortableTimerMath.overworldGameTime(maid.getServer());
+        TimerState state = prepareTimerState(stack, maid, now);
+        if (!state.writable()) {
             return;
         }
 
-        List<Long> expiries = getExpiries(stack);
-        if (expiries.size() >= Config.springBloomReturnMaxStacks) {
+        if (state.gainCooldownUntil() != null && now < state.gainCooldownUntil()) {
             return;
         }
 
-        expiries.add(now + Config.springBloomReturnStackDurationTicks);
-        expiries.sort(Long::compareTo);
-        saveExpiries(stack, expiries);
-        stack.set(MaidSpellDataComponents.SPRING_BLOOM_RETURN_LAST_GAIN_TICK, now);
+        int maxStacks = Math.min(MAX_STORED_STACKS, Math.max(0, Config.springBloomReturnMaxStacks));
+        if (state.expiries().size() >= maxStacks) {
+            return;
+        }
+
+        state.expiries().add(PortableTimerMath.saturatingAdd(now,
+                Math.max(0L, Config.springBloomReturnStackDurationTicks)));
+        state.expiries().sort(Long::compareTo);
+        state.setGainCooldownUntil(deadlineOrNull(now, Config.springBloomReturnGainCooldownTicks));
+        saveTimerState(stack, state, true);
     }
 
     @SubscribeEvent
@@ -76,45 +92,47 @@ public class SpringBloomReturnBauble implements IMaidBauble {
             return;
         }
         if (target instanceof EntityMaid maid) {
-            tryTrigger(event, maid, maid, findEquippedStack(maid));
+            tryTrigger(maid, maid, findEquippedStack(maid));
             return;
         }
         if (target instanceof Player player) {
             EntityMaid protector = selectOwnerProtector(player);
             if (protector != null) {
-                tryTrigger(event, protector, player, findEquippedStack(protector));
+                tryTrigger(protector, player, findEquippedStack(protector));
             }
         }
     }
 
-    private static void tryTrigger(LivingDamageEvent.Post event, EntityMaid maid, LivingEntity protectedTarget, ItemStack stack) {
+    private static void tryTrigger(EntityMaid maid, LivingEntity protectedTarget, ItemStack stack) {
         if (stack.isEmpty()) {
             return;
         }
 
-        long now = maid.level().getGameTime();
-        pruneExpiredStacks(stack, now);
-        List<Long> expiries = getExpiries(stack);
-        if (expiries.isEmpty()) {
+        long now = PortableTimerMath.overworldGameTime(maid.getServer());
+        TimerState state = prepareTimerState(stack, maid, now);
+        if (!state.writable()) {
             return;
         }
 
-        long triggerCooldownUntil = stack.getOrDefault(MaidSpellDataComponents.SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_UNTIL, 0L);
-        if (now < triggerCooldownUntil) {
+        if (state.expiries().isEmpty()) {
             return;
         }
 
-        expiries.sort(Long::compareTo);
-        expiries.remove(0);
-        saveExpiries(stack, expiries);
-        stack.set(MaidSpellDataComponents.SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_UNTIL, now + Config.springBloomReturnTriggerCooldownTicks);
+        if (state.triggerCooldownUntil() != null && now < state.triggerCooldownUntil()) {
+            return;
+        }
+
+        state.expiries().remove(0);
+        state.setTriggerCooldownUntil(deadlineOrNull(now, Config.springBloomReturnTriggerCooldownTicks));
+        saveTimerState(stack, state, true);
 
         float healEquivalent = (float) (protectedTarget.getMaxHealth() * Config.springBloomReturnHealRatio);
         protectedTarget.heal(healEquivalent);
 
         int favorabilityLevel = maid.getFavorabilityManager().getLevel();
         if (favorabilityLevel >= 2) {
-            SpellBookManager.getOrCreateManager(maid).refundCooldowns(Config.springBloomReturnCooldownRefundRatio);
+            SpellBookManager.getOrCreateManager(maid).refundCooldowns(
+                    maid, Config.springBloomReturnCooldownRefundRatio);
         }
         if (favorabilityLevel >= 3) {
             purgeOneNegativeEffect(protectedTarget);
@@ -140,8 +158,12 @@ public class SpringBloomReturnBauble implements IMaidBauble {
         if (stack.isEmpty()) {
             return 0;
         }
-        pruneExpiredStacks(stack, maid.level().getGameTime());
-        return getExpiries(stack).size();
+        long now = PortableTimerMath.overworldGameTime(maid.getServer());
+        TimerState state = prepareTimerState(stack, maid, now);
+        if (!state.writable()) {
+            return 0;
+        }
+        return state.expiries().size();
     }
 
     private static ItemStack findEquippedStack(EntityMaid maid) {
@@ -182,23 +204,188 @@ public class SpringBloomReturnBauble implements IMaidBauble {
                 .ifPresent(entity::removeEffect);
     }
 
-    private static void pruneExpiredStacks(ItemStack stack, long now) {
-        List<Long> expiries = getExpiries(stack);
-        expiries.removeIf(expiry -> expiry <= now);
-        saveExpiries(stack, expiries);
+    private static TimerState prepareTimerState(ItemStack stack, EntityMaid maid, long serverNow) {
+        TimerState state = loadTimerState(stack, maid, serverNow);
+        if (state.writable()) {
+            pruneExpiredTimers(state, serverNow);
+            saveTimerState(stack, state, state.hasManagedData());
+        }
+        return state;
     }
 
-    private static List<Long> getExpiries(ItemStack stack) {
-        List<Long> expiries = new ArrayList<>(stack.getOrDefault(MaidSpellDataComponents.SPRING_BLOOM_RETURN_EXPIRIES, List.of()));
+    private static TimerState loadTimerState(ItemStack stack, EntityMaid maid, long serverNow) {
+        int storedVersion = stack.getOrDefault(MaidSpellDataComponents.SPRING_BLOOM_RETURN_CLOCK_VERSION, 0);
+        if (storedVersion > CLOCK_VERSION) {
+            return TimerState.readOnly();
+        }
+
+        List<Long> expiries = new ArrayList<>(
+                stack.getOrDefault(MaidSpellDataComponents.SPRING_BLOOM_RETURN_EXPIRIES, List.of()));
+        Long gainCooldownUntil = stack.get(MaidSpellDataComponents.SPRING_BLOOM_RETURN_GAIN_COOLDOWN_UNTIL);
+        Long triggerCooldownUntil = stack.get(MaidSpellDataComponents.SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_UNTIL);
+        boolean legacy = storedVersion < CLOCK_VERSION;
+        boolean hadManagedData = hasManagedTimerData(stack);
+        long stackDuration = Math.max(0L, Config.springBloomReturnStackDurationTicks);
+        if (legacy && hadManagedData) {
+            long oldLocalNow = maid.level().getGameTime();
+            expiries.replaceAll(expiry -> PortableTimerMath.migrateDeadline(
+                    expiry, oldLocalNow, serverNow, stackDuration, MIGRATION_GRACE_TICKS));
+
+            Long lastGainTick = stack.get(MaidSpellDataComponents.SPRING_BLOOM_RETURN_LAST_GAIN_TICK);
+            if (lastGainTick != null) {
+                long gainCooldown = Math.max(0L, Config.springBloomReturnGainCooldownTicks);
+                long migratedLastGain = PortableTimerMath.migrateTimestamp(
+                        lastGainTick, oldLocalNow, serverNow,
+                        gainCooldown, MIGRATION_GRACE_TICKS);
+                gainCooldownUntil = PortableTimerMath.saturatingAdd(migratedLastGain, gainCooldown);
+            } else if (gainCooldownUntil != null) {
+                gainCooldownUntil = PortableTimerMath.migrateDeadline(
+                        gainCooldownUntil, oldLocalNow, serverNow,
+                        Config.springBloomReturnGainCooldownTicks, MIGRATION_GRACE_TICKS);
+            }
+
+            if (triggerCooldownUntil != null) {
+                triggerCooldownUntil = PortableTimerMath.migrateDeadline(
+                        triggerCooldownUntil, oldLocalNow, serverNow,
+                        Config.springBloomReturnTriggerCooldownTicks, MIGRATION_GRACE_TICKS);
+            }
+        }
+
+        expiries.replaceAll(expiry -> PortableTimerMath.migrateDeadline(
+                expiry, serverNow, serverNow, stackDuration, 0L));
+        if (gainCooldownUntil != null) {
+            gainCooldownUntil = PortableTimerMath.migrateDeadline(
+                    gainCooldownUntil, serverNow, serverNow,
+                    Config.springBloomReturnGainCooldownTicks, 0L);
+        }
+        if (triggerCooldownUntil != null) {
+            triggerCooldownUntil = PortableTimerMath.migrateDeadline(
+                    triggerCooldownUntil, serverNow, serverNow,
+                    Config.springBloomReturnTriggerCooldownTicks, 0L);
+        }
+
         expiries.sort(Long::compareTo);
-        return expiries;
+        int storedStackLimit = Math.min(MAX_STORED_STACKS,
+                Math.max(0, Config.springBloomReturnMaxStacks));
+        if (expiries.size() > storedStackLimit) {
+            expiries = new ArrayList<>(expiries.subList(0, storedStackLimit));
+        }
+        return new TimerState(expiries, gainCooldownUntil, triggerCooldownUntil,
+                true, legacy && hadManagedData);
     }
 
-    private static void saveExpiries(ItemStack stack, List<Long> expiries) {
-        if (expiries.isEmpty()) {
-            stack.remove(MaidSpellDataComponents.SPRING_BLOOM_RETURN_EXPIRIES);
+    private static void pruneExpiredTimers(TimerState state, long now) {
+        state.expiries().removeIf(expiry -> expiry <= now);
+        if (state.gainCooldownUntil() != null && state.gainCooldownUntil() <= now) {
+            state.setGainCooldownUntil(null);
+        }
+        if (state.triggerCooldownUntil() != null && state.triggerCooldownUntil() <= now) {
+            state.setTriggerCooldownUntil(null);
+        }
+    }
+
+    private static void saveTimerState(ItemStack stack, TimerState state, boolean forceVersion) {
+        if (!state.writable()) {
             return;
         }
-        stack.set(MaidSpellDataComponents.SPRING_BLOOM_RETURN_EXPIRIES, List.copyOf(expiries));
+
+        boolean needsWrite = state.requiresVersionWrite()
+                || forceVersion && stack.getOrDefault(MaidSpellDataComponents.SPRING_BLOOM_RETURN_CLOCK_VERSION, 0) != CLOCK_VERSION
+                || stack.has(MaidSpellDataComponents.SPRING_BLOOM_RETURN_LAST_GAIN_TICK)
+                || !Objects.equals(stack.get(MaidSpellDataComponents.SPRING_BLOOM_RETURN_EXPIRIES),
+                        state.expiries().isEmpty() ? null : state.expiries())
+                || !Objects.equals(stack.get(MaidSpellDataComponents.SPRING_BLOOM_RETURN_GAIN_COOLDOWN_UNTIL), state.gainCooldownUntil())
+                || !Objects.equals(stack.get(MaidSpellDataComponents.SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_UNTIL), state.triggerCooldownUntil());
+        if (!needsWrite) {
+            return;
+        }
+
+        if (forceVersion || state.requiresVersionWrite()) {
+            stack.set(MaidSpellDataComponents.SPRING_BLOOM_RETURN_CLOCK_VERSION, CLOCK_VERSION);
+        }
+        stack.remove(MaidSpellDataComponents.SPRING_BLOOM_RETURN_LAST_GAIN_TICK);
+        setOrRemove(stack, MaidSpellDataComponents.SPRING_BLOOM_RETURN_EXPIRIES,
+                state.expiries().isEmpty() ? null : List.copyOf(state.expiries()));
+        setOrRemove(stack, MaidSpellDataComponents.SPRING_BLOOM_RETURN_GAIN_COOLDOWN_UNTIL, state.gainCooldownUntil());
+        setOrRemove(stack, MaidSpellDataComponents.SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_UNTIL, state.triggerCooldownUntil());
+        state.markPersisted();
+    }
+
+    private static boolean hasManagedTimerData(ItemStack stack) {
+        return stack.has(MaidSpellDataComponents.SPRING_BLOOM_RETURN_EXPIRIES)
+                || stack.has(MaidSpellDataComponents.SPRING_BLOOM_RETURN_LAST_GAIN_TICK)
+                || stack.has(MaidSpellDataComponents.SPRING_BLOOM_RETURN_GAIN_COOLDOWN_UNTIL)
+                || stack.has(MaidSpellDataComponents.SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_UNTIL)
+                || stack.has(MaidSpellDataComponents.SPRING_BLOOM_RETURN_CLOCK_VERSION);
+    }
+
+    private static Long deadlineOrNull(long now, long durationTicks) {
+        return durationTicks <= 0L ? null : PortableTimerMath.saturatingAdd(now, durationTicks);
+    }
+
+    private static <T> void setOrRemove(ItemStack stack, Supplier<DataComponentType<T>> type, T value) {
+        if (value == null) {
+            stack.remove(type.get());
+        } else {
+            stack.set(type.get(), value);
+        }
+    }
+
+    private static final class TimerState {
+        private final List<Long> expiries;
+        private Long gainCooldownUntil;
+        private Long triggerCooldownUntil;
+        private final boolean writable;
+        private boolean requiresVersionWrite;
+
+        private TimerState(List<Long> expiries, Long gainCooldownUntil, Long triggerCooldownUntil,
+                           boolean writable, boolean requiresVersionWrite) {
+            this.expiries = expiries;
+            this.gainCooldownUntil = gainCooldownUntil;
+            this.triggerCooldownUntil = triggerCooldownUntil;
+            this.writable = writable;
+            this.requiresVersionWrite = requiresVersionWrite;
+        }
+
+        private static TimerState readOnly() {
+            return new TimerState(new ArrayList<>(), null, null, false, false);
+        }
+
+        private List<Long> expiries() {
+            return expiries;
+        }
+
+        private Long gainCooldownUntil() {
+            return gainCooldownUntil;
+        }
+
+        private void setGainCooldownUntil(Long gainCooldownUntil) {
+            this.gainCooldownUntil = gainCooldownUntil;
+        }
+
+        private Long triggerCooldownUntil() {
+            return triggerCooldownUntil;
+        }
+
+        private void setTriggerCooldownUntil(Long triggerCooldownUntil) {
+            this.triggerCooldownUntil = triggerCooldownUntil;
+        }
+
+        private boolean writable() {
+            return writable;
+        }
+
+        private boolean requiresVersionWrite() {
+            return requiresVersionWrite;
+        }
+
+        private boolean hasManagedData() {
+            return requiresVersionWrite || !expiries.isEmpty()
+                    || gainCooldownUntil != null || triggerCooldownUntil != null;
+        }
+
+        private void markPersisted() {
+            requiresVersionWrite = false;
+        }
     }
 }

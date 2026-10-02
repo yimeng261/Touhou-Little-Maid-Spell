@@ -1,0 +1,4 @@
+# StageWright 共享归隐之地拓扑：关闭私人维度，其余配置项由 NeoForge 补默认值
+[retreat_dimension]
+	enablePrivateDimensions = false
+	enableSharedQuotaLimit = true

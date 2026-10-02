@@ -1,6 +1,9 @@
 {
   "replace": false,
   "values": [
-    "touhou_little_maid_spell:elven_realm"
+    {
+      "id": "touhou_little_maid_spell:elven_realm",
+      "required": false
+    }
   ]
 }

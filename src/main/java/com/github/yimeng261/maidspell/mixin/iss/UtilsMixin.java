@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.mixin.iss;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
@@ -55,7 +56,7 @@ public class UtilsMixin {
     }
 
     private static boolean isValidPresetTarget(EntityMaid maid, LivingEntity targetEntity, int range, Predicate<LivingEntity> filter, AbstractSpell spell) {
-        if (targetEntity == null || targetEntity == maid || !targetEntity.isAlive()) {
+        if (targetEntity == maid || !IAuthoritativeHealth.combatAlive(targetEntity)) {
             return false;
         }
         if (targetEntity.level() != maid.level() || !EntitySelector.NO_SPECTATORS.test(targetEntity)) {

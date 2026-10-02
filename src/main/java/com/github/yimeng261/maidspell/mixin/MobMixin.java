@@ -2,7 +2,11 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.utils.AnchorCoreProtection;
+import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
@@ -14,14 +18,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Mob类的Mixin，用于阻止女仆被转换成其他实体
- * 针对convertTo方法进行注入，当检测到是女仆实体时取消转换操作
+ * Mob 层的生命周期保护与交互入口。
  */
 @Mixin(Mob.class)
 public class MobMixin {
 
+    @WrapOperation(
+        method = "interact(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/InteractionHand;)Lnet/minecraft/world/InteractionResult;",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Mob;isAlive()Z")
+    )
+    private boolean maidspell$allowCustomLifecycleInteraction(Mob mob, Operation<Boolean> original) {
+        return mob instanceof IAuthoritativeHealth ? !mob.isRemoved() : original.call(mob);
+    }
+
     /**
-     * 拦截convertTo方法，阻止女仆被转换成其他实体
+     * 拦截 convertTo 方法，阻止受保护的遭遇实体或装备锚定核心的女仆被转换成其他实体。
      *
      * @param entityType 目标实体类型
      * @param bl 是否保留装备
@@ -31,20 +42,13 @@ public class MobMixin {
             at = @At("HEAD"),
             cancellable = true)
     public <T extends Mob> void preventMaidConversion(EntityType<T> entityType, boolean bl, CallbackInfoReturnable<T> cir) {
-        // 检查当前实体是否为女仆
-        if ((Object) this instanceof EntityMaid maid) {
-            // 检查女仆是否装备了锚定核心饰品
-            if (!AnchorCoreProtection.shouldBlockConversion(maid)) {
-                Global.LOGGER.debug("Maid {} does not have anchor_core, allowing conversion", maid.getUUID());
-                return;
-            }
-
-            Global.LOGGER.debug("Prevented maid {} from converting to {} (anchor_core protection)",
-                maid.getUUID(), entityType.getDescriptionId());
-
-            // 取消转换操作，返回null
-            cir.setReturnValue(null);
+        if (!PersistentEntityLifecycleGuard.shouldBlockConversion((Mob) (Object) this)) {
+            return;
         }
+        Global.LOGGER.debug("Prevented {} from converting to {} (lifecycle protection)",
+            this, entityType.getDescriptionId());
+        // 取消转换操作，返回 null
+        cir.setReturnValue(null);
     }
 
     /**

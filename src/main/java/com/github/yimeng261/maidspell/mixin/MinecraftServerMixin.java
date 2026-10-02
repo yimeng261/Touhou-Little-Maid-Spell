@@ -1,13 +1,11 @@
 package com.github.yimeng261.maidspell.mixin;
 
-import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatLevelData;
 import com.github.yimeng261.maidspell.dimension.RetreatLevelStateData;
 import com.github.yimeng261.maidspell.dimension.RetreatManager;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
-import com.github.yimeng261.maidspell.worldgen.accessor.ChunkGeneratorAccessor;
 import com.google.common.collect.ImmutableList;
 import net.minecraft.core.LayeredRegistryAccess;
 import net.minecraft.core.Registry;
@@ -21,14 +19,15 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.progress.ChunkProgressListener;
 import net.minecraft.util.thread.ReentrantBlockableEventLoop;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.ForcedChunksSavedData;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.ServerLevelData;
 import net.minecraft.world.level.storage.WorldData;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.common.world.chunk.ForcedChunkManager;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -111,9 +110,8 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
             // 避免共享主世界的 TimerQueue 导致 /schedule function 被重复执行
             ServerLevelData overworldLevelData = (ServerLevelData) overworld.getLevelData();
             WorldData worldData = server.getWorldData();
-            RetreatLevelData retreatLevelData = new RetreatLevelData(worldData, overworldLevelData);
-
-            long seed = BiomeManager.obfuscateSeed((long) (0x66ccff * Math.random()));
+            long seed = maidspell$stableDimensionSeed(overworld.getSeed(), key);
+            RetreatLevelData retreatLevelData = new RetreatLevelData(worldData, overworldLevelData, seed);
 
             // 创建一个简单的ChunkProgressListener
             ChunkProgressListener progressListener = new ChunkProgressListener() {
@@ -151,15 +149,6 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
 
             RetreatLevelStateData.get(newLevel).attach(retreatLevelData);
 
-            RetreatManager.registerDimension(key, newLevel);
-            Global.LOGGER.debug("Registered dimension: {}", newLevel.dimension().location());
-
-            // 设置ChunkGenerator的维度信息，用于结构生成判断
-            if (newLevel.getChunkSource().getGenerator() instanceof ChunkGeneratorAccessor accessor) {
-                accessor.maidspell$setDimensionKey(key);
-                MaidSpellMod.LOGGER.debug("Set dimension key for ChunkGenerator: {}", key.location());
-            }
-
             // 添加到世界Map
             levels.put(key, newLevel);
 
@@ -168,6 +157,15 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
 
             // 触发 Forge 的世界加载事件，这是确保世界正常 Tick 和实体加载的关键
             NeoForge.EVENT_BUS.post(new LevelEvent.Load(newLevel));
+
+            // 动态创建的维度错过了 prepareLevels 里的强加载恢复，照原版补上（含锚定核心用的 NeoForge 票据）
+            ForcedChunksSavedData forcedChunks = newLevel.getDataStorage().get(ForcedChunksSavedData.factory(), "chunks");
+            if (forcedChunks != null) {
+                for (long chunk : forcedChunks.getChunks()) {
+                    newLevel.getChunkSource().updateChunkForced(new ChunkPos(chunk), true);
+                }
+                ForcedChunkManager.reinstatePersistentChunks(newLevel, forcedChunks);
+            }
 
             // 确保新维度的数据目录被创建
             try {
@@ -195,6 +193,20 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
         }
     }
 
+    private static long maidspell$stableDimensionSeed(long worldSeed, ResourceKey<Level> dimensionKey) {
+        long dimensionHash = 0xcbf29ce484222325L;
+        String dimensionId = dimensionKey.location().toString();
+        for (int i = 0; i < dimensionId.length(); i++) {
+            dimensionHash ^= dimensionId.charAt(i);
+            dimensionHash *= 0x100000001b3L;
+        }
+
+        long mixed = worldSeed ^ dimensionHash;
+        mixed = (mixed ^ (mixed >>> 30)) * 0xbf58476d1ce4e5b9L;
+        mixed = (mixed ^ (mixed >>> 27)) * 0x94d049bb133111ebL;
+        return mixed ^ (mixed >>> 31);
+    }
+    
     @Override
     public void maidspell$removeWorld(ResourceKey<Level> key) {
         try {

@@ -5,15 +5,20 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.utils.PortableTimerMath;
 import com.github.yimeng261.maidspell.utils.TrueDamageUtil;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.Tags;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.EntityTravelToDimensionEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
@@ -53,6 +58,7 @@ public class DreamCrystalMaidEvents {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMobChangeTarget(LivingChangeTargetEvent event) {
         if (!(event.getNewAboutToBeSetTarget() instanceof EntityMaid maid)) return;
+        if (maid.level().isClientSide()) return;
         if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL)) return;
 
         LivingEntity attacker = event.getEntity();
@@ -74,6 +80,7 @@ public class DreamCrystalMaidEvents {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onMaidHurtEntity(LivingDamageEvent.Post event) {
         if (!(event.getSource().getEntity() instanceof EntityMaid maid)) return;
+        if (maid.level().isClientSide()) return;
         if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL)) return;
 
         LivingEntity target = event.getEntity();
@@ -108,6 +115,17 @@ public class DreamCrystalMaidEvents {
         }
     }
 
+    /**
+     * 离开归隐之地时留一段无敌余量，最低优先级且不接收已取消的事件，只在真正换维度时写入
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onMaidTravelToDimension(EntityTravelToDimensionEvent event) {
+        if (event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
+            DreamCatCrystalBauble.extendInvulnerableOnRetreatExit(maid,
+                    DreamCatCrystalBauble.findDreamCrystalStack(maid), event.getDimension().location());
+        }
+    }
+
     // ========== 时停/范围强化调度 ==========
 
     /**
@@ -116,24 +134,34 @@ public class DreamCrystalMaidEvents {
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
         TrueDamageUtil.processQueuedTrueDamage();
-        DreamCatCrystalBauble.processScheduledEffects();
+        DreamCatCrystalBauble.processScheduledEffects(event.getServer());
+    }
+
+    /** 时停定身的目标一定是 NoAI，先按它筛掉普通生物，不给每只生物都建一份持久数据 */
+    @SubscribeEvent
+    public static void onMobJoinLevel(EntityJoinLevelEvent event) {
+        if (event.getEntity() instanceof Mob mob && mob.isNoAi() && event.getLevel().getServer() != null) {
+            DreamCatCrystalBauble.onFrozenTargetJoin(mob, event.getLevel().getServer());
+        }
     }
 
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
         TrueDamageUtil.clearQueuedTrueDamage();
         DreamCatCrystalBauble.clearScheduledEffects();
+        MAID_ATTACKED_BOSSES.clear();
     }
 
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
         TrueDamageUtil.clearQueuedTrueDamage();
         DreamCatCrystalBauble.clearScheduledEffects();
+        MAID_ATTACKED_BOSSES.clear();
     }
 
     // ========== 私有辅助方法 ==========
 
-    private static boolean isImmuneTo(DamageSource source) {
+    public static boolean isImmuneTo(DamageSource source) {
         if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return false;
         return source.is(DamageTypeTags.IS_FIRE)         // 燃烧
                 || source.is(DamageTypeTags.IS_DROWNING)     // 溺水
@@ -143,30 +171,43 @@ public class DreamCrystalMaidEvents {
     }
 
     private static void recordMaidAttackedBoss(EntityMaid maid, LivingEntity boss) {
+        MinecraftServer server = maid.getServer();
+        if (server == null) {
+            return;
+        }
         UUID maidUUID = maid.getUUID();
         UUID bossUUID = boss.getUUID();
-        long currentTime = maid.level().getGameTime();
+        long currentTime = PortableTimerMath.overworldGameTime(server);
 
         Map<UUID, Long> attackedBosses = MAID_ATTACKED_BOSSES.computeIfAbsent(maidUUID, k -> new HashMap<>());
-        attackedBosses.entrySet().removeIf(entry -> currentTime - entry.getValue() >= BOSS_AGGRO_TIMEOUT);
+        attackedBosses.entrySet().removeIf(entry ->
+                PortableTimerMath.saturatingSubtract(currentTime, entry.getValue()) >= BOSS_AGGRO_TIMEOUT
+        );
         attackedBosses.put(bossUUID, currentTime);
     }
 
     private static boolean hasMaidRecentlyAttackedBoss(EntityMaid maid, LivingEntity boss) {
+        MinecraftServer server = maid.getServer();
+        if (server == null) {
+            return false;
+        }
         UUID maidUUID = maid.getUUID();
         UUID bossUUID = boss.getUUID();
-        long currentTime = maid.level().getGameTime();
+        long currentTime = PortableTimerMath.overworldGameTime(server);
         Map<UUID, Long> bosses = MAID_ATTACKED_BOSSES.get(maidUUID);
         if (bosses == null) {
             return false;
         }
         cleanupExpiredBossAggro(maidUUID, bosses, currentTime);
         Long lastTime = bosses.get(bossUUID);
-        return lastTime != null && (currentTime - lastTime) < BOSS_AGGRO_TIMEOUT;
+        return lastTime != null
+                && PortableTimerMath.saturatingSubtract(currentTime, lastTime) < BOSS_AGGRO_TIMEOUT;
     }
 
     private static void cleanupExpiredBossAggro(UUID maidUUID, Map<UUID, Long> bosses, long currentTime) {
-        bosses.entrySet().removeIf(entry -> currentTime - entry.getValue() >= BOSS_AGGRO_TIMEOUT);
+        bosses.entrySet().removeIf(entry ->
+                PortableTimerMath.saturatingSubtract(currentTime, entry.getValue()) >= BOSS_AGGRO_TIMEOUT
+        );
         if (bosses.isEmpty()) {
             MAID_ATTACKED_BOSSES.remove(maidUUID);
         }

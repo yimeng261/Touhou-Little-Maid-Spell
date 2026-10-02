@@ -155,7 +155,8 @@ public class WindSeekingBell extends Item {
         RetreatDimensionData.DimensionInfo info = data.getDimensionInfo(player.getUUID());
 
         // 首次使用时注册并分配配额
-        if (info == null) {
+        boolean firstEntry = info == null;
+        if (firstEntry) {
             data.registerDimension(player.getUUID());
             info = data.getDimensionInfo(player.getUUID());
             // 配额限制开启时给予1个配额；关闭时不限制（配额不会被检查）
@@ -163,21 +164,30 @@ public class WindSeekingBell extends Item {
                 info.structureQuota = 1;
             }
             data.updateAccessTime(player.getUUID());
-
-            player.displayClientMessage(
-                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared")
-                            .withStyle(ChatFormatting.LIGHT_PURPLE), true);
         }
 
         TheRetreatDimension.teleportToRetreat(player, sharedRetreat);
         player.displayClientMessage(
-                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
+                Component.translatable(firstEntry
+                        ? "item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared"
+                        : "item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
                         .withStyle(ChatFormatting.LIGHT_PURPLE), true);
+        if (firstEntry) {
+            RetreatDimensionData.DimensionInfo entryInfo = info;
+            com.github.yimeng261.maidspell.compat.irons_spellbooks.DelayedServerTasks.scheduleForCaster(
+                    sharedRetreat, player, 60, () -> {
+                        if (data.getDimensionInfo(player.getUUID()) == entryInfo) {
+                            player.displayClientMessage(
+                                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
+                                            .withStyle(ChatFormatting.LIGHT_PURPLE), true);
+                        }
+                    });
+        }
     }
 
     /**
      * 搜索隐世之境结构。
-     * 搜索成功后消耗物品；共享模式下，已找到过的结构免费重复查看。
+     * 搜索成功后消耗物品；共享模式复用已找到的坐标。
      */
     private void findHiddenRetreat(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack) {
         // 冷却中：防止连续右键重复触发
@@ -219,7 +229,7 @@ public class WindSeekingBell extends Item {
         }
 
         // 2. 检查内存缓存
-        RetreatManager.CacheResult cacheResult = RetreatManager.checkCache(player.getUUID());
+        RetreatManager.CacheResult cacheResult = RetreatManager.checkCache(serverLevel, player.getUUID());
         if (cacheResult.hasCache && !cacheResult.isNegative) {
             ItemStack displayItem = itemStack.copy();
             displayItem.setCount(1);
@@ -265,7 +275,14 @@ public class WindSeekingBell extends Item {
                         RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
                         data.setFoundStructurePos(player.getUUID(), result);
                     }
-                    RetreatManager.updateCache(player.getUUID(), result);
+                    if (Config.enablePrivateDimensions) {
+                        // 私人维度记在主人名下，缺位置时补写，之后以它为搜索中心
+                        UUID owner = PlayerRetreatManager.getPrivateDimensionOwner(serverLevel.dimension());
+                        if (owner != null) {
+                            RetreatDimensionData.get(player.getServer()).markStructureGenerated(owner, result);
+                        }
+                    }
+                    RetreatManager.updateCache(serverLevel, player.getUUID(), result);
 
                     // 检查玩家手上是否仍持有寻风之铃（异步搜索期间可能已切换物品）
                     boolean holdingBell = player.getMainHandItem().getItem() instanceof WindSeekingBell
@@ -285,7 +302,7 @@ public class WindSeekingBell extends Item {
                     ).withStyle(ChatFormatting.LIGHT_PURPLE));
                 } else {
                     // 搜索失败：不消耗物品，设置负缓存
-                    RetreatManager.updateCache(player.getUUID(), null);
+                    RetreatManager.updateCache(serverLevel, player.getUUID(), null);
                     handleSearchResult(serverLevel, playerPos, player, null, searchTime, false, ItemStack.EMPTY);
                 }
             });

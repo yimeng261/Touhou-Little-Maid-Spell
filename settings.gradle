@@ -1,6 +1,10 @@
 pluginManagement {
     repositories {
         mavenLocal()
+        maven {
+            url = 'https://nexus.gardel.top/repository/maven-releases'
+            content { includeGroupByRegex 'net\\.magicterra(\\..*)?' }
+        }
         gradlePluginPortal()
         maven { url = 'https://maven.neoforged.net/releases' }
     }

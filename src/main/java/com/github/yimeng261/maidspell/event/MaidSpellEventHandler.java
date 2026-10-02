@@ -1,13 +1,14 @@
 package com.github.yimeng261.maidspell.event;
 
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBackpackChangeEvent;
+import com.github.tartaricacid.touhoulittlemaid.api.event.MaidAndItemTransformEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.MaidOriginData;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
-import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
 import com.github.yimeng261.maidspell.block.entity.SuppressionStoneBlockEntity;
 import com.github.yimeng261.maidspell.block.entity.YueLinglanBlockEntity;
@@ -18,20 +19,21 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketBauble;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
+import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
+import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
+import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
-import com.github.yimeng261.maidspell.spell.data.MaidArsNouveauSpellData;
-import com.github.yimeng261.maidspell.spell.data.MaidIronsSpellData;
-import com.github.yimeng261.maidspell.spell.data.MaidPsiSpellData;
-import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.spell.providers.PsiProvider;
+import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
 import com.github.yimeng261.maidspell.utils.MaidHardRemovalProtection;
+import com.github.yimeng261.maidspell.utils.MaidSuppressionZone;
+import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import com.github.yimeng261.maidspell.utils.MaidReviveEffectCleanup;
 import com.mojang.logging.LogUtils;
-import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -57,7 +59,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.bus.api.EventPriority;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.util.FakePlayer;
@@ -69,6 +70,7 @@ import net.neoforged.neoforge.event.entity.living.*;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.slf4j.Logger;
@@ -82,6 +84,9 @@ import java.util.*;
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class MaidSpellEventHandler {
     private static final Logger LOGGER = LogUtils.getLogger();
+    /** 锚定女仆所在区块的临时加载票据，女仆 tick 起来后由锚定核心接手强加载。 */
+    private static final TicketType<ChunkPos> MAID_ANCHOR_TICKET =
+            TicketType.create("maid_anchor", Comparator.comparingLong(ChunkPos::toLong), 300);
 
     // 女仆步高属性修饰符的UUID
     private static final ResourceLocation MAID_STEP_HEIGHT_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "maid_step_height");
@@ -94,17 +99,17 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
         Entity entity = event.getEntity();
+        if (event.getLevel() instanceof ServerLevel serverLevel
+                && PersistentEntityLifecycleGuard.conflictsWithLoadedEncounter(entity, serverLevel)) {
+            LOGGER.warn("Rejecting duplicate loaded encounter entity {} in {}", entity.getUUID(), serverLevel.dimension().location());
+            event.setCanceled(true);
+            return;
+        }
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
-            SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-            manager.setMaid(maid);
-            manager.initSpellBooks();
+            MaidOriginData.upgradeStarWitchSpellBooks(maid);
 
-            if (IronsSpellbooksCompat.isLoaded()) {
-                MaidIronsSpellData ironsSpellData = MaidIronsSpellData.get(maid.getUUID());
-                if (ironsSpellData != null) {
-                    ironsSpellData.getMagicData().setSyncedData(new SyncedSpellData(maid));
-                }
-            }
+            SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
+            manager.onMaidJoin(maid);
 
             Global.updateMaidInfo(maid,true);
             addStepHeightToMaid(maid);
@@ -151,6 +156,7 @@ public class MaidSpellEventHandler {
             // checkAndFixPlayerDimension(player);
 
             // 为该玩家拥有的女仆恢复区块加载状态
+            ChunkLoadingData.onOwnerLogin(player);
             restorePlayerMaidChunkLoading(player);
 
             try {
@@ -181,6 +187,8 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            EnderPocketService.clearRemoteSession(player);
+            ChunkLoadingData.onOwnerLogout(player);
             MinecraftServer server = player.getServer();
             if (server == null) {
                 return;
@@ -192,6 +200,13 @@ public class MaidSpellEventHandler {
             } else {
                 data.clearPendingRestore(player.getUUID());
             }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            EnderPocketService.clearRemoteSession(player);
         }
     }
 
@@ -215,14 +230,20 @@ public class MaidSpellEventHandler {
     public static void onEntityLeaveLevel(EntityLeaveLevelEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
-            SpellBookManager manager = SpellBookManager.getManager(maid.getUUID());
-            if (manager != null) {
-                manager.stopAllCasting();
-            }
+            SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
+            cleanupMaidBaubleRuntimeState(maid.getUUID());
 
             if (MaidHardRemovalProtection.handleMaidLeaveLevel(maid)) {
+                manager.releaseMaidRuntimeReferences(maid);
                 Global.updateMaidInfo(maid,true);
                 return;
+            }
+
+            MinecraftServer server = event.getLevel().getServer();
+            if (server != null) {
+                manager.onMaidLeave(maid, server);
+            } else {
+                manager.releaseMaidRuntimeReferences(maid);
             }
 
             if (shouldReleaseMaidChunkLoading(maid.getRemovalReason())) {
@@ -230,8 +251,6 @@ public class MaidSpellEventHandler {
                 AnchorCoreBauble.disableChunkLoading(maid);
             }
 
-            cleanupMaidSpellData(maid);
-            AllianceManager.setMaidAlliance(maid, false);
             // 从全局女仆列表中移除，避免内存泄漏
             Global.updateMaidInfo(maid,false);
         }
@@ -272,8 +291,7 @@ public class MaidSpellEventHandler {
                     // 预加载目标区块
                     if(maid.level() instanceof ServerLevel level) {
                         ChunkPos chunkPos = new ChunkPos(SectionPos.blockToSectionCoord(event.getTargetX()), SectionPos.blockToSectionCoord(event.getTargetZ()));
-                        TicketType<ChunkPos> maidTicket = TicketType.create("maid_anchor", Comparator.comparingLong(ChunkPos::toLong), 300);
-                        level.getChunkSource().addRegionTicket(maidTicket, chunkPos, 3, chunkPos);
+                        level.getChunkSource().addRegionTicket(MAID_ANCHOR_TICKET, chunkPos, 3, chunkPos);
                         Global.LOGGER.debug("预加载女仆 {} 传送目标区块", maidId);
                     }
 
@@ -317,9 +335,8 @@ public class MaidSpellEventHandler {
                         if (newMaid instanceof EntityMaid newMaidEntity) {
                             AnchoredEntityMaid newAnchoredMaid = (AnchoredEntityMaid) newMaidEntity;
                             ChunkPos chunkPos = newMaidEntity.chunkPosition();
-                            TicketType<ChunkPos> maidTicket = TicketType.create("maid_anchor", Comparator.comparingLong(ChunkPos::toLong), 300);
                             ServerLevel targetLevel = Objects.requireNonNull(server.getLevel(event.getDimension()));
-                            targetLevel.getChunkSource().addRegionTicket(maidTicket, chunkPos, 3, chunkPos);
+                            targetLevel.getChunkSource().addRegionTicket(MAID_ANCHOR_TICKET, chunkPos, 3, chunkPos);
                             Global.LOGGER.debug("女仆 {} 跨维度传送完成，启用新维度区块加载", maidId);
                         }
 
@@ -341,24 +358,16 @@ public class MaidSpellEventHandler {
         if (!maid.level().isClientSide()) {
             try {
                 SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-                manager.tick();
+                manager.tick(maid);
                 if (maid.tickCount % 2 == 0) {
                     if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
                         MaidHardRemovalProtection.rememberProtected(maid);
                     }
                 }
-                // 每20个tick更新一次结盟状态
                 if(maid.tickCount%20 == 0){
-                    boolean isMaidSpellTask = MaidSpellMod.MOD_ID.equals(maid.getTask().getUid().getNamespace());
+                    boolean isMaidSpellTask = SpellCombatMeleeTask.UID.getNamespace().equals(maid.getTask().getUid().getNamespace());
                     if(maid.isNoAi() && isMaidSpellTask){
                         maid.setNoAi(false);
-                    }
-                    if(isMaidSpellTask) {
-                        if(!AllianceManager.isAllied(maid.getUUID())) {
-                            AllianceManager.setMaidAlliance(maid, true);
-                        }
-                    }else{
-                        AllianceManager.setMaidAlliance(maid, false);
                     }
                 }
             } catch (Exception e) {
@@ -544,7 +553,19 @@ public class MaidSpellEventHandler {
 
 
 
+    /**
+     * 压制区里的女仆饰品效果不生效。
+     *
+     * <p>在饰品分发口统一拦截，新增饰品无需逐个判断。
+     */
+    private static boolean suppressed(EntityMaid maid) {
+        return MaidSuppressionZone.suppresses(maid);
+    }
+
     private static void processorAft(LivingDamageEvent.Post event, EntityMaid maid) {
+        if (suppressed(maid)) {
+            return;
+        }
         Global.baubleDamageHandlers.forEach((item, func) -> {
             if(BaubleStateManager.hasBauble(maid, item)){
                 func.apply(event, maid);
@@ -553,6 +574,9 @@ public class MaidSpellEventHandler {
     }
 
     private static void processorPre(LivingIncomingDamageEvent event, EntityMaid maid) {
+        if (suppressed(maid)) {
+            return;
+        }
         Global.commonHurtHandlers.forEach(function -> function.apply(event, maid));
 
         Global.baubleHurtHandlers.forEach((item, func) -> {
@@ -567,7 +591,7 @@ public class MaidSpellEventHandler {
      */
     @SubscribeEvent
     public static void onMaidDeath(LivingDeathEvent event) {
-        if (event.getEntity() instanceof EntityMaid maid) {
+        if (event.getEntity() instanceof EntityMaid maid && !maid.level().isClientSide()) {
             // 先处理饰品的死亡事件
 
             Global.baubleDeathHandlers.forEach((item, func) -> {
@@ -581,69 +605,20 @@ public class MaidSpellEventHandler {
 
     @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
     public static void onMaidNormalDeathCleanup(LivingDeathEvent event) {
-        if (!(event.getEntity() instanceof EntityMaid maid)) {
+        if (!(event.getEntity() instanceof EntityMaid maid) || maid.level().isClientSide()) {
             return;
         }
         if (event.isCanceled()) {
+            // 被复活取消的死亡：魂之书、破愈咒锋、紫荆银冠的运行态保持不变
             MaidReviveEffectCleanup.cleanupAfterCanceledDeath(maid);
             return;
         }
 
-        cleanupMaidSpellData(maid);
-        AllianceManager.setMaidAlliance(maid, false);
+        AnchorCoreBauble.disableChunkLoading(maid);
+        cleanupMaidBaubleRuntimeState(maid.getUUID());
+        SpellBookManager.getOrCreateManager(maid).removeMaidData(maid);
         MaidReviveEffectCleanup.cleanupBeforeNormalDeath(maid);
         Global.updateMaidInfo(maid,false);
-    }
-
-
-
-    /**
-     * 清理女仆的法术相关数据
-     */
-    private static void cleanupMaidSpellData(EntityMaid maid) {
-        UUID uuid = maid.getUUID();
-        try {
-            // 通过SpellBookManager获取提供者并停止所有正在进行的施法
-            SpellBookManager manager = SpellBookManager.getManager(uuid);
-            if (manager != null) {
-                for (ISpellBookProvider<?, ?> provider : manager.getProviders()) {
-                    try {
-                        if (provider.isCasting(maid)) {
-                            provider.stopCasting(maid);
-                        }
-                    } catch (RuntimeException | LinkageError e) {
-                        LOGGER.warn("Failed to stop provider {} for maid {}", provider.getClass().getName(), uuid, e);
-                    }
-                }
-            }
-        } catch (RuntimeException | LinkageError e) {
-            LOGGER.warn("Failed to access spell providers while cleaning maid {}", uuid, e);
-        } finally {
-            if (SpellBookManager.hasProvider("irons_spellbooks")) {
-                runSpellDataCleanup("irons_spellbooks", () -> MaidIronsSpellData.remove(uuid));
-            }
-            if (SpellBookManager.hasProvider("ars_nouveau")) {
-                runSpellDataCleanup("ars_nouveau", () -> MaidArsNouveauSpellData.remove(uuid));
-            }
-            if (SpellBookManager.hasProvider("psi")) {
-                runSpellDataCleanup("psi", () -> {
-                    PsiProvider.clearLoopcastContext(uuid);
-                    MaidPsiSpellData.remove(uuid);
-                });
-            }
-            if (SpellBookManager.hasProvider("slashblade")) {
-                runSpellDataCleanup("slashblade", () -> MaidSlashBladeData.remove(uuid));
-            }
-            SpellBookManager.removeManager(maid);
-        }
-    }
-
-    private static void runSpellDataCleanup(String modId, Runnable cleanup) {
-        try {
-            cleanup.run();
-        } catch (RuntimeException | LinkageError e) {
-            LOGGER.warn("Failed to clear {} spell data", modId, e);
-        }
     }
 
     private static boolean shouldReleaseMaidChunkLoading(Entity.RemovalReason reason) {
@@ -690,8 +665,9 @@ public class MaidSpellEventHandler {
 
         if (!player.level().isClientSide() && player.level() instanceof ServerLevel level) {
             Global.activeMaids.add(maid);
-            Global.ownerMaidRegistry.computeIfAbsent(player.getUUID(), k -> new HashMap<>()).put(maid.getUUID(), maid);
+            Global.getOrCreatePlayerMaidMap(player.getUUID()).put(maid.getUUID(), maid);
             if(maid.isOrderedToSit()&&!maid.isStructureSpawn()&&isInHiddenRetreatStructure(level, maid.blockPosition())){
+                MaidOriginData.markHiddenRetreatMaid(maid);
                 player.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat").withStyle(ChatFormatting.LIGHT_PURPLE));
             }
 
@@ -701,105 +677,90 @@ public class MaidSpellEventHandler {
         }
     }
 
+    @SubscribeEvent
+    public static void onMaidToItem(MaidAndItemTransformEvent.ToItem event) {
+        MaidOriginData.writeTransportData(event.getMaid(), event.getData());
+    }
+
+    @SubscribeEvent
+    public static void onItemToMaid(MaidAndItemTransformEvent.ToMaid event) {
+        MaidOriginData.readTransportData(event.getMaid(), event.getData());
+    }
+
 
     @SubscribeEvent
     public static void onServerStart(ServerAboutToStartEvent event) {
-        clearRuntimeSpellState(event.getServer());
+        EnderPocketService.clearRemoteSessions(event.getServer());
+        clearRuntimeSpellState();
+    }
+
+    @SubscribeEvent
+    public static void onServerStarted(ServerStartedEvent event) {
+        AllianceManager.cleanupLegacyTeams(event.getServer());
     }
 
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
-        clearRuntimeSpellState(event.getServer());
+        EnderPocketService.clearRemoteSessions(event.getServer());
+        clearRuntimeSpellState();
     }
 
-    private static void clearRuntimeSpellState(MinecraftServer server) {
+    private static void clearRuntimeSpellState() {
+        clearBaubleRuntimeState();
         Global.activeMaids.clear();
         Global.ownerMaidRegistry.clear();
         MaidHardRemovalProtection.clear();
         AnchorCoreBauble.clearRuntimeCache();
-        YueLinglanBlockEntity.clearStructureSearchCache();
+        YueLinglanBlockEntity.clearAllStructureSearchCaches();
         SpellBookManager.clearAll();
-        AllianceManager.clear(server);
-        if (SpellBookManager.hasProvider("irons_spellbooks")) {
-            runSpellDataCleanup("irons_spellbooks", MaidIronsSpellData::clearAll);
-        }
-        if (SpellBookManager.hasProvider("ars_nouveau")) {
-            runSpellDataCleanup("ars_nouveau", MaidArsNouveauSpellData::clearAll);
-        }
-        if (SpellBookManager.hasProvider("psi")) {
-            runSpellDataCleanup("psi", () -> {
-                PsiProvider.clearAllLoopcastContexts();
-                MaidPsiSpellData.clearAll();
-            });
-        }
-        if (SpellBookManager.hasProvider("slashblade")) {
-            runSpellDataCleanup("slashblade", MaidSlashBladeData::clearAll);
-        }
+        MaidSuppressionZone.clear();
+    }
+
+    private static void cleanupMaidBaubleRuntimeState(UUID maidId) {
+        SoulBookBauble.cleanupMaid(maidId);
+        WoundRimeBladeBauble.cleanupMaid(maidId);
+        SilverCercisBauble.cleanupMaid(maidId);
+    }
+
+    private static void clearBaubleRuntimeState() {
+        SoulBookBauble.clearSession();
+        WoundRimeBladeBauble.clearSession();
+        SilverCercisBauble.clearSession();
     }
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
+        EnderPocketService.tickRemoteSessions(event.getServer());
         MaidHardRemovalProtection.tick(event.getServer());
+        SpellBookManager.tickPendingRemovals(event.getServer());
     }
 
     /**
-     * 为玩家拥有的女仆恢复区块加载状态
-     * 现在此方法主要用于检查和日志记录
-     * 实际的区块恢复已在服务器启动时由 ChunkLoadingManager.onServerStarting 完成
+     * 玩家登录时临时加载其锚定女仆所在区块，让女仆 tick 起来由锚定核心接手强加载。
+     * 记录只由锚定核心维护（换区块时覆盖，卸下或失效时删除），这里只读不删。
      */
     private static void restorePlayerMaidChunkLoading(ServerPlayer player) {
-        // 区块加载已在服务器启动时统一恢复，无需在每次玩家登录时重复操作
-        // if (ChunkLoadingManager.isChunkLoadingRestored()) {
-        //     LOGGER.debug("玩家 {} 登录，区块加载已在服务器启动时恢复", player.getName().getString());
-        //     return;
-        // }
-
-        // 如果服务器启动时恢复失败，则尝试恢复（备用逻辑）
         try {
-            ChunkLoadingData chunkLoadingData = player.getData(ChunkLoadingData.ATTACHMENT_TYPE);
-            var savedPositions = chunkLoadingData.maidChunks();
-
+            var savedPositions = player.getData(ChunkLoadingData.ATTACHMENT_TYPE).maidChunks();
             if (savedPositions.isEmpty()) {
-                return; // 没有需要恢复的数据
+                return;
             }
 
             int restoredCount = 0;
-            int totalCount = savedPositions.size();
-
-            LOGGER.info("开始为玩家 {} 恢复 {} 个女仆的区块加载状态", player.getName().getString(), totalCount);
-
-            MinecraftServer server = player.server;
-            for (var iterator = savedPositions.entrySet().iterator(); iterator.hasNext(); ) {
-                var entry = iterator.next();
-                iterator.remove();
-                UUID maidId = entry.getKey();
+            for (var entry : savedPositions.entrySet()) {
                 var info = entry.getValue();
-
-                try {
-                    // 获取对应维度的服务器世界
-                    ServerLevel targetLevel = server.getLevel(info.levelKey());
-                    if (targetLevel == null) {
-                        LOGGER.warn("无法找到维度 {} 来恢复女仆 {} 的区块加载", null, maidId);
-                        continue;
-                    }
-
-                    // 直接加载该区块
-                    ChunkPos chunkPos = new ChunkPos(info.chunkX(), info.chunkZ());
-                    TicketType<ChunkPos> maidTicket = TicketType.create("maid_anchor", Comparator.comparingLong(ChunkPos::toLong), 300);
-                    targetLevel.getChunkSource().addRegionTicket(maidTicket, chunkPos, 3, chunkPos);
-                    restoredCount++;
-                } catch (Exception e) {
-                    LOGGER.warn("恢复女仆 {} 区块加载时发生错误: {}", maidId, e.getMessage());
+                ServerLevel targetLevel = player.server.getLevel(info.levelKey());
+                if (targetLevel == null) {
+                    LOGGER.warn("无法找到维度 {} 来恢复女仆 {} 的区块加载", info.levelKey().location(), entry.getKey());
+                    continue;
                 }
+                ChunkPos chunkPos = new ChunkPos(info.chunkX(), info.chunkZ());
+                targetLevel.getChunkSource().addRegionTicket(MAID_ANCHOR_TICKET, chunkPos, 3, chunkPos);
+                restoredCount++;
             }
 
-            if (restoredCount > 0) {
-                LOGGER.info("为玩家 {} 成功恢复了 {}/{} 个女仆的区块加载",
-                    player.getName().getString(), restoredCount, totalCount);
-            } else {
-                LOGGER.warn("为玩家 {} 恢复女仆区块加载失败，没有成功恢复任何女仆",
-                    player.getName().getString());
-            }
+            LOGGER.info("为玩家 {} 恢复了 {}/{} 个女仆的区块加载",
+                player.getName().getString(), restoredCount, savedPositions.size());
         } catch (Exception e) {
             LOGGER.error("为玩家 {} 恢复女仆区块加载时发生严重错误", player.getName().getString(), e);
         }

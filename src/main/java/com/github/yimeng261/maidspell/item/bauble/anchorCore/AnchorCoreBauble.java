@@ -11,16 +11,17 @@ import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import it.unimi.dsi.fastutil.Pair;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.neoforged.neoforge.common.world.chunk.RegisterTicketControllersEvent;
 import net.neoforged.neoforge.common.world.chunk.TicketController;
+import net.neoforged.neoforge.common.world.chunk.TicketHelper;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -29,12 +30,36 @@ import java.util.UUID;
  */
 public class AnchorCoreBauble implements IMaidBauble {
     private static final TicketController CHUNK_TICKET_CONTROLLER = new TicketController(
-            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "anchor_core"));
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "anchor_core"),
+            AnchorCoreBauble::validateTickets);
 
     private final Map<UUID, Pair<ServerLevel, ChunkPos>> maidLastKnownChunkPos = new HashMap<>();
 
     public static void registerTicketController(RegisterTicketControllersEvent event) {
         event.register(CHUNK_TICKET_CONTROLLER);
+    }
+
+    /**
+     * 读档恢复持久票据前剔除能证明过期的票据：主人的锚定记录指向别的维度或区块时，这里的票据是女仆换区块后留下的旧票据。
+     * 没有记录的票据保留：证明不了它已过期，女仆 tick 起来后由锚定核心按实际位置重新强加载并写回记录。
+     */
+    private static void validateTickets(ServerLevel level, TicketHelper helper) {
+        Map<UUID, ChunkLoadingData.LevelAndChunkPos> records = ChunkLoadingData.collectAll(level.getServer());
+        helper.getEntityTickets().forEach((maidId, tickets) -> {
+            ChunkLoadingData.LevelAndChunkPos record = records.get(maidId);
+            if (record == null) {
+                return;
+            }
+            boolean recordedHere = record.levelKey().equals(level.dimension());
+            long recordedChunk = recordedHere ? ChunkPos.asLong(record.chunkX(), record.chunkZ()) : 0L;
+            for (boolean ticking : new boolean[] {false, true}) {
+                for (long chunk : ticking ? tickets.ticking() : tickets.nonTicking()) {
+                    if (!recordedHere || chunk != recordedChunk) {
+                        helper.removeTicket(maidId, chunk, ticking);
+                    }
+                }
+            }
+        });
     }
 
     @Override
@@ -48,26 +73,46 @@ public class AnchorCoreBauble implements IMaidBauble {
         anchoredEntityMaid.maidSpell$setAnchored(true);
 
         ServerLevel serverLevel = (ServerLevel) maid.level();
-        ChunkLoadingData chunkLoadingData = Optional.ofNullable(maid.getOwner())
-                .map(o -> o.getData(ChunkLoadingData.ATTACHMENT_TYPE))
-                .orElse(null);
+        UUID maidId = maid.getUUID();
         var currentLevelAndChunkPos = Pair.of(serverLevel, maid.chunkPosition());
-        var levelAndChunkPos = maidLastKnownChunkPos.get(maid.getUUID());
-        if (!currentLevelAndChunkPos.equals(levelAndChunkPos)) {
-            if (levelAndChunkPos != null) {
-                maidLastKnownChunkPos.remove(maid.getUUID());
-                Global.LOGGER.debug("取消加载女仆 {} 上次停留区块 {}", maid.getUUID(), levelAndChunkPos.second());
-                setChunkForced(maid.getUUID(), levelAndChunkPos, false);
-            }
-            if (chunkLoadingData != null) {
-                Global.LOGGER.debug("强制加载女仆 {} 位置更新区块 {}", maid.getUUID(), maid.chunkPosition());
-                setChunkForced(maid.getUUID(), currentLevelAndChunkPos, true);
-                maidLastKnownChunkPos.put(maid.getUUID(), currentLevelAndChunkPos);
-                var chunkPosMap = chunkLoadingData.maidChunks();
-                chunkPosMap.put(maid.getUUID(), new ChunkLoadingData.LevelAndChunkPos(serverLevel.dimension(), maid.chunkPosition().x, maid.chunkPosition().z));
-            }
+        var levelAndChunkPos = maidLastKnownChunkPos.get(maidId);
+        if (currentLevelAndChunkPos.equals(levelAndChunkPos)) {
+            return;
         }
+        if (levelAndChunkPos != null) {
+            maidLastKnownChunkPos.remove(maidId);
+            Global.LOGGER.debug("取消加载女仆 {} 上次停留区块 {}", maidId, levelAndChunkPos.second());
+            setChunkForced(maidId, levelAndChunkPos, false);
+        }
+        UUID ownerId = maid.getOwnerUUID();
+        if (ownerId == null) {
+            return;
+        }
+        // 不论主人在不在线都跟着女仆转移强加载，主人离线时记录先存为待变更
+        MinecraftServer server = serverLevel.getServer();
+        var record = new ChunkLoadingData.LevelAndChunkPos(serverLevel.dimension(),
+                maid.chunkPosition().x, maid.chunkPosition().z);
+        if (levelAndChunkPos == null) {
+            releaseStaleRecordedChunk(server, ownerId, maidId, record);
+        }
+        Global.LOGGER.debug("强制加载女仆 {} 位置更新区块 {}", maidId, maid.chunkPosition());
+        setChunkForced(maidId, currentLevelAndChunkPos, true);
+        maidLastKnownChunkPos.put(maidId, currentLevelAndChunkPos);
+        ChunkLoadingData.updateRecord(server, ownerId, maidId, record);
+    }
 
+    /**
+     * 重启或女仆重新进入世界后的第一次 tick：强加载还挂在记录指向的区块上（读档恢复的持久票据），
+     * 记录与女仆实际所在区块不同时取消那里的强加载。
+     */
+    private void releaseStaleRecordedChunk(MinecraftServer server, UUID ownerId, UUID maidId,
+                                           ChunkLoadingData.LevelAndChunkPos current) {
+        ChunkLoadingData.LevelAndChunkPos recorded = ChunkLoadingData.getRecord(server, ownerId, maidId);
+        ServerLevel recordedLevel = recorded == null || recorded.equals(current) ? null : server.getLevel(recorded.levelKey());
+        if (recordedLevel != null) {
+            Global.LOGGER.debug("取消加载女仆 {} 记录中的区块 {}", maidId, recorded);
+            setChunkForced(maidId, Pair.of(recordedLevel, new ChunkPos(recorded.chunkX(), recorded.chunkZ())), false);
+        }
     }
 
     @Override
@@ -92,9 +137,10 @@ public class AnchorCoreBauble implements IMaidBauble {
             return;
         }
 
-        Optional.ofNullable(maid.getOwner())
-                .map(o -> o.getData(ChunkLoadingData.ATTACHMENT_TYPE))
-                .ifPresent(data -> data.maidChunks().remove(maid.getUUID()));
+        UUID ownerId = maid.getOwnerUUID();
+        if (ownerId != null && maid.getServer() != null) {
+            ChunkLoadingData.removeRecord(maid.getServer(), ownerId, maid.getUUID());
+        }
 
         var levelAndChunkPos = maidLastKnownChunkPos.remove(maid.getUUID());
         if (levelAndChunkPos != null) {
@@ -128,6 +174,7 @@ public class AnchorCoreBauble implements IMaidBauble {
         if (bauble instanceof AnchorCoreBauble anchorCoreBauble) {
             anchorCoreBauble.maidLastKnownChunkPos.clear();
         }
+        ChunkLoadingData.clearSessionCache();
     }
 
     public static boolean isCallerAllowed(String className) {

@@ -18,5 +18,89 @@
         "type": "event"
       }
     ]
+  },
+  "star_shadow_strike": {
+    "category": "players",
+    "subtitle": "subtitle.touhou_little_maid_spell.star_shadow_strike",
+    "sounds": [
+      {
+        "name": "touhou_little_maid_spell:spell/star_shadow_strike",
+        "volume": 1.0
+      }
+    ]
+  },
+  "entity.stellar_witch.atk1": {
+    "category": "hostile",
+    "sounds": [
+      "touhou_little_maid_spell:entity/stellar_witch/atk1"
+    ]
+  },
+  "entity.stellar_witch.atk2": {
+    "category": "hostile",
+    "sounds": [
+      "touhou_little_maid_spell:entity/stellar_witch/atk2"
+    ]
+  },
+  "entity.stellar_witch.atk3": {
+    "category": "hostile",
+    "sounds": [
+      "touhou_little_maid_spell:entity/stellar_witch/atk3"
+    ]
+  },
+  "entity.stellar_witch.atk3ready": {
+    "category": "hostile",
+    "sounds": [
+      "touhou_little_maid_spell:entity/stellar_witch/atk3ready"
+    ]
+  },
+  "entity.stellar_witch.atked": {
+    "category": "hostile",
+    "sounds": [
+      "touhou_little_maid_spell:entity/stellar_witch/atked"
+    ]
+  },
+  "entity.stellar_witch.magic01": {
+    "category": "hostile",
+    "sounds": [
+      "touhou_little_maid_spell:entity/stellar_witch/magic01"
+    ]
+  },
+  "entity.stellar_witch.magic01_shoot": {
+    "category": "hostile",
+    "sounds": [
+      "touhou_little_maid_spell:entity/stellar_witch/magic01_shoot"
+    ]
+  },
+  "entity.stellar_witch.magicbow": {
+    "category": "hostile",
+    "sounds": [
+      "touhou_little_maid_spell:entity/stellar_witch/magicbow"
+    ]
+  },
+  "entity.stellar_witch.shengyin": {
+    "category": "hostile",
+    "sounds": [
+      "touhou_little_maid_spell:entity/stellar_witch/shengyin"
+    ]
+  },
+  "music.stellar_witch": {
+    "category": "music",
+    "sounds": [
+      {
+        "name": "touhou_little_maid_spell:music/stellar_witch",
+        "stream": true,
+        "volume": 0.7
+      }
+    ]
+  },
+  "music.starfall_endshore": {
+    "category": "music",
+    "sounds": [
+      {
+        "name": "touhou_little_maid_spell:music/starfall_endshore_bgm",
+        "stream": true,
+        "volume": 0.7
+      }
+    ]
   }
 }

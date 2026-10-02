@@ -2,13 +2,19 @@ package com.github.yimeng261.maidspell;
 
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
+import com.github.yimeng261.maidspell.client.EnderPocketClientConfig;
 import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidLegacyModelPackCleaner;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
 import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
+import com.github.yimeng261.maidspell.effect.MaidSpellEffects;
 import com.github.yimeng261.maidspell.event.FoxLeafOwnerWaterWalking;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
+import com.github.yimeng261.maidspell.event.StaranchorPearlEvents;
+import com.github.yimeng261.maidspell.event.TravelerTitlesStructureEvents;
+import com.github.yimeng261.maidspell.event.WinefoxStructureMusicEvents;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
@@ -18,6 +24,7 @@ import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantInge
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
+import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
@@ -46,6 +53,8 @@ public class MaidSpellMod {
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
 
     public MaidSpellMod(IEventBus modEventBus, ModContainer modContainer, Dist dist) {
+        TouhouLittleMaidLegacyModelPackCleaner.cleanGameDirectory();
+
         // 检查依赖
         modEventBus.addListener(this::setup);
         // 注册网络消息
@@ -54,17 +63,24 @@ public class MaidSpellMod {
         // 注册额外物品数据标签
         MaidSpellDataComponents.DATA_COMPONENTS.register(modEventBus);
 
-        Registry.register(NeoForgeRegistries.ATTACHMENT_TYPES, ResourceLocation.fromNamespaceAndPath(MOD_ID, "maid-chunks"), ChunkLoadingData.ATTACHMENT_TYPE);
+        Registry.register(NeoForgeRegistries.ATTACHMENT_TYPES, ChunkLoadingData.ATTACHMENT_ID, ChunkLoadingData.ATTACHMENT_TYPE);
 
         // 手动注册事件处理器，确保事件能被正确监听
         NeoForge.EVENT_BUS.register(MaidSpellEventHandler.class);
         NeoForge.EVENT_BUS.register(FoxLeafOwnerWaterWalking.class);
+        NeoForge.EVENT_BUS.register(StaranchorPearlEvents.class);
+        NeoForge.EVENT_BUS.register(TravelerTitlesStructureEvents.class);
+        if (IronsSpellbooksCompat.isLoaded()) {
+            NeoForge.EVENT_BUS.register(WinefoxStructureMusicEvents.class);
+        }
         MaidSpellBlocks.register(modEventBus);
         MaidSpellBlockEntities.register(modEventBus);
         MaidSpellItems.register(modEventBus);
         MaidSpellCreativeTab.register(modEventBus);
         MaidSpellContainers.register(modEventBus);
         MaidSpellSounds.SOUNDS.register(modEventBus);
+        MaidSpellParticles.PARTICLES.register(modEventBus);
+        MaidSpellEffects.register(modEventBus);
         MaidSpellEntities.register(modEventBus);
         IronsSpellbooksCompat.init(modEventBus);
         CuriosCompat.init();
@@ -81,6 +97,7 @@ public class MaidSpellMod {
         }
 
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        modContainer.registerConfig(ModConfig.Type.CLIENT, EnderPocketClientConfig.SPEC, MOD_ID + "-client.toml");
         if (dist.isClient()) {
             modContainer.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
         }
@@ -89,9 +106,13 @@ public class MaidSpellMod {
     private void setup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             MaidSpellBlocks.registerPottedPlants();
+
+            // 内置女仆模型包自解压：TLM 只从 gameDir/tlm_custom_pack 读模型包。
+            // 装完后强制刷一次服务端包列表，因为 TLM 自己的 initPacks 也挂在 setup 上，顺序无保证。
             if (TouhouLittleMaidModelPackInstaller.installIfNeeded()) {
-                TouhouLittleMaidModelPackInstaller.reloadServerPacksIfNeeded();
+                TouhouLittleMaidModelPackInstaller.reloadServerPacks();
             }
+
             if (checkDependencies()) {
                 LOGGER.info("Dependencies verified - initialization complete");
             }

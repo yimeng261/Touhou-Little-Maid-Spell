@@ -1,0 +1,9 @@
+{
+  "neoforge:conditions": [{ "type": "neoforge:mod_loaded", "modid": "irons_spellbooks" }],
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    { "item": "touhou_little_maid_spell:star_meteorite" },
+    { "item": "touhou_little_maid_spell:ritual_hilt" }
+  ],
+  "result": { "id": "touhou_little_maid_spell:starglint_dagger" }
+}

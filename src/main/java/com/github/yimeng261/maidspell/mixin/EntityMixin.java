@@ -3,10 +3,14 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
+import com.github.yimeng261.maidspell.api.IBossSyncedDataGuard;
+import com.github.yimeng261.maidspell.api.IPersistentEncounterEntity;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.AnchorCoreProtection;
+import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -23,8 +27,11 @@ public class EntityMixin {
     private void maidspell$blockAnchoredMaidHardRemoval(Entity.RemovalReason reason, CallbackInfo ci) {
         try {
             Entity entity = (Entity) (Object) this;
-            if (AnchorCoreProtection.shouldBlockSetRemoved(entity, reason)) {
+            if (PersistentEntityLifecycleGuard.shouldBlockRemoval(entity, reason)) {
                 ci.cancel();
+                if (entity instanceof IPersistentEncounterEntity encounter) {
+                    encounter.maidspell$onBlockedRemoval(reason);
+                }
             }
         } catch (Exception e) {
             Global.LOGGER.error("[MaidSpell] Failed to check entity hard-removal protection", e);
@@ -79,6 +86,23 @@ public class EntityMixin {
             Global.LOGGER.error("Failed to check maid {} source", method, e);
         }
         return false;
+    }
+
+    /**
+     * 在 onSyncedDataUpdated 开头把新值转发给 {@link IBossSyncedDataGuard} 实现方，覆盖绕过 set() 直接修改同步字段的写入
+     */
+    @Inject(method = "onSyncedDataUpdated(Lnet/minecraft/network/syncher/EntityDataAccessor;)V",
+            at = @At("HEAD"), remap = true)
+    private void maidspell$observeSyncedDataUpdate(EntityDataAccessor<?> accessor, CallbackInfo ci) {
+        Entity entity = (Entity) (Object) this;
+        if (!(entity instanceof IBossSyncedDataGuard guard)) {
+            return;
+        }
+        try {
+            guard.maidspell$onSyncedDataUpdated(accessor, entity.getEntityData().get(accessor));
+        } catch (Throwable throwable) {
+            Global.LOGGER.error("Failed to observe synced data update for {}", entity.getUUID(), throwable);
+        }
     }
 
 }

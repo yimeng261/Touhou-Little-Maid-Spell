@@ -22,9 +22,7 @@ public final class IronsSpellbooksDataBridge {
 
     public static boolean isSpecialOwnerCastCase(EntityMaid maid) {
         MaidIronsSpellData data = MaidIronsSpellData.getOrCreate(maid);
-        LivingEntity currentTarget = data.getTarget();
         LivingEntity originTarget = data.getOriginTarget();
-        LivingEntity owner = maid.getOwner();
-        return currentTarget == owner && originTarget instanceof LivingEntity living && living != owner;
+        return data.isCastingAtOwner() && originTarget != null && originTarget != maid.getOwner();
     }
 }

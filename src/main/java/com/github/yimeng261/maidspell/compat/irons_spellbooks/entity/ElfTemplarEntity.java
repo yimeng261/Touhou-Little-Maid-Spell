@@ -14,6 +14,9 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.tags.EntityTypeTags;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -22,6 +25,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.ResetUniversalAngerTargetGoal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.raid.Raider;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.ItemCost;
@@ -34,7 +38,6 @@ import java.util.List;
 import java.util.Optional;
 
 public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchantWizard {
-    private static final int DAILY_TRADE_MAX_USES = 5;
     @Nullable
     private Player tradingPlayer;
     @Nullable
@@ -61,6 +64,11 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
     @Override
     protected boolean addDefaultPlayerTargetGoal() {
         return false;
+    }
+
+    @Override
+    protected boolean alertSameTypeWhenHurt() {
+        return true;
     }
 
     @Override
@@ -110,8 +118,26 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
 
     @Override
     protected void registerAdditionalGoals() {
+        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, LivingEntity.class, 10, true, false,
+                this::isNaturalEnemy));
         this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, Player.class, 10, true, false, this::isAngryAt));
         this.targetSelector.addGoal(5, new ResetUniversalAngerTargetGoal<>(this, false));
+    }
+
+    /** 同类范围法术可能触发还击；声明同盟以阻止友伤和连锁仇恨 */
+    @Override
+    public boolean isAlliedTo(Entity entity) {
+        return entity instanceof ElfTemplarEntity || super.isAlliedTo(entity);
+    }
+
+    /**
+     * 天生的敌人只有灾厄村民和不死生物，同类和同盟一律排除
+     */
+    private boolean isNaturalEnemy(LivingEntity target) {
+        if (this.isAlliedTo(target)) {
+            return false;
+        }
+        return target instanceof Raider || target.getType().is(EntityTypeTags.UNDEAD);
     }
 
     @Override
@@ -121,19 +147,32 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
 
     @Override
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {
-        boolean preventTrade = isAggressive() || this.getTarget() != null || (!this.level().isClientSide && this.getOffers().isEmpty());
-        if (!preventTrade) {
-            Level level = this.level();
-            if (!level.isClientSide && !this.getOffers().isEmpty()) {
-                if (shouldRestock()) {
-                    restock();
-                }
-                this.setTradingPlayer(player);
-                this.openTradingScreen(player, this.getDisplayName(), 0);
-            }
-            return InteractionResult.sidedSuccess(level.isClientSide);
+        if (!NpcMerchantTrading.tryOpenTrade(this, player)) {
+            return super.mobInteract(player, hand);
         }
-        return super.mobInteract(player, hand);
+        return InteractionResult.sidedSuccess(this.level().isClientSide);
+    }
+
+    @Override
+    public void aiStep() {
+        super.aiStep();
+        NpcMerchantTrading.releaseAbsentTrader(this);
+    }
+
+    /** 真正死亡后放开交易对象让界面随之关闭；死亡被取消时照常交易。尸体要过一会儿才移出世界，不能只靠 {@link #onRemovedFromLevel}。 */
+    @Override
+    public void die(DamageSource source) {
+        super.die(source);
+        if (this.isDeadOrDying()) {
+            this.stopTrading();
+        }
+    }
+
+    /** 换维度（/tp 会直接移除旧实体）、卸载或被清除后，旧实体不能再成交。 */
+    @Override
+    public void onRemovedFromLevel() {
+        super.onRemovedFromLevel();
+        this.stopTrading();
     }
 
     @Override
@@ -145,7 +184,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(MaidSpellItems.YUE_LINGLAN.get()),
                 0,
-                DAILY_TRADE_MAX_USES,
+                NpcMerchantTrading.DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -154,7 +193,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(ItemRegistry.NATURE_RUNE.get()),
                 0,
-                DAILY_TRADE_MAX_USES,
+                NpcMerchantTrading.DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -163,7 +202,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(Items.HONEY_BOTTLE),
                 0,
-                DAILY_TRADE_MAX_USES,
+                NpcMerchantTrading.DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -172,7 +211,7 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
                 Optional.empty(),
                 new ItemStack(Items.POISONOUS_POTATO, 3),
                 0,
-                DAILY_TRADE_MAX_USES,
+                NpcMerchantTrading.DAILY_TRADE_MAX_USES,
                 1,
                 0.05f
             ));
@@ -276,8 +315,8 @@ public class ElfTemplarEntity extends AbstractSpellMeleeMob implements IMerchant
             offer.getItemCostA(),
             offer.getItemCostB(),
             offer.getResult().copy(),
-            Math.min(offer.getUses(), DAILY_TRADE_MAX_USES),
-            DAILY_TRADE_MAX_USES,
+            Math.min(offer.getUses(), NpcMerchantTrading.DAILY_TRADE_MAX_USES),
+            NpcMerchantTrading.DAILY_TRADE_MAX_USES,
             offer.getXp(),
             offer.getPriceMultiplier(),
             offer.getDemand()

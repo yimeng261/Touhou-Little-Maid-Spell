@@ -1,17 +1,54 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.client;
 
+import net.neoforged.neoforge.common.NeoForge;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.MagicalWinefoxBossRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.animation.WinefoxMaidAnimationStates;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model.GenericSpellHumanoidModel;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.CompanionBlackHoleRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.GenericSpellHumanoidRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.ModifiedMagicMissileRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.SpellbreakingEchoRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.StarShadowSpearRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.StarShadowStrikeRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.WinefoxSwordProjectileRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
+import io.redspace.ironsspellbooks.entity.spells.comet.CometRenderer;
+import io.redspace.ironsspellbooks.render.ClientStaffItemExtensions;
+import net.minecraft.client.renderer.entity.NoopRenderer;
+import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 
 public final class IronsSpellbooksCompatClient {
     private IronsSpellbooksCompatClient() {
     }
 
+    /**
+     * 第三人称蓄力时换成 {@code star_shadow_spear_throwing} 模型，否则枪头朝反。
+     * 判据名沿用原版的 {@code throwing}，属性按物品注册，不会和三叉戟冲突。
+     */
+    public static void onClientSetup() {
+        // TLM 的动画状态表是全局静态的，资源重载不会清空，只能在这里注册一次。
+        WinefoxMaidAnimationStates.register();
+        NeoForge.EVENT_BUS.register(WinefoxBossMusicController.class);
+        // 坐姿常驻 BGM 与战斗 BGM 各自持有实例，靠 PlaySoundEvent 的静音闸门和 tick 里的战斗优先判定互斥。
+        NeoForge.EVENT_BUS.register(WinefoxSeatedAmbienceController.class);
+        ItemProperties.register(IronsSpellbooksCompatItems.STAR_SHADOW_SPEAR.get(), ResourceLocation.withDefaultNamespace("throwing"),
+                (stack, level, entity, seed) ->
+                        entity != null && entity.isUsingItem() && entity.getUseItem() == stack ? 1.0F : 0.0F);
+    }
+
+    /** 星影法杖沿用铁魔法法杖的持握姿势；物品渲染由 GeckoLib 通过 GeoRenderProvider 接管。 */
+    public static void onRegisterClientExtensions(RegisterClientExtensionsEvent event) {
+        event.registerItem(new ClientStaffItemExtensions(), IronsSpellbooksCompatItems.STAR_SHADOW_STAFF.get());
+    }
+
     public static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.STAR_SHADOW_SPEAR.get(), StarShadowSpearRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS.get(), MagicalWinefoxBossRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.CORRUPTED_KNIGHT.get(), context ->
                 new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
                         ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "geo/corrupted_knight.geo.json"),
@@ -24,9 +61,26 @@ public final class IronsSpellbooksCompatClient {
                 new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
                         ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "geo/elf_templar.geo.json"),
                         ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "textures/entity/elf_templar.png"))));
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.GUARDIAN_WITCH.get(), context ->
+                new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
+                        ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "geo/astro_mancer.geo.json"),
+                        ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "textures/entity/astro_mancer.png"))));
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.HOLY_CONSTRUCT.get(), context ->
                 new GenericSpellHumanoidRenderer(context, new GenericSpellHumanoidModel(
                         ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "geo/holy_construct.geo.json"),
                         ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "textures/entity/holy_construct.png"))));
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_STARFALL_CLOUD.get(), NoopRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_STARFALL_COMET.get(), context ->
+                new CometRenderer(context, 0.75F));
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.MODIFIED_MAGIC_MISSILE.get(),
+                ModifiedMagicMissileRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.WINEFOX_SWORD_PROJECTILE.get(),
+                WinefoxSwordProjectileRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.STAR_SHADOW_STRIKE.get(),
+                StarShadowStrikeRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.COMPANION_BLACK_HOLE.get(),
+                CompanionBlackHoleRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.SPELLBREAKING_ECHO.get(),
+                SpellbreakingEchoRenderer::new);
     }
 }

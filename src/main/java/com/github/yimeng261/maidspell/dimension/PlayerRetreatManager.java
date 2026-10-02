@@ -3,36 +3,35 @@ package com.github.yimeng261.maidspell.dimension;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
-import com.mojang.serialization.Dynamic;
+import com.github.yimeng261.maidspell.player.ChunkLoadingData;
+import com.github.yimeng261.maidspell.player.OfflinePlayerDataScan;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.dimension.DimensionType;
-import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import javax.annotation.Nullable;
-import java.io.File;
-import java.io.IOException;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 玩家归隐之地管理器
@@ -44,16 +43,31 @@ public class PlayerRetreatManager {
 
     private static final ResourceLocation RETREAT_TEMPLATE = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "the_retreat");
     private static final ResourceKey<Level> SHARED_RETREAT_KEY = ResourceKey.create(Registries.DIMENSION, RETREAT_TEMPLATE);
+    private static final String PRIVATE_RETREAT_PREFIX = "the_retreat_";
 
     /**
      * Valkyrien Skies 对服务器 tick 的阶段有严格约束：在某些阶段插入 addDimension/setPlayers 会直接崩。
      * VS 的 tick 周期是：preTick (setPlayers) → [游戏逻辑] → postTick
      * 我们必须在 VS tick 之前（Pre）创建维度，而不是之后（Post）
      */
-    private static final ConcurrentLinkedQueue<Runnable> START_PHASE_TASKS = new ConcurrentLinkedQueue<>();
-    private static final ConcurrentHashMap<ResourceKey<Level>, CompletableFuture<ServerLevel>> PENDING_CREATIONS =
+    private static final ConcurrentLinkedQueue<StartPhaseTask> START_PHASE_TASKS = new ConcurrentLinkedQueue<>();
+    private static final ConcurrentHashMap<ResourceKey<Level>, PendingCreation> PENDING_CREATIONS =
             new ConcurrentHashMap<>();
+    private static final AtomicLong SESSION_EPOCH = new AtomicLong();
+    private static volatile MinecraftServer activeServer;
+    private static volatile boolean acceptingRequests;
     private static volatile boolean startupRestoreComplete = false;
+
+    private record StartPhaseTask(MinecraftServer server, long epoch, Runnable action) {
+    }
+
+    private record PendingCreation(MinecraftServer server, long epoch,
+                                   CompletableFuture<ServerLevel> future) {
+    }
+
+    private record PlayerDataRetreatReferences(Map<ResourceKey<Level>, UUID> dimensions,
+                                               Set<UUID> players) {
+    }
 
     /**
      * 获取或创建玩家的归隐之地维度
@@ -78,7 +92,7 @@ public class PlayerRetreatManager {
             return CompletableFuture.failedFuture(
                     new IllegalArgumentException("Dimension is not a retreat dimension: " + dimensionKey.location()));
         }
-        UUID ownerUUID = SHARED_RETREAT_KEY.equals(dimensionKey) ? null : playerUUID;
+        UUID ownerUUID = resolvePlayerDimensionOwner(dimensionKey, playerUUID);
         return ensureDimensionReady(server, dimensionKey, ownerUUID);
     }
 
@@ -119,24 +133,44 @@ public class PlayerRetreatManager {
     private static CompletableFuture<ServerLevel> ensureDimensionReady(MinecraftServer server,
                                                                        ResourceKey<Level> dimensionKey,
                                                                        @Nullable UUID playerUUID) {
+        long epoch = SESSION_EPOCH.get();
+        if (!isActiveSession(server, epoch)) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Retreat dimension requests are not accepted for this server session"));
+        }
+
         ServerLevel loaded = resolveLoadedDimension(server, dimensionKey, playerUUID, true);
         if (loaded != null) {
             return CompletableFuture.completedFuture(loaded);
         }
 
-        CompletableFuture<ServerLevel> pending = PENDING_CREATIONS.get(dimensionKey);
-        if (pending != null) {
-            return pending;
+        PendingCreation pending = PENDING_CREATIONS.get(dimensionKey);
+        if (pending != null && pending.server() == server && pending.epoch() == epoch) {
+            return pending.future();
+        }
+        if (pending != null && PENDING_CREATIONS.remove(dimensionKey, pending)) {
+            pending.future().completeExceptionally(new IllegalStateException(
+                    "Discarded a stale retreat dimension creation request: " + dimensionKey.location()));
         }
 
         CompletableFuture<ServerLevel> creationFuture = new CompletableFuture<>();
-        CompletableFuture<ServerLevel> existing = PENDING_CREATIONS.putIfAbsent(dimensionKey, creationFuture);
+        PendingCreation creation = new PendingCreation(server, epoch, creationFuture);
+        PendingCreation existing = PENDING_CREATIONS.putIfAbsent(dimensionKey, creation);
         if (existing != null) {
-            return existing;
+            if (existing.server() == server && existing.epoch() == epoch) {
+                return existing.future();
+            }
+            creationFuture.completeExceptionally(new IllegalStateException(
+                    "A stale retreat dimension creation request is still being cleared"));
+            return creationFuture;
         }
 
-        creationFuture.whenComplete((level, throwable) -> PENDING_CREATIONS.remove(dimensionKey, creationFuture));
-        enqueueStartPhaseTask(() -> createDimensionOnStartPhase(server, dimensionKey, playerUUID, creationFuture));
+        creationFuture.whenComplete((level, throwable) -> PENDING_CREATIONS.remove(dimensionKey, creation));
+        if (!enqueueStartPhaseTask(server, epoch,
+                () -> createDimensionOnStartPhase(dimensionKey, playerUUID, creation))) {
+            creationFuture.completeExceptionally(new IllegalStateException(
+                    "Server session ended before retreat dimension creation was queued"));
+        }
         return creationFuture;
     }
 
@@ -145,15 +179,16 @@ public class PlayerRetreatManager {
                                                       ResourceKey<Level> dimensionKey,
                                                       @Nullable UUID playerUUID,
                                                       boolean updateAccessTime) {
-        if (playerUUID != null) {
-            ServerLevel cached = RetreatManager.getCachedPlayerRetreat(playerUUID);
+        UUID ownerUUID = resolvePlayerDimensionOwner(dimensionKey, playerUUID);
+        if (ownerUUID != null) {
+            ServerLevel cached = RetreatManager.getCachedPlayerRetreat(ownerUUID);
             if (cached != null
                     && cached.getServer() == server
                     && cached.dimension().equals(dimensionKey)
                     && server.getLevel(dimensionKey) == cached) {
-                cacheAndRegisterDimension(dimensionKey, cached, playerUUID);
+                cachePlayerDimension(dimensionKey, cached, ownerUUID);
                 if (updateAccessTime) {
-                    touchPlayerDimension(server, playerUUID);
+                    touchPlayerDimension(server, ownerUUID);
                 }
                 return cached;
             }
@@ -161,20 +196,27 @@ public class PlayerRetreatManager {
 
         ServerLevel existingLevel = server.getLevel(dimensionKey);
         if (existingLevel != null) {
-            cacheAndRegisterDimension(dimensionKey, existingLevel, playerUUID);
+            cachePlayerDimension(dimensionKey, existingLevel, ownerUUID);
             if (updateAccessTime) {
-                touchPlayerDimension(server, playerUUID);
+                touchPlayerDimension(server, ownerUUID);
             }
             return existingLevel;
         }
         return null;
     }
 
-    private static void createDimensionOnStartPhase(MinecraftServer server,
-                                                    ResourceKey<Level> dimensionKey,
+    private static void createDimensionOnStartPhase(ResourceKey<Level> dimensionKey,
                                                     @Nullable UUID playerUUID,
-                                                    CompletableFuture<ServerLevel> creationFuture) {
+                                                    PendingCreation creation) {
+        MinecraftServer server = creation.server();
+        CompletableFuture<ServerLevel> creationFuture = creation.future();
         if (creationFuture.isDone()) {
+            return;
+        }
+        if (!isActiveSession(server, creation.epoch())
+                || PENDING_CREATIONS.get(dimensionKey) != creation) {
+            creationFuture.completeExceptionally(new IllegalStateException(
+                    "Retreat dimension creation belongs to an inactive server session"));
             return;
         }
 
@@ -185,6 +227,7 @@ public class PlayerRetreatManager {
                 return;
             }
 
+            restoreStructureGenerated(server, dimensionKey, playerUUID);
             @SuppressWarnings("null")
             boolean success = ((MinecraftServerAccessor) server).maidspell$createWorld(dimensionKey, RETREAT_TEMPLATE);
             if (!success) {
@@ -192,6 +235,13 @@ public class PlayerRetreatManager {
                         new IllegalStateException("Failed to create retreat dimension: " + dimensionKey.location());
                 logCreationFailure(playerUUID, dimensionKey, exception);
                 creationFuture.completeExceptionally(exception);
+                return;
+            }
+
+            if (!isActiveSession(server, creation.epoch())
+                    || PENDING_CREATIONS.get(dimensionKey) != creation) {
+                creationFuture.completeExceptionally(new IllegalStateException(
+                        "Server session ended while creating retreat dimension: " + dimensionKey.location()));
                 return;
             }
 
@@ -204,9 +254,10 @@ public class PlayerRetreatManager {
                 return;
             }
 
-            cacheAndRegisterDimension(dimensionKey, newLevel, playerUUID);
-            registerPlayerDimension(server, playerUUID);
-            logCreationSuccess(playerUUID);
+            UUID ownerUUID = resolvePlayerDimensionOwner(dimensionKey, playerUUID);
+            cachePlayerDimension(dimensionKey, newLevel, ownerUUID);
+            registerPlayerDimension(server, ownerUUID);
+            logCreationSuccess(ownerUUID);
             creationFuture.complete(newLevel);
         } catch (Exception e) {
             logCreationFailure(playerUUID, dimensionKey, e);
@@ -215,22 +266,15 @@ public class PlayerRetreatManager {
     }
 
     public static synchronized void preloadPersistedRetreatState(MinecraftServer server) {
-        if (startupRestoreComplete) {
+        long epoch = SESSION_EPOCH.get();
+        if (!isActiveSession(server, epoch) || startupRestoreComplete) {
             return;
         }
 
         RetreatManager.init();
         RetreatDimensionData data = RetreatDimensionData.get(server);
-        Map<ResourceKey<Level>, UUID> playerDataDimensions = scanRetreatDimensionsFromPlayerData(server);
-        Map<ResourceKey<Level>, UUID> startupDimensions = new LinkedHashMap<>();
-
-        if (Config.enablePrivateDimensions) {
-            for (UUID playerUUID : data.getAllDimensions().keySet()) {
-                startupDimensions.putIfAbsent(TheRetreatDimension.getPlayerRetreatDimension(playerUUID), playerUUID);
-            }
-        }
-
-        playerDataDimensions.forEach(startupDimensions::putIfAbsent);
+        PlayerDataRetreatReferences playerDataReferences = scanRetreatDimensionsFromPlayerData(server);
+        Map<ResourceKey<Level>, UUID> startupDimensions = playerDataReferences.dimensions();
 
         int existingDimensions = 0;
         int createdDimensions = 0;
@@ -245,7 +289,7 @@ public class PlayerRetreatManager {
                 continue;
             }
 
-            ServerLevel createdLevel = ensureDimensionReadyImmediately(server, dimensionKey, ownerUUID);
+            ServerLevel createdLevel = ensureDimensionReadyImmediately(server, epoch, dimensionKey, ownerUUID);
             if (createdLevel != null) {
                 createdDimensions++;
             } else {
@@ -253,48 +297,65 @@ public class PlayerRetreatManager {
             }
         }
 
-        int restoredStructureFlags = 0;
-        int restoredSharedCaches = 0;
-        for (Map.Entry<UUID, RetreatDimensionData.DimensionInfo> entry : data.getAllDimensions().entrySet()) {
-            UUID playerUUID = entry.getKey();
-            RetreatDimensionData.DimensionInfo info = entry.getValue();
-            ResourceKey<Level> dimensionKey = TheRetreatDimension.getPlayerRetreatDimension(playerUUID);
-
-            if (info.structureGenerated) {
-                RetreatManager.restoreStructureGenerated(dimensionKey);
-                restoredStructureFlags++;
+        Set<UUID> protectedPlayers = new HashSet<>(playerDataReferences.players());
+        startupDimensions.values().forEach(ownerUUID -> {
+            if (ownerUUID != null) {
+                protectedPlayers.add(ownerUUID);
             }
-            if (info.foundStructurePos != null) {
-                RetreatManager.updateCache(playerUUID, info.foundStructurePos);
-                restoredSharedCaches++;
-            }
+        });
+        server.getPlayerList().getPlayers().forEach(player -> protectedPlayers.add(player.getUUID()));
+        int cleanedMetadata = 0;
+        if (Config.retreatRecordRetentionDays > 0) {
+            long retentionMillis = TimeUnit.DAYS.toMillis(Config.retreatRecordRetentionDays);
+            cleanedMetadata = data.cleanupOldDimensions(retentionMillis, protectedPlayers);
         }
 
+        if (!isActiveSession(server, epoch)) {
+            return;
+        }
         startupRestoreComplete = true;
         MaidSpellMod.LOGGER.info(
-                "Preloaded retreat state during server load: existingDimensions={}, createdDimensions={}, failedDimensions={}, playerDataRetreats={}, restoredStructureFlags={}, restoredSharedCaches={}",
-                existingDimensions,
-                createdDimensions,
-                failedDimensions,
-                playerDataDimensions.size(),
-                restoredStructureFlags,
-                restoredSharedCaches
+            "Preloaded referenced retreat levels during server load: existingDimensions={}, createdDimensions={}, failedDimensions={}, playerDataRetreats={}, protectedPlayers={}, cleanedMetadata={}",
+            existingDimensions,
+            createdDimensions,
+            failedDimensions,
+            startupDimensions.size(),
+            protectedPlayers.size(),
+            cleanedMetadata
         );
     }
 
-    private static void enqueueStartPhaseTask(Runnable task) {
-        if (task != null) {
-            START_PHASE_TASKS.add(task);
+    private static boolean enqueueStartPhaseTask(MinecraftServer server, long epoch, Runnable task) {
+        if (task == null || !isActiveSession(server, epoch)) {
+            return false;
+        }
+        START_PHASE_TASKS.add(new StartPhaseTask(server, epoch, task));
+        return true;
+    }
+
+    private static void cachePlayerDimension(ResourceKey<Level> dimensionKey,
+                                             ServerLevel level,
+                                             @Nullable UUID ownerUUID) {
+        if (ownerUUID != null) {
+            RetreatManager.cachePlayerRetreat(ownerUUID, level);
+            restoreStructureGenerated(level.getServer(), dimensionKey, ownerUUID);
         }
     }
 
-    private static void cacheAndRegisterDimension(ResourceKey<Level> dimensionKey,
-                                                  ServerLevel level,
+    /**
+     * 私人维度已经生成过结构时恢复内存里的名额。建维度之前就要调用：
+     * createWorld 恢复强加载后立即派发区块生成，名额没恢复的话，新推进到 STRUCTURE_STARTS 的候选区块会再放一座。
+     */
+    private static void restoreStructureGenerated(MinecraftServer server, ResourceKey<Level> dimensionKey,
                                                   @Nullable UUID playerUUID) {
-        if (playerUUID != null) {
-            RetreatManager.cachePlayerRetreat(playerUUID, level);
+        UUID ownerUUID = resolvePlayerDimensionOwner(dimensionKey, playerUUID);
+        if (ownerUUID == null) {
+            return;
         }
-        RetreatManager.registerDimension(dimensionKey, level);
+        RetreatDimensionData.DimensionInfo info = RetreatDimensionData.get(server).getDimensionInfo(ownerUUID);
+        if (info != null && info.structureGenerated) {
+            RetreatManager.restoreStructureGenerated(dimensionKey);
+        }
     }
 
     private static void registerPlayerDimension(MinecraftServer server, @Nullable UUID playerUUID) {
@@ -327,28 +388,42 @@ public class PlayerRetreatManager {
         }
     }
 
-    private static void clearPendingCreations() {
+    /**
+     * 使当前会话失效，终止所有待创建的维度并重置启动恢复标记
+     */
+    private static void invalidateSession(String reason) {
+        acceptingRequests = false;
+        SESSION_EPOCH.incrementAndGet();
         START_PHASE_TASKS.clear();
-        PENDING_CREATIONS.forEach((dimensionKey, future) -> future.completeExceptionally(
-                new IllegalStateException("Cleared pending retreat dimension creation: " + dimensionKey.location())));
+        PENDING_CREATIONS.forEach((dimensionKey, creation) -> creation.future().completeExceptionally(
+                new IllegalStateException(reason + ": " + dimensionKey.location())));
         PENDING_CREATIONS.clear();
         startupRestoreComplete = false;
     }
 
     @Nullable
     private static ServerLevel ensureDimensionReadyImmediately(MinecraftServer server,
+                                                               long epoch,
                                                                ResourceKey<Level> dimensionKey,
                                                                @Nullable UUID playerUUID) {
+        if (!isActiveSession(server, epoch)) {
+            return null;
+        }
         ServerLevel loaded = resolveLoadedDimension(server, dimensionKey, playerUUID, false);
         if (loaded != null) {
             return loaded;
         }
 
+        restoreStructureGenerated(server, dimensionKey, playerUUID);
         @SuppressWarnings("null")
         boolean success = ((MinecraftServerAccessor) server).maidspell$createWorld(dimensionKey, RETREAT_TEMPLATE);
         if (!success) {
             logCreationFailure(playerUUID, dimensionKey,
                     new IllegalStateException("Failed to create retreat dimension during startup: " + dimensionKey.location()));
+            return null;
+        }
+
+        if (!isActiveSession(server, epoch)) {
             return null;
         }
 
@@ -359,74 +434,95 @@ public class PlayerRetreatManager {
             return null;
         }
 
-        cacheAndRegisterDimension(dimensionKey, createdLevel, playerUUID);
-        registerPlayerDimension(server, playerUUID);
+        UUID ownerUUID = resolvePlayerDimensionOwner(dimensionKey, playerUUID);
+        cachePlayerDimension(dimensionKey, createdLevel, ownerUUID);
+        registerPlayerDimension(server, ownerUUID);
         return createdLevel;
     }
 
-    private static Map<ResourceKey<Level>, UUID> scanRetreatDimensionsFromPlayerData(MinecraftServer server) {
+    private static boolean isActiveSession(MinecraftServer server, long epoch) {
+        return server != null
+                && activeServer == server
+                && acceptingRequests
+                && SESSION_EPOCH.get() == epoch;
+    }
+
+    private static PlayerDataRetreatReferences scanRetreatDimensionsFromPlayerData(MinecraftServer server) {
         Map<ResourceKey<Level>, UUID> retreatDimensions = new LinkedHashMap<>();
-        File playerDataDir = server.getWorldPath(LevelResource.PLAYER_DATA_DIR).toFile();
-        File[] playerFiles = playerDataDir.listFiles((dir, name) -> name.endsWith(".dat"));
-        if (playerFiles == null) {
-            return retreatDimensions;
+        Set<UUID> referencedPlayers = new HashSet<>();
+        OfflinePlayerDataScan.playerDimensions(server).forEach((playerUUID, dimensionKey) -> {
+            if (TheRetreatDimension.isRetreatDimension(dimensionKey.location())) {
+                referencedPlayers.add(playerUUID);
+                retreatDimensions.putIfAbsent(dimensionKey, resolvePlayerDimensionOwner(dimensionKey, playerUUID));
+            }
+        });
+
+        // 锚定核心女仆所在的归隐之地也要预载，否则其中的强加载区块开服后不会恢复
+        ChunkLoadingData.collectAllByOwner(server).forEach((owner, anchors) -> {
+            for (ChunkLoadingData.LevelAndChunkPos anchor : anchors.values()) {
+                ResourceKey<Level> anchorKey = anchor.levelKey();
+                if (TheRetreatDimension.isRetreatDimension(anchorKey.location())) {
+                    retreatDimensions.putIfAbsent(anchorKey, resolvePlayerDimensionOwner(anchorKey, owner));
+                }
+            }
+        });
+
+        return new PlayerDataRetreatReferences(retreatDimensions, referencedPlayers);
+    }
+
+    /**
+     * 私人归隐之地的主人；共享维度或其它维度返回 null。
+     */
+    @Nullable
+    public static UUID getPrivateDimensionOwner(ResourceKey<Level> dimensionKey) {
+        return resolvePlayerDimensionOwner(dimensionKey, null);
+    }
+
+    @Nullable
+    private static UUID resolvePlayerDimensionOwner(ResourceKey<Level> dimensionKey,
+                                                    @Nullable UUID fallbackPlayerUUID) {
+        if (dimensionKey == null || SHARED_RETREAT_KEY.equals(dimensionKey)) {
+            return null;
         }
 
-        for (File playerFile : playerFiles) {
-            UUID playerUUID = parsePlayerUuid(playerFile.getName());
-            if (playerUUID == null) {
-                continue;
-            }
-
-            CompoundTag tag;
+        ResourceLocation location = dimensionKey.location();
+        if (MaidSpellMod.MOD_ID.equals(location.getNamespace())
+                && location.getPath().startsWith(PRIVATE_RETREAT_PREFIX)) {
+            String encodedUuid = location.getPath().substring(PRIVATE_RETREAT_PREFIX.length());
             try {
-                tag = NbtIo.readCompressed(playerFile.toPath(), NbtAccounter.unlimitedHeap());
-            } catch (IOException e) {
-                MaidSpellMod.LOGGER.warn("Failed to read player data while scanning retreat dimensions: {}", playerFile.getName(), e);
-                continue;
+                UUID parsed = UUID.fromString(encodedUuid.replace('_', '-'));
+                if (TheRetreatDimension.getPlayerRetreatDimension(parsed).equals(dimensionKey)) {
+                    return parsed;
+                }
+            } catch (IllegalArgumentException ignored) {
+                // 解析失败时使用调用方传入并校验过的主人
             }
-
-            ResourceKey<Level> dimensionKey = parseDimensionKey(tag);
-            if (dimensionKey == null || !TheRetreatDimension.isRetreatDimension(dimensionKey.location())) {
-                continue;
-            }
-
-            UUID ownerUUID = SHARED_RETREAT_KEY.equals(dimensionKey)
-                    ? null
-                    : (TheRetreatDimension.getPlayerRetreatDimension(playerUUID).equals(dimensionKey) ? playerUUID : null);
-            retreatDimensions.putIfAbsent(dimensionKey, ownerUUID);
         }
 
-        return retreatDimensions;
-    }
-
-    @Nullable
-    private static UUID parsePlayerUuid(String fileName) {
-        String normalized = fileName.endsWith(".dat") ? fileName.substring(0, fileName.length() - 4) : fileName;
-        try {
-            return UUID.fromString(normalized);
-        } catch (IllegalArgumentException ignored) {
-            return null;
+        if (fallbackPlayerUUID != null
+                && TheRetreatDimension.getPlayerRetreatDimension(fallbackPlayerUUID).equals(dimensionKey)) {
+            return fallbackPlayerUUID;
         }
+        return null;
     }
 
-    @Nullable
-    private static ResourceKey<Level> parseDimensionKey(CompoundTag tag) {
-        if (tag == null || !tag.contains("Dimension")) {
-            return null;
-        }
-
-        return DimensionType.parseLegacy(new Dynamic<>(NbtOps.INSTANCE, tag.get("Dimension")))
-                .resultOrPartial(MaidSpellMod.LOGGER::error)
-                .orElse(null);
-    }
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Pre event) {
-        Runnable task;
+        MinecraftServer server = event.getServer();
+        long epoch = SESSION_EPOCH.get();
+        if (!isActiveSession(server, epoch)) {
+            return;
+        }
+
+        // 每 tick 在 START 阶段尽快清空队列，避免堆积
+        StartPhaseTask task;
         while ((task = START_PHASE_TASKS.poll()) != null) {
+            if (task.server() != server || task.epoch() != epoch || !isActiveSession(server, epoch)) {
+                continue;
+            }
             try {
-                task.run();
+                task.action().run();
             } catch (Exception e) {
                 MaidSpellMod.LOGGER.error("Error while running start-phase task", e);
             }
@@ -437,18 +533,48 @@ public class PlayerRetreatManager {
 
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+        invalidateSession("Server session was replaced before retreat dimension creation completed");
         RetreatManager.shutdown();
-        clearPendingCreations();
+        activeServer = event.getServer();
+        acceptingRequests = true;
+    }
+
+    /** 归隐之地读档时、恢复强加载之前，剔除旧版寻风之铃残留的强加载。 */
+    @SubscribeEvent
+    public static void onLevelLoad(LevelEvent.Load event) {
+        if (event.getLevel() instanceof ServerLevel level
+                && TheRetreatDimension.isRetreatDimension(level.dimension().location())) {
+            RetreatManager.releaseLegacyStructureForceloads(level);
+        }
     }
 
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
-        preloadPersistedRetreatState(event.getServer());
+        MinecraftServer server = event.getServer();
+        if (isActiveSession(server, SESSION_EPOCH.get())) {
+            preloadPersistedRetreatState(server);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onServerStopping(ServerStoppingEvent event) {
+        MinecraftServer server = event.getServer();
+        if (activeServer != server) {
+            return;
+        }
+
+        invalidateSession("Server stopped before retreat dimension creation completed");
+        RetreatManager.shutdown();
     }
 
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
+        if (activeServer != event.getServer()) {
+            return;
+        }
+
+        invalidateSession("Server session ended before retreat dimension creation completed");
         RetreatManager.shutdown();
-        clearPendingCreations();
+        activeServer = null;
     }
 }

@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * 女仆法术音效注册
@@ -23,4 +24,52 @@ public class MaidSpellSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> SILENT_MERCHANT_FEEDBACK = SOUNDS.register("silent_merchant_feedback",
         () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "silent_merchant_feedback")));
 
+    public static final DeferredHolder<SoundEvent, SoundEvent> STAR_SHADOW_STRIKE = SOUNDS.register("star_shadow_strike",
+        () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "star_shadow_strike")));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_ATK_1 = registerWinefoxSound("atk1");
+    public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_ATK_2 = registerWinefoxSound("atk2");
+    public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_ATK_3 = registerWinefoxSound("atk3");
+    public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_ATK_3_READY = registerWinefoxSound("atk3ready");
+    public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_ATTACKED = registerWinefoxSound("atked");
+    public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_MAGIC = registerWinefoxSound("magic01");
+    public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_MAGIC_SHOOT = registerWinefoxSound("magic01_shoot");
+    public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_MAGIC_BOW = registerWinefoxSound("magicbow");
+    public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_VOICE = registerWinefoxSound("shengyin");
+    public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_BGM = SOUNDS.register("music.stellar_witch",
+            () -> SoundEvent.createVariableRangeEvent(
+                    ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "music.stellar_witch")));
+
+    /**
+     * 星之魔女坐姿状态下的常驻 BGM（「星途终岸」）。
+     *
+     * <p>和 {@link #WINEFOX_BGM} 一样是可变距离事件：音量不由距离衰减，而是由
+     * {@code WinefoxSeatedAmbienceSoundInstance} 自己按玩家与秋千的距离每 tick 算。
+     */
+    public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_STARFALL_ENDSHORE_BGM =
+            SOUNDS.register("music.starfall_endshore",
+                    () -> SoundEvent.createVariableRangeEvent(
+                            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "music.starfall_endshore")));
+
+    private static DeferredHolder<SoundEvent, SoundEvent> registerWinefoxSound(String name) {
+        String id = "entity.stellar_witch." + name;
+        return SOUNDS.register(id,
+                () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, id)));
+    }
+
+    @Nullable
+    public static SoundEvent getWinefoxSound(String name) {
+        return switch (name) {
+            case "atk1" -> WINEFOX_ATK_1.get();
+            case "atk2" -> WINEFOX_ATK_2.get();
+            case "atk3" -> WINEFOX_ATK_3.get();
+            case "atk3ready" -> WINEFOX_ATK_3_READY.get();
+            case "atked" -> WINEFOX_ATTACKED.get();
+            case "magic01" -> WINEFOX_MAGIC.get();
+            case "magic01_shoot" -> WINEFOX_MAGIC_SHOOT.get();
+            case "magicbow" -> WINEFOX_MAGIC_BOW.get();
+            case "shengyin" -> WINEFOX_VOICE.get();
+            default -> null;
+        };
+    }
 }

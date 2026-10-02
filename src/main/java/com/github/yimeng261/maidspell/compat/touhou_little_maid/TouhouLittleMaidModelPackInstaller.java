@@ -13,30 +13,30 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 
+/**
+ * 将内置模型包解压到 TLM 的 {@code tlm_custom_pack} 目录。
+ * TLM 1.5.x 的客户端和服务端加载器都从该目录读取模型包。
+ */
 public final class TouhouLittleMaidModelPackInstaller {
     private static final String TLM_MOD_ID = "touhou_little_maid";
     private static final String CUSTOM_PACK_DIR = "tlm_custom_pack";
-    private static final String PACK_NAME = "maidspell_geckolib_models-1.0.0";
-    private static final String RESOURCE_ROOT = "/tlm_custom_pack/" + PACK_NAME + "/";
-    private static boolean installedThisRun = false;
-    private static final List<String> PACK_FILES = List.of(
-            "assets/geckolib/maid_model.json",
-            "assets/geckolib/models/entity/winefox_saint.json",
-            "assets/geckolib/models/entity/winefox_saint_black.json",
-            "assets/geckolib/models/entity/winefox_elf.json",
-            "assets/geckolib/animation/winefox_saint.main.animation.json",
-            "assets/geckolib/animation/winefox_saint.condition.animation.json",
-            "assets/geckolib/animation/winefox_saint.iss.animation.json",
-            "assets/geckolib/animation/winefox_elf.main.animation.json",
-            "assets/geckolib/animation/winefox_elf.condition.animation.json",
-            "assets/geckolib/animation/winefox_elf.iss.animation.json",
-            "assets/geckolib/textures/entity/winefox_saint.png",
-            "assets/geckolib/textures/entity/winefox_saint_1.png",
-            "assets/geckolib/textures/entity/winefox_saint_black.png",
-            "assets/geckolib/textures/entity/winefox_elf.png",
-            "assets/geckolib/lang/zh_cn.json",
-            "assets/geckolib/lang/en_us.json"
-    );
+    static final String PACK_NAME = "star_witch_winefox-1.0.0";
+    static final String RESOURCE_ROOT =
+            "/assets/" + MaidSpellMod.MOD_ID + "/" + CUSTOM_PACK_DIR + "/" + PACK_NAME + "/";
+
+    /** 相对包根目录的文件清单，与 {@link #RESOURCE_ROOT} 下的实际内容一一对应。 */
+    static final List<String> PACK_FILES = List.of(
+            "pack.mcmeta",
+            "assets/touhou_little_maid_spell/maid_model.json",
+            "assets/touhou_little_maid_spell/models/entity/stellar_witch.json",
+            "assets/touhou_little_maid_spell/textures/entity/stellar_witch.png",
+            "assets/touhou_little_maid_spell/textures/maid_icon.png",
+            "assets/touhou_little_maid_spell/lang/zh_cn.lang",
+            "assets/touhou_little_maid_spell/lang/en_us.lang",
+            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.stellar_witch.main.animation.json",
+            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.stellar_witch.arm.animation.json",
+            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.stellar_witch.tlm.animation.json",
+            "assets/touhou_little_maid_spell/animation/touhou_little_maid_spell.stellar_witch.iss.animation.json");
 
     private TouhouLittleMaidModelPackInstaller() {
     }
@@ -46,7 +46,7 @@ public final class TouhouLittleMaidModelPackInstaller {
             return false;
         }
         if (!Config.autoInstallTlmModelPack) {
-            MaidSpellMod.LOGGER.info("Skipped Touhou Little Maid compatibility model pack installation (autoInstallTlmModelPack=false)");
+            MaidSpellMod.LOGGER.info("Skipped Touhou Little Maid model pack installation (autoInstallTlmModelPack=false)");
             return false;
         }
 
@@ -56,19 +56,22 @@ public final class TouhouLittleMaidModelPackInstaller {
             for (String relativePath : PACK_FILES) {
                 copyBundledResource(relativePath, packRoot.resolve(relativePath));
             }
-            installedThisRun = true;
-            MaidSpellMod.LOGGER.info("Installed Touhou Little Maid compatibility model pack at {}", packRoot);
+            MaidSpellMod.LOGGER.info("Installed Touhou Little Maid model pack at {}", packRoot);
             return true;
         } catch (IOException e) {
-            MaidSpellMod.LOGGER.error("Failed to install Touhou Little Maid compatibility model pack", e);
+            MaidSpellMod.LOGGER.error("Failed to install Touhou Little Maid model pack", e);
             return false;
         }
     }
 
-    public static void reloadServerPacksIfNeeded() {
-        if (!installedThisRun || !ModList.get().isLoaded(TLM_MOD_ID)) {
-            return;
-        }
+    /**
+     * 装完之后强制刷一次服务端的包列表。只在 {@link #installIfNeeded()} 返回 true 之后调用。
+     *
+     * <p>TLM 的服务端读包挂在它自己的 {@code FMLCommonSetupEvent} 上，和我们这边谁先谁后
+     * 没有保证；无条件重载一次，两种顺序都对。客户端不用管，它的首次
+     * {@code CustomPackLoader.reloadPacks()} 发生在初次资源重载，晚于 setup。
+     */
+    public static void reloadServerPacks() {
         ServerCustomPackLoader.reloadPacks();
     }
 

@@ -3,6 +3,8 @@ package com.github.yimeng261.maidspell.network.message;
 import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.IBackpackContainerScreen;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration;
+import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen;
+import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
@@ -13,7 +15,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,11 +24,15 @@ import java.util.List;
  * @since 2025-10-25 21:03
  */
 public record S2CEnderPocketPushUpdate(List<EnderPocketService.EnderPocketMaidInfo> maidInfos, boolean fromMaidBackpack) implements CustomPacketPayload {
+    public S2CEnderPocketPushUpdate {
+        maidInfos = EnderPocketService.EnderPocketMaidInfo.copyLimited(maidInfos);
+    }
+
     public static final Type<S2CEnderPocketPushUpdate> TYPE
             = new Type<>(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "ender_pocket_server_push_update"));
 
     public static final StreamCodec<ByteBuf, S2CEnderPocketPushUpdate> STREAM_CODEC = StreamCodec.composite(
-            EnderPocketService.EnderPocketMaidInfo.STREAM_CODEC.apply(ByteBufCodecs.collection(ArrayList::new)),
+            EnderPocketService.EnderPocketMaidInfo.LIST_STREAM_CODEC,
             S2CEnderPocketPushUpdate::maidInfos,
             ByteBufCodecs.BOOL,
             S2CEnderPocketPushUpdate::fromMaidBackpack,
@@ -44,10 +49,13 @@ public record S2CEnderPocketPushUpdate(List<EnderPocketService.EnderPocketMaidIn
         Minecraft mc = Minecraft.getInstance();
         // 服务器主动推送的数据更新
         MaidBackpackEnderPocketIntegration.updateEnderPocketData(maidInfos());
+        EnderPocketHudOverlay.update(maidInfos());
 
         // 如果当前在女仆背包界面，刷新界面
         if (mc.screen instanceof IBackpackContainerScreen) {
             mc.screen.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+        } else if (mc.screen instanceof EnderPocketScreen screen) {
+            screen.updateMaidInfos(maidInfos());
         }
     }
 }

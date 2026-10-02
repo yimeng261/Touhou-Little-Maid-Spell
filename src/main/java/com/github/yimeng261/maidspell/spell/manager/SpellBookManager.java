@@ -1,8 +1,10 @@
 package com.github.yimeng261.maidspell.spell.manager;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.mojang.logging.LogUtils;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.item.ItemStack;
@@ -24,9 +26,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SpellBookManager {
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    // 女仆管理器实例缓存 - 使用ConcurrentHashMap保证线程安全
-    private static final Map<UUID, SpellBookManager> MAID_MANAGERS = new ConcurrentHashMap<>();
-
+    private static final int UNLOAD_RETENTION_TICKS = 100;
+    private static final SpellBookManager INSTANCE = new SpellBookManager();
+    private static final Map<UUID, Long> pendingRemovalDeadlines = new ConcurrentHashMap<>();
 
     private static final Map<String, ISpellBookProvider<?, ?>> providerMap = new ConcurrentHashMap<>();
     
@@ -34,9 +36,6 @@ public class SpellBookManager {
     private static volatile List<ISpellBookProvider<?, ?>> immutableProviders = null;
 
     public static final List<String> loadedMods = new ArrayList<>();
-
-    // 女仆实体存储为每个管理器的上下文
-    private EntityMaid maid;
 
     static {
         // 静态初始化：注册所有已知的提供者
@@ -54,6 +53,7 @@ public class SpellBookManager {
         registerProviderFactory("ars_nouveau", "ArsNouveauProvider", "com.github.yimeng261.maidspell.spell.providers.ArsNouveauProvider");
         registerProviderFactory("psi", "PsiProvider", "com.github.yimeng261.maidspell.spell.providers.PsiProvider");
         registerProviderFactory("goety", "GoetyProvider", "com.github.yimeng261.maidspell.spell.providers.GoetyProvider");
+        registerProviderFactory("usefulmagic", "UsefulMagicProvider", "com.github.yimeng261.maidspell.spell.providers.UsefulMagicProvider");
         registerProviderFactory("slashblade", "SlashBladeProvider", "com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider");
     }
 
@@ -81,56 +81,101 @@ public class SpellBookManager {
     }
 
 
-    /**
-     * 为特定女仆创建管理器实例（私有构造函数）
-     */
-    private SpellBookManager(EntityMaid maid) {
-        this.maid = maid;
+    private SpellBookManager() {
     }
 
-
     /**
-     * 获取或创建女仆的管理器实例
-     * 如果该女仆已有管理器实例，则返回现有的；否则创建新的
+     * 兼容入口，管理器不再按女仆保存状态，所有女仆共用同一实例
      *
      * @param maid 女仆实体
      * @return 该女仆对应的SpellBookManager实例
      */
     public static SpellBookManager getOrCreateManager(EntityMaid maid) {
-        UUID maidUUID = maid.getUUID();
-
-        // 使用computeIfAbsent确保线程安全且避免重复创建
-        return MAID_MANAGERS.computeIfAbsent(maidUUID, uuid -> {
-            LOGGER.debug("Creating new SpellBookManager for maid {}", uuid);
-            return new SpellBookManager(maid);
-        });
-    }
-
-    public static SpellBookManager getManager(UUID maidUUID) {
-        return MAID_MANAGERS.get(maidUUID);
-    }
-
-    /**
-     * 移除女仆的管理器实例（当女仆被移除时调用）
-     *
-     * @param maid 女仆实体
-     */
-    public static void removeManager(EntityMaid maid) {
-        if (maid == null) {
-            return;
-        }
-
-        UUID maidUUID = maid.getUUID();
-        SpellBookManager removed = MAID_MANAGERS.remove(maidUUID);
-
-        if (removed != null) {
-            LOGGER.debug("Removed SpellBookManager for maid {}", maidUUID);
-        }
-
+        return INSTANCE;
     }
 
     public static void clearAll() {
-        MAID_MANAGERS.clear();
+        pendingRemovalDeadlines.clear();
+        for (ISpellBookProvider<?, ?> provider : INSTANCE.getProviders()) {
+            try {
+                provider.clearAllData();
+            } catch (Exception e) {
+                LOGGER.warn("Failed to clear spell provider {}", provider.getClass().getSimpleName(), e);
+            }
+        }
+    }
+
+    public void onMaidJoin(EntityMaid maid) {
+        pendingRemovalDeadlines.remove(maid.getUUID());
+        initSpellBooks(maid);
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
+            try {
+                provider.onMaidJoin(maid);
+            } catch (Exception e) {
+                LOGGER.warn("Failed to bind spell provider {} for maid {}",
+                        provider.getClass().getSimpleName(), maid.getUUID(), e);
+            }
+        }
+    }
+
+    public void onMaidLeave(EntityMaid maid, MinecraftServer server) {
+        releaseMaidRuntimeReferences(maid);
+        UUID maidId = maid.getUUID();
+        if (hasMaidData(maidId)) {
+            pendingRemovalDeadlines.put(maidId, (long) server.getTickCount() + UNLOAD_RETENTION_TICKS);
+        }
+    }
+
+    public void removeMaidData(EntityMaid maid) {
+        UUID maidId = maid.getUUID();
+        pendingRemovalDeadlines.remove(maidId);
+        releaseMaidRuntimeReferences(maid);
+        removeMaidData(maidId);
+    }
+
+    public static void tickPendingRemovals(MinecraftServer server) {
+        long currentTick = server.getTickCount();
+        pendingRemovalDeadlines.forEach((maidId, deadline) -> {
+            if (deadline <= currentTick && pendingRemovalDeadlines.remove(maidId, deadline)) {
+                INSTANCE.removeMaidData(maidId);
+            }
+        });
+    }
+
+    public void releaseMaidRuntimeReferences(EntityMaid maid) {
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
+            try {
+                provider.releaseRuntimeReferences(maid);
+            } catch (Exception e) {
+                LOGGER.warn("Failed to release runtime state for provider {} and maid {}",
+                        provider.getClass().getSimpleName(), maid.getUUID(), e);
+            }
+        }
+    }
+
+    private boolean hasMaidData(UUID maidId) {
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
+            try {
+                if (provider.hasData(maidId)) {
+                    return true;
+                }
+            } catch (Exception e) {
+                LOGGER.warn("Failed to inspect spell provider {} for maid {}",
+                        provider.getClass().getSimpleName(), maidId, e);
+            }
+        }
+        return false;
+    }
+
+    private void removeMaidData(UUID maidId) {
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
+            try {
+                provider.removeData(maidId);
+            } catch (Exception e) {
+                LOGGER.warn("Failed to remove spell provider {} data for maid {}",
+                        provider.getClass().getSimpleName(), maidId, e);
+            }
+        }
     }
 
 
@@ -162,58 +207,48 @@ public class SpellBookManager {
         return providerMap.get(modId);
     }
 
-    public static boolean hasProvider(String modId) {
-        return providerMap.containsKey(modId);
-    }
-
     public static List<String> getLoadedMods() {
         return new ArrayList<>(providerMap.keySet());
     }
 
 
-    public void stopAllCasting() {
+    public void stopAllCasting(EntityMaid maid) {
         for (ISpellBookProvider<?, ?> provider : getProviders()) {
-            if (provider.isCasting(maid)) {
-                provider.stopCasting(maid);
+            try {
+                if (provider.isCasting(maid)) {
+                    provider.stopCasting(maid);
+                }
+            } catch (Exception e) {
+                LOGGER.warn("Failed to stop provider {} for maid {}",
+                        provider.getClass().getSimpleName(), maid.getUUID(), e);
             }
         }
-    }
-
-    /**
-     * 获取关联的女仆实体
-     */
-    public EntityMaid getMaid() {
-        return maid;
-    }
-
-    public void setMaid(EntityMaid maid) {
-        this.maid = maid;
     }
 
 
     /**
      * 更新法术冷却：每次一秒
      */
-    public void updateCooldown(){
+    public void updateCooldown(EntityMaid maid){
         for (ISpellBookProvider<?, ?> provider : getProviders()) {
             provider.updateCooldown(maid);
         }
     }
 
-    public void refundCooldowns(double refundRatio) {
+    public void refundCooldowns(EntityMaid maid, double refundRatio) {
         for (ISpellBookProvider<?, ?> provider : getProviders()) {
             provider.refundCooldowns(maid, refundRatio);
         }
     }
 
 
-    public void tick(){
+    public void tick(EntityMaid maid){
         // provider tick 之前先清理失效的 ATTACK_TARGET，避免持续施法/连段对死亡或被移除的实体生效。
         LivingEntity attackTarget = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
         if (attackTarget != null && !isValidTarget(attackTarget)) {
             maid.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
             maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-            stopAllCasting();
+            stopAllCasting(maid);
             return;
         }
 
@@ -241,30 +276,28 @@ public class SpellBookManager {
 
         // 每秒更新法术冷却
         if(maid.tickCount % 20 == 0){
-            updateCooldown();
+            updateCooldown(maid);
         }
     }
 
     private static boolean isValidTarget(LivingEntity target) {
-        return target != null && target.isAlive() && !target.isDeadOrDying() && !target.isRemoved();
+        return IAuthoritativeHealth.validCombatTarget(target);
     }
 
-    public void initSpellBooks(){
-        // 先清理所有法术容器
-        for (ISpellBookProvider<?, ?> provider : getProviders()) {
-            provider.clearSpellItems(maid);
-        }
-
+    public void initSpellBooks(EntityMaid maid){
         CombinedInvWrapper wrapper = maid.getAvailableInv(true);
-
-        for(int i=0;i< wrapper.getSlots();i++){
-            ItemStack itemStack = wrapper.getStackInSlot(i);
-            // 更新每个提供者的法术书
-            for (ISpellBookProvider<?, ?> provider : getProviders()) {
-                provider.handleItemStack(maid, itemStack, true);
+        for (ISpellBookProvider<?, ?> provider : getProviders()) {
+            try {
+                provider.clearSpellItems(maid);
+                for (int slot = 0; slot < wrapper.getSlots(); slot++) {
+                    ItemStack itemStack = wrapper.getStackInSlot(slot);
+                    provider.handleItemStack(maid, itemStack, true);
+                }
+            } catch (Exception e) {
+                LOGGER.warn("Failed to rebuild spell books for provider {} and maid {}",
+                        provider.getClass().getSimpleName(), maid.getUUID(), e);
             }
         }
-
     }
 
     public void removeSpellItem(EntityMaid maid, ItemStack itemStack) {

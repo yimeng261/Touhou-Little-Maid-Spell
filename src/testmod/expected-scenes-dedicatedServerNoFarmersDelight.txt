@@ -1,0 +1,6 @@
+# dedicatedServerNoFarmersDelight 拓扑的场景清单（全套模组减农夫乐事与妖怪的归家）
+# 不装农夫乐事（连带不装妖怪的归家）
+touhou_little_maid_spell.no_farmers_delight.noDataLoadErrors
+touhou_little_maid_spell.no_farmers_delight.shadowAssassinDrops
+touhou_little_maid_spell.no_farmers_delight.rapierOnlySharpness
+touhou_little_maid_spell.no_farmers_delight.cafeNotRegistered

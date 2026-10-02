@@ -1,3 +1,8 @@
+# 统一使用 LF，仅 Windows 批处理脚本保留 CRLF
+* text=auto eol=lf
+# 批处理脚本不做换行规范化，仓库里原样存 CRLF
+gradlew.bat -text
+
 # Disable autocrlf on generated files, they always generate with LF
 # Add any extra files or paths here to make git stop saying they
 # are changed when only line endings change.

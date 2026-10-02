@@ -1,7 +1,19 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
   "type": "minecraft:entity",
   "pools": [
     {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "farmersdelight"
+        }
+      ],
       "rolls": 1,
       "entries": [
         {
@@ -18,6 +30,45 @@
                   "levels": {
                     "minecraft:sharpness": 5,
                     "farmersdelight:backstabbing": 3
+                  }
+                },
+                "irons_spellbooks:spell_container": {
+                  "maxSpells": 1,
+                  "mustEquip": false,
+                  "data": [{"level": 3, "index": 0, "id": "irons_spellbooks:shadow_slash"}],
+                  "spellWheel": true
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "neoforge:conditions": [
+        {
+          "type": "neoforge:not",
+          "value": {
+            "type": "neoforge:mod_loaded",
+            "modid": "farmersdelight"
+          }
+        }
+      ],
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "irons_spellbooks:amethyst_rapier",
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "minecraft:damage": 1500,
+                "minecraft:repair_cost": 3,
+                "minecraft:custom_name": "{\"translate\":\"item.touhou_little_maid_spell.loot.shadow_assassin_rapier\"}",
+                "minecraft:enchantments": {
+                  "levels": {
+                    "minecraft:sharpness": 5
                   }
                 },
                 "irons_spellbooks:spell_container": {

@@ -20,7 +20,6 @@ public abstract class IMaidSpellData {
     // === 基本状态 ===
     protected LivingEntity target;
     protected final List<ItemStack> spellBooks = new ArrayList<>();
-    protected final Set<Class<?>> spellBookKinds = new HashSet<>();
     protected boolean isCasting = false;
 
 
@@ -72,12 +71,12 @@ public abstract class IMaidSpellData {
             }
         }
         spellBooks.add(spellBook);
-        spellBookKinds.add(spellBook.getItem().getClass());
     }
 
     protected boolean canAddSpellBook(ItemStack spellBook) {
         Class<?> spellBookClass = spellBook.getItem().getClass();
-        for(Class<?> spellBookKind : spellBookKinds) {
+        for (ItemStack existingSpellBook : spellBooks) {
+            Class<?> spellBookKind = existingSpellBook.getItem().getClass();
             if(spellBookKind.isAssignableFrom(spellBookClass)||spellBookClass.isAssignableFrom(spellBookKind)) {
                 return false;
             }
@@ -98,7 +97,6 @@ public abstract class IMaidSpellData {
             ItemStack spellBookItem = iterator.next();
             if (ItemStack.isSameItemSameComponents(spellBookItem, spellBook)) {
                 iterator.remove();
-                rebuildSpellBookKinds();
                 return;
             }
         }
@@ -109,18 +107,10 @@ public abstract class IMaidSpellData {
         while (iterator.hasNext()) {
             if (iterator.next() == spellBook) {
                 iterator.remove();
-                rebuildSpellBookKinds();
                 return true;
             }
         }
         return false;
-    }
-
-    protected void rebuildSpellBookKinds() {
-        spellBookKinds.clear();
-        for (ItemStack spellBook : spellBooks) {
-            spellBookKinds.add(spellBook.getItem().getClass());
-        }
     }
 
     /**
@@ -128,7 +118,6 @@ public abstract class IMaidSpellData {
      */
     public void clearSpellBooks() {
         spellBooks.clear();
-        spellBookKinds.clear();
     }
 
     /**
@@ -159,6 +148,13 @@ public abstract class IMaidSpellData {
     public void resetCastingState() {
         this.isCasting = false;
         this.target = null;
+    }
+
+    /**
+     * 释放实体与第三方运行时引用，保留法术书和冷却
+     */
+    public void releaseRuntimeReferences() {
+        resetCastingState();
     }
 
     public boolean isSpellOnCooldown(String spellId) {

@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.spell.providers;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidGoetySpellData;
@@ -11,13 +12,13 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
-import za.co.infernos.goety.api.items.magic.IFocus;
-import za.co.infernos.goety.api.magic.IChargingSpell;
-import za.co.infernos.goety.api.magic.ISpell;
-import za.co.infernos.goety.common.items.handler.FocusBagItemHandler;
-import za.co.infernos.goety.common.items.magic.FocusBag;
-import za.co.infernos.goety.common.magic.SpellStat;
-import za.co.infernos.goety.utils.WandUtil;
+import com.Polarice3.Goety.api.items.magic.IFocus;
+import com.Polarice3.Goety.api.magic.IChargingSpell;
+import com.Polarice3.Goety.api.magic.ISpell;
+import com.Polarice3.Goety.common.items.handler.FocusBagItemHandler;
+import com.Polarice3.Goety.common.items.magic.FocusBag;
+import com.Polarice3.Goety.common.magic.SpellStat;
+import com.Polarice3.Goety.utils.WandUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +38,8 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
      * 构造函数，绑定 MaidGoetySpellData 数据类型
      */
     public GoetyProvider() {
-        super(MaidGoetySpellData::getOrCreate, ItemStack.class);
+        super(MaidGoetySpellData::getOrCreate, MaidGoetySpellData::get,
+                MaidGoetySpellData::remove, MaidGoetySpellData::clearAll, ItemStack.class);
     }
 
     @Override
@@ -77,7 +79,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
 
         // 检查目标（只在开始施法时检查一次）
         LivingEntity target = data.getTarget();
-        if (target == null || !target.isAlive()) {
+        if (!IAuthoritativeHealth.combatAlive(target)) {
             return;
         }
 
@@ -225,34 +227,12 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
         LivingEntity target = data.getTarget();
 
         // 只有当目标存在且存活时才更新朝向
-        if (target != null && target.isAlive()) {
+        if (IAuthoritativeHealth.combatAlive(target)) {
             BehaviorUtils.lookAtEntity(maid, target);
             // Goety 的投射物会立即读取 caster.getViewVector；非蓄力瞬发法术也必须同步精确朝向。
-            updatePreciseOrientation(maid, data);
+            updatePreciseOrientation(maid, target);
         }
         // 如果目标不存在，保持当前朝向继续施法
-    }
-
-    private void updatePreciseOrientation(EntityMaid maid, MaidGoetySpellData data) {
-        LivingEntity target = data.getTarget();
-        if (target == null) return;
-
-        double dx = target.getX() - maid.getX();
-        double dy = target.getEyeY() - maid.getEyeY();
-        double dz = target.getZ() - maid.getZ();
-        double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-
-        float yaw = (float) (Math.atan2(dz, dx) * 180.0 / Math.PI) - 90.0F;
-        float pitch = (float) (-(Math.atan2(dy, horizontalDistance) * 180.0 / Math.PI));
-
-        maid.setYRot(yaw);
-        maid.setXRot(pitch);
-        maid.setYHeadRot(yaw);
-        maid.yBodyRot = yaw;
-        maid.yRotO = yaw;
-        maid.xRotO = pitch;
-        maid.yHeadRotO = yaw;
-        maid.yBodyRotO = yaw;
     }
 
     private void processSpellCasting(EntityMaid maid) {

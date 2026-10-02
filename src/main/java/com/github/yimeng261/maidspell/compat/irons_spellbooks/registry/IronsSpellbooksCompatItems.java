@@ -1,6 +1,10 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.registry;
 
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowSpearItem;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarWitchHatItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.DeferredSpawnEggItem;
@@ -31,12 +35,40 @@ public final class IronsSpellbooksCompatItems {
                             0xD9E8B5,
                             new Item.Properties()));
 
+    public static final DeferredItem<Item> GUARDIAN_WITCH_SPAWN_EGG =
+            ITEMS.register("astro_mancer_spawn_egg",
+                    () -> new DeferredSpawnEggItem(IronsSpellbooksCompatEntities.GUARDIAN_WITCH,
+                            0x2E2A55,
+                            0xF2E2A8,
+                            new Item.Properties()));
+
     public static final DeferredItem<Item> HOLY_CONSTRUCT_SPAWN_EGG =
             ITEMS.register("holy_construct_spawn_egg",
                     () -> new DeferredSpawnEggItem(IronsSpellbooksCompatEntities.HOLY_CONSTRUCT,
                             0xF5EBC7,
                             0xFFD54F,
                             new Item.Properties()));
+
+    // 万法酒狐佩戴的星之魔女系列装备
+    public static final DeferredItem<Item> STAR_SHADOW_LONGSWORD =
+            ITEMS.register("star_shadow_longsword", StarShadowLongswordItem::new);
+
+    public static final DeferredItem<Item> STAR_SHADOW_STAFF =
+            ITEMS.register("star_shadow_staff", StarShadowStaffItem::new);
+
+    public static final DeferredItem<Item> STAR_WITCH_HAT =
+            ITEMS.register("star_witch_hat", StarWitchHatItem::new);
+
+    public static final DeferredItem<Item> MAGICAL_WINEFOX_BOSS_SPAWN_EGG =
+            ITEMS.register("stellar_witch_spawn_egg",
+                    () -> new DeferredSpawnEggItem(IronsSpellbooksCompatEntities.MAGICAL_WINEFOX_BOSS,
+                            0xFFFFFF,
+                            0xFFFFFF,
+                            new Item.Properties()));
+
+    // 星影投枪：星之魔女的投枪，玩家拿到后按三叉戟使用
+    public static final DeferredItem<Item> STAR_SHADOW_SPEAR =
+            ITEMS.register("star_shadow_spear", StarShadowSpearItem::new);
 
     private IronsSpellbooksCompatItems() {
     }

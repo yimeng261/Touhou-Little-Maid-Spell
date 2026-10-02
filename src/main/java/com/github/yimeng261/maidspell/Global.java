@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Holder;
@@ -217,15 +218,13 @@ public class Global {
         commonHurtHandlers.clear();
         commonHurtHandlers.add((event, maid) -> {
             LivingEntity entity = event.getEntity();
-            if (entity instanceof EntityMaid) {
-                event.setCanceled(true);
-            } else if (entity instanceof Player) {
+            if (com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver.areFriendly(maid, entity)) {
                 event.setCanceled(true);
             }
             return null;
         });
         commonHurtHandlers.add((hurtEvent, maid) -> {
-            if (maid.getTask().getUid().toString().startsWith("maidspell")) {
+            if (SpellCombatMeleeTask.UID.getNamespace().equals(maid.getTask().getUid().getNamespace())) {
                 hurtEvent.setAmount((float) (hurtEvent.getAmount() * Config.spellDamageMultiplier));
             }
             return null;
@@ -258,7 +257,10 @@ public class Global {
         }else{
             activeMaids.remove(maid);
             if(ownerUUID != null){
-                getOrCreatePlayerMaidMap(ownerUUID).remove(maid.getUUID());
+                ownerMaidRegistry.computeIfPresent(ownerUUID, (ignored, maids) -> {
+                    maids.remove(maid.getUUID());
+                    return maids.isEmpty() ? null : maids;
+                });
             }
         }
     }

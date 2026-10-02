@@ -1,10 +1,20 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.registry;
 
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.StarShadowSpearEntity;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.CorruptedKnightEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ElfTemplarEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.GuardianWitchEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.HolyConstructEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ShadowAssassinEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.CompanionBlackHoleEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedMagicMissileEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCloudEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCometEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SpellbreakingEchoEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.StarShadowStrikeEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.WinefoxSwordProjectileEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.BlockTags;
@@ -47,12 +57,97 @@ public final class IronsSpellbooksCompatEntities {
                             .clientTrackingRange(8)
                             .build("elf_templar"));
 
+    public static final DeferredHolder<EntityType<?>, EntityType<GuardianWitchEntity>> GUARDIAN_WITCH =
+            ENTITY_TYPES.register("astro_mancer",
+                    () -> EntityType.Builder.of(GuardianWitchEntity::new, MobCategory.CREATURE)
+                            .sized(0.6F, 1.95F)
+                            .clientTrackingRange(10)
+                            .build("astro_mancer"));
+
     public static final DeferredHolder<EntityType<?>, EntityType<HolyConstructEntity>> HOLY_CONSTRUCT =
             ENTITY_TYPES.register("holy_construct",
                     () -> EntityType.Builder.of(HolyConstructEntity::new, MobCategory.MONSTER)
                             .sized(0.8F, 2.5F)
                             .clientTrackingRange(10)
                             .build("holy_construct"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<ModifiedStarfallCloudEntity>> MODIFIED_STARFALL_CLOUD =
+            ENTITY_TYPES.register("starfall_modified_cloud",
+                    () -> EntityType.Builder.<ModifiedStarfallCloudEntity>of(ModifiedStarfallCloudEntity::new, MobCategory.MISC)
+                            .sized(0.1F, 0.1F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("starfall_modified_cloud"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<ModifiedStarfallCometEntity>> MODIFIED_STARFALL_COMET =
+            ENTITY_TYPES.register("starfall_modified_comet",
+                    () -> EntityType.Builder.<ModifiedStarfallCometEntity>of(ModifiedStarfallCometEntity::new, MobCategory.MISC)
+                            .sized(0.5F, 0.5F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("starfall_modified_comet"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<ModifiedMagicMissileEntity>> MODIFIED_MAGIC_MISSILE =
+            ENTITY_TYPES.register("modified_magic_missile",
+                    () -> EntityType.Builder.<ModifiedMagicMissileEntity>of(ModifiedMagicMissileEntity::new, MobCategory.MISC)
+                            .sized(0.5F, 0.5F)
+                            .clientTrackingRange(64)
+                            .build("modified_magic_missile"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<WinefoxSwordProjectileEntity>> WINEFOX_SWORD_PROJECTILE =
+            ENTITY_TYPES.register("winefox_sword_projectile",
+                    () -> EntityType.Builder.<WinefoxSwordProjectileEntity>of(WinefoxSwordProjectileEntity::new, MobCategory.MISC)
+                            .sized(0.35F, 0.35F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("winefox_sword_projectile"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<StarShadowStrikeEntity>> STAR_SHADOW_STRIKE =
+            ENTITY_TYPES.register("star_shadow_strike",
+                    () -> EntityType.Builder.<StarShadowStrikeEntity>of(StarShadowStrikeEntity::new, MobCategory.MISC)
+                            .sized(5.0F, 1.0F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("star_shadow_strike"));
+
+    /**
+     * 「伴星黑洞」用的小型黑洞载体。
+     *
+     * <p>{@code updateInterval(1)} 必须保留：实体每 tick 都要移到施法者头顶，隔帧更新会让跟随一顿一顿。
+     */
+    public static final DeferredHolder<EntityType<?>, EntityType<CompanionBlackHoleEntity>> COMPANION_BLACK_HOLE =
+            ENTITY_TYPES.register("companion_black_hole",
+                    () -> EntityType.Builder.<CompanionBlackHoleEntity>of(CompanionBlackHoleEntity::new, MobCategory.MISC)
+                            .sized(1.0F, 1.0F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("companion_black_hole"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<SpellbreakingEchoEntity>> SPELLBREAKING_ECHO =
+            ENTITY_TYPES.register("spellbreaking_echo",
+                    () -> EntityType.Builder.<SpellbreakingEchoEntity>of(SpellbreakingEchoEntity::new, MobCategory.MISC)
+                            .sized(1.0F, 1.0F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("spellbreaking_echo"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<MagicalWinefoxBossEntity>> MAGICAL_WINEFOX_BOSS =
+            ENTITY_TYPES.register("stellar_witch",
+                    () -> EntityType.Builder.of(MagicalWinefoxBossEntity::new, MobCategory.MONSTER)
+                            .sized(0.9F, 2.0F)
+                            .clientTrackingRange(10)
+                            .updateInterval(2)
+                            .build("stellar_witch"));
+
+    /** 扔出去的星影投枪。 */
+    public static final DeferredHolder<EntityType<?>, EntityType<StarShadowSpearEntity>> STAR_SHADOW_SPEAR =
+            ENTITY_TYPES.register("star_shadow_spear",
+                    () -> EntityType.Builder.<StarShadowSpearEntity>of(StarShadowSpearEntity::new, MobCategory.MISC)
+                            .sized(0.5F, 0.5F)
+                            .eyeHeight(0.13F)
+                            .clientTrackingRange(4)
+                            .updateInterval(5)
+                            .build("star_shadow_spear"));
 
     private IronsSpellbooksCompatEntities() {
     }
@@ -68,6 +163,8 @@ public final class IronsSpellbooksCompatEntities {
         event.put(SHADOW_ASSASSIN.get(), ShadowAssassinEntity.createAttributes().build());
         event.put(ELF_TEMPLAR.get(), ElfTemplarEntity.createAttributes().build());
         event.put(HOLY_CONSTRUCT.get(), HolyConstructEntity.prepareAttributes().build());
+        event.put(GUARDIAN_WITCH.get(), GuardianWitchEntity.createAttributes().build());
+        event.put(MAGICAL_WINEFOX_BOSS.get(), MagicalWinefoxBossEntity.createAttributes().build());
     }
 
     private static void onRegisterSpawnPlacements(RegisterSpawnPlacementsEvent event) {

@@ -6,6 +6,7 @@ import com.github.yimeng261.maidspell.block.custom.PottedJingxuYoulanBlock;
 import com.github.yimeng261.maidspell.block.custom.PottedScarletZhuhuaBlock;
 import com.github.yimeng261.maidspell.block.custom.PottedYueLinglanBlock;
 import com.github.yimeng261.maidspell.block.custom.ScarletZhuhuaBlock;
+import com.github.yimeng261.maidspell.block.custom.StarGlowFlowerClusterBlock;
 import com.github.yimeng261.maidspell.block.custom.SuppressionStoneBlock;
 import com.github.yimeng261.maidspell.block.custom.TransientFoxLeafTrailBlock;
 import com.github.yimeng261.maidspell.block.custom.YueLinglanBlock;
@@ -28,6 +29,9 @@ public final class MaidSpellBlocks {
 
     public static final DeferredBlock<PottedScarletZhuhuaBlock> POTTED_SCARLET_ZHUHUA =
             BLOCKS.registerBlock("potted_scarlet_zhuhua", PottedScarletZhuhuaBlock::new, ScarletZhuhuaBlock.createPottedProperties());
+
+    public static final DeferredBlock<StarGlowFlowerClusterBlock> STAR_GLOW_FLOWER_CLUSTER =
+            BLOCKS.register("star_glow_flower_cluster", StarGlowFlowerClusterBlock::new);
 
     public static final DeferredBlock<YueLinglanBlock> YUE_LINGLAN =
             BLOCKS.registerBlock("yue_linglan", YueLinglanBlock::new, YueLinglanBlock.createProperties());

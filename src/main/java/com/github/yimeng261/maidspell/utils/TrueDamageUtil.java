@@ -1,6 +1,8 @@
 package com.github.yimeng261.maidspell.utils;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
+import com.github.yimeng261.maidspell.api.ITrueDamageRedirect;
 import com.github.yimeng261.maidspell.mixin.LivingEntityAccessor;
 import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityInvoker;
 import com.mojang.logging.LogUtils;
@@ -23,10 +25,18 @@ public class TrueDamageUtil {
     private static final float FAILED_ATTEMPT_GAP = Float.POSITIVE_INFINITY;
     private static final Queue<TrueDamageRequest> TRUE_DAMAGE_QUEUE = new ConcurrentLinkedQueue<>();
     private static final int MAX_QUEUED_DAMAGE_PER_TICK = 2048;
+    private static boolean applyingQueuedDamage;
+
+    public static boolean isApplyingQueuedDamage() {
+        return applyingQueuedDamage;
+    }
 
     public static boolean dealTrueDamage(LivingEntity target, float damage, LivingEntity attacker) {
         if (canNotBeApplied(target) || damage <= 0.0f || target.level().isClientSide()) {
             return false;
+        }
+        if (target instanceof ITrueDamageRedirect redirect) {
+            redirect.maidspell$onTrueDamageQueued();
         }
         TRUE_DAMAGE_QUEUE.offer(new TrueDamageRequest(target, damage, attacker));
         return true;
@@ -42,7 +52,7 @@ public class TrueDamageUtil {
         TrueDamageRequest request;
         while (drained++ < MAX_QUEUED_DAMAGE_PER_TICK && (request = TRUE_DAMAGE_QUEUE.poll()) != null) {
             LivingEntity target = request.target.get();
-            if (canNotBeApplied(target) || !target.isAlive() || target.isRemoved()) {
+            if (canNotBeApplied(target) || !IAuthoritativeHealth.combatAlive(target)) {
                 continue;
             }
             LivingEntity attacker = request.attacker.get();
@@ -54,7 +64,17 @@ public class TrueDamageUtil {
 
         aggregated.values().forEach(damage -> {
             LivingEntity target = damage.target.get();
-            if (canNotBeApplied(target) || !target.isAlive() || target.isRemoved()) {
+            if (canNotBeApplied(target) || !IAuthoritativeHealth.combatAlive(target)) {
+                return;
+            }
+            if (target instanceof ITrueDamageRedirect redirect) {
+                // 这类实体的伤害契约挂在 hurt() 上，直写血量会绕过它
+                applyingQueuedDamage = true;
+                try {
+                    redirect.maidspell$redirectTrueDamage(damage.amount, damage.attacker);
+                } finally {
+                    applyingQueuedDamage = false;
+                }
                 return;
             }
             float currentHealth = target.getHealth();
@@ -111,6 +131,10 @@ public class TrueDamageUtil {
 
     public static boolean setNewHealth(LivingEntity target, float newHealth, LivingEntity attacker) {
         if (canNotBeApplied(target)) {
+            return false;
+        }
+        if (target instanceof ITrueDamageRedirect) {
+            // 直写血量（包括回滚到记录值）会绕过 hurt()，对这类实体始终关闭
             return false;
         }
 

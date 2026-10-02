@@ -11,4 +11,10 @@ public interface LivingEntityAccessor {
     static EntityDataAccessor<Float> getDataHealthIdAccessor() {
         throw new AssertionError();
     }
+
+    @Accessor("lastHurt")
+    float maidspell$getLastHurt();
+
+    @Accessor("lastHurt")
+    void maidspell$setLastHurt(float value);
 }

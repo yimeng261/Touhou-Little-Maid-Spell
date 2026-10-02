@@ -1,0 +1,20 @@
+{
+  "sortnum": 2,
+  "name": "patchouli.touhou_little_maid.book.entries.wanfa_jietong.structures.name",
+  "icon": "touhou_little_maid_spell:hairpin",
+  "category": "touhou_little_maid:wanfa_jietong",
+  "pages": [
+    {
+      "type": "text",
+      "text": "patchouli.touhou_little_maid.book.entries.wanfa_jietong.structures.pages.0.text"
+    },
+    {
+      "type": "image",
+      "images": [
+        "touhou_little_maid_spell:textures/patchouli/wanfa_jietong/structures.png"
+      ],
+      "border": true,
+      "text": "patchouli.touhou_little_maid.book.entries.wanfa_jietong.structures.pages.1.text"
+    }
+  ]
+}

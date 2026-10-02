@@ -54,7 +54,7 @@ public class EntityMaidGuiMovementMixin {
 
         EntityMaid maid = (EntityMaid) (Object) this;
         SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
-        manager.stopAllCasting();
+        manager.stopAllCasting(maid);
         maid.getNavigation().stop();
         maid.getMoveControl().strafe(0, 0);
     }

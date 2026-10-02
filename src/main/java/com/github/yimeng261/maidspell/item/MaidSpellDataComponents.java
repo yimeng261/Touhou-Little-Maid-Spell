@@ -39,6 +39,14 @@ public class MaidSpellDataComponents {
         .persistent(Codec.LONG)
         .build());
 
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Long>> SPRING_BLOOM_RETURN_GAIN_COOLDOWN_UNTIL = DATA_COMPONENTS.register("spring_bloom_return_gain_cooldown_until", key -> DataComponentType.<Long>builder()
+        .persistent(Codec.LONG)
+        .build());
+
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> SPRING_BLOOM_RETURN_CLOCK_VERSION = DATA_COMPONENTS.register("spring_bloom_return_clock_version", key -> DataComponentType.<Integer>builder()
+        .persistent(Codec.INT)
+        .build());
+
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Long>> SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_UNTIL = DATA_COMPONENTS.register("spring_bloom_return_trigger_cooldown_until", key -> DataComponentType.<Long>builder()
         .persistent(Codec.LONG)
         .build());
@@ -47,7 +55,17 @@ public class MaidSpellDataComponents {
         .persistent(Codec.LONG.listOf())
         .build());
 
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> DREAM_CRYSTAL_REVIVE_CLOCK_VERSION = DATA_COMPONENTS.register("dream_crystal_revive_clock_version", key -> DataComponentType.<Integer>builder()
+        .persistent(Codec.INT)
+        .build());
+
+    /** 旧版本按 tick 倒数的无敌时间，只在读到旧物品时换算成 {@link #DREAM_CRYSTAL_INVULNERABLE_UNTIL} */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> DREAM_CRYSTAL_INVULNERABLE_TICKS = DATA_COMPONENTS.register("dream_crystal_invulnerable_ticks", key -> DataComponentType.<Integer>builder()
         .persistent(Codec.INT)
+        .build());
+
+    /** 复活后无敌的截止时间（主世界游戏时间），只在复活和到期时各写一次 */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Long>> DREAM_CRYSTAL_INVULNERABLE_UNTIL = DATA_COMPONENTS.register("dream_crystal_invulnerable_until", key -> DataComponentType.<Long>builder()
+        .persistent(Codec.LONG)
         .build());
 }

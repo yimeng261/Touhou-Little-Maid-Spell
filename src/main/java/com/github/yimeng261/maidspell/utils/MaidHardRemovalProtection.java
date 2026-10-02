@@ -10,7 +10,6 @@ import com.github.yimeng261.maidspell.network.message.MaidClientRemovalGuardMess
 import com.github.yimeng261.maidspell.network.message.MaidEntityRestoreMessage;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
@@ -29,7 +28,6 @@ import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -279,24 +277,7 @@ public final class MaidHardRemovalProtection {
             Global.LOGGER.warn("[MaidSpell] Failed to serialize maid {} for client restore packet", maid.getUUID(), e);
             entityTag = new CompoundTag();
         }
-
-        List<SynchedEntityData.DataValue<?>> entityData = maid.getEntityData().getNonDefaultValues();
-        if (entityData == null) {
-            entityData = Collections.emptyList();
-        }
-
-        return new MaidEntityRestoreMessage(
-                maid.getId(),
-                maid.getUUID(),
-                BuiltInRegistries.ENTITY_TYPE.getKey(maid.getType()),
-                entityTag,
-                entityData,
-                maid.getX(),
-                maid.getY(),
-                maid.getZ(),
-                maid.getYRot(),
-                maid.getXRot()
-        );
+        return MaidEntityRestoreMessage.of(maid, entityTag);
     }
 
     private static void syncPendingClientRestores(MinecraftServer server) {

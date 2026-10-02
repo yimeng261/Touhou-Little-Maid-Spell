@@ -16,7 +16,9 @@ import net.minecraft.world.level.storage.DimensionDataStorage;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -45,7 +47,7 @@ public class RetreatDimensionData extends SavedData {
         // 共享模式专属字段
         public int structureQuota;      // 结构配额（0=无配额，1=有一个配额）
         @Nullable
-        public BlockPos foundStructurePos; // 已找到的结构位置（持久化，共享模式下用于重复查看）
+        public BlockPos foundStructurePos; // 已知的结构位置（共享模式用于重复查看；私人模式为生成时的起点，用作搜索中心）
 
         // 私人模式专属字段
         public boolean structureGenerated; // 结构是否已生成（持久化，防止重启后重复生成）
@@ -260,21 +262,62 @@ public class RetreatDimensionData extends SavedData {
     }
 
     /**
-     * 获取所有玩家维度信息
+     * 清理长时间未访问的维度记录（可选功能）
      */
-    public Map<UUID, DimensionInfo> getAllDimensions() {
-        return new HashMap<>(playerDimensions);
+    public int cleanupOldDimensions(long maxInactiveTime, Set<UUID> protectedPlayers) {
+        if (maxInactiveTime <= 0L) {
+            return 0;
+        }
+
+        long currentTime = System.currentTimeMillis();
+        Set<UUID> protectedIds = protectedPlayers == null ? Set.of() : protectedPlayers;
+        int removedCount = 0;
+        Iterator<Map.Entry<UUID, DimensionInfo>> iterator = playerDimensions.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, DimensionInfo> entry = iterator.next();
+            DimensionInfo info = entry.getValue();
+            if (protectedIds.contains(entry.getKey()) || !isEmptyMetadata(info)
+                    || info.lastAccessTime <= 0L || info.lastAccessTime > currentTime) {
+                continue;
+            }
+            if (currentTime - info.lastAccessTime > maxInactiveTime) {
+                iterator.remove();
+                removedCount++;
+                MaidSpellMod.LOGGER.info("Cleaned up inactive empty retreat metadata for player: {}", entry.getKey());
+            }
+        }
+        if (removedCount > 0) {
+            setDirty();
+        }
+        return removedCount;
+    }
+
+    private static boolean isEmptyMetadata(DimensionInfo info) {
+        return info.structureQuota == 0
+            && info.foundStructurePos == null
+            && !info.structureGenerated
+            && info.pendingRestoreDimension == null
+            && info.pendingRestorePos == null;
     }
 
     /**
-     * 标记玩家维度的结构已生成（私人模式持久化）
+     * 标记玩家维度的结构已生成并记下位置（私人模式持久化），位置供寻风之铃作搜索中心
      */
-    public void markStructureGenerated(UUID playerUUID) {
+    public void markStructureGenerated(UUID playerUUID, BlockPos pos) {
         DimensionInfo info = playerDimensions.get(playerUUID);
-        if (info != null && !info.structureGenerated) {
+        if (info == null) {
+            return;
+        }
+        if (!info.structureGenerated) {
             info.structureGenerated = true;
+            info.foundStructurePos = pos;
             setDirty();
-            MaidSpellMod.LOGGER.info("Persisted structure generated flag for player: {}", playerUUID);
+            MaidSpellMod.LOGGER.info("Persisted structure generated flag for player {} at {}", playerUUID, pos);
+        } else if (info.foundStructurePos == null) {
+            // 旧存档生成结构时没有记位置，寻风之铃搜到后补上
+            info.foundStructurePos = pos;
+            setDirty();
+            MaidSpellMod.LOGGER.info("Backfilled structure position for player {} at {}", playerUUID, pos);
         }
     }
 
@@ -315,25 +358,6 @@ public class RetreatDimensionData extends SavedData {
             info.pendingRestorePos = null;
             setDirty();
             MaidSpellMod.LOGGER.debug("Cleared pending retreat restore for player {}", playerUUID);
-        }
-    }
-
-    /**
-     * 清理长时间未访问的维度记录
-     */
-    public void cleanupOldDimensions(long maxInactiveTime) {
-        long currentTime = System.currentTimeMillis();
-        playerDimensions.entrySet().removeIf(entry -> {
-            DimensionInfo info = entry.getValue();
-            boolean shouldRemove = (currentTime - info.lastAccessTime) > maxInactiveTime;
-            if (shouldRemove) {
-                MaidSpellMod.LOGGER.info("Cleaned up inactive retreat dimension for player: " + entry.getKey());
-            }
-            return shouldRemove;
-        });
-
-        if (!playerDimensions.isEmpty()) {
-            setDirty();
         }
     }
 }

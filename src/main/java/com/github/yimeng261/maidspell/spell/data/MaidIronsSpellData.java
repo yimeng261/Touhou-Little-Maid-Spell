@@ -7,6 +7,7 @@ import io.redspace.ironsspellbooks.api.spells.CastSource;
 import io.redspace.ironsspellbooks.api.spells.ICastDataSerializable;
 import io.redspace.ironsspellbooks.api.spells.SpellSlot;
 import io.redspace.ironsspellbooks.capabilities.magic.RecastInstance;
+import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.Map;
@@ -24,6 +25,7 @@ public class MaidIronsSpellData extends IMaidSpellData {
 
     // === 基本状态 ===
     private LivingEntity origin_target = null;
+    private boolean castingAtOwner = false;
 
     // === 施法状态 ===
     private SpellSlot currentCastingSpell = null;
@@ -74,21 +76,41 @@ public class MaidIronsSpellData extends IMaidSpellData {
         MAID_DATA_MAP.clear();
     }
 
-    public void switchTargetToOwner(EntityMaid maid) {
-        origin_target = getTarget();
-        setTarget(maid.getOwner());
+    /**
+     * 对主人施法期间，战斗任务每 tick 同步来的敌人只记为施法结束后要切回的目标
+     */
+    @Override
+    public void setTarget(LivingEntity target) {
+        if (castingAtOwner) {
+            origin_target = target;
+            return;
+        }
+        super.setTarget(target);
     }
 
-    public void switchTargetToOrigin(EntityMaid maid) {
-        setTarget(origin_target);
+    public void switchTargetToOwner(EntityMaid maid) {
+        if (!castingAtOwner) {
+            origin_target = getTarget();
+            castingAtOwner = true;
+        }
+        this.target = maid.getOwner();
+    }
+
+    public void switchTargetToOrigin() {
+        if (!castingAtOwner) {
+            return;
+        }
+        castingAtOwner = false;
+        this.target = origin_target;
+        origin_target = null;
     }
 
     public LivingEntity getOriginTarget() {
         return origin_target;
     }
 
-    public void setOriginTarget(LivingEntity originTarget) {
-        this.origin_target = originTarget;
+    public boolean isCastingAtOwner() {
+        return castingAtOwner;
     }
 
     // === 施法状态管理 ===
@@ -156,6 +178,14 @@ public class MaidIronsSpellData extends IMaidSpellData {
         return magicData;
     }
 
+    public void bindSyncedSpellData(EntityMaid maid) {
+        magicData.setSyncedData(new SyncedSpellData(maid));
+    }
+
+    public void releaseSyncedSpellData() {
+        magicData.setSyncedData(new SyncedSpellData(-1));
+    }
+
     public MaidRecastSession getRecastSession() {
         return recastSession;
     }
@@ -177,12 +207,20 @@ public class MaidIronsSpellData extends IMaidSpellData {
 
     // === 冷却管理 ===
 
+    @Override
+    public void releaseRuntimeReferences() {
+        super.releaseRuntimeReferences();
+        this.target = null;
+    }
+
     /**
      * 重置施法状态
      */
     @Override
     public void resetCastingState() {
-        setCasting(false);
+        super.resetCastingState();
+        // 对主人的施法结束后切回原敌人
+        switchTargetToOrigin();
         currentCastingSpell = null;
         clearCurrentSpellPlayerTargetState();
         clearCachedCastSource();

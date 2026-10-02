@@ -1,10 +1,18 @@
 package com.github.yimeng261.maidspell.item;
 
+import com.Polarice3.Goety.common.items.ModItems;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
+import com.github.yimeng261.maidspell.item.bauble.staranchorPearl.StaranchorPearl;
+import com.github.yimeng261.maidspell.item.common.StarwatchCompassItem;
+import com.github.yimeng261.maidspell.item.common.NebulaCoreItem;
+import com.github.yimeng261.maidspell.item.common.StarglintMaterialItem;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCross;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
+import com.github.yimeng261.maidspell.item.block.StarGlowFlowerClusterItem;
+import com.github.yimeng261.maidspell.item.common.StarglintDaggerItem;
+import com.github.yimeng261.maidspell.item.block.SuppressionStoneItem;
 import com.github.yimeng261.maidspell.item.block.JingxuYoulanItem;
 import com.github.yimeng261.maidspell.item.block.ScarletZhuhuaItem;
 import com.github.yimeng261.maidspell.item.block.YueLinglanItem;
@@ -74,8 +82,24 @@ public class MaidSpellItems {
     // 梦云水晶
     public static final DeferredItem<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal", DreamCatCrystal::new);
 
+    // 星锚珍珠：玩家右键获得 30 秒虚空漫步，女仆佩戴可代挡虚空伤害并消耗耐久
+    public static final DeferredItem<Item> STARANCHOR_PEARL = ITEMS.register("staranchor_pearl", StaranchorPearl::new);
+
+    // 星云核心仅由合格的魔女挑战发放。
+    public static final DeferredItem<Item> NEBULA_CORE = ITEMS.register("nebula_core", NebulaCoreItem::new);
+    public static final DeferredItem<Item> STAR_METEORITE = ITEMS.register("star_meteorite",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.star_meteorite.desc"));
+    public static final DeferredItem<Item> RITUAL_HILT = ITEMS.register("ritual_hilt",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.ritual_hilt.desc"));
+    // 归星：星之魔女的誓约信物，配方要秘银锭，挂在铁魔法条件下
+    public static final DeferredItem<Item> RETURNING_STAR = ITEMS.register("returning_star",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.returning_star.desc"));
+
     // 寻风之铃
     public static final DeferredItem<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
+
+    // 观星罗盘：观星术士的战利品，在末地指向星途终岸
+    public static final DeferredItem<Item> STARWATCH_COMPASS = ITEMS.register("starwatch_compass", StarwatchCompassItem::new);
 
     public static final DeferredItem<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
         () -> new ScarletZhuhuaItem(MaidSpellBlocks.SCARLET_ZHUHUA.get()));
@@ -83,8 +107,12 @@ public class MaidSpellItems {
         () -> new YueLinglanItem(MaidSpellBlocks.YUE_LINGLAN.get()));
     public static final DeferredItem<Item> JINGXU_YOULAN = ITEMS.register("jingxu_youlan",
         () -> new JingxuYoulanItem(MaidSpellBlocks.JINGXU_YOULAN.get()));
+    public static final DeferredItem<Item> STAR_GLOW_FLOWER_CLUSTER = ITEMS.register("star_glow_flower_cluster",
+        () -> new StarGlowFlowerClusterItem(MaidSpellBlocks.STAR_GLOW_FLOWER_CLUSTER.get()));
+    public static final DeferredItem<Item> STARGLINT_DAGGER = ITEMS.register("starglint_dagger",
+        StarglintDaggerItem::new);
     public static final DeferredItem<Item> SUPPRESSION_STONE = ITEMS.register("suppression_stone",
-        () -> new BlockItem(MaidSpellBlocks.SUPPRESSION_STONE.get(), new Item.Properties()));
+        () -> new SuppressionStoneItem(MaidSpellBlocks.SUPPRESSION_STONE.get()));
 
     // 管理员工具
     public static final DeferredItem<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);
@@ -111,7 +139,7 @@ public class MaidSpellItems {
     public static Item getUnholyHat() {
         if (ModList.get().isLoaded("goety")) {
             try {
-                return za.co.infernos.goety.common.items.ModItems.UNHOLY_HAT.get();
+                return ModItems.UNHOLY_HAT.get();
             } catch (Exception e) {
                 return null;
             }

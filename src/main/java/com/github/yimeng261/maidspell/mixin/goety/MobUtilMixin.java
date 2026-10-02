@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import za.co.infernos.goety.utils.MobUtil;
+import com.Polarice3.Goety.utils.MobUtil;
 
 /**
  * Mixin到Goety的MobUtil类

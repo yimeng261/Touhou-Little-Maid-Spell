@@ -1,4 +1,10 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
   "type": "minecraft:entity",
   "pools": [
     {
@@ -163,7 +169,14 @@
                     {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_6\"}"},
                     {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_7\"}"},
                     {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_8\"}"},
-                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_9\"}"}
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_9\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_10\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_11\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_12\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_13\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_14\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_15\"}"},
+                    {"raw": "{\"translate\":\"item.touhou_little_maid_spell.loot.corrupted_knight_diary.page_16\"}"}
                   ],
                   "generation": 0
                 }

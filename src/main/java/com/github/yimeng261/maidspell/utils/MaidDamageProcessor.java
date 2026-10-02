@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.utils;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
@@ -46,7 +47,7 @@ public final class MaidDamageProcessor {
             return;
         }
         dataItem.setAmount(result.getB());
-        SoulBookBauble.lastHurtTimeMap.put(maid.getUUID(), maid.tickCount);
+        SoulBookBauble.recordHurt(maid);
     }
 
     public static void applyBaubleHandlers(DataItem dataItem, EntityMaid maid) {
@@ -91,7 +92,7 @@ public final class MaidDamageProcessor {
         if (target == null) {
             return;
         }
-        if (!target.isAlive()) {
+        if (!IAuthoritativeHealth.combatAlive(target)) {
             target = maid.getTarget();
         }
 
