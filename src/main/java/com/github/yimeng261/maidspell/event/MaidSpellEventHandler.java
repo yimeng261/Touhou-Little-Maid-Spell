@@ -751,6 +751,7 @@ public class MaidSpellEventHandler {
         EnderPocketService.tickRemoteSessions(event.getServer());
         MaidHardRemovalProtection.tick(event.getServer());
         SpellBookManager.tickPendingRemovals(event.getServer());
+        AnchorCoreBauble.validateActiveTickets(event.getServer());
     }
 
     /**

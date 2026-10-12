@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.stagewright.scenes;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.player.AnchorPendingChangeData;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.github.yimeng261.maidspell.stagewright.support.Actors;
@@ -31,6 +32,7 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.ForcedChunksSavedData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -61,6 +63,7 @@ public final class AnchorScenes {
         scenes.add(Checks.superflat("anchor.offlineOwnerRecordFollowsChunk", 40, AnchorScenes::offlineRecordFollows).withChunkRadius(3));
         scenes.add(Checks.superflat("anchor.offlineOwnerDeathDeletesRecord", 40, ctx -> offlineRecordDeleted(ctx, true)));
         scenes.add(Checks.superflat("anchor.offlineOwnerTakeOffDeletesRecord", 40, ctx -> offlineRecordDeleted(ctx, false)));
+        scenes.add(Checks.superflat("anchor.vanishedMaidTicketReleased", 100, AnchorScenes::vanishedMaidTicketReleased));
         scenes.add(Checks.superflat("anchor.otherOwnersPendingRemovalIgnored", 40, AnchorScenes::otherOwnersPending));
         scenes.add(Checks.superflat("anchor.captureBlocked", 20, AnchorScenes::captureBlocked));
         scenes.add(Checks.superflat("anchor.conversionAndLightningBlocked", 20, AnchorScenes::conversionBlocked));
@@ -130,6 +133,42 @@ public final class AnchorScenes {
             ctx.await(() -> ChunkLoadingData.getRecord(server, owner, id) == null).within(byDeath ? 30 : 10).then(() ->
                     ctx.check(pending(server, owner).get(id)).as((byDeath ? "死亡" : "卸下核心") + "后的待变更").isEqualTo(Optional.empty()));
         });
+    }
+
+    /**
+     * 离线主人的锚定女仆过了一轮周期校验仍保持强加载；之后女仆绕过正常移除凭空消失（不触发死亡和卸下，票据和记录都留着），
+     * 周期校验在区块实体已加载时判定她不在，释放票据、区块不再被实体票据强加载，并把记录记为待删。
+     */
+    private static void vanishedMaidTicketReleased(SceneContext ctx) {
+        MinecraftServer server = ctx.server();
+        ServerLevel level = ctx.level();
+        UUID owner = UUID.randomUUID();
+        EntityMaid maid = anchoredFor(ctx, owner, 0, 0);
+        UUID id = maid.getUUID();
+        ChunkPos chunk = maid.chunkPosition();
+        ctx.await(() -> ChunkLoadingData.getRecord(server, owner, id) != null).within(10).then(() ->
+                Checks.after(ctx, 25, () -> {
+                    ctx.check(AnchorCoreBauble.hasTicket(level.dimension(), id, chunk)).as("离线主人的女仆校验后仍有票据").isTrue();
+                    ctx.check(entityForced(level, chunk)).as("离线主人的女仆所在区块仍被强加载").isTrue();
+                    ctx.check(ChunkLoadingData.getRecord(server, owner, id)).as("离线主人的记录").isEqualTo(here(maid));
+                    maid.remove(Entity.RemovalReason.UNLOADED_TO_CHUNK);
+                    ctx.await(() -> !AnchorCoreBauble.hasTicket(level.dimension(), id, chunk)).within(30).then(() -> {
+                        ctx.check(entityForced(level, chunk)).as("女仆消失后区块仍被实体票据强加载").isFalse();
+                        ctx.check(ChunkLoadingData.getRecord(server, owner, id)).as("女仆消失后的记录").isNull();
+                        ctx.check(pending(server, owner).get(id)).as("女仆消失后的待变更").isEqualTo(Optional.empty());
+                    });
+                }));
+    }
+
+    /** 区块是否挂着任何实体票据的强加载（场地里只有锚定核心会挂实体票据）。 */
+    private static boolean entityForced(ServerLevel level, ChunkPos chunk) {
+        ForcedChunksSavedData data = level.getDataStorage().get(ForcedChunksSavedData.factory(), "chunks");
+        if (data == null) {
+            return false;
+        }
+        var tickets = data.getEntityForcedChunks();
+        return tickets.getTickingChunks().values().stream().anyMatch(chunks -> chunks.contains(chunk.toLong()))
+                || tickets.getChunks().values().stream().anyMatch(chunks -> chunks.contains(chunk.toLong()));
     }
 
     /** A 离线时对这只女仆留了待删记录，同一只女仆改由 B 锚定：B 的记录照常生效。 */
