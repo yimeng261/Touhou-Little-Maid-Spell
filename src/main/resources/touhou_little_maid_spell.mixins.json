@@ -36,6 +36,7 @@
     "ars.SpellContextAccessor",
     "ars.SpellContextMixin",
     "enigmatic.ExtradimensionalScepterHelperMixin",
+    "goety.CuriosFinderMixin",
     "goety.EsotericTesseractMixin",
     "goety.MobUtilMixin",
     "goety.WandUtilMixin",

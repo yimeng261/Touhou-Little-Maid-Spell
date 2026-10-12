@@ -5,6 +5,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
 import top.theillusivec4.curios.api.CuriosApi;
+import top.theillusivec4.curios.api.SlotResult;
 
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -33,6 +34,19 @@ public final class CuriosCompat {
             return;
         }
         NeoForge.EVENT_BUS.register(CuriosEventHandler.class);
+    }
+
+    /**
+     * 返回实体 curios 槽位中第一个匹配 filter 的 ItemStack，curios 未加载或没找到时返回空
+     */
+    public static ItemStack findFirstCurio(LivingEntity entity, Predicate<ItemStack> filter) {
+        if (!LOADED) {
+            return ItemStack.EMPTY;
+        }
+        return CuriosApi.getCuriosInventory(entity)
+                .flatMap(handler -> handler.findFirstCurio(filter))
+                .map(SlotResult::stack)
+                .orElse(ItemStack.EMPTY);
     }
 
     /**

@@ -1,6 +1,5 @@
 package com.github.yimeng261.maidspell.item;
 
-import com.Polarice3.Goety.common.items.ModItems;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.item.bauble.staranchorPearl.StaranchorPearl;
@@ -41,6 +40,8 @@ import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBel
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import net.minecraft.Util;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
@@ -132,18 +133,39 @@ public class MaidSpellItems {
         return Util.makeDescriptionId("item", item.getId());
     }
 
+    // 查到后缓存，fireImmune 和光环渲染每 tick 都会取
+    private static Item unholyHat;
+    private static Item unholyHatHalo;
+
     /**
      * 获取原版 Goety 模组的不洁圣冠
      * 如果模组未加载，返回 null
      */
     public static Item getUnholyHat() {
-        if (ModList.get().isLoaded("goety")) {
-            try {
-                return ModItems.UNHOLY_HAT.get();
-            } catch (Exception e) {
-                return null;
-            }
+        if (unholyHat == null) {
+            unholyHat = getGoetyItem("unholy_hat");
         }
-        return null;
+        return unholyHat;
+    }
+
+    /**
+     * 获取原版 Goety 模组的不洁圣冠光环版（同一顶冠冕的另一种外观）
+     * 如果模组未加载，返回 null
+     */
+    public static Item getUnholyHatHalo() {
+        if (unholyHatHalo == null) {
+            unholyHatHalo = getGoetyItem("unholy_hat_halo");
+        }
+        return unholyHatHalo;
+    }
+
+    /**
+     * 按注册名取 Goety 的物品，模组未加载或没有该物品时返回 null
+     */
+    public static Item getGoetyItem(String path) {
+        if (!ModList.get().isLoaded("goety")) {
+            return null;
+        }
+        return BuiltInRegistries.ITEM.getOptional(ResourceLocation.fromNamespaceAndPath("goety", path)).orElse(null);
     }
 }

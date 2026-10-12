@@ -5,8 +5,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.api.IBossSyncedDataGuard;
 import com.github.yimeng261.maidspell.api.IPersistentEncounterEntity;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.item.bauble.unholyHat.UnholyHatBauble;
 import com.github.yimeng261.maidspell.utils.AnchorCoreProtection;
 import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import net.minecraft.nbt.CompoundTag;
@@ -66,16 +65,13 @@ public class EntityMixin {
     }
 
     /**
-     * 注入 fireImmune()，当女仆装备不洁圣冠时返回 true
+     * 注入 fireImmune()，当女仆装备不洁圣冠（含光环版）时返回 true
      * 与下界生物相同机制，从源头阻止着火
      */
     @Inject(method = "fireImmune", at = @At("HEAD"), cancellable = true, remap = true)
     private void onFireImmune(CallbackInfoReturnable<Boolean> cir) {
-        if ((Object) this instanceof EntityMaid maid) {
-            var unholyHat = MaidSpellItems.getUnholyHat();
-            if (unholyHat != null && BaubleStateManager.hasBauble(maid, unholyHat)) {
-                cir.setReturnValue(true);
-            }
+        if ((Object) this instanceof EntityMaid maid && UnholyHatBauble.hasUnholyHat(maid)) {
+            cir.setReturnValue(true);
         }
     }
 
