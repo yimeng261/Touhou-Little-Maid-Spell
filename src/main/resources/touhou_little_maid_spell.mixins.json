@@ -58,6 +58,7 @@
     "tlm.EntityMaidAnchorCoreMixin",
     "tlm.EntityMaidFoxLeafMovementMixin",
     "tlm.EntityMaidGuiMovementMixin",
+    "tlm.EntityMaidHairpinMixin",
     "tlm.EntityMaidMixin",
     "tlm.EntityMaidStructureSpawnMixin",
     "tlm.MaidBackupsManagerMixin",

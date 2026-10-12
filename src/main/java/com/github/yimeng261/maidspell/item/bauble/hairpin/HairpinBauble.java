@@ -4,9 +4,9 @@ import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.util.ItemsUtil;
 import com.github.yimeng261.maidspell.Config;
-import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.damage.InfoDamageSource;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
@@ -16,6 +16,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.common.damagesource.DamageContainer;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import org.slf4j.Logger;
 
@@ -67,36 +68,44 @@ public class HairpinBauble implements IMaidBauble {
         }
     }
 
-    static {
-        Global.baubleHurtEventHandlers.put(MaidSpellItems.HAIRPIN.get(), (event, maid) -> {
-            LivingEntity owner = maid.getOwner();
-            DamageSource source = event.getSource();
-            if (!(owner instanceof Player player)) {
-                return null;
-            }
-            if (source instanceof InfoDamageSource infoDamage && "hairpin_redirect".equals(infoDamage.msg_type)) {
-                return null;
-            }
+    /**
+     * 女仆 actuallyHurt 开头调用：盾牌、受击间隔与冰冻/头盔系数已结算，护甲尚未结算。
+     * 这份伤害先经主人完整的受伤流程，女仆再承受主人实际掉的血量。
+     */
+    public static void redirectToOwner(EntityMaid maid, DamageSource source, DamageContainer container) {
+        if (!BaubleStateManager.hasBauble(maid, MaidSpellItems.HAIRPIN)) {
+            return;
+        }
+        LivingEntity owner = maid.getOwner();
+        if (!(owner instanceof Player player)) {
+            return;
+        }
+        if (source instanceof InfoDamageSource infoDamage && "hairpin_redirect".equals(infoDamage.msg_type)) {
+            return;
+        }
 
-            RedirectContext existing = ACTIVE_REDIRECT.get();
-            if (existing != null && existing.maid == maid) {
-                return null;
-            }
+        RedirectContext existing = ACTIVE_REDIRECT.get();
+        if (existing != null && existing.maid == maid) {
+            return;
+        }
 
-            RedirectContext context = new RedirectContext(maid, player);
-            ACTIVE_REDIRECT.set(context);
-            try {
-                InfoDamageSource hairpinDamage = InfoDamageSource.create(player.level(), "hairpin_redirect", source);
-                hairpinDamage.setSourceEntity(maid);
-                player.setInvulnerable(false);
-                player.invulnerableTime = 0;
-                player.hurt(hairpinDamage, event.getAmount());
-                event.setAmount(context.captured ? context.redirectedAmount : 0.0f);
-            } finally {
-                ACTIVE_REDIRECT.remove();
-            }
-            return null;
-        });
+        float amount = container.getNewDamage();
+        if (amount <= 0.0f) {
+            return;
+        }
+
+        RedirectContext context = new RedirectContext(maid, player);
+        ACTIVE_REDIRECT.set(context);
+        try {
+            InfoDamageSource hairpinDamage = InfoDamageSource.create(player.level(), "hairpin_redirect", source);
+            hairpinDamage.setSourceEntity(maid);
+            player.setInvulnerable(false);
+            player.invulnerableTime = 0;
+            player.hurt(hairpinDamage, amount);
+            container.setNewDamage(context.captured ? context.redirectedAmount : 0.0f);
+        } finally {
+            ACTIVE_REDIRECT.remove();
+        }
     }
 
     @SubscribeEvent
