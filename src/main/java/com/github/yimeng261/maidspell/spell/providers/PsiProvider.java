@@ -15,13 +15,14 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import org.slf4j.Logger;
-import vazkii.psi.api.PsiAPI;
+import vazkii.psi.api.capability.PsiCapabilities;
 import vazkii.psi.api.cad.ICAD;
 import vazkii.psi.api.cad.ISocketable;
 import vazkii.psi.api.spell.EnumSpellStat;
 import vazkii.psi.api.spell.ISpellAcceptor;
 import vazkii.psi.api.spell.Spell;
 import vazkii.psi.api.spell.SpellContext;
+import vazkii.psi.common.core.handler.PlayerData;
 import vazkii.psi.common.core.handler.PlayerDataHandler;
 import vazkii.psi.common.item.ItemCAD;
 
@@ -98,7 +99,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
         }
 
         // 获取CAD的可插拔组件
-        ISocketable sockets = spellBook.getCapability(PsiAPI.SOCKETABLE_CAPABILITY);
+        ISocketable sockets = PsiCapabilities.socketable(spellBook);
         if (sockets == null) {
             return spells;
         }
@@ -149,7 +150,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
         }
 
         // 获取CAD的可插拔组件
-        ISocketable sockets = cad.getCapability(PsiAPI.SOCKETABLE_CAPABILITY);
+        ISocketable sockets = PsiCapabilities.socketable(cad);
         if (sockets == null) {
             LOGGER.warn("{} abort stage=socket maid={} reason=no_socket_cap cad={}", PSI_LOG_PREFIX, maid.getUUID(), describeStack(cad));
             return;
@@ -358,7 +359,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
     private void setupVirtualPlayerData(Player fakePlayer) {
         try {
             // 获取或创建虚拟 PlayerData
-            PlayerDataHandler.PlayerData playerData = PlayerDataHandler.get(fakePlayer);
+            PlayerData playerData = PlayerDataHandler.get(fakePlayer);
 
             // 设置无限 PSI
             playerData.availablePsi = Integer.MAX_VALUE;
@@ -461,7 +462,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
             return;
         }
         try {
-            PlayerDataHandler.PlayerData playerData = PlayerDataHandler.get(context.caster());
+            PlayerData playerData = PlayerDataHandler.get(context.caster());
             playerData.stopLoopcast();
         } catch (Exception e) {
             LOGGER.warn("{} abort stage=loopcast_stop maid={} reason={}", PSI_LOG_PREFIX, maidUuid, reason, e);
@@ -491,7 +492,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
                 caster.setPos(maid.getX(), maid.getY(), maid.getZ());
                 caster.setYRot(maid.getYRot());
                 caster.setXRot(maid.getXRot());
-                PlayerDataHandler.PlayerData playerData = PlayerDataHandler.get(caster);
+                PlayerData playerData = PlayerDataHandler.get(caster);
                 playerData.availablePsi = Integer.MAX_VALUE;
                 playerData.overflowed = false;
                 playerData.tick();

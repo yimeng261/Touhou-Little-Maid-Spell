@@ -117,7 +117,7 @@ license = "${mod_license}"
 [[dependencies."${mod_id}"]]
     modId = "psi"
     type = "optional"
-    versionRange = "[2.0.0,)"
+    versionRange = "[1.21.1-110,2.0.0),(2.0.0,)"
     ordering = "NONE"
     side = "BOTH"
 

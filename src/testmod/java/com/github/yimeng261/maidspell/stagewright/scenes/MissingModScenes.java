@@ -119,7 +119,7 @@ public final class MissingModScenes {
 
     /** 可选依赖 → 版本范围。低于下限的版本因范围不满足无法启动（由 NeoForge 负责，这里只核对声明）。 */
     private static final Map<String, String> OPTIONAL_DEPENDENCIES = Map.of("goety", "[3.0.0,)",
-            "youkaishomecoming", "[3.0.0,)", "psi", "[2.0.0,)", "slashblade", "[2.0.0,)", "usefulmagic", "[3.0.0,)",
+            "youkaishomecoming", "[3.0.0,)", "psi", "[1.21.1-110,2.0.0),(2.0.0,)", "slashblade", "[2.0.0,)", "usefulmagic", "[3.0.0,)",
             "enigmaticaddons", "[0,)");
 
     private static void optionalDependencies(SceneContext ctx) {

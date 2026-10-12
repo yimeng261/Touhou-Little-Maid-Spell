@@ -48,6 +48,7 @@ repositories {
         content {
             includeGroup "vazkii.patchouli"
             includeGroup "mezz.jei"
+            includeGroup "net.mezzdev.config"
         }
     }
     maven {

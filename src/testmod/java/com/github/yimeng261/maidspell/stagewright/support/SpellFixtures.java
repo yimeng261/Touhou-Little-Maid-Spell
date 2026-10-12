@@ -13,13 +13,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
-import vazkii.psi.api.PsiAPI;
+import vazkii.psi.api.capability.PsiCapabilities;
 import vazkii.psi.api.spell.ISpellAcceptor;
 import vazkii.psi.api.spell.Spell;
 import vazkii.psi.api.spell.SpellParam;
 import vazkii.psi.api.spell.SpellPiece;
 import vazkii.psi.common.item.ItemCAD;
-import vazkii.psi.common.spell.selector.PieceSelectorCaster;
+import vazkii.psi.common.spell.base.ModSpellPieces;
 import vazkii.psi.common.spell.trick.PieceTrickDebug;
 
 import java.util.List;
@@ -64,14 +64,14 @@ public final class SpellFixtures {
     private static ItemStack psi(ServerPlayer owner) {
         Spell spell = new Spell();
         spell.name = "Lifecycle Debug";
-        PieceTrickDebug debug = new PieceTrickDebug(spell);
+        PieceTrickDebug debug = (PieceTrickDebug) ModSpellPieces.TRICK_DEBUG.get().create(spell);
         place(spell, debug, 4, 4);
-        place(spell, new PieceSelectorCaster(spell), 5, 4);
+        place(spell, ModSpellPieces.SELECTOR_CASTER.get().create(spell), 5, 4);
         debug.paramSides.put(debug.params.get(SpellParam.GENERIC_NAME_TARGET), SpellParam.Side.RIGHT);
         ItemStack bullet = Actors.stack("psi:spell_bullet");
         ISpellAcceptor.acceptor(bullet).setSpell(owner, spell);
-        ItemStack cad = ItemCAD.getCreativeTabItems().getLast().copy();
-        var sockets = cad.getCapability(PsiAPI.SOCKETABLE_CAPABILITY);
+        ItemStack cad = ItemCAD.getCreativeTabItems(owner.registryAccess()).getLast().copy();
+        var sockets = PsiCapabilities.socketable(cad);
         if (sockets == null) throw new IllegalStateException("CAD 没有弹夹能力");
         sockets.setBulletInSocket(0, bullet);
         sockets.setSelectedSlot(0);
