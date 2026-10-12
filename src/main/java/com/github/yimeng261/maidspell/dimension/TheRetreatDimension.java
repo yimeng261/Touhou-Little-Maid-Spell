@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.dimension;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -11,8 +12,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -203,31 +208,73 @@ public class TheRetreatDimension {
             return createSafePlatform(level, new BlockPos(targetPos.getX(), safeY, targetPos.getZ()));
         }
 
-        // 限制搜索范围，避免过度迭代
-        int maxY = Math.min(level.getMaxBuildHeight() - 1, 319);
-        int minY = Math.max(level.getMinBuildHeight(), -64);
-
-        // 从高处向下搜索第一个固体方块
         try {
-            for (int y = maxY; y >= minY; y--) {
-                BlockPos pos = new BlockPos(targetPos.getX(), y, targetPos.getZ());
-                if (level.getBlockState(pos).isSolid()) {
-                    BlockPos safePos = pos.above();
-                    MaidSpellMod.LOGGER.debug("Found safe position at {}", safePos);
-                    return safePos;
-                }
+            // 原坐标能站人就原地落下（例如从洞穴里传送），否则按地形噪声估算地表
+            if (isSafeStandingPosition(level, targetPos)) {
+                MaidSpellMod.LOGGER.debug("Found direct safe position at {}", targetPos);
+                return targetPos.immutable();
             }
+
+            DensityFunction depthFn = level.getChunkSource().randomState().router().depth();
+            int estimatedY = estimateSurfaceHeight(depthFn, targetPos.getX(), targetPos.getZ(), level);
+            return new BlockPos(targetPos.getX(), estimatedY, targetPos.getZ());
         } catch (Exception e) {
             MaidSpellMod.LOGGER.error("Error while finding safe position at {}: {}", targetPos, e.getMessage(), e);
         }
 
-        // 如果没有找到固体方块，在合理高度创建安全平台
         int platformY = Math.max(level.getSeaLevel() + 5, 100);
         BlockPos platformPos = new BlockPos(targetPos.getX(), platformY, targetPos.getZ());
         MaidSpellMod.LOGGER.info("No safe ground found, creating platform at {}", platformPos);
         return createSafePlatform(level, platformPos);
     }
 
+    /**
+     * 在单列上二分 depth 噪声估算地表高度，开销 O(logH)，不扫描方块也不查高度图。
+     */
+    private static int estimateSurfaceHeight(DensityFunction depthFn, int x, int z, ServerLevel level) {
+        int lo = level.getMinBuildHeight();
+        int hi = level.getMaxBuildHeight();
+
+        while (hi - lo > 2) {
+            int mid = (lo + hi) >>> 1;
+            double depthAtMid = depthFn.compute(new DensityFunction.SinglePointContext(x, mid, z));
+            if (depthAtMid > 0) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+
+        return hi + 5;
+    }
+
+    private static boolean isSafeStandingPosition(ServerLevel level, BlockPos pos) {
+        if (pos.getY() <= level.getMinBuildHeight() || pos.getY() >= level.getMaxBuildHeight() - 1) {
+            return false;
+        }
+
+        BlockPos floorPos = pos.below();
+        BlockState floorState = level.getBlockState(floorPos);
+        if (!floorState.isFaceSturdy(level, floorPos, Direction.UP) || isHazardousFloor(floorState)) {
+            return false;
+        }
+
+        return isOpenForPlayer(level, pos) && isOpenForPlayer(level, pos.above());
+    }
+
+    private static boolean isOpenForPlayer(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        FluidState fluidState = level.getFluidState(pos);
+        return fluidState.isEmpty() && state.getCollisionShape(level, pos).isEmpty();
+    }
+
+    private static boolean isHazardousFloor(BlockState state) {
+        Block block = state.getBlock();
+        return block == Blocks.MAGMA_BLOCK
+                || block == Blocks.CAMPFIRE
+                || block == Blocks.SOUL_CAMPFIRE
+                || block == Blocks.CACTUS;
+    }
 
     /**
      * 创建安全平台
