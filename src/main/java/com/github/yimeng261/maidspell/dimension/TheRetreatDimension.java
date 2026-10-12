@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.Vec3;
@@ -42,6 +43,9 @@ import java.util.concurrent.CompletableFuture;
  */
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class TheRetreatDimension {
+    // 估算点比估算地表高 5 格，再留出噪声误差的余量
+    private static final int MAX_GROUND_SEARCH_DEPTH = 16;
+
     /**
      * 获取玩家专属的归隐之地维度ResourceKey
      * 格式：touhou_little_maid_spell:the_retreat_<player_uuid>
@@ -217,7 +221,17 @@ public class TheRetreatDimension {
 
             DensityFunction depthFn = level.getChunkSource().randomState().router().depth();
             int estimatedY = estimateSurfaceHeight(depthFn, targetPos.getX(), targetPos.getZ(), level);
-            return new BlockPos(targetPos.getX(), estimatedY, targetPos.getZ());
+            BlockPos estimated = new BlockPos(targetPos.getX(), estimatedY, targetPos.getZ());
+            BlockPos ground = findGroundBelow(level, estimated);
+            if (ground != null) {
+                return ground;
+            }
+            // 估算点落在方块里（地形被改过、有建筑）或下方没有可站的地面时按高度图取地表
+            int surfaceY = level.getHeight(Heightmap.Types.MOTION_BLOCKING, targetPos.getX(), targetPos.getZ());
+            BlockPos surface = new BlockPos(targetPos.getX(), surfaceY, targetPos.getZ());
+            if (surfaceY > level.getMinBuildHeight() && isSafeStandingPosition(level, surface)) {
+                return surface;
+            }
         } catch (Exception e) {
             MaidSpellMod.LOGGER.error("Error while finding safe position at {}: {}", targetPos, e.getMessage(), e);
         }
@@ -246,6 +260,23 @@ public class TheRetreatDimension {
         }
 
         return hi + 5;
+    }
+
+    /**
+     * 从估算点往下逐格找第一个可站立的位置。估算不含峡谷、侵蚀与熔岩湖，
+     * 碰到方块或流体、或超出搜索深度都视为没找到。
+     */
+    private static BlockPos findGroundBelow(ServerLevel level, BlockPos start) {
+        for (int i = 0; i <= MAX_GROUND_SEARCH_DEPTH; i++) {
+            BlockPos pos = start.below(i);
+            if (!isOpenForPlayer(level, pos)) {
+                return null;
+            }
+            if (isSafeStandingPosition(level, pos)) {
+                return pos;
+            }
+        }
+        return null;
     }
 
     private static boolean isSafeStandingPosition(ServerLevel level, BlockPos pos) {
