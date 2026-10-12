@@ -7,6 +7,7 @@ import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
+import com.github.yimeng261.maidspell.utils.DamageAbsorption;
 import com.github.yimeng261.maidspell.utils.PortableTimerMath;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -83,27 +84,29 @@ public class SpringBloomReturnBauble implements IMaidBauble {
     }
 
     @SubscribeEvent
-    public void onLivingDamage(LivingDamageEvent.Post event) {
+    public void onLivingDamage(LivingDamageEvent.Pre event) {
         if (event.getEntity().level().isClientSide()) {
             return;
         }
         LivingEntity target = event.getEntity();
-        if (!isHeavyDamage(target, event.getNewDamage())) {
+        // Pre 早于吸收结算，按扣除吸收后真正掉的血判断
+        float healthLoss = event.getNewDamage() - DamageAbsorption.absorbedPart(target, event.getNewDamage());
+        if (!isHeavyDamage(target, healthLoss)) {
             return;
         }
         if (target instanceof EntityMaid maid) {
-            tryTrigger(maid, maid, findEquippedStack(maid));
+            tryTrigger(event, maid, maid, findEquippedStack(maid));
             return;
         }
         if (target instanceof Player player) {
             EntityMaid protector = selectOwnerProtector(player);
             if (protector != null) {
-                tryTrigger(protector, player, findEquippedStack(protector));
+                tryTrigger(event, protector, player, findEquippedStack(protector));
             }
         }
     }
 
-    private static void tryTrigger(EntityMaid maid, LivingEntity protectedTarget, ItemStack stack) {
+    private static void tryTrigger(LivingDamageEvent.Pre event, EntityMaid maid, LivingEntity protectedTarget, ItemStack stack) {
         if (stack.isEmpty()) {
             return;
         }
@@ -127,7 +130,7 @@ public class SpringBloomReturnBauble implements IMaidBauble {
         saveTimerState(stack, state, true);
 
         float healEquivalent = (float) (protectedTarget.getMaxHealth() * Config.springBloomReturnHealRatio);
-        protectedTarget.heal(healEquivalent);
+        event.setNewDamage(Math.max(0, event.getNewDamage() - healEquivalent));
 
         int favorabilityLevel = maid.getFavorabilityManager().getLevel();
         if (favorabilityLevel >= 2) {

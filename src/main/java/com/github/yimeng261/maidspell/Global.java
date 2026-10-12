@@ -21,6 +21,8 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -62,6 +64,8 @@ public class Global {
     public static final List<BaubleHurtHeadHandler> baubleHurtHeadHandlers = new CopyOnWriteArrayList<>();
     public static final Map<Item, BiFunction<LivingIncomingDamageEvent, EntityMaid, Void>> baubleHurtHandlers = new ConcurrentHashMap<>();
     public static final Map<Item, BiFunction<LivingIncomingDamageEvent, EntityMaid, Void>> baubleHurtEventHandlers = new ConcurrentHashMap<>();
+    // 按注册顺序执行：春之环的增伤要先于混沌之书的拆分
+    public static final Map<Item, BiFunction<LivingDamageEvent.Pre, EntityMaid, Void>> baubleDamagePreHandlers = Collections.synchronizedMap(new LinkedHashMap<>());
     public static final Map<Item, BiFunction<LivingDamageEvent.Post, EntityMaid, Void>> baubleDamageHandlers = new ConcurrentHashMap<>();
     public static final Map<Item, Function<DataItem, Void>> baubleSetHealthHandlers = new ConcurrentHashMap<>();
     public static final Map<Item, Function<DataItem, Void>> baubleSetHealthFinalHandlers = new ConcurrentHashMap<>();

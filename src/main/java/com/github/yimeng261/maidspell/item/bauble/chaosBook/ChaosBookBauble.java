@@ -70,10 +70,10 @@ public class ChaosBookBauble implements IMaidBauble {
             }
         });
 
-        Global.baubleDamageHandlers.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
+        Global.baubleDamagePreHandlers.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
             LivingEntity target = event.getEntity();
             DamageSource source = event.getSource();
-            float amount = event.getOriginalDamage();
+            float amount = event.getNewDamage();
 
             if (isApplyingChaosDamage(target)) {
                 return null;
@@ -87,6 +87,7 @@ public class ChaosBookBauble implements IMaidBauble {
                         target.setInvulnerable(false);
                         target.invulnerableTime = 0;
                         target.hurt(newDamageSource, amount);
+                        event.setNewDamage(0);
                     } finally {
                         target.invulnerableTime = 0;
                         target.setInvulnerable(false);
@@ -104,6 +105,7 @@ public class ChaosBookBauble implements IMaidBauble {
                         target.invulnerableTime = 0;
                         target.hurt(newDamageSource, finalAmount);
                     }
+                    event.setNewDamage(0);
                 } finally {
                     target.setInvulnerable(false);
                     target.invulnerableTime = 0;

@@ -463,6 +463,17 @@ public class MaidSpellEventHandler {
 
 
     @SubscribeEvent
+    public static void onEntityDamagePre(LivingDamageEvent.Pre event) {
+        Entity direct = event.getSource().getDirectEntity();
+        Entity source = event.getSource().getEntity();
+        if (source instanceof EntityMaid maid) {
+            processorDamagePre(event, maid);
+        } else if (direct instanceof EntityMaid maid) {
+            processorDamagePre(event, maid);
+        }
+    }
+
+    @SubscribeEvent
     public static void onEntityDamage(LivingDamageEvent.Post event) {
         Entity direct = event.getSource().getDirectEntity();
         Entity source = event.getSource().getEntity();
@@ -560,6 +571,17 @@ public class MaidSpellEventHandler {
      */
     private static boolean suppressed(EntityMaid maid) {
         return MaidSuppressionZone.suppresses(maid);
+    }
+
+    private static void processorDamagePre(LivingDamageEvent.Pre event, EntityMaid maid) {
+        if (suppressed(maid)) {
+            return;
+        }
+        Global.baubleDamagePreHandlers.forEach((item, func) -> {
+            if (BaubleStateManager.hasBauble(maid, item)) {
+                func.apply(event, maid);
+            }
+        });
     }
 
     private static void processorAft(LivingDamageEvent.Post event, EntityMaid maid) {
