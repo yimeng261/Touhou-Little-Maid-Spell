@@ -28,7 +28,13 @@ public class Config {
             "regex:minecraft:.*",
             "regex:goety:.*",
             "regex:irons_spellbooks:.*",
-            "regex:ars_nouveau:.*"
+            "regex:ars_nouveau:.*",
+            "regex:youkaishomecoming:.*",
+            "regex:farmersdelight:.*",
+            "regex:kaleidoscope_cookery:.*",
+            "regex:alexsmobs:.*",
+            "regex:alexscaves:.*",
+            "regex:cataclysm:.*"
     );
     private static final List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST = List.of(
             "irons_spellbooks:ascension",
