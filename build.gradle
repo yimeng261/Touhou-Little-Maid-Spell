@@ -103,10 +103,13 @@ def mainRuntimeWithout(Closure<Boolean> dropped) {
 def optionalModGroups = ['io.redspace', 'maven.modrinth', 'vazkii.patchouli', 'software.bernie.geckolib',
                          'top.theillusivec4.curios', 'mezz.jei', 'com.github.glitchfiend', 'com.hollingsworth.nuggets']
 
+// coremod 源集是 hurt 头部插桩的 Java coremod，单独打成 FMLModType: LIBRARY 的 jar（NeoForge 只从 PLUGIN 层加载 ICoreMod），
+// 发布时嵌套进主 jar，开发运行时以 jar 形式放进 main 的运行时类路径。
 // StageWright 测试场景放在 testmod 源集，不进发布 jar，继承 main 的开发类路径。
 // testmodMinimal / testmodNoFarmersDelight 没有自己的源码，复用 testmod 的场景，只换运行时模组组合。
 // clientTest 是纯 JVM 的 JUnit 源集，通过 worlddriver RPC 附着到 hold 住的客户端做界面测试。
 sourceSets {
+    coremod
     testmod {
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
@@ -124,6 +127,26 @@ sourceSets {
                 mainRuntimeWithout { id -> id.group == 'maven.modrinth' && id.module in ['farmers-delight', 'youkaishomecoming'] }
     }
     clientTest
+}
+
+// coremod 作为本项目的一个特性变体，主 jar 通过 jarJar 按能力名引用它；不随 maven 发布
+def coremodCapability = "${mod_group_id}:${mod_id}_coremod"
+java {
+    registerFeature('coremod') {
+        usingSourceSet(sourceSets.coremod)
+        capability(mod_group_id, "${mod_id}_coremod", mod_version)
+    }
+}
+components.java.withVariantsFromConfiguration(configurations.coremodApiElements) { skip() }
+components.java.withVariantsFromConfiguration(configurations.coremodRuntimeElements) { skip() }
+
+tasks.named('coremodJar', Jar) {
+    archiveBaseName = "${mod_id}_coremod"
+    archiveClassifier = ''
+    manifest.attributes(
+            'FMLModType': 'LIBRARY',
+            'Automatic-Module-Name': "${mod_id}.coremod"
+    )
 }
 
 def stagewrightVersion = '0.1.0-build.11+1.21.1'
@@ -169,6 +192,7 @@ neoForge {
     // 指定 NeoForge 版本
     version = project.neo_version
     addModdingDependenciesTo sourceSets.testmod
+    addModdingDependenciesTo sourceSets.coremod
 
     parchment {
         mappingsVersion = project.parchment_mappings_version
@@ -292,6 +316,12 @@ neoForge {
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
+    // hurt 头部插桩 coremod：发布时嵌套进主 jar；开发运行时放在类路径上，由 FML 按 jar 清单识别为 LIBRARY
+    jarJar(project(':')) {
+        capabilities { requireCapability(coremodCapability) }
+    }
+    runtimeOnly files(tasks.named('coremodJar'))
+
     // StageWright 测试框架与 worlddriver 驱动：只进 testmod 类路径，不影响 runClient 和发布
     testmodImplementation "net.magicterra:mc_stagewright-api:${stagewrightVersion}:dev"
     testmodRuntimeOnly "net.magicterra:mc_stagewright-neoforge:${stagewrightVersion}"
