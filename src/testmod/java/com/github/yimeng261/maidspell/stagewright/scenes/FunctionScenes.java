@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.stagewright.scenes;
 
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidAfterEatEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
 import com.github.yimeng261.maidspell.spell.manager.SpellBookManager;
 import com.github.yimeng261.maidspell.stagewright.support.Actors;
@@ -224,7 +225,7 @@ public final class FunctionScenes {
 
     // ---- 饰品 ----
 
-    /** 喋血之心：女仆造成伤害后按原始伤害的 10% 治疗自己；没有饰品的女仆不治疗。 */
+    /** 喋血之心：女仆造成伤害后按目标实际掉血的 10% 治疗自己；没有饰品的女仆不治疗。 */
     private static void bleedingHeart(SceneContext ctx) {
         EntityMaid maid = Actors.sittingMaid(ctx, 2, 0, 0);
         EntityMaid plain = Actors.sittingMaid(ctx, -2, 0, 0);
@@ -236,9 +237,14 @@ public final class FunctionScenes {
             Actors.setMaidHealth(plain, 10);
             target.invulnerableTime = 0;
             otherTarget.invulnerableTime = 0;
+            float targetBefore = target.getHealth();
             target.hurt(maid.damageSources().mobAttack(maid), 8);
             otherTarget.hurt(plain.damageSources().mobAttack(plain), 8);
-            ctx.check(maid.getHealth()).as("喋血之心女仆打出 8 点伤害后的生命").isCloseTo(10.8, 1e-4);
+            // 按目标实际掉的血（扣过护甲）回复
+            float dealt = targetBefore - target.getHealth();
+            ctx.check(dealt).as("目标实际掉血").isLessThan(8.0F);
+            ctx.check(maid.getHealth()).as("喋血之心女仆打出伤害后的生命")
+                    .isCloseTo(10 + dealt * (float) Config.bleedingHeartHealRatio, 1e-4);
             ctx.check(plain.getHealth()).as("无饰品女仆打出 8 点伤害后的生命").isCloseTo(10, 1e-4);
         });
     }
