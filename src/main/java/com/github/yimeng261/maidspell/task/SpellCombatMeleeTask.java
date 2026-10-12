@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.task;
 
+import com.github.tartaricacid.touhoulittlemaid.api.entity.IMaid;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidRangedWalkToTarget;
@@ -7,11 +8,11 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitSounds;
 import com.github.tartaricacid.touhoulittlemaid.util.SoundUtil;
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
+import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksDataBridge;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.utils.MaidSuppressionZone;
-import com.hollingsworth.arsnouveau.api.entity.ISummon;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
@@ -31,10 +32,8 @@ import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
-import net.neoforged.fml.ModList;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import org.jetbrains.annotations.NotNull;
-import com.Polarice3.Goety.api.entities.IOwned;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -136,34 +135,19 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     protected static boolean isValidSpellCombatTarget(EntityMaid maid, LivingEntity target) {
-        if (target == null || target instanceof Player) {
+        if (maid == null || target == null || target instanceof Player) {
             return false;
         }
         // 压制区里的女仆不参与战斗。
         if (MaidSuppressionZone.suppresses(maid)) {
             return false;
         }
-        if (isFriendlySummonOrOwnedEntity(maid, target)) {
+        // 坐姿待机中的 IMaid（待机中的星之魔女就是这种）不是战斗目标：待机只认玩家递来的邀战物。
+        // 事件那边也会拦（WinefoxNonLethalGuard），但挡在谓词里索敌才会继续找下一个目标，不会被最近的那一个卡住。
+        if (target instanceof IMaid sitting && sitting.isMaidInSittingPose()) {
             return false;
         }
-        return true;
-    }
-
-    protected static boolean isFriendlySummonOrOwnedEntity(EntityMaid maid, LivingEntity target) {
-        if (maid == null || target == null) {
-            return false;
-        }
-        LivingEntity maidOwner = maid.getOwner();
-        if (ModList.get().isLoaded("ars_nouveau") && target instanceof ISummon summon) {
-            return summon.getOwnerUUID() != null
-                    && (summon.getOwnerUUID().equals(maid.getUUID())
-                    || (maidOwner != null && summon.getOwnerUUID().equals(maidOwner.getUUID())));
-        }
-        if (ModList.get().isLoaded("goety") && target instanceof IOwned ownedEntity) {
-            LivingEntity owner = ownedEntity.getTrueOwner();
-            return owner instanceof EntityMaid || owner instanceof Player;
-        }
-        return false;
+        return !MaidSpellAllyResolver.areFriendly(maid, target);
     }
 
     @Override
@@ -173,7 +157,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public boolean canSee(EntityMaid maid, @NotNull LivingEntity target) {
-        return maid.distanceTo(target) <= SPELL_RANGE * 1.2 && Math.abs(maid.getY() - target.getY()) < 5 && !(target instanceof Player);
+        return maid.distanceTo(target) <= SPELL_RANGE * 1.2 && Math.abs(maid.getY() - target.getY()) < 5 && isValidSpellCombatTarget(maid, target);
     }
 
     @Override
@@ -191,7 +175,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
     @Override
     public boolean hasExtraAttack(@NotNull EntityMaid maid, @NotNull Entity target) {
-        return hasSpellBook(maid) && target instanceof LivingEntity && maid.distanceTo(target) <= SPELL_RANGE && !(target instanceof Player);
+        return hasSpellBook(maid) && target instanceof LivingEntity livingTarget && maid.distanceTo(target) <= SPELL_RANGE && isValidSpellCombatTarget(maid, livingTarget);
     }
 
     @Override
