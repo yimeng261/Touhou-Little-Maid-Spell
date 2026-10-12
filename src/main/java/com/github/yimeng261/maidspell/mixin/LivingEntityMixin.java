@@ -184,6 +184,8 @@ public abstract class LivingEntityMixin {
             if (removed != null) {
                 this.onEffectRemoved(removed);
             }
+            // 取消后 addAttributeModifiers 不会执行，旗标要在这里清掉，否则会吞掉下一个效果的属性修改器
+            Global.effectBlockFlag.remove();
             ci.cancel();
         }
     }
