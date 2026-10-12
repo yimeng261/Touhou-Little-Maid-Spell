@@ -13,7 +13,9 @@ import net.magicterra.stagewright.scene.SceneContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -34,6 +36,7 @@ import net.minecraft.world.entity.npc.VillagerType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.trading.Merchant;
 import net.minecraft.world.item.trading.MerchantOffer;
@@ -45,6 +48,7 @@ import net.minecraft.world.level.block.PinkPetalsBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.phys.AABB;
+import net.neoforged.fml.ModList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -350,6 +354,15 @@ public final class NpcScenes {
             }
             ctx.check(recipe.value() instanceof AltarRecipe).as(id + " 是车万女仆祭坛配方").isTrue();
             ctx.check(recipe.value().getIngredients().stream().anyMatch(ing -> ing.test(core))).as(id + " 用星云核心").isTrue();
+            if (id.endsWith("crossover") && ModList.get().isLoaded("goety")) {
+                ItemStack blood = new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse("goety:unholy_blood")));
+                ItemStack pureBlood = blood.copy();
+                CompoundTag pure = new CompoundTag();
+                pure.putBoolean("Pure", true);
+                pureBlood.set(DataComponents.CUSTOM_DATA, CustomData.of(pure));
+                ctx.check(recipe.value().getIngredients().stream().anyMatch(ing -> ing.test(pureBlood))).as(id + " 收纯净邪血").isTrue();
+                ctx.check(recipe.value().getIngredients().stream().anyMatch(ing -> ing.test(blood))).as(id + " 不收普通邪血").isFalse();
+            }
         }
     }
 }
