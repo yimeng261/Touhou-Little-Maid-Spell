@@ -348,6 +348,11 @@ public class ArsNouveauProvider extends ISpellBookProvider<MaidArsNouveauSpellDa
                         data.getCurrentSpell() != null ? data.getCurrentSpell().name() : null,
                         target
                 );
+                // SpellResolver 不播施法音效（玩家施法时由 AbstractCaster 播放），这里补上
+                Spell castSpell = data.getCurrentSpell();
+                if (castSpell != null && castSpell.sound() != null && castSpell.sound().getSound() != null) {
+                    castSpell.sound().playSound(maid.level(), maid.getX(), maid.getY(), maid.getZ());
+                }
             } else {
                 LOGGER.warn("[MaidSpell/Ars] SpellResolver returned false maid={} spell={} book={} slot={} target={}",
                         maid.getUUID(), describeSpell(data.getCurrentSpell()), describeItem(spellBook), data.getCurrentSpellSlot(), describeEntity(target));
