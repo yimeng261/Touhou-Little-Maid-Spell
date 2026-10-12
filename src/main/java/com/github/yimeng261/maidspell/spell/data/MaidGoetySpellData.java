@@ -24,6 +24,8 @@ public class MaidGoetySpellData extends IMaidSpellData {
     private int maxCastingTime = 0;
     private ISpell currentSpell = null;
     private ItemStack currentFocus = null;
+    // 本次施法所用的法杖，Goety 的 castDuration/Cooldown 等按它计算，WandUtil.findWand 也返回它
+    private ItemStack currentStaff = null;
 
     // === 蓄力法术状态 ===
     private int coolCounter = 0;
@@ -139,6 +141,7 @@ public class MaidGoetySpellData extends IMaidSpellData {
         this.shotsFired = 0;
         // 清理旧聚晶，避免异常中断后下一次 stopSpell 拿到过期 focus。
         this.currentFocus = null;
+        this.currentStaff = null;
     }
 
     /**
@@ -167,5 +170,13 @@ public class MaidGoetySpellData extends IMaidSpellData {
 
     public void setCurrentFocus(ItemStack currentFocus) {
         this.currentFocus = currentFocus;
+    }
+
+    public ItemStack getCurrentStaff() {
+        return currentStaff;
+    }
+
+    public void setCurrentStaff(ItemStack currentStaff) {
+        this.currentStaff = currentStaff;
     }
 }
