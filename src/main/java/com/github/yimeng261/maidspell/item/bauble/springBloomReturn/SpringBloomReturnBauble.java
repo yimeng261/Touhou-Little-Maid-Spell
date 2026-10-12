@@ -151,6 +151,7 @@ public class SpringBloomReturnBauble implements IMaidBauble {
         Map<UUID, EntityMaid> ownedMaids = Global.getOrCreatePlayerMaidMap(player.getUUID());
         return ownedMaids.values().stream()
                 .filter(maid -> maid != null && maid.isAlive() && maid.level() == player.level())
+                .filter(maid -> player.getUUID().equals(maid.getOwnerUUID()))
                 .filter(maid -> !findEquippedStack(maid).isEmpty())
                 .max(Comparator.comparingInt(SpringBloomReturnBauble::getAvailableLayerCount))
                 .orElse(null);

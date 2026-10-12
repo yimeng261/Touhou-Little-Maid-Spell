@@ -59,6 +59,8 @@ public class Global {
     // 内层 Map: 女仆UUID -> 女仆实体
     public static final Map<UUID, Map<UUID, EntityMaid>> ownerMaidRegistry = new ConcurrentHashMap<>();
     public static final Set<EntityMaid> activeMaids = ConcurrentHashMap.newKeySet();
+    // 女仆UUID -> 登记时的主人UUID，主人变更时据此从旧主人的表里移除
+    private static final Map<UUID, UUID> maidOwnerIndex = new ConcurrentHashMap<>();
 
     // 饰品层handler,按触发阶段顺序排列
     public static final List<BaubleHurtHeadHandler> baubleHurtHeadHandlers = new CopyOnWriteArrayList<>();
@@ -253,19 +255,38 @@ public class Global {
 
     public static void updateMaidInfo(EntityMaid maid, Boolean add) {
         UUID ownerUUID = maid.getOwnerUUID();
+        UUID maidUUID = maid.getUUID();
         if(add){
             activeMaids.add(maid);
+            UUID previousOwner = ownerUUID != null ? maidOwnerIndex.put(maidUUID, ownerUUID) : maidOwnerIndex.remove(maidUUID);
+            if (previousOwner != null && !previousOwner.equals(ownerUUID)) {
+                removeFromOwnerMap(previousOwner, maidUUID);
+            }
             if(ownerUUID != null){
-                getOrCreatePlayerMaidMap(ownerUUID).put(maid.getUUID(),maid);
+                getOrCreatePlayerMaidMap(ownerUUID).put(maidUUID, maid);
             }
         }else{
             activeMaids.remove(maid);
+            UUID indexedOwner = maidOwnerIndex.remove(maidUUID);
+            if (indexedOwner != null && !indexedOwner.equals(ownerUUID)) {
+                removeFromOwnerMap(indexedOwner, maidUUID);
+            }
             if(ownerUUID != null){
-                ownerMaidRegistry.computeIfPresent(ownerUUID, (ignored, maids) -> {
-                    maids.remove(maid.getUUID());
-                    return maids.isEmpty() ? null : maids;
-                });
+                removeFromOwnerMap(ownerUUID, maidUUID);
             }
         }
+    }
+
+    private static void removeFromOwnerMap(UUID ownerUUID, UUID maidUUID) {
+        ownerMaidRegistry.computeIfPresent(ownerUUID, (ignored, maids) -> {
+            maids.remove(maidUUID);
+            return maids.isEmpty() ? null : maids;
+        });
+    }
+
+    public static void clearMaidRegistry() {
+        activeMaids.clear();
+        ownerMaidRegistry.clear();
+        maidOwnerIndex.clear();
     }
 }

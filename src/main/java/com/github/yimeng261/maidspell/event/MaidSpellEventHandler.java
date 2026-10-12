@@ -146,10 +146,7 @@ public class MaidSpellEventHandler {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             for (EntityMaid maid : Global.activeMaids) {
-                LivingEntity owner = maid.getOwner();
-                if(owner != null) {
-                    Global.getOrCreatePlayerMaidMap(owner.getUUID()).put(maid.getUUID(), maid);
-                }
+                Global.updateMaidInfo(maid, true);
             }
 
             // 注释掉手动维度位置检查，让游戏自动处理
@@ -369,6 +366,8 @@ public class MaidSpellEventHandler {
                     if(maid.isNoAi() && isMaidSpellTask){
                         maid.setNoAi(false);
                     }
+                    // 主人变更不一定触发驯服事件，定期刷新全局女仆表
+                    Global.updateMaidInfo(maid, true);
                 }
             } catch (Exception e) {
                 LOGGER.error("Error in maid tick handler for maid {}: {}",
@@ -686,15 +685,13 @@ public class MaidSpellEventHandler {
         Player player = event.getPlayer();
 
         if (!player.level().isClientSide() && player.level() instanceof ServerLevel level) {
-            Global.activeMaids.add(maid);
-            Global.getOrCreatePlayerMaidMap(player.getUUID()).put(maid.getUUID(), maid);
+            Global.updateMaidInfo(maid, true);
             if(maid.isOrderedToSit()&&!maid.isStructureSpawn()&&isInHiddenRetreatStructure(level, maid.blockPosition())){
                 MaidOriginData.markHiddenRetreatMaid(maid);
                 player.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat").withStyle(ChatFormatting.LIGHT_PURPLE));
             }
 
             // 推送末影腰包数据更新
-            Global.updateMaidInfo(maid, true);
             EnderPocketBauble.pushEnderPocketDataToClient((ServerPlayer) player);
         }
     }
@@ -729,8 +726,7 @@ public class MaidSpellEventHandler {
 
     private static void clearRuntimeSpellState() {
         clearBaubleRuntimeState();
-        Global.activeMaids.clear();
-        Global.ownerMaidRegistry.clear();
+        Global.clearMaidRegistry();
         MaidHardRemovalProtection.clear();
         AnchorCoreBauble.clearRuntimeCache();
         YueLinglanBlockEntity.clearAllStructureSearchCaches();
