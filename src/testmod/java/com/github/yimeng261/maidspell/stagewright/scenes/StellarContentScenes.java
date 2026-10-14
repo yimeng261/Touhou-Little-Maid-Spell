@@ -8,6 +8,9 @@ import com.github.yimeng261.maidspell.stagewright.support.Actors;
 import com.github.yimeng261.maidspell.stagewright.support.Checks;
 import com.github.yimeng261.maidspell.stagewright.support.Lang;
 import com.github.yimeng261.maidspell.stagewright.support.Owners;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxAction;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
@@ -39,6 +42,10 @@ import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +80,9 @@ public final class StellarContentScenes {
         scenes.add(Checks.superflat("stellar.staranchor_pearl.playerUse", 20, StellarContentScenes::pearlPlayer));
         scenes.add(Checks.superflat("stellar.staranchor_pearl.maidBlocksVoid", 20, StellarContentScenes::pearlMaid));
         scenes.add(Checks.superflat("stellar.spear.throwSurvivalAndCreative", 20, StellarContentScenes::spearThrow));
+        scenes.add(Checks.scene("stellar.winefox.meleeComboTimeline", 5, StellarContentScenes::winefoxComboTimeline));
+        scenes.add(Checks.scene("stellar.winefox.followUpOnlySwordActions", 5, StellarContentScenes::winefoxFollowUpScope));
+        scenes.add(Checks.scene("stellar.winefox.swordFollowUpKeepsEventsAndRecovery", 5, StellarContentScenes::winefoxSwordRecovery));
         return scenes;
     }
 
@@ -290,5 +300,68 @@ public final class StellarContentScenes {
         ctx.check(actual).as("投出后的状态").isEqualTo(Map.of(
                 "survival", "手上剩 0，拾取 ALLOWED，捡回 " + SPEAR,
                 "creative", "手上剩 1，拾取 CREATIVE_ONLY，捡回 " + SPEAR));
+    }
+
+    private static final List<WinefoxAction> SWORD_ACTIONS = List.of(
+            WinefoxAction.SWORD_ATTACK_1, WinefoxAction.SWORD_ATTACK_2,
+            WinefoxAction.SWORD_ATTACK_3, WinefoxAction.SWORD_ATTACK_4);
+    private static final String WINEFOX_ARM_ANIMATION = "/assets/touhou_little_maid_spell/tlm_custom_pack/"
+            + "star_witch_winefox-1.0.0/assets/touhou_little_maid_spell/animation/"
+            + "touhou_little_maid_spell.stellar_witch.arm.animation.json";
+
+    /** 每一击的出手 tick，最后一项是连段结束、AI 被放开的 tick。 */
+    private static List<Integer> comboTimeline(SceneContext ctx, int hits) {
+        List<Integer> ticks = new ArrayList<>();
+        int tick = 0;
+        ticks.add(tick);
+        for (int i = 0; i < hits; i++) {
+            WinefoxAction action = SWORD_ACTIONS.get(i);
+            int cooldown = action.meleeCooldownTicks(i + 1 < hits);
+            ctx.check(cooldown >= action.followUpTicks()).as(action.name() + " 冷却不短于接续窗口").isTrue();
+            tick += cooldown;
+            ticks.add(tick);
+        }
+        return ticks;
+    }
+
+    /** 连段中途按接续窗口出手，最后一击等完整收招后才放开 AI。 */
+    private static void winefoxComboTimeline(SceneContext ctx) {
+        ctx.check(comboTimeline(ctx, 3)).as("三连击时间线").isEqualTo(List.of(0, 12, 24, 42));
+        ctx.check(comboTimeline(ctx, 4)).as("四连击时间线").isEqualTo(List.of(0, 12, 24, 36, 55));
+    }
+
+    /** 只有剑系动作允许提前接续，其余动作的接续窗口就是总时长。 */
+    private static void winefoxFollowUpScope(SceneContext ctx) {
+        List<String> early = new ArrayList<>();
+        for (WinefoxAction action : WinefoxAction.values()) {
+            if (action.followUpTicks() != action.durationTicks()) {
+                early.add(action.name());
+            }
+        }
+        ctx.check(early).as("接续窗口早于总时长的动作").isEqualTo(SWORD_ACTIONS.stream().map(Enum::name).toList());
+    }
+
+    /** 剑系动作的事件都落在接续窗口之内，完整收招等于动画文件里的时长。 */
+    private static void winefoxSwordRecovery(SceneContext ctx) {
+        JsonObject animations;
+        try (InputStream in = StellarContentScenes.class.getResourceAsStream(WINEFOX_ARM_ANIMATION)) {
+            if (in == null) {
+                ctx.check(false).as("星之魔女手臂动画文件存在").isTrue();
+                return;
+            }
+            animations = JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8))
+                    .getAsJsonObject().getAsJsonObject("animations");
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        for (WinefoxAction action : SWORD_ACTIONS) {
+            double length = animations.getAsJsonObject(action.animationName()).get("animation_length").getAsDouble();
+            ctx.check(action.meleeCooldownTicks(false)).as(action.name() + " 完整收招等于动画时长").isEqualTo((int) Math.ceil(length * 20));
+            ctx.check(action.followUpTicks() > 0 && action.followUpTicks() < action.durationTicks())
+                    .as(action.name() + " 接续窗口在总时长之内").isTrue();
+            for (WinefoxAction.Event event : action.events()) {
+                ctx.check(event.tick() < action.followUpTicks()).as(action.name() + " 事件 " + event + " 落在接续窗口内").isTrue();
+            }
+        }
     }
 }
