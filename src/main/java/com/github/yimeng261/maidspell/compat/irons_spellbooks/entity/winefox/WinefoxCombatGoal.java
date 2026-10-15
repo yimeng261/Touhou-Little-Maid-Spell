@@ -197,6 +197,13 @@ final class WinefoxCombatGoal extends Goal {
     private int voidPhaseCheckCooldown;
     private int healCheckCooldown;
     private int meleeComboRemaining;
+    /**
+     * 一套连段打完后先让法术分支做一次决策，再允许起下一套。
+     *
+     * <p>最后一击的近战冷却与法术决策冷却同为收招时长、同 tick 归零，而近战分支排在法术分支前面；
+     * 不让一手的话，目标贴身时每次冷却一到都会重新起连段，常规法术永远轮不到。
+     */
+    private boolean spellTurnPending;
     private int movementRefreshCooldown;
     private double orbitDirection = 1.0D;
     @Nullable
@@ -265,6 +272,7 @@ final class WinefoxCombatGoal extends Goal {
         this.customSpellCooldowns.clear();
         this.meleeCooldown = 0;
         this.meleeComboRemaining = 0;
+        this.spellTurnPending = false;
         this.closeRangeTicks = 0;
         this.stuckTicks = 0;
         this.lastPosition = null;
@@ -550,7 +558,7 @@ final class WinefoxCombatGoal extends Goal {
             }
         }
 
-        if (this.meleeCooldown <= 0 && this.boss.distanceToSqr(target) <= 9.0D
+        if (this.meleeCooldown <= 0 && !this.spellTurnPending && this.boss.distanceToSqr(target) <= 9.0D
             && this.boss.getSensing().hasLineOfSight(target)
             && this.boss.tryMeleeAttack(target)) {
             if (this.meleeComboRemaining == 0) {
@@ -560,6 +568,7 @@ final class WinefoxCombatGoal extends Goal {
             this.meleeCooldown = this.boss.animationAction().meleeCooldownTicks(this.meleeComboRemaining > 0);
             if (this.meleeComboRemaining == 0) {
                 this.spellDecisionCooldown = this.boss.animationAction().durationTicks();
+                this.spellTurnPending = true;
             }
             return;
         } else if (this.meleeComboRemaining > 0 && this.boss.distanceToSqr(target) <= 9.0D) {
@@ -570,6 +579,7 @@ final class WinefoxCombatGoal extends Goal {
             return;
         }
         this.spellDecisionCooldown = SPELL_DECISION_INTERVAL;
+        this.spellTurnPending = false;
         if (!this.boss.getSensing().hasLineOfSight(target)) {
             return;
         }
@@ -999,6 +1009,7 @@ final class WinefoxCombatGoal extends Goal {
         this.spellDecisionCooldown = SPELL_DECISION_INTERVAL;
         this.meleeCooldown = 0;
         this.meleeComboRemaining = 0;
+        this.spellTurnPending = false;
         this.escapeTeleportCheckCooldown = 0;
         this.spearCheckCooldown = SPEAR_CHECK_INTERVAL;
         this.voidPhaseCheckCooldown = VOID_PHASE_CHECK_INTERVAL;
