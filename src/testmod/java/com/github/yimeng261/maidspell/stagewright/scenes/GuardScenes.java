@@ -19,6 +19,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.phys.AABB;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +29,7 @@ import java.util.Optional;
 import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
 
 /**
- * 精灵守卫索敌与同盟、铁魔法雷暴按施法者归属保护友方女仆、随机增益效果黑名单默认含 goety:explosive。
+ * 精灵守卫索敌与同盟、铁魔法雷暴按施法者归属保护友方女仆、随机增益效果黑名单默认含 goety:explosive 且旧默认值会迁移补上。
  */
 public final class GuardScenes {
     private static final String TEMPLAR = NS + "elf_templar";
@@ -53,6 +54,7 @@ public final class GuardScenes {
         scenes.add(Checks.superflat("thunderstorm.ownerSparesOwnMaid", 20, ctx -> thunderstorm(ctx, true)));
         scenes.add(Checks.superflat("thunderstorm.enemyHitsMaid", 20, ctx -> thunderstorm(ctx, false)));
         scenes.add(Checks.scene("config.explosiveInEffectBlacklists", 5, GuardScenes::explosiveBlacklisted));
+        scenes.add(Checks.scene("config.effectBlacklistMigrationCoversBoth", 5, GuardScenes::blacklistMigration));
         return scenes;
     }
 
@@ -180,5 +182,51 @@ public final class GuardScenes {
             FragrantIngenuityBauble.refreshEffectsList();
             DreamCatCrystalBauble.invalidateBeneficialEffectsCache();
         }
+    }
+
+    /**
+     * 迁移版本为 0 时，梦云水晶与馥郁巧思两份黑名单各自判断：恰为旧默认（默认值去掉 goety:explosive）才补上，
+     * 改过的保持原样；版本已到 1 时什么都不动。结束后把三项写回原值并落盘。
+     */
+    @SuppressWarnings("unchecked")
+    private static void blacklistMigration(SceneContext ctx) {
+        String explosive = "goety:explosive";
+        var crystal = (ModConfigSpec.ConfigValue<List<? extends String>>) Reflect.<Object>field(null, Config.class, "DREAM_CRYSTAL_EFFECT_BLACKLIST");
+        var fragrant = (ModConfigSpec.ConfigValue<List<? extends String>>) Reflect.<Object>field(null, Config.class, "FRAGRANT_INGENUITY_EFFECT_BLACKLIST");
+        ModConfigSpec.IntValue version = Reflect.field(null, Config.class, "DREAM_CRYSTAL_EFFECT_BLACKLIST_MIGRATION_VERSION");
+        List<String> defaults = (List<String>) crystal.getDefault();
+        List<String> previousDefaults = defaults.stream().filter(effect -> !effect.equals(explosive)).toList();
+        List<String> custom = List.of("minecraft:speed");
+        List<? extends String> originalCrystal = crystal.get();
+        List<? extends String> originalFragrant = fragrant.get();
+        int originalVersion = version.get();
+        try {
+            migrate(crystal, previousDefaults, fragrant, previousDefaults, version, 0);
+            ctx.check(crystal.get()).as("两份都是旧默认：梦云水晶黑名单").isEqualTo(defaults);
+            ctx.check(fragrant.get()).as("两份都是旧默认：馥郁巧思黑名单").isEqualTo(defaults);
+            ctx.check(version.get()).as("迁移后版本号").isEqualTo(1);
+
+            migrate(crystal, custom, fragrant, previousDefaults, version, 0);
+            ctx.check(crystal.get()).as("只有馥郁巧思是旧默认：梦云水晶黑名单").isEqualTo(custom);
+            ctx.check(fragrant.get()).as("只有馥郁巧思是旧默认：馥郁巧思黑名单").isEqualTo(defaults);
+
+            migrate(crystal, previousDefaults, fragrant, previousDefaults, version, 1);
+            ctx.check(crystal.get()).as("版本已到 1：梦云水晶黑名单").isEqualTo(previousDefaults);
+            ctx.check(fragrant.get()).as("版本已到 1：馥郁巧思黑名单").isEqualTo(previousDefaults);
+        } finally {
+            crystal.set(originalCrystal);
+            fragrant.set(originalFragrant);
+            version.set(originalVersion);
+            Config.SPEC.save();
+        }
+    }
+
+    private static void migrate(ModConfigSpec.ConfigValue<List<? extends String>> crystal, List<String> crystalValue,
+                                ModConfigSpec.ConfigValue<List<? extends String>> fragrant, List<String> fragrantValue,
+                                ModConfigSpec.IntValue version, int versionValue) {
+        crystal.set(crystalValue);
+        fragrant.set(fragrantValue);
+        version.set(versionValue);
+        Reflect.call(null, Config.class, "migrateRandomEffectBlacklists", new Class<?>[0]);
     }
 }

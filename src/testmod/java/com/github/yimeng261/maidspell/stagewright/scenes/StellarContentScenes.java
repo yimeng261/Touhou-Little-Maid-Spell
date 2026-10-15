@@ -8,7 +8,11 @@ import com.github.yimeng261.maidspell.stagewright.support.Actors;
 import com.github.yimeng261.maidspell.stagewright.support.Checks;
 import com.github.yimeng261.maidspell.stagewright.support.Lang;
 import com.github.yimeng261.maidspell.stagewright.support.Owners;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxAction;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxBossHealthController;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxBossSpellAction;
+import com.github.yimeng261.maidspell.stagewright.support.Reflect;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
@@ -27,7 +31,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.GoalSelector;
+import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.item.CreativeModeTab;
@@ -41,6 +50,7 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -83,6 +93,8 @@ public final class StellarContentScenes {
         scenes.add(Checks.scene("stellar.winefox.meleeComboTimeline", 5, StellarContentScenes::winefoxComboTimeline));
         scenes.add(Checks.scene("stellar.winefox.followUpOnlySwordActions", 5, StellarContentScenes::winefoxFollowUpScope));
         scenes.add(Checks.scene("stellar.winefox.swordFollowUpKeepsEventsAndRecovery", 5, StellarContentScenes::winefoxSwordRecovery));
+        scenes.add(Checks.superflat("stellar.winefox.comboYieldsSpellTurn", SPELL_TURN_SETUP + SPELL_TURN_WATCH + 40,
+                StellarContentScenes::winefoxComboYieldsSpellTurn));
         return scenes;
     }
 
@@ -363,5 +375,115 @@ public final class StellarContentScenes {
                 ctx.check(event.tick() < action.followUpTicks()).as(action.name() + " 事件 " + event + " 落在接续窗口内").isTrue();
             }
         }
+    }
+
+    /** 开战、压血到二阶段线以下、等 120t 转场播完，留足余量。 */
+    private static final int SPELL_TURN_SETUP = 220;
+    /** 一套连段最长 55t，收招后法术决策要等满收招时长，再加吟唱；900t 足够看到三套以上。 */
+    private static final int SPELL_TURN_WATCH = 900;
+    /** 每 tick 写回的检查冷却，远大于观察窗。 */
+    private static final int SUPPRESSED = 100_000;
+
+    /**
+     * 目标钉在身边时，每套连段收招后先做一次法术决策，再起下一套。
+     *
+     * <p>投枪、虚空相位、治疗、追击传送、深渊庇佑、破法回响这些排在近战之前的分支每 tick 压住，
+     * 只留近战与常规法术决策两条路。法术决策以 {@code spellDecisionCooldown} 在非收招 tick 被重新拉高为准，
+     * 不论这次决策最后放没放出法术。
+     */
+    private static void winefoxComboYieldsSpellTurn(SceneContext ctx) {
+        MagicalWinefoxBossEntity boss = Actors.spawn(ctx, NS + "stellar_witch", 0, 0, 0, false);
+        Mob dummy = Actors.spawn(ctx, "minecraft:husk", 2, 0, 0, true);
+        dummy.setInvulnerable(true);
+        Vec3 anchor = dummy.position();
+        ctx.await(() -> boss.tickCount >= 2).within(20).then(() -> {
+            boolean engaged = Reflect.call(boss, MagicalWinefoxBossEntity.class, "beginMobCombat",
+                    new Class<?>[]{LivingEntity.class}, dummy);
+            if (!engaged) {
+                ctx.fail("星之魔女没有对假人开战");
+                return;
+            }
+            Goal goal = combatGoal(boss);
+            float max = Reflect.call(boss, MagicalWinefoxBossEntity.class, "maidspell$bossMaxHealth", new Class<?>[0]);
+            WinefoxBossHealthController.withCause(boss, WinefoxBossHealthController.Cause.ADMIN,
+                    () -> boss.setHealth(max * 0.4F));
+            ctx.await(() -> {
+                pin(dummy, anchor);
+                suppressSideBranches(goal);
+                return boss.isPhaseTwo() && !boss.isTransitioning();
+            }).within(SPELL_TURN_SETUP).then(() -> watchSpellTurns(ctx, boss, goal, dummy, anchor));
+        });
+    }
+
+    private static void watchSpellTurns(SceneContext ctx, MagicalWinefoxBossEntity boss, Goal goal, Mob dummy, Vec3 anchor) {
+        Class<?> type = goal.getClass();
+        List<String> events = new ArrayList<>();
+        int[] previous = {Reflect.<Integer>field(goal, type, "meleeComboRemaining"),
+                Reflect.<Integer>field(goal, type, "spellDecisionCooldown")};
+        int start = ctx.ticks();
+        Checks.watch(ctx, SPELL_TURN_WATCH, () -> {
+            pin(dummy, anchor);
+            suppressSideBranches(goal);
+            int combo = Reflect.field(goal, type, "meleeComboRemaining");
+            int decision = Reflect.field(goal, type, "spellDecisionCooldown");
+            int at = ctx.ticks() - start;
+            if (previous[0] > 0 && combo == 0) {
+                events.add("end@" + at);
+            } else if (previous[0] == 0 && combo > 0) {
+                events.add("start@" + at);
+            } else if (decision > previous[1]) {
+                events.add("spell@" + at + "/" + String.format("%.1f", Math.sqrt(boss.distanceToSqr(dummy))));
+            }
+            previous[0] = combo;
+            previous[1] = decision;
+        }, () -> {
+            ctx.record("events", events);
+            ctx.check(boss.isPhaseTwo()).as("观察窗结束时仍在二阶段").isTrue();
+            int rounds = 0;
+            List<String> starved = new ArrayList<>();
+            for (int i = 0; i < events.size(); i++) {
+                if (!events.get(i).startsWith("end@")) {
+                    continue;
+                }
+                int next = i + 1;
+                while (next < events.size() && !events.get(next).startsWith("start@")) {
+                    ++next;
+                }
+                if (next == events.size()) {
+                    break;
+                }
+                ++rounds;
+                if (events.subList(i + 1, next).stream().noneMatch(event -> event.startsWith("spell@"))) {
+                    starved.add(events.get(i) + " → " + events.get(next));
+                }
+            }
+            ctx.check(rounds >= 2).as("观察到的「收招 → 下一套」轮次不少于 2").isTrue();
+            ctx.check(starved).as("收招后没做法术决策就起下一套的轮次").isEqualTo(List.of());
+        });
+    }
+
+    private static Goal combatGoal(MagicalWinefoxBossEntity boss) {
+        GoalSelector selector = Reflect.field(boss, Mob.class, "goalSelector");
+        return selector.getAvailableGoals().stream().map(WrappedGoal::getGoal)
+                .filter(goal -> goal.getClass().getSimpleName().equals("WinefoxCombatGoal"))
+                .findFirst().orElseThrow(() -> new IllegalStateException("星之魔女没有 WinefoxCombatGoal"));
+    }
+
+    private static void pin(Mob dummy, Vec3 anchor) {
+        dummy.teleportTo(anchor.x, anchor.y, anchor.z);
+        dummy.setDeltaMovement(Vec3.ZERO);
+    }
+
+    /** 治疗留在冷却里：回血越过二阶段线会退回一阶段。 */
+    private static void suppressSideBranches(Goal goal) {
+        Class<?> type = goal.getClass();
+        for (String cooldown : List.of("spearCheckCooldown", "voidPhaseCheckCooldown",
+                "healCheckCooldown", "escapeTeleportCheckCooldown")) {
+            Reflect.set(goal, type, cooldown, SUPPRESSED);
+        }
+        Reflect.set(goal, type, "abyssalShroudHealthThreshold", 0.0D);
+        Reflect.set(goal, type, "stationaryEchoTriggered", true);
+        Map<WinefoxBossSpellAction, Integer> cooldowns = Reflect.field(goal, type, "spellCooldowns");
+        cooldowns.put(WinefoxBossSpellAction.HEAL, SUPPRESSED);
     }
 }
