@@ -1,5 +1,80 @@
 # Changelog / 变更日志
 
+## 1.9.2-neoforge
+
+### 新增功能 / New Features
+
+- 女仆饰品栏可装备 Goety 的帽子、冠冕与长袍，Goety 能识别女仆身上的套装效果；不洁圣冠的光环版与普通版效果相同，光环按优先级渲染 /
+  Maid bauble slots now accept Goety hats, crowns and robes, and Goety recognizes their set effects on maids;
+  the halo variant of the Unholy Hat works the same as the regular one, with its halo rendered by priority
+- 女仆施放 Goety 法术时会按聚晶与法术从背包中挑选法杖，整个施法过程都使用这根法杖 /
+  Maids casting Goety spells now pick a wand from their inventory based on the focus and spell, and use that
+  wand for the whole cast
+
+### 修复 / Bug Fixes
+
+- 修复寻风之铃飞行中存档重载后飞向世界原点的问题 /
+  Fixed the Wind Seeking Bell flying toward the world origin after a save is reloaded mid-flight
+- 修复喋血之心按原始伤害而非实际扣血量回复的问题 /
+  Fixed Bleeding Heart healing based on raw damage instead of the health actually lost
+- 修复女仆身上的效果被拦截后，下一个效果的属性修改丢失的问题 /
+  Fixed the next effect's attribute modifiers being lost after an effect on a maid was blocked
+- 修复法术战斗中女仆把友方或坐下待机的女仆当作目标的问题 /
+  Fixed maids in spell combat targeting friendly maids or maids sitting on standby
+- 混沌之书、烬血之戒、春花-返的结算时机与 1.20 版一致：混沌之书拆分伤害后取消原伤害，春花-返改为减免伤害 /
+  Chaos Book, Ember Blood Ring and Spring Bloom: Return now resolve at the same point as in the 1.20 version:
+  Chaos Book cancels the original damage after splitting it, and Spring Bloom: Return now reduces damage
+- 修复发簪把被盾牌或受击间隔挡下的伤害转给主人的问题 /
+  Fixed the Hairpin transferring damage to the owner even when it was blocked by a shield or hit cooldown
+- 修复可选模组未安装时含其材料的配方报错的问题；梦云水晶跨模组祭坛配方补回纯净邪血与宝刀「付丧」结月 /
+  Fixed recipes with optional-mod ingredients erroring when that mod is not installed; the Dreamcloud Crystal
+  crossover altar recipe again requires Pure Unholy Blood and Noble -Tukumo- Violet
+- 梦云水晶随机正面效果白名单默认值补回农夫乐事、Alex 系列、Cataclysm 等模组（仅影响新生成的配置） /
+  Restored Farmer's Delight, Alex's mods, Cataclysm and other namespaces to the default Dreamcloud Crystal random
+  beneficial effect whitelist (only affects newly generated configs)
+- 修复主人变更后，依赖主人女仆列表的饰品效果仍按旧主人查找女仆的问题 /
+  Fixed bauble effects that rely on an owner's maid list still looking up maids under the previous owner after
+  the owner changed
+- 紫荆银冠对其他模组直接改写血量造成的掉血同样生效 /
+  Silver Cercis Crown now also applies to health loss caused by other mods writing health directly
+- 修复女仆施放新生魔艺法术成功后没有音效的问题 /
+  Fixed maids casting Ars Nouveau spells without playing the spell sound
+- 修复流转核心与法术强化核心的动画速度与 1.20 版不一致的问题 /
+  Fixed the Flow Core and Spell Enhancement Core animation speeds differing from the 1.20 version
+- 修复幻化项链切换款式时未校验背包槽位的问题 /
+  Fixed the Transmog Necklace not validating inventory slots when switching styles
+- 进出归隐之地的落点与 1.20 版一致：原坐标可站立就原地落下，否则落到地表，地表也不可站立时垫一块平台 /
+  Entering and leaving The Retreat now places you as in the 1.20 version: you land in place if the original
+  position is standable, otherwise on the surface, with a platform placed if the surface is not standable either
+- 修复锚定核心在女仆失效或不在票据区块后仍保留强加载的问题；无主女仆也会被强加载 /
+  Fixed the Anchor Core keeping chunks force-loaded after its maid became invalid or left the ticketed chunk;
+  maids without an owner are now force-loaded as well
+
+### 优化 / Improvements
+
+- 星之魔女二阶段剑技连段更连贯：连段中途提前接下一式，最后一击播完整收招；动作没起就不造成近战伤害；每套连段收招后先放一次法术再起下一套 /
+  The Stellar Witch's phase-two sword combos are smoother: mid-combo strikes chain early and only the final strike
+  plays the full recovery; melee damage is dealt only when the attack animation actually starts; after each combo
+  she casts a spell before starting the next one
+- 星之魔女在非战斗状态或转阶段期间，不再因其他模组直接改写血量而掉血 /
+  The Stellar Witch no longer loses health from other mods writing her health directly while out of combat or
+  during a phase transition
+- 星影剑阵的起手动画改为铁魔法的单手横斩 /
+  Starshadow Sword Array now uses Iron's Spells 'n Spellbooks' one-handed slash as its casting animation
+- 混沌之书、破愈咒锋、梦云水晶的受伤前置效果对所有重写了受伤逻辑的模组生物生效，不再只限固定清单 /
+  The pre-damage effects of Chaos Book, Wound Rime Blade and Dreamcloud Crystal now apply to every modded mob
+  that overrides damage handling, instead of a fixed list
+
+### 升级说明 / Upgrade Notes
+
+- 旧配置中未改动过的梦云水晶与馥郁巧思随机正面效果黑名单会自动补上 goety:explosive，自定义过的黑名单保持不变 /
+  Unmodified Dreamcloud Crystal and Fragrant Ingenuity random beneficial effect blacklists in existing configs
+  automatically gain goety:explosive; customized blacklists are left unchanged
+- 如安装 Psi，需要 1.21.1-110 或更新版本 /
+  If Psi is installed, version 1.21.1-110 or newer is required
+
+---
+
 ## 1.9.1-neoforge
 
 ### 新增功能 / New Features
