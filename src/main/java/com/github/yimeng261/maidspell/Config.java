@@ -470,8 +470,8 @@ public class Config {
             );
 
     private static final ModConfigSpec.IntValue DREAM_CRYSTAL_EFFECT_BLACKLIST_MIGRATION_VERSION = BUILDER
-            .comment("梦云水晶黑名单默认值迁移版本；请勿手动修改")
-            .comment("Dream Crystal blacklist default migration version; do not edit manually.")
+            .comment("梦云水晶与馥郁巧思黑名单默认值迁移版本；请勿手动修改")
+            .comment("Dream Crystal and Fragrant Ingenuity blacklist default migration version; do not edit manually.")
             .defineInRange("dreamCrystalEffectBlacklistMigrationVersion", 0, 0, 1);
 
     static {
@@ -836,24 +836,29 @@ public class Config {
 
     /**
      * 已有的 TOML 在默认值新增条目后仍保留旧列表，这里只迁移「原封未动的旧默认值」，
-     * 玩家自定义过的黑名单保持由玩家掌控。
+     * 玩家自定义过的黑名单保持由玩家掌控。梦云水晶与馥郁巧思共用同一份默认值，一并迁移。
      */
-    private static void migrateDreamCrystalEffectBlacklist() {
+    private static void migrateRandomEffectBlacklists() {
         if (DREAM_CRYSTAL_EFFECT_BLACKLIST_MIGRATION_VERSION.get() >= 1) {
             return;
         }
 
+        migrateRandomEffectBlacklist(DREAM_CRYSTAL_EFFECT_BLACKLIST);
+        migrateRandomEffectBlacklist(FRAGRANT_INGENUITY_EFFECT_BLACKLIST);
+
+        DREAM_CRYSTAL_EFFECT_BLACKLIST_MIGRATION_VERSION.set(1);
+        SPEC.save();
+    }
+
+    private static void migrateRandomEffectBlacklist(ModConfigSpec.ConfigValue<List<? extends String>> blacklist) {
         int lastIndex = DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST.size() - 1;
-        List<? extends String> configured = DREAM_CRYSTAL_EFFECT_BLACKLIST.get();
+        List<? extends String> configured = blacklist.get();
         List<String> previousDefaults = DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST.subList(0, lastIndex);
         if (configured.equals(previousDefaults)) {
             List<String> migrated = new ArrayList<>(configured);
             migrated.add(DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST.get(lastIndex));
-            DREAM_CRYSTAL_EFFECT_BLACKLIST.set(migrated);
+            blacklist.set(migrated);
         }
-
-        DREAM_CRYSTAL_EFFECT_BLACKLIST_MIGRATION_VERSION.set(1);
-        SPEC.save();
     }
 
     @SubscribeEvent
@@ -861,7 +866,7 @@ public class Config {
         if (event.getConfig().getSpec() != SPEC) {
             return;
         }
-        migrateDreamCrystalEffectBlacklist();
+        migrateRandomEffectBlacklists();
         refreshConfig();
     }
 
@@ -870,7 +875,7 @@ public class Config {
         if (event.getConfig().getSpec() != SPEC) {
             return;
         }
-        migrateDreamCrystalEffectBlacklist();
+        migrateRandomEffectBlacklists();
         refreshConfig();
     }
 
