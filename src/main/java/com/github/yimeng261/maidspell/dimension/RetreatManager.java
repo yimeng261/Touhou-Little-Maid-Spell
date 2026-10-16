@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.dimension;
 
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.HiddenRetreatMaidRegistry;
 import com.github.yimeng261.maidspell.utils.PortableTimerMath;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import net.minecraft.core.BlockPos;
@@ -110,6 +111,9 @@ public class RetreatManager {
      * 正在进行的搜索，防止重复搜索
      */
     private static final Map<String, StructureSearchWorker> ongoingSearches = new ConcurrentHashMap<>();
+    // The existing generation permit/position mailbox is dimension-wide. Shared
+    // searches must run in order so one player's result cannot be assigned to another.
+    private static final SharedRetreatSearchQueue sharedSearchQueue = new SharedRetreatSearchQueue();
 
     /**
      * 结构 HolderSet 缓存（延迟初始化）
@@ -218,6 +222,7 @@ public class RetreatManager {
         playerRetreats.clear();
         structureCache.clear();
         ongoingSearches.clear();
+        sharedSearchQueue.clear();
         forceLoadedChunks.clear();
         cachedStructureSet = null;
         searchingCounter.set(0);
@@ -473,6 +478,7 @@ public class RetreatManager {
      * 使用 StructureSearchWorker 在主线程分帧执行，不阻塞也无线程安全问题。
      */
     public static CompletableFuture<BlockPos> searchStructure(ServerLevel level, UUID playerUUID, BlockPos playerPos) {
+        HiddenRetreatMaidRegistry.get(level.getServer());
         String searchKey = makeSearchKey(level, playerUUID);
 
         // 已有搜索在进行，返回已有 Future
@@ -517,7 +523,7 @@ public class RetreatManager {
         }
 
         StructureSearchWorker search = new StructureSearchWorker(
-                level, holderSet, placement, searchCenter, 100, skipKnown
+                level, holderSet, placement, searchCenter, 100, skipKnown, playerUUID
         );
         ongoingSearches.put(searchKey, search);
 
@@ -530,7 +536,17 @@ public class RetreatManager {
         });
 
         // 启动搜索（注册到 WorldWorkerManager）
-        search.start();
+        if (Config.enablePrivateDimensions) {
+            search.start();
+        } else {
+            sharedSearchQueue.enqueue(level.dimension(), level.getServer(), search.getResultFuture(), () -> {
+                if (level.getServer().getLevel(level.dimension()) == level) {
+                    search.start();
+                } else {
+                    search.cancel();
+                }
+            });
+        }
 
         return search.getResultFuture();
     }

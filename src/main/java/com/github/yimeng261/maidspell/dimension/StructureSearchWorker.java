@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.dimension;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.HiddenRetreatMaidRegistry;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -16,6 +17,7 @@ import net.minecraftforge.common.WorldWorkerManager;
 
 import javax.annotation.Nullable;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -28,6 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class StructureSearchWorker implements WorldWorkerManager.IWorker {
 
     private final ServerLevel level;
+    private final UUID playerUUID;
     private final Set<Holder<Structure>> structureHolders;
     private final RandomSpreadStructurePlacement placement;
     private final int searchCenterChunkX;
@@ -55,6 +58,7 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
     private int edgeIndex = 0;
 
     private volatile boolean finished = false;
+    private boolean started;
     private int samples = 0;
     private final long startTimeMs;
 
@@ -76,9 +80,11 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
             RandomSpreadStructurePlacement placement,
             BlockPos searchCenter,
             int maxRadius,
-            boolean skipKnownStructures
+            boolean skipKnownStructures,
+            UUID playerUUID
     ) {
         this.level = level;
+        this.playerUUID = playerUUID;
         this.structureHolders = structureHolders;
         this.placement = placement;
         this.searchCenterChunkX = SectionPos.blockToSectionCoord(searchCenter.getX());
@@ -102,6 +108,10 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
      * 注册到 WorldWorkerManager 开始搜索
      */
     public void start() {
+        if (finished || started) {
+            return;
+        }
+        started = true;
         MaidSpellMod.LOGGER.info("分帧搜索开始 - 中心: ({}, {}), 半径: {}, spacing: {}",
                 searchCenterChunkX, searchCenterChunkZ, maxRadius, placement.spacing());
         // 清理可能残留的上一次搜索的位置缓存（例如上次搜索取消后 generate() 才存入的）
@@ -378,6 +388,9 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
      * 则此处不会重复回收。
      */
     private void reclaimPermitOnce() {
+        if (!started) {
+            return;
+        }
         // 无论 generate() 是否已消费许可，都清理可能残留的位置缓存
         RetreatManager.pollGeneratedStructurePos(level.dimension());
         if (counterDeducted.compareAndSet(false, true)) {
@@ -396,6 +409,7 @@ public class StructureSearchWorker implements WorldWorkerManager.IWorker {
                 structurePos, currentRing, samples, elapsed);
 
         // 强制加载结构附近区块以触发完整生成（从而触发 afterPlace）
+        HiddenRetreatMaidRegistry.bindStructure(level, structurePos, playerUUID);
         RetreatManager.forceLoadStructureChunks(level, structurePos);
 
         resultFuture.complete(structurePos);

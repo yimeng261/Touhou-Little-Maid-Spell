@@ -1,6 +1,8 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.HiddenRetreatMaidRegistry;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.MaidOriginData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -34,6 +36,16 @@ public abstract class StructureTemplateMixin {
 
         ListTag posTag = tag.getList("Pos", 6);
         BlockPos blockPos = BlockPos.containing(posTag.getDouble(0), posTag.getDouble(1), posTag.getDouble(2));
+        if ("touhou_little_maid:maid".equals(tag.getString("id"))
+                && !tag.contains("Owner") && MaidOriginData.isHiddenRetreatMaid(tag)) {
+            try {
+                ci.setReturnValue(HiddenRetreatMaidRegistry.createTemplateMaid(accessor, tag, blockPos));
+            } catch (Exception exception) {
+                MaidSpellMod.LOGGER.warn("Failed to create hidden retreat template maid at {}", blockPos, exception);
+                ci.setReturnValue(Optional.empty());
+            }
+            return;
+        }
         if ((MaidSpellMod.MOD_ID + ":stellar_witch").equals(tag.getString("id")) && posTag.size() == 3) {
             // Pos is already transformed to world coordinates; template home coordinates are not.
             tag.put("WinefoxHomePos", NbtUtils.writeBlockPos(blockPos));

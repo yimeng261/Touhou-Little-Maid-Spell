@@ -51,6 +51,8 @@
     "iss.ThunderstormEffectMixin",
     "iss.UtilsMixin",
     "legendary.SmallAnnihilationBombEntityMixin",
+    "ftbquests.DimensionTaskMixin",
+    "ftbquests.KnownServerRegistriesMixin",
     "tlm.AbstractMaidContainerMixin",
     "tlm.AltarRecipeSerializerMixin",
     "tlm.EntityMaidBaubleReviveCleanupMixin",
@@ -79,6 +81,7 @@
     "psi.PieceTrickAddMotionMixin"
   ],
   "client": [
+    "explorerscompass.StructureUtilsMixin",
     "client.ClientPacketListenerMixin",
     "iss.ClientMagicDataMixin",
     "iss.MaidEntityAnimateStateMixin",

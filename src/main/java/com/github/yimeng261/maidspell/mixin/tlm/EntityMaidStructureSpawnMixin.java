@@ -49,10 +49,7 @@ public class EntityMaidStructureSpawnMixin {
             EntityMaid maid = (EntityMaid) (Object) this;
             BlockPos maidPos = maid.blockPosition();
             if (maidspell$shouldSkipRandomModel(worldIn, maidPos)) {
-                if (maidspell$isInsideStructure(
-                        worldIn.getLevel().structureManager(),
-                        worldIn.registryAccess().registryOrThrow(Registries.STRUCTURE),
-                        maidPos, "hidden_retreat")) {
+                if (MaidOriginData.isHiddenRetreatMaid(maid)) {
                     MaidOriginData.markHiddenRetreatMaid(maid);
                 }
                 this.structureSpawn = false;

@@ -34,6 +34,7 @@ import java.util.function.Function;
  */
 @Mod.EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class TheRetreatDimension {
+    private static final String PRIVATE_RETREAT_PREFIX = "the_retreat_";
     private static final ResourceLocation SHARED_RETREAT_LOCATION =
         new ResourceLocation(MaidSpellMod.MOD_ID, "the_retreat");
 
@@ -55,8 +56,46 @@ public class TheRetreatDimension {
     }
 
     public static boolean isRetreatDimension(ResourceLocation dimensionLocation) {
-        return dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID)
-            && dimensionLocation.getPath().startsWith("the_retreat");
+        return isSharedRetreatDimension(dimensionLocation)
+            || isPrivateRetreatDimension(dimensionLocation);
+    }
+
+    /**
+     * Returns whether the location is the shared retreat dimension. This is
+     * also the sentinel dimension used by FTB Quests for an "any retreat"
+     * task condition.
+     */
+    public static boolean isSharedRetreatDimension(ResourceLocation dimensionLocation) {
+        return SHARED_RETREAT_LOCATION.equals(dimensionLocation);
+    }
+
+    /**
+     * Returns whether the location is one of the UUID-backed player retreat
+     * dimensions. Their path is {@code the_retreat_<uuid with underscores>}.
+     */
+    public static boolean isPrivateRetreatDimension(ResourceLocation dimensionLocation) {
+        if (!MaidSpellMod.MOD_ID.equals(dimensionLocation.getNamespace())
+                || !dimensionLocation.getPath().startsWith(PRIVATE_RETREAT_PREFIX)) {
+            return false;
+        }
+
+        String encodedUuid = dimensionLocation.getPath().substring(PRIVATE_RETREAT_PREFIX.length());
+        if (encodedUuid.isEmpty()) {
+            return false;
+        }
+
+        try {
+            UUID uuid = UUID.fromString(encodedUuid.replace('_', '-'));
+            return uuid.toString().replace('-', '_').equals(encodedUuid);
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+    }
+
+    /** A fixed retreat task ID matches the family; all other task IDs stay exact. */
+    public static boolean matchesTaskDimension(ResourceLocation required, ResourceLocation actual) {
+        return required.equals(actual)
+            || isSharedRetreatDimension(required) && isPrivateRetreatDimension(actual);
     }
 
 
