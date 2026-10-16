@@ -14,7 +14,7 @@ public class SpringBauble implements IMaidBauble {
                     && ("chaos_book".equals(infoDamage.msg_type) || "chaos_book2".equals(infoDamage.msg_type))) {
                 return null;
             }
-            Float percent = Math.abs(1 - maid.getHealth()/maid.getMaxHealth());
+            Float percent = Math.max(0, 1 - maid.getHealth()/maid.getMaxHealth());
             if(percent > Config.springRingMaxDamageBonus){
                 percent = (float)Config.springRingMaxDamageBonus;
             }
