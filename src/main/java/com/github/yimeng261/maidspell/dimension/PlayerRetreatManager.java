@@ -5,7 +5,6 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.accessor.MinecraftServerAccessor;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.github.yimeng261.maidspell.player.OfflinePlayerDataScan;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -42,7 +41,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PlayerRetreatManager {
 
     private static final ResourceLocation RETREAT_TEMPLATE = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "the_retreat");
-    private static final ResourceKey<Level> SHARED_RETREAT_KEY = ResourceKey.create(Registries.DIMENSION, RETREAT_TEMPLATE);
+    private static final ResourceKey<Level> SHARED_RETREAT_KEY = TheRetreatDimension.getSharedRetreatDimension();
     private static final String PRIVATE_RETREAT_PREFIX = "the_retreat_";
 
     /**

@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.compat.touhou_little_maid;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.HiddenRetreatMaidData;
+import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -25,7 +26,6 @@ import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
-import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -113,20 +113,12 @@ public final class HiddenRetreatMaidRegistry {
         }
     }
 
-    @Nullable
-    static UUID privateOwner(ResourceLocation dimension) {
-        if (!TheRetreatDimension.isPrivateRetreatDimension(dimension)) {
-            return null;
-        }
-        return UUID.fromString(dimension.getPath().substring("the_retreat_".length()).replace('_', '-'));
-    }
-
     /** 只对新生成、无主、带明确标记的模板女仆调用，导入和重新加载不走这里。 */
     public static Optional<Entity> createTemplateMaid(ServerLevelAccessor accessor, CompoundTag tag, BlockPos pos) {
         MinecraftServer server = accessor.getLevel().getServer();
         HiddenRetreatMaidData data = LOADED.get(server);
         ResourceLocation dimension = accessor.getLevel().dimension().location();
-        UUID owner = privateOwner(dimension);
+        UUID owner = PlayerRetreatManager.getPrivateDimensionOwner(accessor.getLevel().dimension());
         if (owner == null && data != null) {
             owner = data.ownerAt(dimension, pos);
         }

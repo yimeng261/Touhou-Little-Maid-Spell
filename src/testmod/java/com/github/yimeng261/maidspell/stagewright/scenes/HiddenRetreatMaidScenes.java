@@ -32,7 +32,6 @@ import java.util.concurrent.Executor;
 public final class HiddenRetreatMaidScenes {
     private static final UUID FIRST = UUID.fromString("12345678-1234-5678-9abc-123456789abc");
     private static final UUID SECOND = UUID.fromString("87654321-4321-8765-cba9-cba987654321");
-    private static final ResourceLocation DIMENSION = id("the_retreat");
     private static final ResourceLocation SHARED = id("the_retreat");
     private static final ResourceLocation FIRST_PRIVATE = id("the_retreat_12345678_1234_5678_9abc_123456789abc");
     private static final ResourceLocation SECOND_PRIVATE = id("the_retreat_87654321_4321_8765_cba9_cba987654321");
@@ -208,7 +207,7 @@ public final class HiddenRetreatMaidScenes {
     }
 
     private static HiddenRetreatMaidData.StructureOwner owner(UUID player) {
-        return new HiddenRetreatMaidData.StructureOwner(DIMENSION, 0, 60, 0, 10, 80, 10, player);
+        return new HiddenRetreatMaidData.StructureOwner(SHARED, 0, 60, 0, 10, 80, 10, player);
     }
 
     /** 共享维度里结构的归属落盘后不变，后来的搜索改派不了，范围之外和别的维度都没有归属。 */
@@ -217,8 +216,8 @@ public final class HiddenRetreatMaidScenes {
         data.bindStructure(owner(FIRST));
         data.bindStructure(owner(SECOND));
         HiddenRetreatMaidData loaded = reload(ctx, data);
-        ctx.check(FIRST.equals(loaded.ownerAt(DIMENSION, new BlockPos(5, 70, 5)))).as("范围内属于最先绑定的玩家").isTrue();
-        ctx.check(loaded.ownerAt(DIMENSION, new BlockPos(11, 70, 5))).as("范围外没有归属").isNull();
+        ctx.check(FIRST.equals(loaded.ownerAt(SHARED, new BlockPos(5, 70, 5)))).as("范围内属于最先绑定的玩家").isTrue();
+        ctx.check(loaded.ownerAt(SHARED, new BlockPos(11, 70, 5))).as("范围外没有归属").isNull();
         ctx.check(loaded.ownerAt(ResourceLocation.fromNamespaceAndPath("other", "the_retreat"), new BlockPos(5, 70, 5)))
                 .as("别的维度没有归属").isNull();
     }
