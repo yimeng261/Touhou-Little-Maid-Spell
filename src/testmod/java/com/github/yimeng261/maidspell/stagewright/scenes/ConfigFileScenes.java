@@ -24,7 +24,8 @@ import java.util.stream.Stream;
 
 /**
  * 配置按功能拆成多个文件后的文件层行为：boss.toml 由旧的 winefox.toml 改名而来且已有新文件时不覆盖，
- * 旧的通用、客户端配置迁入对应的新文件并保留玩家改过的值，新文件的每一项在补全后都带中英文注释。
+ * 旧的通用、客户端配置迁入对应的新文件并保留玩家改过的值，baubles.toml 里旧分组的项挪到现在的分组，
+ * 新文件的每一项在补全后都带中英文注释。
  */
 public final class ConfigFileScenes {
     private static final String MIGRATION = Config.class.getPackageName() + ".ConfigMigration";
@@ -39,6 +40,7 @@ public final class ConfigFileScenes {
         scenes.add(io("config.legacyCommonSplitsIntoFiles", 5, ConfigFileScenes::legacyCommon));
         scenes.add(io("config.existingSplitFileWinsOverLegacy", 5, ConfigFileScenes::legacyCommonExistingWins));
         scenes.add(io("config.legacyClientMoves", 5, ConfigFileScenes::legacyClient));
+        scenes.add(io("config.baublesOldGroupsMoveToUtilityAndSpecial", 5, ConfigFileScenes::baublesLayout));
         scenes.add(Checks.scene("config.everyEntryBilingualAfterCorrect", 5, ConfigFileScenes::bilingualComments));
         return scenes;
     }
@@ -83,6 +85,10 @@ public final class ConfigFileScenes {
 
     private static void migrateCommon(Path legacy) {
         Reflect.call(null, migration(), "migrateCommon", new Class<?>[]{Path.class}, legacy);
+    }
+
+    private static void migrateBaublesLayout(Path file) {
+        Reflect.call(null, migration(), "migrateBaublesLayout", new Class<?>[]{Path.class}, file);
     }
 
     private static void migrateClient(Path legacy) {
@@ -142,22 +148,23 @@ public final class ConfigFileScenes {
             \twinefoxMaxHealth = 900.0
             """;
 
-    /** 旧的通用配置按分组拆进五个文件，玩家改过的值（含 1.21 独有的项）补全后依然保留，旧文件改名留作备份。 */
+    /** 旧的通用配置按分组拆进五个文件，玩家改过的值（含 1.21 独有的项）挪到现在的分组并补全后依然保留，旧文件改名留作备份。 */
     private static void legacyCommon(SceneContext ctx) throws IOException {
         Path configDir = tempDir(ctx);
         Path legacy = configDir.resolve(MaidSpellMod.MOD_ID + "-common.toml");
         Files.writeString(legacy, LEGACY_COMMON, StandardCharsets.UTF_8);
 
         migrateCommon(legacy);
-
         Path directory = configDir.resolve(MaidSpellMod.MOD_ID);
+        migrateBaublesLayout(directory.resolve("baubles.toml"));
+
         ctx.check(Files.exists(legacy)).as("旧通用配置仍在原处").isFalse();
         ctx.check(Files.exists(configDir.resolve(MaidSpellMod.MOD_ID + "-common.toml.migrated"))).as("旧通用配置备份").isTrue();
         ctx.check(corrected(Config.COMBAT_SPEC, directory.resolve("combat.toml")).<Double>get("combat.maxSpellRange"))
                 .as("combat.maxSpellRange").isEqualTo(30.0);
         CommentedConfig baubles = corrected(Config.BAUBLES_SPEC, directory.resolve("baubles.toml"));
-        ctx.check(baubles.<Integer>get("baubles.springBloomReturnMaxStacks")).as("springBloomReturnMaxStacks").isEqualTo(5);
-        ctx.check(baubles.<Boolean>get("baubles.dream_crystal.dreamCrystalExtraTrueDamageEnabled"))
+        ctx.check(baubles.<Integer>get("baubles.utility.springBloomReturnMaxStacks")).as("springBloomReturnMaxStacks").isEqualTo(5);
+        ctx.check(baubles.<Boolean>get("baubles.special.dreamCrystalExtraTrueDamageEnabled"))
                 .as("dreamCrystalExtraTrueDamageEnabled").isFalse();
         CommentedConfig retreat = corrected(Config.RETREAT_SPEC, directory.resolve("retreat.toml"));
         ctx.check(retreat.<Boolean>get("retreat_dimension.enablePrivateDimensions")).as("enablePrivateDimensions").isFalse();
@@ -182,6 +189,38 @@ public final class ConfigFileScenes {
                 .as("已有 combat.toml 的 maxSpellRange").isEqualTo(12.0);
         ctx.check(corrected(Config.RETREAT_SPEC, directory.resolve("retreat.toml"))
                 .<Boolean>get("retreat_dimension.enablePrivateDimensions")).as("其余分组照常迁入").isFalse();
+    }
+
+    /** 已按旧分组写好的 baubles.toml：回春返照挪进 utility、梦云水晶挪进 special，新位置已有的值不被覆盖。 */
+    private static void baublesLayout(SceneContext ctx) throws IOException {
+        Path file = Files.createDirectories(tempDir(ctx).resolve(MaidSpellMod.MOD_ID)).resolve("baubles.toml");
+        Files.writeString(file, """
+                [baubles]
+                \tspringBloomReturnMaxStacks = 6
+                \tspringBloomReturnHealRatio = 0.3
+                \t[baubles.utility]
+                \t\tspringBloomReturnHealRatio = 0.4
+                \t\tflowCoreTickInterval = 7
+                \t[baubles.special]
+                \t\tchaosBookDamageSplitCount = 9
+                \t[baubles.dream_crystal]
+                \t\tdreamCrystalUseEffectWhitelist = false
+                \t\tdreamCrystalEffectBlacklist = ["minecraft:poison"]
+                """, StandardCharsets.UTF_8);
+
+        migrateBaublesLayout(file);
+
+        CommentedConfig raw = load(file);
+        ctx.check(raw.contains("baubles.springBloomReturnMaxStacks")).as("根上的 springBloomReturnMaxStacks 仍在").isFalse();
+        ctx.check(raw.contains("baubles.dream_crystal")).as("dream_crystal 分组仍在").isFalse();
+        CommentedConfig baubles = corrected(Config.BAUBLES_SPEC, file);
+        ctx.check(baubles.<Integer>get("baubles.utility.springBloomReturnMaxStacks")).as("springBloomReturnMaxStacks").isEqualTo(6);
+        ctx.check(baubles.<Double>get("baubles.utility.springBloomReturnHealRatio")).as("新位置已有的 springBloomReturnHealRatio").isEqualTo(0.4);
+        ctx.check(baubles.<Integer>get("baubles.utility.flowCoreTickInterval")).as("flowCoreTickInterval").isEqualTo(7);
+        ctx.check(baubles.<Integer>get("baubles.special.chaosBookDamageSplitCount")).as("chaosBookDamageSplitCount").isEqualTo(9);
+        ctx.check(baubles.<Boolean>get("baubles.special.dreamCrystalUseEffectWhitelist")).as("dreamCrystalUseEffectWhitelist").isFalse();
+        ctx.check(baubles.<List<String>>get("baubles.special.dreamCrystalEffectBlacklist"))
+                .as("dreamCrystalEffectBlacklist").isEqualTo(List.of("minecraft:poison"));
     }
 
     /** 旧的客户端配置整体搬到 client/ender_pocket.toml。 */
