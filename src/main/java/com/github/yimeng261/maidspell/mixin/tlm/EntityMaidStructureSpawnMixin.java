@@ -24,13 +24,10 @@ import java.util.Set;
 
 @Mixin(value = EntityMaid.class, remap = false)
 public class EntityMaidStructureSpawnMixin {
-    @Unique
-    private static final ResourceLocation MAIDSPELL$HIDDEN_RETREAT =
-            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat");
-
-    /** 除隐世之境外同样跳过随机模型的结构；隐世之境单独查，因为还要给女仆打来源标记。 */
+    /** 结构生成时跳过随机模型的结构。 */
     @Unique
     private static final Set<ResourceLocation> maidspell$deniedStructures = Set.of(
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "fairy_maid_cafe"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "relic_sanctum"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "fallen_sanctum"),
@@ -59,9 +56,9 @@ public class EntityMaidStructureSpawnMixin {
 
             EntityMaid maid = (EntityMaid) (Object) this;
             BlockPos maidPos = maid.blockPosition();
-            boolean inHiddenRetreat = maidspell$isInStructure(worldIn, maidPos, MAIDSPELL$HIDDEN_RETREAT);
-            if (inHiddenRetreat || maidspell$isInProtectedStructure(worldIn, maidPos)) {
-                if (inHiddenRetreat) {
+            if (maidspell$isInProtectedStructure(worldIn, maidPos)) {
+                // 隐世女仆身份以模板 NBT 里的标记为准，这里只给带标记的女仆补齐来源
+                if (MaidOriginData.isHiddenRetreatMaid(maid)) {
                     MaidOriginData.markHiddenRetreatMaid(maid);
                 }
                 this.structureSpawn = false;
