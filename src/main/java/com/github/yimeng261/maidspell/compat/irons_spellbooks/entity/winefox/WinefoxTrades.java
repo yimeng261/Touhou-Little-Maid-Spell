@@ -35,7 +35,7 @@ public final class WinefoxTrades {
     /**
      * 卷轴上那一发法术的等级。
      *
-     * <p>文档写的是「1级……卷轴」，与她自己在擂台上放的那一级一致。
+     * <p>交易卷轴统一为 1 级，不随她在擂台上的施法等级变化。
      */
     private static final int SCROLL_LEVEL = 1;
 
@@ -123,6 +123,7 @@ public final class WinefoxTrades {
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.TRIPLE_STAR_ARROW.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.COMPANION_BLACK_HOLE.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.SPELLBREAKING_ECHO.get())));
+        offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.SEVEN_STAR_GUIDANCE.get())));
     }
 
     /**

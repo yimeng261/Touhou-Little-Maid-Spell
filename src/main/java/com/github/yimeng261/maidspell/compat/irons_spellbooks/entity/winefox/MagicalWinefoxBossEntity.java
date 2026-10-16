@@ -293,6 +293,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private double palmBlackHoleBaseY = Double.NaN;
     private double palmBlackHoleBaseX;
     private double palmBlackHoleBaseZ;
+    @Nullable
+    private MobEffectInstance palmBlackHoleShroud;
     /** One-shot spell guards survive Goal restarts and chunk unloads. */
     private boolean summonSwordsUsedThisPhase;
     private boolean palmBlackHoleTriggeredThisPhase;
@@ -520,9 +522,12 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         super.tick();
         // Cast callbacks can be skipped when the encounter ends or spell data is
         // reset externally. Never carry the old ritual origin into another cast.
-        if (!this.level().isClientSide && Double.isFinite(this.palmBlackHoleBaseY)
-                && !this.isCastingPalmBlackHole()) {
-            this.endPalmBlackHoleCast();
+        if (!this.level().isClientSide) {
+            if (this.isCastingPalmBlackHole()) {
+                this.ensurePalmBlackHoleShroud();
+            } else if (Double.isFinite(this.palmBlackHoleBaseY) || this.palmBlackHoleShroud != null) {
+                this.endPalmBlackHoleCast();
+            }
         }
     }
 
@@ -1836,15 +1841,57 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.getNavigation().stop();
         this.resetFlightControl();
         this.setDeltaMovement(Vec3.ZERO);
+        this.ensurePalmBlackHoleShroud();
     }
 
     /** Restore ordinary combat flight after a completed or cancelled ritual. */
     public void endPalmBlackHoleCast() {
+        if (this.level().isClientSide) return;
+        // An ordinary Abyssal Shroud cast may already be active when the ritual begins.
+        // Only remove the instance supplied by this ritual; leave that other buff alone.
+        if (this.palmBlackHoleShroud != null
+                && this.getEffect(MobEffectRegistry.ABYSSAL_SHROUD.get()) == this.palmBlackHoleShroud) {
+            this.removeEffect(MobEffectRegistry.ABYSSAL_SHROUD.get());
+        }
+        this.palmBlackHoleShroud = null;
         if (!Double.isFinite(this.palmBlackHoleBaseY)) return;
         this.palmBlackHoleBaseY = Double.NaN;
         this.getNavigation().stop();
         this.resetFlightControl();
         this.setDeltaMovement(Vec3.ZERO);
+    }
+
+    private void ensurePalmBlackHoleShroud() {
+        if (this.hasEffect(MobEffectRegistry.ABYSSAL_SHROUD.get())) return;
+        MobEffectInstance shroud = new MobEffectInstance(MobEffectRegistry.ABYSSAL_SHROUD.get(),
+                com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.PalmBlackHoleTimeline
+                        .IMPACT_TICK + 1, 0, false, false, true);
+        if (this.addEffect(shroud)) {
+            this.palmBlackHoleShroud = this.getEffect(MobEffectRegistry.ABYSSAL_SHROUD.get());
+        }
+    }
+
+    @Override
+    public boolean addEffect(MobEffectInstance effect, @Nullable Entity source) {
+        MobEffectInstance ritual = this.palmBlackHoleShroud;
+        if (ritual == null || effect == ritual || effect.getEffect() != ritual.getEffect()
+                || this.getEffect(ritual.getEffect()) != ritual) {
+            return super.addEffect(effect, source);
+        }
+        // LivingEntity updates effects in place, so identity alone cannot distinguish a later cast.
+        // Hand this slot to the ordinary effect with its own duration, even if it is shorter.
+        this.palmBlackHoleShroud = null;
+        boolean removed = this.removeEffect(ritual.getEffect());
+        boolean accepted = super.addEffect(effect, source);
+        if (!accepted) {
+            if (!removed && this.getEffect(ritual.getEffect()) == ritual) {
+                this.palmBlackHoleShroud = ritual;
+            } else if (!this.hasEffect(ritual.getEffect()) && super.addEffect(ritual, this)) {
+                // A rejected outside effect must not strip the ongoing ritual's protection.
+                this.palmBlackHoleShroud = this.getEffect(ritual.getEffect());
+            }
+        }
+        return accepted;
     }
 
     boolean maidspell$summonSwordsUsedThisPhase() {
@@ -3827,6 +3874,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         tag.putBoolean("WinefoxTrueDamageUsed", this.trueDamageUsed);
         tag.putBoolean("WinefoxSummonSwordsUsedThisPhase", this.summonSwordsUsedThisPhase);
         tag.putBoolean("WinefoxPalmBlackHoleTriggeredThisPhase", this.palmBlackHoleTriggeredThisPhase);
+        tag.putBoolean("WinefoxPalmBlackHoleShroud", this.palmBlackHoleShroud != null
+                && this.getEffect(MobEffectRegistry.ABYSSAL_SHROUD.get()) == this.palmBlackHoleShroud);
         this.spellController.saveEncounter(tag);
         CompoundTag invisibility = new CompoundTag();
         invisibility.putInt("SearchTicks", this.invisibilityTracker.remainingTicks);
@@ -3900,6 +3949,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.trueDamageUsed = tag.getBoolean("WinefoxTrueDamageUsed");
         this.summonSwordsUsedThisPhase = tag.getBoolean("WinefoxSummonSwordsUsedThisPhase");
         this.palmBlackHoleTriggeredThisPhase = tag.getBoolean("WinefoxPalmBlackHoleTriggeredThisPhase");
+        // Keep ownership across chunk unloads so an interrupted restored cast cannot retain the buff.
+        this.palmBlackHoleShroud = tag.getBoolean("WinefoxPalmBlackHoleShroud")
+                ? this.getEffect(MobEffectRegistry.ABYSSAL_SHROUD.get()) : null;
         this.spellController.loadEncounter(tag);
         this.invisibilityTracker.reset();
         CompoundTag invisibility = tag.getCompound("WinefoxInvisibility");
