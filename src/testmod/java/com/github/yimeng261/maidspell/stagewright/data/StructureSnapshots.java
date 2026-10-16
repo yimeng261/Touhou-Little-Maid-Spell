@@ -161,7 +161,7 @@ public final class StructureSnapshots {
                 "farmersdelight:birch_cabinet|loot=touhou_little_maid_spell:chests/cherry_cabin_food_3",
                 "farmersdelight:cooking_pot|items=farmersdelight:cooked_rice*1,minecraft:bowl*1",
                 "farmersdelight:cutting_board|items=farmersdelight:iron_knife*1",
-                "farmersdelight:dark_oak_cabinet|items=irons_spellbooks:common_ink*1,irons_spellbooks:common_ink*1,irons_spellbooks:common_ink*1,irons_spellbooks:common_ink*1,irons_spellbooks:common_ink*1,irons_spellbooks:rare_ink*1,irons_spellbooks:rare_ink*1,irons_spellbooks:rare_ink*1,irons_spellbooks:uncommon_ink*1,irons_spellbooks:uncommon_ink*1,irons_spellbooks:uncommon_ink*1,irons_spellbooks:uncommon_ink*1,minecraft:paper*1,minecraft:paper*1,minecraft:paper*1,minecraft:paper*1,minecraft:paper*1,minecraft:paper*1,minecraft:paper*1,minecraft:paper*2,minecraft:paper*2,minecraft:paper*2,minecraft:paper*2,minecraft:paper*3",
+                "farmersdelight:dark_oak_cabinet|items=minecraft:paper*1,minecraft:paper*1,minecraft:paper*1,minecraft:paper*1,minecraft:paper*1,minecraft:paper*1,minecraft:paper*1,minecraft:paper*2,minecraft:paper*2,minecraft:paper*2,minecraft:paper*2,minecraft:paper*3",
                 "farmersdelight:dark_oak_cabinet|loot=touhou_little_maid_spell:chests/cherry_cabin_food_2",
                 "farmersdelight:dark_oak_cabinet|loot=touhou_little_maid_spell:chests/starfall_garden_3",
                 "farmersdelight:dark_oak_cabinet|loot=touhou_little_maid_spell:chests/starwatch_tower_3",
@@ -175,7 +175,7 @@ public final class StructureSnapshots {
                 "farmersdelight:spruce_cabinet|loot=touhou_little_maid_spell:chests/starfall_garden_2",
                 "farmersdelight:spruce_cabinet|loot=touhou_little_maid_spell:chests/starfall_garden_6",
                 "minecraft:barrel|loot=minecraft:chests/spawn_bonus_chest",
-                "minecraft:brewing_stand|items=minecraft:potion*1,minecraft:potion*1",
+                "minecraft:brewing_stand|items=minecraft:potion*1",
                 "minecraft:chiseled_bookshelf|items=minecraft:book*1",
                 "minecraft:chiseled_bookshelf|items=minecraft:book*1",
                 "minecraft:chiseled_bookshelf|items=minecraft:book*1,minecraft:book*1",
@@ -222,7 +222,7 @@ public final class StructureSnapshots {
                 "touhou_little_maid:maid|gear=minecraft:glow_berries",
                 "touhou_little_maid:sit"),
             List.of(
-                Map.ofEntries(Map.entry("model_id", "geckolib:rice_cake_fox"), Map.entry("favorability", "94"), Map.entry("sitting", "0"), Map.entry("task", "touhou_little_maid:board_games"), Map.entry("structureSpawn", "0"), Map.entry("backpack", "touhou_little_maid:small_backpack"), Map.entry("scheduleMode", "DAY"), Map.entry("hand", "minecraft:glow_berries,"), Map.entry("armor", ",,,"), Map.entry("inventory", "0:irons_spellbooks:gold_spell_book,6:farmersdelight:iron_knife,8:minecraft:sweet_berries"), Map.entry("baubles", "2:touhou_little_maid_spell:blue_note"), Map.entry("blueNoteSpells", ""), Map.entry("effects", "")))));
+                Map.ofEntries(Map.entry("model_id", "geckolib:rice_cake_fox"), Map.entry("favorability", "94"), Map.entry("sitting", "0"), Map.entry("task", "touhou_little_maid:board_games"), Map.entry("structureSpawn", "0"), Map.entry("backpack", "touhou_little_maid:small_backpack"), Map.entry("scheduleMode", "DAY"), Map.entry("hand", "minecraft:glow_berries,"), Map.entry("armor", ",,,"), Map.entry("inventory", "6:farmersdelight:iron_knife,8:minecraft:sweet_berries"), Map.entry("baubles", "2:touhou_little_maid_spell:blue_note"), Map.entry("blueNoteSpells", ""), Map.entry("effects", "")))));
         TEMPLATES.put("touhou_little_maid_spell:elven_realm/elven_realm_1", new Template(
             List.of(
                 "irons_spellbooks:alchemist_cauldron",
