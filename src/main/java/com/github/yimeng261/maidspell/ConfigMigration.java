@@ -25,7 +25,7 @@ final class ConfigMigration {
         try {
             migrateBossConfig(configDir);
         } catch (IOException exception) {
-            throw new IllegalStateException("Could not migrate winefox.toml to boss.toml", exception);
+            MaidSpellMod.LOGGER.warn("Could not migrate winefox.toml to boss.toml", exception);
         }
         migrateCommon(configDir.resolve(LEGACY_COMMON));
         migrateClient(configDir.resolve(LEGACY_CLIENT));
