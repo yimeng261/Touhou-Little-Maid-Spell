@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.worldgen.structure;
 
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.github.yimeng261.maidspell.worldgen.StarfallGardenData;
+import com.github.yimeng261.maidspell.worldgen.StarfallGardenPlacementGuard;
 import com.github.yimeng261.maidspell.worldgen.accessor.RandomStateAccessor;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -168,6 +169,14 @@ public class StarfallGardenStructure extends Structure {
         long minSq = (long) this.minSpawnDistance * this.minSpawnDistance;
         long maxSq = (long) this.maxSpawnDistance * this.maxSpawnDistance;
         if (distSq < minSq || distSq > maxSq) {
+            return Optional.empty();
+        }
+
+        // 只读结构集的落点计划，不能在 worldgen 线程请求邻区块，否则可能互相等待。
+        var server = ServerLifecycleHooks.getCurrentServer();
+        if (server != null && server.overworld() != null
+                && StarfallGardenPlacementGuard.hasNearbyStructureAttempt(
+                        server.overworld().getChunkSource().getGeneratorState(), this, context.chunkPos())) {
             return Optional.empty();
         }
 

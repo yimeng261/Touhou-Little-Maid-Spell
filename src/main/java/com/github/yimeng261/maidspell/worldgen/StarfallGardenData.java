@@ -130,6 +130,11 @@ public class StarfallGardenData extends SavedData {
         return PLACED.compareAndSet(false, true);
     }
 
+    /** 退还 {@link #tryReserve} 抢到的内存名额；只在补生成放弃这一候选、尚未写任何方块时调用。 */
+    public static void releaseReserve() {
+        PLACED.set(false);
+    }
+
     /** 认领存档里已有的庭院或补生成放置完成：无条件关闸并落盘。 */
     public static void markPlaced(BlockPos pos) {
         PLACED.set(true);

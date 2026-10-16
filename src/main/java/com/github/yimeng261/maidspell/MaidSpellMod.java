@@ -23,6 +23,7 @@ import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
 import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
+import com.github.yimeng261.maidspell.loot.OptionalModLootItem;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
@@ -92,6 +93,7 @@ public class MaidSpellMod {
         MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modEventBus);
         MaidSpellPoolElementTypes.POOL_ELEMENT_TYPES.register(modEventBus);
         MaidSpellIngredientTypes.INGREDIENT_TYPES.register(modEventBus);
+        OptionalModLootItem.TYPES.register(modEventBus);
 
         // 铁魔法属性修改器获取
         if (IronsSpellbooksCompat.isLoaded()) {

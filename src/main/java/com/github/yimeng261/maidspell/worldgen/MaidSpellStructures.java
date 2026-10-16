@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.worldgen.structure.FallenSanctumStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.LandJigsawStructure;
+import com.github.yimeng261.maidspell.worldgen.structure.OptionalModTemplateStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.RelicSanctumStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.StarfallGardenStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.StarwatchTowerStructure;
@@ -16,6 +17,10 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public class MaidSpellStructures {
     public static final DeferredRegister<StructureType<?>> STRUCTURE_TYPES
             = DeferredRegister.create(Registries.STRUCTURE_TYPE, MaidSpellMod.MOD_ID);
+
+    // 按联动模组开关生成的单模板结构（支持主世界地表与下界洞穴地面、缺模组时的模板回退）
+    public static final DeferredHolder<StructureType<?>, StructureType<OptionalModTemplateStructure>> OPTIONAL_MOD_TEMPLATE
+            = STRUCTURE_TYPES.register("optional_mod_template", () -> () -> OptionalModTemplateStructure.CODEC);
 
     // 隐世之境结构（基于拼图系统，带特殊逻辑：去重、队列、配额）
     public static final DeferredHolder<StructureType<?>, StructureType<HiddenRetreatStructure>> HIDDEN_RETREAT

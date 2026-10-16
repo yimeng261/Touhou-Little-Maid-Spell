@@ -220,6 +220,7 @@ public final class StarfallGardenRetrofit {
                                      List<ChunkPos> candidates) {
         var chunkGenerator = overworld.getChunkSource().getGenerator();
         var randomState = overworld.getChunkSource().randomState();
+        var structureState = overworld.getChunkSource().getGeneratorState();
         long seed = overworld.getSeed();
 
         int tried = 0;
@@ -232,6 +233,10 @@ public final class StarfallGardenRetrofit {
             if (StarfallGardenData.isPlaced()) {
                 MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
                 return false;
+            }
+            // 先查落点计划，连尚未生成、最终可能失败的其他结构也要避让。
+            if (StarfallGardenPlacementGuard.hasNearbyStructureAttempt(structureState, garden, candidate)) {
+                continue;
             }
             StructureStart start;
             try {
@@ -269,6 +274,13 @@ public final class StarfallGardenRetrofit {
                 StarfallGardenData.refundPlacementAttempt(server);
                 MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
                 return false;
+            }
+            // 名额已预约，读邻区块不会意外触发另一座庭院的正常生成。
+            // 旧区块里保存的起点和引用要在写任何方块之前查完，发现冲突就换下一个候选。
+            if (hasExistingNearbyStructure(overworld, garden, candidate)) {
+                StarfallGardenData.releaseReserve();
+                StarfallGardenData.refundPlacementAttempt(server);
+                continue;
             }
 
             pendingPlacement = new PlacementTask(overworld, garden, start, candidate,
@@ -327,6 +339,17 @@ public final class StarfallGardenRetrofit {
         MaidSpellMod.LOGGER.info(
                 "星落之庭补生成：已在旧存档落下一座（锚点区块 {}，覆盖 {} 个区块，高度 {}~{}）",
                 task.candidate(), chunks.size(), box.minY(), box.maxY());
+    }
+
+    /** 读取邻区块失败时按有冲突处理：宁可换下一个候选，也不在结构旁边硬放。 */
+    private static boolean hasExistingNearbyStructure(ServerLevel overworld, StarfallGardenStructure garden,
+                                                      ChunkPos candidate) {
+        try {
+            return StarfallGardenPlacementGuard.hasExistingNearbyStructure(overworld, garden, candidate);
+        } catch (RuntimeException e) {
+            MaidSpellMod.LOGGER.warn("星落之庭补生成：检查候选 {} 周围已有结构失败，换下一个", candidate, e);
+            return true;
+        }
     }
 
     private record PlacementTask(ServerLevel overworld, StarfallGardenStructure garden,

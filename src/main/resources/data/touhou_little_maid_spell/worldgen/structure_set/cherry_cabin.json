@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:cherry_cabin",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 40,
+    "separation": 16,
+    "salt": 1735687961
+  }
+}

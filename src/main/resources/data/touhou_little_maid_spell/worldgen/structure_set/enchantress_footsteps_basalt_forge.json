@@ -1,0 +1,14 @@
+{
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:enchantress_footsteps_basalt_forge",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 32,
+    "separation": 12,
+    "salt": 1735687963
+  }
+}
