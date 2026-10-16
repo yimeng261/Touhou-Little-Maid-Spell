@@ -28,6 +28,8 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String ARS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.ars.";
     private static final String USEFULMAGIC_MOD_ID = "usefulmagic";
     private static final String USEFULMAGIC_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.usefulmagic.";
+    private static final String LEGENDARY_MONSTERS_MOD_ID = "legendary_monsters";
+    private static final String LEGENDARY_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.legendary.";
 
     private boolean isIronsSpellbooksLoaded = false;
     private boolean isTlmMagicAnimationSupported = false;
@@ -36,6 +38,7 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private boolean isPsiLoaded = false;
     private boolean isArsNouveauLoaded = false;
     private boolean isUsefulMagicLoaded = false;
+    private boolean isLegendaryMonstersLoaded = false;
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -51,6 +54,7 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         isPsiLoaded = LoadingModList.get().getModFileById(PSI_MOD_ID) != null;
         isArsNouveauLoaded = LoadingModList.get().getModFileById(ARS_MOD_ID) != null;
         isUsefulMagicLoaded = LoadingModList.get().getModFileById(USEFULMAGIC_MOD_ID) != null;
+        isLegendaryMonstersLoaded = LoadingModList.get().getModFileById(LEGENDARY_MONSTERS_MOD_ID) != null;
     }
 
     @Override
@@ -82,6 +86,9 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.startsWith(USEFULMAGIC_MIXIN_PACKAGE)) {
             return isUsefulMagicLoaded;
+        }
+        if (mixinClassName.startsWith(LEGENDARY_MIXIN_PACKAGE)) {
+            return isLegendaryMonstersLoaded;
         }
 
         // 其他 Mixin 正常加载

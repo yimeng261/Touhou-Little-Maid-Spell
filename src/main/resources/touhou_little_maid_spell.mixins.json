@@ -57,6 +57,7 @@
     "iss.WinefoxOffhandDurabilityMixin",
     "iss.accessor.BlackHoleTrackingAccessor",
     "iss.accessor.PlayerRecastsAccessor",
+    "legendary.SmallAnnihilationBombEntityMixin",
     "psi.PieceSelectorNearbyMixin",
     "psi.PieceTrickAddMotionMixin",
     "tlm.AbstractMaidContainerMixin",
