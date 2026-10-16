@@ -201,7 +201,6 @@
   "item.touhou_little_maid_spell.dream_cat_crystal.desc7": "オーバーワールド: 満腹度回復 II / 耐性 II / 再生 II。ネザー: 攻撃力増加 III / 移動速度上昇 III / 採掘速度上昇 III。エンド: 暗視 IV / 耐性 IV / 攻撃力上昇 IV。 隠世の境: 常時無敵",
   "item.touhou_little_maid_spell.dream_cat_crystal.desc8": "30秒ごとにランダムなバフ2種 (重複なし、レベル II ~ X, 効果時間 30 ~ 60秒) を獲得する。同時に全てのデバフを無効化する。",
   "item.touhou_little_maid_spell.dream_cat_crystal.desc9_true_damage": "メイドの攻撃命中時に同等の確定ダメージを与える。",
-  "item.touhou_little_maid_spell.dream_cat_crystal.desc9_freeze": "メイドの攻撃時、モブに対して1秒間の時間停止を付与する。",
   "item.touhou_little_maid_spell.dream_cat_crystal.desc9_splash": "周囲5ブロック以内のプレイヤー・メイド以外の対象に10%の確定ダメージ範囲攻撃をする。",
   "item.touhou_little_maid_spell.dream_cat_crystal.desc10": "周囲20ブロック以内の他のメイドの攻撃力 +50%, 魔法のクールダウンを1/3に短縮する。インベントリ内全てのアイテムの耐久値を毎秒1回復する。",
   "item.touhou_little_maid_spell.dream_cat_crystal.desc11": "死亡時、過去120秒の復活回数1回につき100%から10%を引いた確率で全回復して復活し、15秒間無敵になる。生物は友好的なままで、ボスはメイドに攻撃されてから反撃する。",

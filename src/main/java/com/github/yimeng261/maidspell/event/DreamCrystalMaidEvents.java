@@ -39,7 +39,7 @@ import java.util.UUID;
  * - 记录女仆攻击 Boss 的历史（LivingDamageEvent.Post）
  * - 特定伤害免疫（LivingIncomingDamageEvent）
  * - 复活后无敌（LivingIncomingDamageEvent）
- * - 在服务端 tick 中统一处理时停/范围强化到期
+ * - 在服务端 tick 中统一处理范围强化到期
  */
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class DreamCrystalMaidEvents {
@@ -126,7 +126,7 @@ public class DreamCrystalMaidEvents {
         }
     }
 
-    // ========== 时停/范围强化调度 ==========
+    // ========== 范围强化调度 ==========
 
     /**
      * 在服务端 tick 中统一处理到期效果，避免对所有活体逐个轮询
@@ -137,11 +137,11 @@ public class DreamCrystalMaidEvents {
         DreamCatCrystalBauble.processScheduledEffects(event.getServer());
     }
 
-    /** 时停定身的目标一定是 NoAI，先按它筛掉普通生物，不给每只生物都建一份持久数据 */
+    /** 旧版本时停定身的生物一定是 NoAI，先按它筛掉普通生物，不给每只生物都读一遍持久数据 */
     @SubscribeEvent
     public static void onMobJoinLevel(EntityJoinLevelEvent event) {
-        if (event.getEntity() instanceof Mob mob && mob.isNoAi() && event.getLevel().getServer() != null) {
-            DreamCatCrystalBauble.onFrozenTargetJoin(mob, event.getLevel().getServer());
+        if (event.getEntity() instanceof Mob mob && mob.isNoAi() && !event.getLevel().isClientSide()) {
+            DreamCatCrystalBauble.releaseLegacyFrozenTarget(mob);
         }
     }
 

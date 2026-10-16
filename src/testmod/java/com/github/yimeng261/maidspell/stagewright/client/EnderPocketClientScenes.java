@@ -21,6 +21,7 @@ import net.minecraft.client.resources.language.ClientLanguage;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,7 +40,8 @@ import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
  * 状态栏数据每秒刷新；客户端配置文件生成并写回。
  */
 public final class EnderPocketClientScenes {
-    private static final Path CLIENT_CONFIG = FMLPaths.CONFIGDIR.get().resolve("touhou_little_maid_spell-client.toml");
+    private static final Path CLIENT_CONFIG = FMLPaths.CONFIGDIR.get()
+            .resolve("touhou_little_maid_spell").resolve("client").resolve("ender_pocket.toml");
 
     private EnderPocketClientScenes() {
     }
@@ -108,11 +110,19 @@ public final class EnderPocketClientScenes {
         }
     }
 
-    /** 配置界面里每个配置项与分组（通用与客户端）在中英文下都有标题；铁魔法法术黑名单的标题点明是铁魔法。 */
+    /** 配置界面里每个配置文件入口、配置项与分组（通用与客户端）在中英文下都有标题；铁魔法法术黑名单的标题点明是铁魔法。 */
     private static void configTranslated(SceneContext ctx, ServerPlayer player) {
         List<String> keys = new ArrayList<>();
-        collectKeys(Config.SPEC.getSpec(), keys);
+        for (ModConfigSpec spec : List.of(Config.COMBAT_SPEC, Config.BAUBLES_SPEC, Config.RETREAT_SPEC,
+                Config.COMPAT_SPEC, Config.WINEFOX_SPEC)) {
+            collectKeys(spec.getSpec(), keys);
+        }
         collectKeys(EnderPocketClientConfig.SPEC.getSpec(), keys);
+        for (String file : List.of("combat", "baubles", "retreat", "compat", "boss", "client.ender.pocket")) {
+            String section = NS.replace(':', '.') + "configuration.section.touhou.little.maid.spell." + file + ".toml";
+            keys.add(section);
+            keys.add(section + ".title");
+        }
         ClientSide.call(ctx, () -> {
             List<String> result = new ArrayList<>();
             for (String code : List.of("en_us", "zh_cn")) {

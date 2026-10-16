@@ -53,12 +53,8 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    // ========== 时停状态追踪 ==========
-    private static final String FROZEN_UNTIL_TAG = MaidSpellMod.MOD_ID + ":dream_crystal_frozen_until";
-    private static final long FREEZE_TICKS = 20L;
-    private static final Map<UUID, FrozenTargetState> FROZEN_TARGETS = new HashMap<>();
-    private static final PriorityQueue<ScheduledExpiry> FROZEN_TARGET_EXPIRIES =
-            new PriorityQueue<>(Comparator.comparingLong(ScheduledExpiry::expiry));
+    /** 旧版本时停写入的到期时间标记；只用于释放存档里遗留的定身生物。 */
+    private static final String LEGACY_FROZEN_UNTIL_TAG = MaidSpellMod.MOD_ID + ":dream_crystal_frozen_until";
 
     // ========== 范围强化追踪 ==========
     private static final Map<UUID, BoostedMaidState> BOOSTED_MAIDS = new HashMap<>();
@@ -109,7 +105,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             return null;
         });
 
-        // ========== 女仆造成伤害头部处理：真实伤害 + 时停 + 弹幕溅射 ==========
+        // ========== 女仆造成伤害头部处理：真实伤害 + 弹幕溅射 ==========
         Global.registerBaubleHurtHeadHandler(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), context -> {
             if (TrueDamageUtil.isApplyingQueuedDamage()) return;
             EntityMaid maid = context.getSourceMaid();
@@ -123,7 +119,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             }
 
             float damage = context.getAmount();
-            // 受击间隔内原版只结算超出上一次伤害的部分，整击被挡下时不追加真伤、时停和溅射
+            // 受击间隔内原版只结算超出上一次伤害的部分，整击被挡下时不追加真伤和溅射
             if (target.invulnerableTime > 10 && !context.getDamageSource().is(DamageTypeTags.BYPASSES_COOLDOWN)) {
                 damage -= ((LivingEntityAccessor) target).maidspell$getLastHurt();
                 if (damage <= 0.0F) {
@@ -136,13 +132,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 TrueDamageUtil.dealTrueDamage(target, damage, maid);
             }
 
-            // 2. 时停 1 秒（仅在服务端执行）
-            if (!maid.level().isClientSide() && IAuthoritativeHealth.combatAlive(target)
-                    && target instanceof Mob mob) {
-                freezeTarget(mob);
-            }
-
-            // 3. 弹幕溅射：对目标周围 5 格内的敌方实体造成 10% 伤害
+            // 2. 弹幕溅射：对目标周围 5 格内的敌方实体造成 10% 伤害
             if (!maid.level().isClientSide()) {
                 float barrageDamage = damage * 0.1f;
                 maid.level().getEntitiesOfClass(
@@ -703,96 +693,23 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     public static void processScheduledEffects(MinecraftServer server) {
         long currentTime = PortableTimerMath.overworldGameTime(server);
-        processFrozenTargets(currentTime);
         processBoostedMaids(currentTime);
     }
 
     public static void clearScheduledEffects() {
-        FROZEN_TARGETS.clear();
-        FROZEN_TARGET_EXPIRIES.clear();
         BOOSTED_MAIDS.clear();
         BOOSTED_MAID_EXPIRIES.clear();
     }
 
     /**
-     * 时停定身 1 秒。到期时间记在实体数据里，随区块卸载、换维度、停服一起保存；
-     * 实体重新进入世界时由 {@link #onFrozenTargetJoin} 接着计时或解除。
-     * <p>
-     * 配置关闭时不定身；本来就是 NoAI 的生物不打标记，到期也不会被解除。
+     * 释放旧版本时停遗留在存档里的定身：带有到期标记的 NoAI 生物进入世界时恢复 AI 并清掉标记，
+     * 本来就是 NoAI 的生物没有标记，不受影响。
      */
-    public static void freezeTarget(Mob mob) {
-        MinecraftServer server = mob.getServer();
-        if (!Config.dreamCrystalSetNoAiEnabled || server == null) {
-            return;
-        }
+    public static void releaseLegacyFrozenTarget(Mob mob) {
         CompoundTag data = mob.getPersistentData();
-        if (mob.isNoAi() && !data.contains(FROZEN_UNTIL_TAG, Tag.TAG_LONG)) {
-            return;
-        }
-        long expiry = PortableTimerMath.saturatingAdd(PortableTimerMath.overworldGameTime(server), FREEZE_TICKS);
-        mob.setNoAi(true);
-        data.putLong(FROZEN_UNTIL_TAG, Math.max(expiry, data.getLong(FROZEN_UNTIL_TAG)));
-        scheduleUnfreeze(mob, expiry);
-    }
-
-    private static void scheduleUnfreeze(Mob mob, long expiry) {
-        UUID targetUUID = mob.getUUID();
-        FrozenTargetState existing = FROZEN_TARGETS.get(targetUUID);
-        if (existing != null && existing.expiry >= expiry) {
-            existing.target = mob;
-            return;
-        }
-        FROZEN_TARGETS.put(targetUUID, new FrozenTargetState(mob, expiry));
-        FROZEN_TARGET_EXPIRIES.add(new ScheduledExpiry(targetUUID, expiry));
-    }
-
-    private static void unfreeze(Mob mob) {
-        CompoundTag data = mob.getPersistentData();
-        if (data.contains(FROZEN_UNTIL_TAG, Tag.TAG_LONG)) {
-            data.remove(FROZEN_UNTIL_TAG);
+        if (data.contains(LEGACY_FROZEN_UNTIL_TAG, Tag.TAG_LONG)) {
+            data.remove(LEGACY_FROZEN_UNTIL_TAG);
             mob.setNoAi(false);
-        }
-    }
-
-    /**
-     * 被时停的生物重新进入世界（区块重新加载、换维度、重启服务器）：已到期就解除 NoAI，否则接着计时。
-     */
-    public static void onFrozenTargetJoin(Mob mob, MinecraftServer server) {
-        CompoundTag data = mob.getPersistentData();
-        if (!data.contains(FROZEN_UNTIL_TAG, Tag.TAG_LONG)) {
-            return;
-        }
-        long expiry = data.getLong(FROZEN_UNTIL_TAG);
-        if (PortableTimerMath.overworldGameTime(server) >= expiry) {
-            unfreeze(mob);
-        } else {
-            scheduleUnfreeze(mob, expiry);
-        }
-    }
-
-    private static void processFrozenTargets(long currentTime) {
-        while (!FROZEN_TARGET_EXPIRIES.isEmpty()) {
-            ScheduledExpiry scheduled = FROZEN_TARGET_EXPIRIES.peek();
-            FrozenTargetState state = FROZEN_TARGETS.get(scheduled.entityId());
-            if (state == null || state.expiry != scheduled.expiry()) {
-                FROZEN_TARGET_EXPIRIES.poll();
-                continue;
-            }
-
-            Mob target = state.target;
-            if (!IAuthoritativeHealth.combatAlive(target)) {
-                FROZEN_TARGETS.remove(scheduled.entityId());
-                FROZEN_TARGET_EXPIRIES.poll();
-                continue;
-            }
-
-            if (currentTime < scheduled.expiry()) {
-                break;
-            }
-
-            FROZEN_TARGETS.remove(scheduled.entityId());
-            FROZEN_TARGET_EXPIRIES.poll();
-            unfreeze(target);
         }
     }
 
@@ -862,16 +779,6 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     }
 
     private record ReviveHistory(List<Long> timestamps, boolean changed) {
-    }
-
-    private static final class FrozenTargetState {
-        private Mob target;
-        private final long expiry;
-
-        private FrozenTargetState(Mob target, long expiry) {
-            this.target = target;
-            this.expiry = expiry;
-        }
     }
 
     private static final class BoostedMaidState {

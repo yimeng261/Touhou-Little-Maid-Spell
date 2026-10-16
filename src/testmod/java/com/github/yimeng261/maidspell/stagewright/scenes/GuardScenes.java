@@ -157,9 +157,9 @@ public final class GuardScenes {
     private static void explosiveBlacklisted(SceneContext ctx) {
         String explosive = "goety:explosive";
         net.neoforged.neoforge.common.ModConfigSpec.ConfigValue<?> crystalSpec =
-                Reflect.field(null, Config.class, "DREAM_CRYSTAL_EFFECT_BLACKLIST");
+                Reflect.field(null, baublesConfig(), "DREAM_CRYSTAL_EFFECT_BLACKLIST");
         net.neoforged.neoforge.common.ModConfigSpec.ConfigValue<?> fragrantSpec =
-                Reflect.field(null, Config.class, "FRAGRANT_INGENUITY_EFFECT_BLACKLIST");
+                Reflect.field(null, baublesConfig(), "FRAGRANT_INGENUITY_EFFECT_BLACKLIST");
         var crystalDefaults = (List<String>) crystalSpec.getDefault();
         var fragrantDefaults = (List<String>) fragrantSpec.getDefault();
         ctx.check(crystalDefaults.contains(explosive)).as("梦云水晶默认黑名单含 " + explosive).isTrue();
@@ -191,9 +191,9 @@ public final class GuardScenes {
     @SuppressWarnings("unchecked")
     private static void blacklistMigration(SceneContext ctx) {
         String explosive = "goety:explosive";
-        var crystal = (ModConfigSpec.ConfigValue<List<? extends String>>) Reflect.<Object>field(null, Config.class, "DREAM_CRYSTAL_EFFECT_BLACKLIST");
-        var fragrant = (ModConfigSpec.ConfigValue<List<? extends String>>) Reflect.<Object>field(null, Config.class, "FRAGRANT_INGENUITY_EFFECT_BLACKLIST");
-        ModConfigSpec.IntValue version = Reflect.field(null, Config.class, "DREAM_CRYSTAL_EFFECT_BLACKLIST_MIGRATION_VERSION");
+        var crystal = (ModConfigSpec.ConfigValue<List<? extends String>>) Reflect.<Object>field(null, baublesConfig(), "DREAM_CRYSTAL_EFFECT_BLACKLIST");
+        var fragrant = (ModConfigSpec.ConfigValue<List<? extends String>>) Reflect.<Object>field(null, baublesConfig(), "FRAGRANT_INGENUITY_EFFECT_BLACKLIST");
+        ModConfigSpec.IntValue version = Reflect.field(null, baublesConfig(), "DREAM_CRYSTAL_EFFECT_BLACKLIST_MIGRATION_VERSION");
         List<String> defaults = (List<String>) crystal.getDefault();
         List<String> previousDefaults = defaults.stream().filter(effect -> !effect.equals(explosive)).toList();
         List<String> custom = List.of("minecraft:speed");
@@ -217,7 +217,16 @@ public final class GuardScenes {
             crystal.set(originalCrystal);
             fragrant.set(originalFragrant);
             version.set(originalVersion);
-            Config.SPEC.save();
+            Config.BAUBLES_SPEC.save();
+        }
+    }
+
+    /** 饰品配置类是包私有的，按名字取。 */
+    private static Class<?> baublesConfig() {
+        try {
+            return Class.forName(Config.class.getPackageName() + ".ConfigBaubles");
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("找不到饰品配置类", e);
         }
     }
 
@@ -227,6 +236,6 @@ public final class GuardScenes {
         crystal.set(crystalValue);
         fragrant.set(fragrantValue);
         version.set(versionValue);
-        Reflect.call(null, Config.class, "migrateRandomEffectBlacklists", new Class<?>[0]);
+        Reflect.call(null, baublesConfig(), "migrateRandomEffectBlacklists", new Class<?>[0]);
     }
 }

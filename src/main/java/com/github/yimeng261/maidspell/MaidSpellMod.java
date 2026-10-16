@@ -96,8 +96,15 @@ public class MaidSpellMod {
             modEventBus.addListener(SpellEnhancementBauble::initializeAttributes);
         }
 
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
-        modContainer.registerConfig(ModConfig.Type.CLIENT, EnderPocketClientConfig.SPEC, MOD_ID + "-client.toml");
+        // 配置文件按功能放进 config/<modid>/ 目录；旧的根目录配置先迁移，再注册新配置
+        ConfigMigration.migrate();
+        modContainer.registerConfig(ModConfig.Type.COMMON, Config.COMBAT_SPEC, MOD_ID + "/combat.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, Config.BAUBLES_SPEC, MOD_ID + "/baubles.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, Config.RETREAT_SPEC, MOD_ID + "/retreat.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, Config.COMPAT_SPEC, MOD_ID + "/compat.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, Config.WINEFOX_SPEC, MOD_ID + "/boss.toml");
+        modContainer.registerConfig(ModConfig.Type.CLIENT, EnderPocketClientConfig.SPEC,
+                MOD_ID + "/client/ender_pocket.toml");
         if (dist.isClient()) {
             modContainer.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
         }

@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.stagewright.scenes;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.MaidSpellDataComponents;
@@ -81,15 +82,16 @@ public final class StateMigrationScenes {
         ctx.check(scoreboard.getPlayerTeam("tlms_player_team")).as("玩家自建的队伍").isNotNull();
     }
 
-    /** 新生成的通用配置文件里没有 autoAllianceEnabled。 */
+    /** 新生成的归隐之地配置文件里没有 autoAllianceEnabled。 */
     private static void autoAllianceRemoved(SceneContext ctx) {
-        Path file = ctx.server().getServerDirectory().resolve("config").resolve("touhou_little_maid_spell-common.toml");
+        Path file = ctx.server().getServerDirectory().resolve("config")
+                .resolve(MaidSpellMod.MOD_ID).resolve("retreat.toml");
         try {
             String text = Files.readString(file);
             ctx.check(text.contains("autoAllianceEnabled")).as(file + " 里有 autoAllianceEnabled").isFalse();
             ctx.check(text.contains("retreatRecordRetentionDays")).as(file + " 里有 retreatRecordRetentionDays").isTrue();
         } catch (IOException e) {
-            ctx.fail("读不到通用配置文件 " + file + ": " + e.getMessage());
+            ctx.fail("读不到归隐之地配置文件 " + file + ": " + e.getMessage());
         }
     }
 

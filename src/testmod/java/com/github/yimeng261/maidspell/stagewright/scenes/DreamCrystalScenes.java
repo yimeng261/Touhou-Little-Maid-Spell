@@ -13,12 +13,10 @@ import net.magicterra.stagewright.scene.SceneContext;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.Vec3;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.ISlotType;
@@ -31,7 +29,7 @@ import java.util.Map;
 import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
 
 /**
- * 梦云水晶（女仆佩戴）：时停 1 秒（含卸载、换维度、重进世界）、20 格范围强化、概率复活
+ * 梦云水晶（女仆佩戴）：命中不再定身、旧存档遗留的定身生物重进世界时释放、20 格范围强化、概率复活
  * （120 秒窗口、每次 -10%、最多 10 条记录、15 秒无敌、旧记录迁移）、Boss 中立、受击间隔内被挡下的一击不追加真伤；
  * 玩家不能通过 Curios 佩戴。
  * <p>计时都以主世界时间为准，在其他维度也一样。
@@ -51,12 +49,12 @@ public final class DreamCrystalScenes {
 
     public static List<Scene> dedicatedServer() {
         List<Scene> scenes = new ArrayList<>();
-        scenes.add(Checks.superflat("dream_crystal.timeStop", FREEZE_TICKS + 40, DreamCrystalScenes::timeStop));
-        scenes.add(Checks.superflat("dream_crystal.timeStopKeepsNoAiMobs", FREEZE_TICKS + 40, DreamCrystalScenes::timeStopKeepsNoAi));
-        scenes.add(Checks.superflat("dream_crystal.timeStopEndsAfterReload", FREEZE_TICKS + 60, DreamCrystalScenes::timeStopReload));
-        scenes.add(Checks.superflat("dream_crystal.timeStopEndsAfterDimensionChange", FREEZE_TICKS + 60, DreamCrystalScenes::timeStopDimension));
-        scenes.add(Checks.scene("dream_crystal.timeStopInOtherDimension", FREEZE_TICKS + 40, DreamCrystalScenes::timeStop)
+        scenes.add(Checks.superflat("dream_crystal.hitDoesNotFreeze", 40, DreamCrystalScenes::hitDoesNotFreeze));
+        scenes.add(Checks.superflat("dream_crystal.hitKeepsNoAiMobs", 40, DreamCrystalScenes::hitKeepsNoAi));
+        scenes.add(Checks.superflat("dream_crystal.legacyFrozenReleasedOnJoin", 40, DreamCrystalScenes::legacyFrozenReleased));
+        scenes.add(Checks.scene("dream_crystal.legacyFrozenReleasedInOtherDimension", 40, DreamCrystalScenes::legacyFrozenReleased)
                 .withDimension("minecraft:the_nether"));
+        scenes.add(Checks.superflat("dream_crystal.legacyNoAiWithoutTagKept", 40, DreamCrystalScenes::legacyNoAiKept));
         scenes.add(Checks.superflat("dream_crystal.rangeBoost", 200, DreamCrystalScenes::rangeBoost));
         scenes.add(Checks.superflat("dream_crystal.revive.firstDeath", 40, DreamCrystalScenes::reviveFirstDeath));
         scenes.add(Checks.superflat("dream_crystal.revive.invulnerabilityExpires", 60, DreamCrystalScenes::invulnerabilityExpires));
@@ -77,71 +75,54 @@ public final class DreamCrystalScenes {
         return PortableTimerMath.overworldGameTime(ctx.server());
     }
 
-    // ---- 时停 ----
+    // ---- 命中不再定身 ----
 
-    /** 女仆打到敌人后，敌人被定住（NoAI + 到期标记）约 1 秒后恢复。 */
-    private static void timeStop(SceneContext ctx) {
+    /** 女仆打到敌人后，敌人不会被定住，也没有时停标记。 */
+    private static void hitDoesNotFreeze(SceneContext ctx) {
         EntityMaid maid = Actors.sittingMaid(ctx, 0, 0, 0);
         Actors.equipBauble(maid, CRYSTAL);
         Mob zombie = Actors.spawn(ctx, "minecraft:zombie", 0, 0, 2, false);
         zombie.setPersistenceRequired();
         Checks.after(ctx, 2, () -> {
             zombie.hurt(maid.damageSources().mobAttack(maid), 2);
-            ctx.check(zombie.isNoAi()).as("命中后敌人被定住").isTrue();
-            ctx.check(zombie.getPersistentData().contains(FROZEN_TAG)).as("命中后有时停到期标记").isTrue();
-            ctx.await(() -> !zombie.isNoAi()).within(FREEZE_TICKS + 20).then(() ->
-                    ctx.check(zombie.getPersistentData().contains(FROZEN_TAG)).as("恢复后仍有时停标记").isFalse());
+            ctx.check(zombie.isNoAi()).as("命中后敌人被定住").isFalse();
+            ctx.check(zombie.getPersistentData().contains(FROZEN_TAG)).as("命中后有时停标记").isFalse();
+            Checks.after(ctx, FREEZE_TICKS + 10, () -> ctx.check(zombie.isNoAi()).as("命中约 1 秒后敌人被定住").isFalse());
         });
     }
 
     /** 本来就是 NoAI 的生物被打后仍保持 NoAI，也不打标记。 */
-    private static void timeStopKeepsNoAi(SceneContext ctx) {
+    private static void hitKeepsNoAi(SceneContext ctx) {
         EntityMaid maid = Actors.sittingMaid(ctx, 0, 0, 0);
         Actors.equipBauble(maid, CRYSTAL);
         Mob statue = Actors.spawn(ctx, "minecraft:zombie", 0, 0, 2, true);
         Checks.after(ctx, 2, () -> {
             statue.hurt(maid.damageSources().mobAttack(maid), 2);
             ctx.check(statue.getPersistentData().contains(FROZEN_TAG)).as("原本 NoAI 的生物被打上时停标记").isFalse();
-            Checks.after(ctx, FREEZE_TICKS + 10, () -> ctx.check(statue.isNoAi()).as("到期后原本 NoAI 的生物仍 NoAI").isTrue());
+            ctx.check(statue.isNoAi()).as("原本 NoAI 的生物被恢复 AI").isTrue();
         });
     }
 
-    /** 定身期间随区块卸载，到期后重新加载：已恢复行动，标记已清除。 */
-    private static void timeStopReload(SceneContext ctx) {
-        EntityMaid maid = Actors.sittingMaid(ctx, 0, 0, 0);
-        Actors.equipBauble(maid, CRYSTAL);
+    /** 旧存档里带时停标记的 NoAI 生物重新进入世界：恢复 AI 并清掉标记。 */
+    private static void legacyFrozenReleased(SceneContext ctx) {
         Mob zombie = Actors.spawn(ctx, "minecraft:zombie", 0, 0, 2, false);
         zombie.setPersistenceRequired();
-        Checks.after(ctx, 2, () -> {
-            zombie.hurt(maid.damageSources().mobAttack(maid), 2);
-            ctx.check(zombie.isNoAi()).as("命中后敌人被定住").isTrue();
-            Maids.reload(ctx, zombie, FREEZE_TICKS + 10, loaded -> Checks.after(ctx, 2, () -> {
-                Mob mob = (Mob) loaded;
-                ctx.check(mob.isNoAi()).as("重新加载后仍被定住").isFalse();
-                ctx.check(mob.getPersistentData().contains(FROZEN_TAG)).as("重新加载后仍有时停标记").isFalse();
-            }));
-        });
+        zombie.setNoAi(true);
+        zombie.getPersistentData().putLong(FROZEN_TAG, now(ctx) + FREEZE_TICKS);
+        Maids.reload(ctx, zombie, 2, loaded -> Checks.after(ctx, 2, () -> {
+            Mob mob = (Mob) loaded;
+            ctx.check(mob.isNoAi()).as("重新进入世界后仍被定住").isFalse();
+            ctx.check(mob.getPersistentData().contains(FROZEN_TAG)).as("重新进入世界后仍有时停标记").isFalse();
+        }));
     }
 
-    /** 定身期间被传送到下界：到期后在下界恢复行动。 */
-    private static void timeStopDimension(SceneContext ctx) {
-        EntityMaid maid = Actors.sittingMaid(ctx, 0, 0, 0);
-        Actors.equipBauble(maid, CRYSTAL);
-        Mob zombie = Actors.spawn(ctx, "minecraft:zombie", 0, 0, 2, false);
-        zombie.setPersistenceRequired();
-        Checks.after(ctx, 2, () -> {
-            zombie.hurt(maid.damageSources().mobAttack(maid), 2);
-            ServerLevel nether = ctx.server().getLevel(Level.NETHER);
-            Entity moved = zombie.changeDimension(new DimensionTransition(nether, new Vec3(0.5, 64, 0.5), Vec3.ZERO,
-                    0, 0, DimensionTransition.DO_NOTHING));
-            ctx.check(moved).as("传送到下界后的实体").isNotNull();
-            if (!(moved instanceof Mob mob)) {
-                return;
-            }
-            ctx.cleanup(mob::discard);
-            ctx.await(() -> !mob.isNoAi()).within(FREEZE_TICKS + 30).then(() ->
-                    ctx.check(mob.getPersistentData().contains(FROZEN_TAG)).as("下界里恢复后仍有时停标记").isFalse());
-        });
+    /** 没有时停标记的 NoAI 生物重新进入世界后保持 NoAI。 */
+    private static void legacyNoAiKept(SceneContext ctx) {
+        Mob statue = Actors.spawn(ctx, "minecraft:zombie", 0, 0, 2, true);
+        Maids.reload(ctx, statue, 2, loaded -> Checks.after(ctx, 2, () -> {
+            Mob mob = (Mob) loaded;
+            ctx.check(mob.isNoAi()).as("原本 NoAI 的生物重新进入世界后被恢复 AI").isTrue();
+        }));
     }
 
     // ---- 范围强化 ----

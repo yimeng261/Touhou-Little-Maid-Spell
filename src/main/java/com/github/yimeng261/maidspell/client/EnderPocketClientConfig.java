@@ -15,16 +15,20 @@ public final class EnderPocketClientConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
     public static final ModConfigSpec.BooleanValue HUD_ENABLED = BUILDER
-            .comment("Whether the Ender Pocket maid status HUD is visible")
+            .comment("是否显示末影腰包女仆状态栏",
+                    "Whether the Ender Pocket maid status HUD is visible")
             .define("hudEnabled", true);
     public static final ModConfigSpec.IntValue HUD_X = BUILDER
-            .comment("HUD X position in scaled GUI pixels")
+            .comment("状态栏横坐标，单位为缩放后的 GUI 像素",
+                    "HUD X position in scaled GUI pixels")
             .defineInRange("hudX", 6, 0, MAX_HUD_POSITION);
     public static final ModConfigSpec.IntValue HUD_Y = BUILDER
-            .comment("HUD Y position in scaled GUI pixels")
+            .comment("状态栏纵坐标，单位为缩放后的 GUI 像素",
+                    "HUD Y position in scaled GUI pixels")
             .defineInRange("hudY", 6, 0, MAX_HUD_POSITION);
     public static final ModConfigSpec.ConfigValue<List<? extends String>> HUD_HIDDEN_MAIDS = BUILDER
-            .comment("Maid UUIDs hidden from the Ender Pocket HUD")
+            .comment("末影腰包状态栏中隐藏的女仆 UUID 列表",
+                    "Maid UUIDs hidden from the Ender Pocket HUD")
             .defineListAllowEmpty("hudHiddenMaidUuids", List::of, () -> new UUID(0L, 0L).toString(),
                     value -> value instanceof String text && isUuid(text));
 
