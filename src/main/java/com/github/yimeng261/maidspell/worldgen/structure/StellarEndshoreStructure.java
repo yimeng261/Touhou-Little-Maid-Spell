@@ -26,6 +26,8 @@ import java.util.Optional;
  * <p>高度做成可配的 {@link #baseHeight} 加抖动，是因为一整片末地全在同一个 Y 上会看出是刷出来的；抖动后仍会夹住上界，见 {@link #MAX_STRUCTURE_HEIGHT}。
  */
 public class StellarEndshoreStructure extends Structure {
+    /** 仅运行期使用：固定刷新补生成时指定的锚点，自然生成不设置。 */
+    private static final ThreadLocal<BlockPos> FIXED_ANCHOR = new ThreadLocal<>();
     public static final MapCodec<StellarEndshoreStructure> CODEC = RecordCodecBuilder.mapCodec(instance ->
             instance.group(
                     Structure.settingsCodec(instance),
@@ -56,6 +58,19 @@ public class StellarEndshoreStructure extends Structure {
     private final int baseHeight;
     private final int heightJitter;
 
+    public static void setFixedAnchor(BlockPos anchor) {
+        FIXED_ANCHOR.set(anchor);
+    }
+
+    public static void clearFixedAnchor() {
+        FIXED_ANCHOR.remove();
+    }
+
+    /** 把要求的竞技场 Y 换算成拼图起点 Y（模板地面比起点高 {@value #ARENA_FLOOR_OFFSET} 格）。 */
+    public static int fixedStartY(int arenaY) {
+        return arenaY - ARENA_FLOOR_OFFSET;
+    }
+
     public StellarEndshoreStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool, int size,
                                     int maxDistanceFromCenter, int baseHeight, int heightJitter) {
         super(settings);
@@ -68,12 +83,14 @@ public class StellarEndshoreStructure extends Structure {
 
     @Override
     protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
-        int x = context.chunkPos().getMinBlockX() + 8;
-        int z = context.chunkPos().getMinBlockZ() + 8;
+        BlockPos fixedAnchor = FIXED_ANCHOR.get();
+        int x = fixedAnchor == null ? context.chunkPos().getMinBlockX() + 8 : fixedAnchor.getX();
+        int z = fixedAnchor == null ? context.chunkPos().getMinBlockZ() + 8 : fixedAnchor.getZ();
 
-        // The template's arena is 28 blocks above its bottom; jigsaw lowers that bottom by one.
-        int y = this.baseHeight - ARENA_FLOOR_OFFSET;
-        if (this.heightJitter > 0) {
+        // 模板的竞技场地面在模板底部上方 28 格，拼图放置会把模板底部再降一格。
+        int y = fixedAnchor == null ? this.baseHeight - ARENA_FLOOR_OFFSET
+                : fixedStartY(fixedAnchor.getY());
+        if (fixedAnchor == null && this.heightJitter > 0) {
             y += context.random().nextInt(this.heightJitter * 2 + 1) - this.heightJitter;
         }
         y = Mth.clamp(

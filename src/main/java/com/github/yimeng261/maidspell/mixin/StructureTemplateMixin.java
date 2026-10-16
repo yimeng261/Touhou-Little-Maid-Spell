@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -53,6 +54,10 @@ public abstract class StructureTemplateMixin {
 
         ListTag posTag = tag.getList("Pos", 6);
         BlockPos blockPos = BlockPos.containing(posTag.getDouble(0), posTag.getDouble(1), posTag.getDouble(2));
+        if ((MaidSpellMod.MOD_ID + ":stellar_witch").equals(tag.getString("id")) && posTag.size() == 3) {
+            // Pos 已是变换后的世界坐标，而模板里记录的归位坐标不是，这里用实体实际位置覆盖。
+            tag.put("WinefoxHomePos", NbtUtils.writeBlockPos(blockPos));
+        }
         if (maidSpell$isInEnchantressFootstepsOutpostStructure(accessor, blockPos)) {
             try {
                 ci.setReturnValue(EntityType.create(tag, accessor.getLevel()));
