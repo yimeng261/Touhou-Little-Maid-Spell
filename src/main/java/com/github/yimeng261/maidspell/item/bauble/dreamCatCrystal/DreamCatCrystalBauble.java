@@ -32,7 +32,6 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -54,11 +53,6 @@ import java.util.regex.PatternSyntaxException;
 public class DreamCatCrystalBauble implements IMaidBauble {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-
-    // ========== 时停状态追踪 ==========
-    private static final Map<UUID, FrozenTargetState> FROZEN_TARGETS = new HashMap<>();
-    private static final PriorityQueue<ScheduledExpiry> FROZEN_TARGET_EXPIRIES =
-        new PriorityQueue<>(Comparator.comparingLong(ScheduledExpiry::expiry));
 
     // ========== 范围强化追踪 ==========
     private static final Map<UUID, BoostedMaidState> BOOSTED_MAIDS = new HashMap<>();
@@ -222,7 +216,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             return null;
         });
 
-        // ========== 女仆造成伤害头部处理：真实伤害 + 时停 + 弹幕溅射 ==========
+        // ========== 女仆造成伤害头部处理：真实伤害 + 弹幕溅射 ==========
         Global.registerBaubleHurtHeadHandler(MaidSpellItems.DREAM_CAT_CRYSTAL.get(), context -> {
             if (TrueDamageUtil.isApplyingQueuedDamage()) return;
             EntityMaid maid = context.getSourceMaid();
@@ -242,17 +236,7 @@ public class DreamCatCrystalBauble implements IMaidBauble {
                 TrueDamageUtil.dealTrueDamage(target, damage, maid);
             }
 
-            // 2. 时停 1 秒（仅在服务端执行）
-            if (!maid.level().isClientSide() && IAuthoritativeHealth.combatAlive(target)
-                    && target instanceof Mob mob) {
-                MinecraftServer server = maid.getServer();
-                if (server != null) {
-                    long unfreezeTime = PortableTimerMath.saturatingAdd(globalGameTime(server), 20L);
-                    freezeTarget(mob, unfreezeTime);
-                }
-            }
-
-            // 3. 弹幕溅射：对目标周围 5 格内的敌方实体造成 10% 伤害
+            // 2. 弹幕溅射：对目标周围 5 格内的敌方实体造成 10% 伤害
             if (!maid.level().isClientSide()) {
                 float barrageDamage = damage * 0.1f;
                 maid.level().getEntitiesOfClass(
@@ -682,63 +666,13 @@ public class DreamCatCrystalBauble implements IMaidBauble {
             return;
         }
         long currentTime = globalGameTime(server);
-        processFrozenTargets(currentTime);
         processBoostedMaids(currentTime);
     }
 
     public static void clearScheduledEffects() {
-        FROZEN_TARGETS.clear();
-        FROZEN_TARGET_EXPIRIES.clear();
         BOOSTED_MAIDS.clear();
         BOOSTED_MAID_EXPIRIES.clear();
         HAS_DREAM_CRYSTAL.clear();
-    }
-
-    public static void freezeTarget(Mob mob, long expiry) {
-        UUID targetUUID = mob.getUUID();
-        FrozenTargetState existing = FROZEN_TARGETS.get(targetUUID);
-        if (existing != null && existing.expiry >= expiry) {
-            existing.target = mob;
-            if (Config.dreamCrystalSetNoAiEnabled) {
-                mob.setNoAi(true);
-            }
-            return;
-        }
-
-        FrozenTargetState state = new FrozenTargetState(mob, expiry);
-        FROZEN_TARGETS.put(targetUUID, state);
-        FROZEN_TARGET_EXPIRIES.add(new ScheduledExpiry(targetUUID, expiry));
-        if (Config.dreamCrystalSetNoAiEnabled) {
-            mob.setNoAi(true);
-        }
-    }
-
-    private static void processFrozenTargets(long currentTime) {
-        while (!FROZEN_TARGET_EXPIRIES.isEmpty()) {
-            ScheduledExpiry scheduled = FROZEN_TARGET_EXPIRIES.peek();
-            FrozenTargetState state = FROZEN_TARGETS.get(scheduled.entityId());
-            if (state == null || state.expiry != scheduled.expiry()) {
-                FROZEN_TARGET_EXPIRIES.poll();
-                continue;
-            }
-
-            Mob target = state.target;
-            if (!IAuthoritativeHealth.combatAlive(target)) {
-                FROZEN_TARGETS.remove(scheduled.entityId());
-                FROZEN_TARGET_EXPIRIES.poll();
-                continue;
-            }
-
-            if (currentTime < scheduled.expiry()) {
-                break;
-            }
-
-            FROZEN_TARGETS.remove(scheduled.entityId());
-            FROZEN_TARGET_EXPIRIES.poll();
-            if (Config.dreamCrystalSetNoAiEnabled) {
-                target.setNoAi(false);
-            }
-        }
     }
 
     private static boolean isMaidBoosted(EntityMaid maid) {
@@ -814,16 +748,6 @@ public class DreamCatCrystalBauble implements IMaidBauble {
 
     private static long globalGameTime(MinecraftServer server) {
         return server.overworld().getGameTime();
-    }
-
-    private static final class FrozenTargetState {
-        private Mob target;
-        private final long expiry;
-
-        private FrozenTargetState(Mob target, long expiry) {
-            this.target = target;
-            this.expiry = expiry;
-        }
     }
 
     private static final class BoostedMaidState {

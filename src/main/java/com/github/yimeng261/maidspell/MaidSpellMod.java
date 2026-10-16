@@ -83,9 +83,20 @@ public class MaidSpellMod {
         MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modBus);
 
         
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        // Forge accepts a relative path as the custom config file name and creates its parent directory.
+        ConfigMigration.migrate();
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.COMBAT_SPEC,
+                MOD_ID + "/combat.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.BAUBLES_SPEC,
+                MOD_ID + "/baubles.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.RETREAT_SPEC,
+                MOD_ID + "/retreat.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.COMPAT_SPEC,
+                MOD_ID + "/compat.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.WINEFOX_SPEC,
+                MOD_ID + "/boss.toml");
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, EnderPocketClientConfig.SPEC,
-                MOD_ID + "-client.toml");
+                MOD_ID + "/client/ender_pocket.toml");
         
     }
 
