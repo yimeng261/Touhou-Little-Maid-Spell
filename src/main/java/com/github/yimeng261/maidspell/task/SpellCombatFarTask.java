@@ -89,6 +89,11 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         );
     }
 
+    @Override
+    protected BehaviorControl<EntityMaid> createSpellCastingBehavior(boolean sitting) {
+        return new FarSpellCombatBehavior(sitting);
+    }
+
     /**
      * 自定义索敌方法，排除女仆自己召唤的 Goety 召唤物
      */
@@ -101,7 +106,11 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         private SimplifiedSpellCaster currentSpellCaster;
 
         private FarSpellCombatBehavior() {
-            super();
+            this(false);
+        }
+
+        private FarSpellCombatBehavior(boolean sitting) {
+            super(sitting);
         }
 
         @Override

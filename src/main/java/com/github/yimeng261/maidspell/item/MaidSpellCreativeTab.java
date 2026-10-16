@@ -41,6 +41,7 @@ public class MaidSpellCreativeTab {
                     output.accept(MaidSpellItems.SPELL_ENHANCEMENT_CORE.get());
                 }
                 output.accept(MaidSpellItems.SPELL_OVERLIMIT_CORE.get());
+                output.accept(MaidSpellItems.SPELL_RANGE_TABLE.get());
                 output.accept(MaidSpellItems.ANCHOR_CORE.get());
                 output.accept(MaidSpellItems.FLOW_CORE.get());
                 output.accept(MaidSpellItems.ROCK_CRYSTAL.get());

@@ -28,6 +28,7 @@ import com.github.yimeng261.maidspell.item.bauble.moltenFoxLeaf.MoltenFoxLeaf;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBlade;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCore;
+import com.github.yimeng261.maidspell.item.bauble.spellRangeTable.SpellRangeTable;
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystal;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturn;
 import com.github.yimeng261.maidspell.item.bauble.staranchorPearl.StaranchorPearl;
@@ -83,6 +84,7 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> WOUND_RIME_BLADE = ITEMS.register("wound_rime_blade", WoundRimeBlade::new);
     public static final RegistryObject<Item> ANCHOR_CORE = ITEMS.register("anchor_core", AnchorCore::new);
     public static final RegistryObject<Item> SPELL_OVERLIMIT_CORE = ITEMS.register("spell_overlimit_core", SpellOverlimitCore::new);
+    public static final RegistryObject<Item> SPELL_RANGE_TABLE = ITEMS.register("spell_range_table", SpellRangeTable::new);
     public static final RegistryObject<Item> SPRING_BLOOM_RETURN = ITEMS.register("spring_bloom_return", SpringBloomReturn::new);
     public static final RegistryObject<Item> FRAGRANT_INGENUITY = ITEMS.register("fragrant_ingenuity", FragrantIngenuity::new);
     // 星锚珍珠：玩家右键获得 35 秒虚空漫步，女仆佩戴可代挡虚空伤害并消耗耐久

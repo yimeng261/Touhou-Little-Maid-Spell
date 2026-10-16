@@ -14,6 +14,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksDat
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
+import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
@@ -97,7 +98,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid) || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
-        BehaviorControl<EntityMaid> spellCastingTask = new SpellCombatBehavior();
+        BehaviorControl<EntityMaid> spellCastingTask = createSpellCastingBehavior(false);
         BehaviorControl<EntityMaid> strafingTask = new SpellStrafingTask();
         // 添加高优先级的视线控制任务，阻止女仆看向玩家
         BehaviorControl<EntityMaid> lookControlTask = new CombatLookControlTask();
@@ -110,6 +111,42 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
                 Pair.of(2, spellCastingTask),
                 Pair.of(2, strafingTask)
         );
+    }
+
+    /**
+     * Sitting maids normally use Touhou Little Maid's ride-work activity, which
+     * does not include the regular work behaviors. Add a stationary combat set
+     * for the range table while keeping movement disabled.
+     */
+    @Override
+    public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(@NotNull EntityMaid maid) {
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::canCastWhileSitting, this::findValidAttackTarget);
+        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target ->
+                !isSittingSpellcastingEnabled(maid)
+                    || farAway(target, maid)
+                    || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target));
+        BehaviorControl<EntityMaid> spellCastingTask = createSpellCastingBehavior(true);
+        BehaviorControl<EntityMaid> lookControlTask = new CombatLookControlTask(true);
+
+        return Lists.newArrayList(
+            Pair.of(1, lookControlTask),
+            Pair.of(2, supplementedTask),
+            Pair.of(2, findTargetTask),
+            Pair.of(2, spellCastingTask)
+        );
+    }
+
+    protected BehaviorControl<EntityMaid> createSpellCastingBehavior(boolean sitting) {
+        return new SpellCombatBehavior(sitting);
+    }
+
+    protected static boolean isSittingSpellcastingEnabled(EntityMaid maid) {
+        return maid.isMaidInSittingPose()
+            && BaubleStateManager.hasBauble(maid, MaidSpellItems.SPELL_RANGE_TABLE);
+    }
+
+    private boolean canCastWhileSitting(EntityMaid maid) {
+        return isSittingSpellcastingEnabled(maid) && hasSpellBook(maid);
     }
     
     /**
@@ -215,16 +252,26 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
      */
     static class SpellCombatBehavior extends Behavior<EntityMaid> {
         private SimplifiedSpellCaster currentSpellCaster;
+        private final boolean sitting;
 
         public SpellCombatBehavior() {
+            this(false);
+        }
+
+        protected SpellCombatBehavior(boolean sitting) {
             super(Map.of(
                 MemoryModuleType.ATTACK_TARGET, MemoryStatus.VALUE_PRESENT,
                 MemoryModuleType.LOOK_TARGET, MemoryStatus.REGISTERED
             ));
+            this.sitting = sitting;
         }
 
         @Override
         protected boolean checkExtraStartConditions(@NotNull ServerLevel level, EntityMaid maid) {
+            if (sitting && !isSittingSpellcastingEnabled(maid)) {
+                return false;
+            }
+
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
             if (!IAuthoritativeHealth.combatAlive(target)
                     || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target)) {
@@ -285,16 +332,26 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
      * 特殊情况：当女仆释放标记的铁魔法法术时，允许看向主人
      */
     static class CombatLookControlTask extends Behavior<EntityMaid> {
-        
-        public CombatLookControlTask() {
+        private final boolean sitting;
+
+        CombatLookControlTask() {
+            this(false);
+        }
+
+        CombatLookControlTask(boolean sitting) {
             super(Map.of(
                 MemoryModuleType.ATTACK_TARGET, MemoryStatus.VALUE_PRESENT,
                 MemoryModuleType.LOOK_TARGET, MemoryStatus.REGISTERED
             ));
+            this.sitting = sitting;
         }
 
         @Override
         protected boolean checkExtraStartConditions(@NotNull ServerLevel level, EntityMaid maid) {
+            if (sitting && !isSittingSpellcastingEnabled(maid)) {
+                return false;
+            }
+
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
             // 如果是铁魔法特殊情况（目标是主人），也允许启动
             if (target instanceof Player && isIronSpellSpecialCase(maid)) {
@@ -311,6 +368,10 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
         @Override
         protected void tick(@NotNull ServerLevel level, EntityMaid maid, long gameTime) {
+            if (sitting && !isSittingSpellcastingEnabled(maid)) {
+                return;
+            }
+
             LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
             if (IAuthoritativeHealth.combatAlive(target)) {
                 // 检查是否是铁魔法特殊情况
