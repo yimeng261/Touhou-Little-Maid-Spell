@@ -13,4 +13,9 @@ public class CompanionBlackHoleRenderer extends LocalBlackHoleRenderer<Companion
         super(context, CENTER, BEAM, 0xFFFFFF, 0xFF00FF, 255, 100, 20,
                 CompanionBlackHoleEntity.HOVER_ABOVE_EYES);
     }
+
+    @Override
+    protected float visualScale(CompanionBlackHoleEntity entity) {
+        return 0.5F;
+    }
 }

@@ -12,8 +12,12 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.Compa
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedMagicMissileEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCloudEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCometEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.PalmBlackHoleEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SevenStarGuidanceEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SpellbreakingEchoEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.StarShadowStrikeEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SwordArrayEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ThreeEnclosuresFieldEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.WinefoxSwordProjectileEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -102,6 +106,14 @@ public final class IronsSpellbooksCompatEntities {
                             .updateInterval(1)
                             .build("winefox_sword_projectile"));
 
+    public static final DeferredHolder<EntityType<?>, EntityType<SwordArrayEntity>> SWORD_ARRAY =
+            ENTITY_TYPES.register("sword_array",
+                    () -> EntityType.Builder.<SwordArrayEntity>of(SwordArrayEntity::new, MobCategory.MISC)
+                            .sized(0.35F, 0.35F)
+                            .clientTrackingRange(8)
+                            .updateInterval(20)
+                            .build("sword_array"));
+
     public static final DeferredHolder<EntityType<?>, EntityType<StarShadowStrikeEntity>> STAR_SHADOW_STRIKE =
             ENTITY_TYPES.register("star_shadow_strike",
                     () -> EntityType.Builder.<StarShadowStrikeEntity>of(StarShadowStrikeEntity::new, MobCategory.MISC)
@@ -130,6 +142,34 @@ public final class IronsSpellbooksCompatEntities {
                             .clientTrackingRange(64)
                             .updateInterval(1)
                             .build("spellbreaking_echo"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<ThreeEnclosuresFieldEntity>> THREE_ENCLOSURES =
+            ENTITY_TYPES.register("three_enclosures",
+                    () -> EntityType.Builder.<ThreeEnclosuresFieldEntity>of(
+                                    ThreeEnclosuresFieldEntity::new, MobCategory.MISC)
+                            // 渲染器绘制宽 20 格、高 8 格的棱柱，剔除盒要足够大才能容下整片领域；
+                            // 实体本身无碰撞、不可选中。
+                            .sized(20.0F, 8.0F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("three_enclosures"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<SevenStarGuidanceEntity>> SEVEN_STAR_GUIDANCE =
+            ENTITY_TYPES.register("seven_star_guidance",
+                    () -> EntityType.Builder.<SevenStarGuidanceEntity>of(
+                                    SevenStarGuidanceEntity::new, MobCategory.MISC)
+                            .sized(0.1F, 0.1F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("seven_star_guidance"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<PalmBlackHoleEntity>> PALM_BLACK_HOLE =
+            ENTITY_TYPES.register("palm_black_hole",
+                    () -> EntityType.Builder.<PalmBlackHoleEntity>of(PalmBlackHoleEntity::new, MobCategory.MISC)
+                            .sized(0.1F, 0.1F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("palm_black_hole"));
 
     public static final DeferredHolder<EntityType<?>, EntityType<MagicalWinefoxBossEntity>> MAGICAL_WINEFOX_BOSS =
             ENTITY_TYPES.register("stellar_witch",

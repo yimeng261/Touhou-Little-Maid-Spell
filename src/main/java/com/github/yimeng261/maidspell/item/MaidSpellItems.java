@@ -83,7 +83,7 @@ public class MaidSpellItems {
     // 梦云水晶
     public static final DeferredItem<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal", DreamCatCrystal::new);
 
-    // 星锚珍珠：玩家右键获得 30 秒虚空漫步，女仆佩戴可代挡虚空伤害并消耗耐久
+    // 星锚珍珠：玩家右键获得 35 秒虚空漫步，女仆佩戴可代挡虚空伤害并消耗耐久
     public static final DeferredItem<Item> STARANCHOR_PEARL = ITEMS.register("staranchor_pearl", StaranchorPearl::new);
 
     // 星云核心仅由合格的魔女挑战发放。

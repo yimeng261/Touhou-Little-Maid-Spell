@@ -1,6 +1,8 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 
+import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.trading.ItemCost;
@@ -12,11 +14,16 @@ import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.spells.ISpellContainer;
 import io.redspace.ironsspellbooks.registries.ItemRegistry;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.EnchantedBookItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.EnchantmentInstance;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
@@ -100,6 +107,8 @@ public final class WinefoxTrades {
                 new ItemStack(MaidSpellItems.JINGXU_YOULAN.get())));
         offers.add(offer(emeralds(STAR_GLOW_PRICE),
                 new ItemStack(MaidSpellItems.STAR_GLOW_FLOWER_CLUSTER.get(), 4)));
+        addEnchantedBook(offers, half(5, discounted), Enchantments.MENDING, 1);
+        addEnchantedBook(offers, half(4, discounted), Enchantments.PROTECTION, 4);
     }
 
     /** 战胜后才摆出来的那一档。 */
@@ -120,6 +129,7 @@ public final class WinefoxTrades {
         // 它们**不**实现 BossExclusiveSpell —— 这里就是在卖，玩家拿到卷轴是设计的一部分。
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.TRIPLE_STAR_ARROW.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.COMPANION_BLACK_HOLE.get())));
+        offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.SPELLBREAKING_ECHO.get())));
     }
 
     /**
@@ -141,6 +151,19 @@ public final class WinefoxTrades {
         ItemStack scroll = new ItemStack(ItemRegistry.SCROLL.get());
         ISpellContainer.createScrollContainer(spell, SCROLL_LEVEL, scroll);
         return scroll;
+    }
+
+    /** 附魔是数据驱动的，要从服务器注册表取；没有服务器实例时（例如数据生成）不上架。 */
+    private static void addEnchantedBook(MerchantOffers offers, int price,
+                                         ResourceKey<Enchantment> key, int level) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+        Holder<Enchantment> enchantment = server.registryAccess()
+                .lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(key);
+        offers.add(offer(emeralds(price),
+                EnchantedBookItem.createForEnchantment(new EnchantmentInstance(enchantment, level))));
     }
 
     /** 不限购的行：左上角小字那一列（补给与卷轴）。 */

@@ -1,9 +1,11 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
+import com.github.yimeng261.maidspell.winefox.WinefoxChallengeProgress;
 import com.github.tartaricacid.touhoulittlemaid.api.event.InteractMaidEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.utils.DamageAbsorption;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -28,7 +30,7 @@ public final class WinefoxNonLethalGuard {
     /**
      * 坐姿只限制玩家的短剑邀战，不再让其他生物把她当作不可选中的目标。对方一旦锁定她，就切入普通生物战斗；该入口会自行排除玩家和正式挑战。
      *
-     * <p>玩家女仆生态是例外：坐姿待机时她们连目标都不该选上——女仆的索敌（{@code StartAttacking}）会为 {@code LivingChangeTargetEvent} 的取消让路，
+     * <p>玩家女仆生态是例外：非战斗状态下她们连目标都不该选上——女仆的索敌（{@code StartAttacking}）会为 {@code LivingChangeTargetEvent} 的取消让路，
      * 取消之后 {@code ATTACK_TARGET} 记忆根本不会落下去，于是女仆既不会主动开战，也不会触发她起身；战斗只能由玩家递星芒短剑开始，打起来之后女仆才作为挑战参与者下场，拿得到下面这条 1 点血的保护。
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -37,7 +39,7 @@ public final class WinefoxNonLethalGuard {
             return;
         }
         LivingEntity attacker = event.getEntity();
-        if (boss.isSeated() && MaidSpellAllyResolver.isOwnedBy(attacker, EntityMaid.class)) {
+        if (!boss.isBattleActive() && MaidSpellAllyResolver.isOwnedBy(attacker, EntityMaid.class)) {
             event.setCanceled(true);
             return;
         }
@@ -111,12 +113,8 @@ public final class WinefoxNonLethalGuard {
             victim.getHealth() - MagicalWinefoxBossEntity.duelSurvivalFloor());
         if (event.getNewDamage() - absorbed >= survivable) {
             event.setNewDamage(survivable + absorbed);
-            // 玩家判负由 tickBattleOver 读取实际血量；后续监听器仍可能取消本次伤害。
-            if (victim instanceof EntityMaid maid) {
-                // 女仆是原地劝退，不收场（见 retireMaidFromChallenge），而且她那一侧没有
-                // tickBattleOver 那样的逐 tick 复查口，收在这里才收得掉，所以照旧。
-                boss.retireMaidFromChallenge(maid);
-            }
+            // 判负放到下一 tick，等这次伤害落账或被取消之后再看血量；
+            // 在这里改血量会让原版从生命地板上再扣一遍未结算的伤害。
         }
     }
 
@@ -143,6 +141,17 @@ public final class WinefoxNonLethalGuard {
         }
         float room = victim.getHealth() - pendingDamage - MagicalWinefoxBossEntity.duelSurvivalFloor();
         return Math.max(0.0F, Math.min(bonus, room));
+    }
+
+    /** 判断玩家是否属于一场正在进行的正式星之魔女挑战。 */
+    public static boolean isPlayerInActiveChallenge(LivingEntity victim) {
+        if (!(victim instanceof ServerPlayer player)
+            || player.isCreative()
+            || player.isSpectator()
+            || victim.level().isClientSide) {
+            return false;
+        }
+        return WinefoxChallengeProgress.hasActiveChallenge(player);
     }
 
     /** 找出伤害来源对应的酒狐：直接来源、弹体，或召唤物 owner 链。 */

@@ -9,7 +9,10 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.ModifiedTele
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.StarShadowStrikeSpell;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.SwordPrisonSpell;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.TripleStarArrowSpell;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.ThreeEnclosuresSpell;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.SevenStarGuidanceSpell;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.VoidPhaseSpell;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.PalmBlackHoleSpell;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import net.neoforged.bus.api.IEventBus;
@@ -45,6 +48,12 @@ public final class IronsSpellbooksCompatSpells {
             SPELLS.register("companion_black_hole", CompanionBlackHoleSpell::new);
     public static final DeferredHolder<AbstractSpell, AbstractSpell> SPELLBREAKING_ECHO =
             SPELLS.register("spellbreaking_echo", SpellbreakingEchoSpell::new);
+    public static final DeferredHolder<AbstractSpell, AbstractSpell> THREE_ENCLOSURES =
+            SPELLS.register("three_enclosures", ThreeEnclosuresSpell::new);
+    public static final DeferredHolder<AbstractSpell, AbstractSpell> SEVEN_STAR_GUIDANCE =
+            SPELLS.register("seven_star_guidance", SevenStarGuidanceSpell::new);
+    public static final DeferredHolder<AbstractSpell, AbstractSpell> PALM_BLACK_HOLE =
+            SPELLS.register("palm_black_hole", PalmBlackHoleSpell::new);
 
     private IronsSpellbooksCompatSpells() {
     }

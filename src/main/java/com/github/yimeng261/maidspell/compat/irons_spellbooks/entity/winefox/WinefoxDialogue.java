@@ -49,6 +49,13 @@ public final class WinefoxDialogue {
         this.begin(lines, intervalTicks, null);
     }
 
+    /** 追加后续台词，同时保留当前已排队的那一句。 */
+    public void append(List<Component> lines, int intervalTicks) {
+        if (lines.isEmpty()) return;
+        this.pending.addAll(lines);
+        this.lineIntervalTicks = Math.max(1, intervalTicks);
+    }
+
     /** 排入只发送给指定玩家的一组台词。 */
     public boolean speakTo(Player player, List<Component> lines, int intervalTicks) {
         if (!(player instanceof ServerPlayer) || this.isSpeaking()) {
@@ -222,6 +229,29 @@ public final class WinefoxDialogue {
 
     public static List<Component> maidDefeated() {
         return List.of(randomTranslation("dialogue.touhou_little_maid_spell.winefox.maid_defeated_", 5));
+    }
+
+    public static Component firstSpellCast(WinefoxBossSpellAction action) {
+        return switch (action) {
+            case SEVEN_STAR_GUIDANCE -> Component.translatable(
+                    "dialogue.touhou_little_maid_spell.winefox.first_seven_star_guidance");
+            case SPELLBREAKING_ECHO -> Component.translatable(
+                    "dialogue.touhou_little_maid_spell.winefox.first_spellbreaking_echo");
+            default -> null;
+        };
+    }
+
+    /** 玩家本场第一次进入隐身时的反应。 */
+    public static List<Component> invisibilityLost() {
+        return List.of(Component.translatable(
+                "dialogue.touhou_little_maid_spell.winefox.invisibility_lost"));
+    }
+
+    /** 隐身玩家仍在可见度折算后的索敌范围内时的反应。 */
+    public static List<Component> invisibilityFound() {
+        return List.of(
+                Component.translatable("dialogue.touhou_little_maid_spell.winefox.invisibility_found_1"),
+                Component.translatable("dialogue.touhou_little_maid_spell.winefox.invisibility_found_2"));
     }
 
     private static Component randomTranslation(String prefix, int count) {

@@ -1439,6 +1439,12 @@
 				},
 				"FrontSuit": {
 					"rotation": [-12.5, 0, 0]
+				},
+				"ysmGlowdamofazhen3": {
+					"position": [0, -20, 0]
+				},
+				"mofazhen_": {
+					"position": [0, -20, 0]
 				}
 			}
 		},
@@ -1621,6 +1627,12 @@
 				},
 				"FrontSuit": {
 					"rotation": [-12.5, 0, 0]
+				},
+				"ysmGlowdamofazhen3": {
+					"position": [0, -20, 0]
+				},
+				"mofazhen_": {
+					"position": [0, -20, 0]
 				}
 			}
 		},
@@ -1806,6 +1818,12 @@
 				},
 				"FrontSuit": {
 					"rotation": [-12.5, 0, 0]
+				},
+				"ysmGlowdamofazhen3": {
+					"position": [0, -20, 0]
+				},
+				"mofazhen_": {
+					"position": [0, -20, 0]
 				}
 			}
 		},
@@ -13718,6 +13736,12 @@
 				},
 				"FrontSuit": {
 					"rotation": [-12.5, 0, 0]
+				},
+				"ysmGlowdamofazhen3": {
+					"position": [0, -20, 0]
+				},
+				"mofazhen_": {
+					"position": [0, -20, 0]
 				}
 			},
 			"sound_effects": {

@@ -1,4 +1,10 @@
 {
+  "palm_black_hole_loop": {
+    "sounds": ["touhou_little_maid_spell:spell/palm_black_hole_loop"]
+  },
+  "palm_black_hole_explosion": {
+    "sounds": ["touhou_little_maid_spell:spell/palm_black_hole_explosion"]
+  },
   "wind_seeking_bell": {
     "category": "players",
     "subtitle": "subtitle.touhou_little_maid_spell.wind_seeking_bell",

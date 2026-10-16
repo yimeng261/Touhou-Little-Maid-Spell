@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.compat.irons_spellbooks.spell;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.CompanionBlackHoleEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SpellbreakingEchoEntity;
 import io.redspace.ironsspellbooks.api.config.DefaultConfig;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.registry.SchoolRegistry;
@@ -13,12 +14,14 @@ import io.redspace.ironsspellbooks.api.spells.SpellAnimations;
 import io.redspace.ironsspellbooks.api.spells.SpellRarity;
 import io.redspace.ironsspellbooks.api.util.AnimationHolder;
 import io.redspace.ironsspellbooks.api.util.Utils;
+import io.redspace.ironsspellbooks.entity.spells.black_hole.BlackHole;
 import io.redspace.ironsspellbooks.registries.SoundRegistry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -28,7 +31,7 @@ import java.util.Optional;
 
 /**
  * 施法者头顶的跟随黑洞，只吸引其他施法者的弹射物。
- * 继承 ISS 黑洞的引力，追踪过滤由 Mixin 处理；存活时间随等级增长，最长 30 秒。
+ * 继承 ISS 黑洞的引力，追踪过滤由 Mixin 处理；一级持续 10 秒，每级增加 2 秒。
  */
 @SuppressWarnings("removal")
 @AutoSpellConfig
@@ -38,13 +41,10 @@ public class CompanionBlackHoleSpell extends AbstractSpell {
 
     private static final int CAST_TIME_TICKS = 3 * 20;
 
-    private static final int BASE_DURATION_TICKS = 12 * 20;
+    private static final int BASE_DURATION_TICKS = 10 * 20;
 
-    /** 五级为 30 秒，低于旧版 ISS 的 32 秒硬上限。 */
-    private static final int DURATION_PER_LEVEL_TICKS = 6 * 20;
-
-    /** 旧版 ISS 黑洞的固定自毁阈值。 */
-    private static final int VANILLA_DISCARD_TICKS = 20 * 16 * 2;
+    /** 五级为 18 秒，低于旧版 ISS 的 32 秒硬上限。 */
+    private static final int DURATION_PER_LEVEL_TICKS = 2 * 20;
 
     /** 一级半径与球心到施法者眼睛的 5 格高度差相等，能覆盖眼睛高度的弹道。 */
     private static final float BASE_RADIUS = 5.0F;
@@ -54,7 +54,7 @@ public class CompanionBlackHoleSpell extends AbstractSpell {
             .setMinRarity(SpellRarity.EPIC)
             .setSchoolResource(SchoolRegistry.ENDER_RESOURCE)
             .setMaxLevel(5)
-            .setCooldownSeconds(30)
+            .setCooldownSeconds(40)
             .build();
 
     public CompanionBlackHoleSpell() {
@@ -110,6 +110,24 @@ public class CompanionBlackHoleSpell extends AbstractSpell {
                         getDurationTicks(spellLevel) / 20));
     }
 
+    /** 两种跟随黑洞共用互斥条件，也禁止同一施法者重复叠加同种实体。 */
+    static boolean hasActiveDefensiveBlackHole(Level level, LivingEntity caster) {
+        return !level.getEntitiesOfClass(BlackHole.class, caster.getBoundingBox().inflate(16.0D), hole -> {
+            if (!(hole instanceof CompanionBlackHoleEntity || hole instanceof SpellbreakingEchoEntity)
+                    || hole.isRemoved()) {
+                return false;
+            }
+            Entity owner = hole.getOwner();
+            return owner != null && owner.getUUID().equals(caster.getUUID());
+        }).isEmpty();
+    }
+
+    @Override
+    public boolean checkPreCastConditions(Level level, int spellLevel, LivingEntity caster, MagicData magicData) {
+        return !hasActiveDefensiveBlackHole(level, caster)
+                && super.checkPreCastConditions(level, spellLevel, caster, magicData);
+    }
+
     /**
      * 先设置半径再计算落点；ISS 改变半径时会重建包围盒。
      * 后续跟随由实体 tick 处理。
@@ -117,7 +135,7 @@ public class CompanionBlackHoleSpell extends AbstractSpell {
     @Override
     public void onCast(Level level, int spellLevel, LivingEntity caster,
                        CastSource castSource, MagicData magicData) {
-        if (!level.isClientSide) {
+        if (!level.isClientSide && !hasActiveDefensiveBlackHole(level, caster)) {
             CompanionBlackHoleEntity blackHole = new CompanionBlackHoleEntity(level, caster);
             float radius = getRadius(spellLevel, caster);
             blackHole.setRadius(radius);
@@ -133,19 +151,20 @@ public class CompanionBlackHoleSpell extends AbstractSpell {
     }
 
     /**
-     * 新版 ISS 支持 setDuration；旧版缺少此方法时沿用 {@value #VANILLA_DISCARD_TICKS} tick 的固定自毁时间。
+     * 本地寿命保证旧版 ISS 也按法术时长结束；新版同时设置自身的 duration。
      * 反射避免宽版本依赖下的 NoSuchMethodError。
      */
     private static void maidspell$applyDuration(CompanionBlackHoleEntity blackHole, int ticks) {
+        blackHole.setLifetimeTicks(ticks);
         try {
             java.lang.reflect.Method setter = CompanionBlackHoleEntity.class.getMethod("setDuration", int.class);
             setter.invoke(blackHole, ticks);
         } catch (ReflectiveOperationException | RuntimeException ignored) {
-            // 旧版 ISS 沿用固定自毁时间。
+            // 旧版 ISS 由 CompanionBlackHoleEntity 的本地寿命控制结束。
         }
     }
 
-    /** 一级 12 秒，每级增加 6 秒。 */
+    /** 一级 10 秒，每级增加 2 秒。 */
     public int getDurationTicks(int spellLevel) {
         return BASE_DURATION_TICKS + DURATION_PER_LEVEL_TICKS * (Math.max(1, spellLevel) - 1);
     }

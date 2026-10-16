@@ -50,7 +50,7 @@ public class LocalBlackHoleRenderer<T extends BlackHole> extends EntityRenderer<
     public void render(T entity, float yaw, float partialTick,
                        PoseStack poseStack, MultiBufferSource buffers, int light) {
         float radius = entity.getRadius();
-        float entityScale = radius * 0.05F;
+        float entityScale = radius * 0.05F * visualScale(entity);
         float animationProgress = (entity.tickCount + partialTick) / beamBuildTicks;
 
         poseStack.pushPose();
@@ -83,6 +83,11 @@ public class LocalBlackHoleRenderer<T extends BlackHole> extends EntityRenderer<
 
         poseStack.popPose();
         super.render(entity, yaw, partialTick, poseStack, buffers, light);
+    }
+
+    /** 只缩放视觉效果，玩法半径与吸力不变。 */
+    protected float visualScale(T entity) {
+        return 1.0F;
     }
 
     private void translateToVisualCenter(T entity, float partialTick, PoseStack poseStack, float radius) {

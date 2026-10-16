@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.item.bauble.staranchorPearl;
 
 import com.github.yimeng261.maidspell.effect.MaidSpellEffects;
+import com.github.yimeng261.maidspell.effect.StaranchorStunEffect;
 import com.github.yimeng261.maidspell.effect.VoidWalkEffect;
 import com.github.yimeng261.maidspell.utils.TooltipHelper;
 import net.minecraft.ChatFormatting;
@@ -24,8 +25,9 @@ import java.util.List;
 
 /** 玩家右键获得限时虚空免疫，女仆佩戴时按受击次数消耗耐久。 */
 public class StaranchorPearl extends Item {
-    /** 虚空漫步时长：30 秒。 */
-    public static final int VOID_WALK_TICKS = 30 * 20;
+    /** 虚空漫步时长：35 秒。 */
+    public static final int VOID_WALK_TICKS = 35 * 20;
+    public static final int USE_COOLDOWN_TICKS = 30 * 20;
 
     /** 和原版保护类饰品同一档的耐久。 */
     public static final int DURABILITY = 64;
@@ -36,7 +38,7 @@ public class StaranchorPearl extends Item {
     /**
      * 女仆那边每挡下一发虚空伤害的耐久开销。
      *
-     * <p>和玩家侧不同价：玩家是主动买 30 秒免疫，贵一点；女仆是被动抵挡，
+     * <p>和玩家侧不同价：玩家是主动买 35 秒免疫，贵一点；女仆是被动抵挡，
      * 照原版保护类饰品的 1 点／次。
      */
     public static final int MAID_BLOCK_COST = 1;
@@ -59,16 +61,21 @@ public class StaranchorPearl extends Item {
     public @NotNull InteractionResultHolder<ItemStack> use(@NotNull Level level, @NotNull Player player,
                                                            @NotNull InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        if (player.getCooldowns().isOnCooldown(this)) {
+            return InteractionResultHolder.fail(stack);
+        }
 
-        // 状态还在就不重复吃耐久。虚空漫步本身有 30 秒，续一次只是白白磨掉一点珍珠。
+        // 状态还在就不重复吃耐久。虚空漫步本身有 35 秒，续一次只是白白磨掉一点珍珠。
         if (player.hasEffect(MaidSpellEffects.VOID_WALK)) {
             return InteractionResultHolder.pass(stack);
         }
 
         if (level instanceof ServerLevel serverLevel) {
+            player.getCooldowns().addCooldown(this, USE_COOLDOWN_TICKS);
             player.addEffect(new MobEffectInstance(MaidSpellEffects.VOID_WALK, VOID_WALK_TICKS, 0,
                     false, false, true));
             VoidWalkEffect.spawnRing(serverLevel, player);
+            StaranchorStunEffect.shockwave(serverLevel, player);
             // 使用音效借紫水晶块被破坏的那一声：清脆、有「结晶炸开」的听感，和珍珠
             // 一次性耗掉 8 点耐久的分量对得上，也不必为此新增一个音效资源。
             // 放在 addEffect 之后、开环特效旁边，三件事同一 tick 一起发生。
@@ -90,7 +97,7 @@ public class StaranchorPearl extends Item {
                         .withStyle(ChatFormatting.GRAY)),
                 List.of(
                         Component.translatable("item.touhou_little_maid_spell.staranchor_pearl.desc2",
-                                        PLAYER_USE_COST, VOID_WALK_TICKS / 20)
+                                        PLAYER_USE_COST, VOID_WALK_TICKS / 20, USE_COOLDOWN_TICKS / 20)
                                 .withStyle(ChatFormatting.LIGHT_PURPLE),
                         Component.translatable("item.touhou_little_maid_spell.staranchor_pearl.desc3",
                                         MAID_BLOCK_COST)

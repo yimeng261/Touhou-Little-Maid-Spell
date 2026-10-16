@@ -8,9 +8,13 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.model.Gener
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.CompanionBlackHoleRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.GenericSpellHumanoidRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.ModifiedMagicMissileRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.PalmBlackHoleRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.SevenStarGuidanceRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.SpellbreakingEchoRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.StarShadowSpearRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.StarShadowStrikeRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.SwordArrayRenderer;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.ThreeEnclosuresFieldRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.WinefoxSwordProjectileRenderer;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
@@ -33,6 +37,7 @@ public final class IronsSpellbooksCompatClient {
     public static void onClientSetup() {
         // TLM 的动画状态表是全局静态的，资源重载不会清空，只能在这里注册一次。
         WinefoxMaidAnimationStates.register();
+        NeoForge.EVENT_BUS.register(PalmBlackHoleSoundInstance.class);
         NeoForge.EVENT_BUS.register(WinefoxBossMusicController.class);
         // 坐姿常驻 BGM 与战斗 BGM 各自持有实例，靠 PlaySoundEvent 的静音闸门和 tick 里的战斗优先判定互斥。
         NeoForge.EVENT_BUS.register(WinefoxSeatedAmbienceController.class);
@@ -76,11 +81,16 @@ public final class IronsSpellbooksCompatClient {
                 ModifiedMagicMissileRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.WINEFOX_SWORD_PROJECTILE.get(),
                 WinefoxSwordProjectileRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.SWORD_ARRAY.get(), SwordArrayRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.STAR_SHADOW_STRIKE.get(),
                 StarShadowStrikeRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.COMPANION_BLACK_HOLE.get(),
                 CompanionBlackHoleRenderer::new);
         event.registerEntityRenderer(IronsSpellbooksCompatEntities.SPELLBREAKING_ECHO.get(),
                 SpellbreakingEchoRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.THREE_ENCLOSURES.get(),
+                ThreeEnclosuresFieldRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.SEVEN_STAR_GUIDANCE.get(), SevenStarGuidanceRenderer::new);
+        event.registerEntityRenderer(IronsSpellbooksCompatEntities.PALM_BLACK_HOLE.get(), PalmBlackHoleRenderer::new);
     }
 }

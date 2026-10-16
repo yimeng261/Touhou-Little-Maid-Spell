@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import io.redspace.ironsspellbooks.entity.spells.black_hole.BlackHole;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -13,6 +14,12 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.entity.PartEntity;
+import software.bernie.geckolib.animatable.GeoEntity;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.RawAnimation;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -24,7 +31,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * 跟随施法者的小型黑洞，继承 ISS 的吸附逻辑。
  * 原版追踪名单不可由子类访问，吸附对象由 {@code CompanionBlackHoleFilterMixin} 过滤。
  */
-public class CompanionBlackHoleEntity extends BlackHole {
+public class CompanionBlackHoleEntity extends BlackHole implements GeoEntity {
+
+    private static final RawAnimation IDLE_ANIMATION =
+            RawAnimation.begin().thenLoop("animation.supernova_black_hole.idle");
+    private final AnimatableInstanceCache animationCache = GeckoLibUtil.createInstanceCache(this);
+    private int lifetimeTicks = 32 * 20;
 
     /** 球心固定在施法者眼睛上方 5 格，与法术等级无关。 */
     public static final double HOVER_ABOVE_EYES = 5.0D;
@@ -64,12 +76,45 @@ public class CompanionBlackHoleEntity extends BlackHole {
         this.setOwner(owner);
     }
 
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "black_hole", 0,
+                state -> state.setAndContinue(IDLE_ANIMATION)));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return animationCache;
+    }
+
+    /** 本地寿命与 ISS 自带的 duration 各自独立，先到者先结束；用父类持久化的 tickCount 计时。 */
+    public void setLifetimeTicks(int ticks) {
+        lifetimeTicks = Math.max(1, ticks);
+    }
+
+    @Override
+    protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        tag.putInt("CompanionLifetime", lifetimeTicks);
+    }
+
+    @Override
+    protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        if (tag.contains("CompanionLifetime")) setLifetimeTicks(tag.getInt("CompanionLifetime"));
+    }
+
     /** 服务端依次跟随、执行原版吸附、加强吸力并处理球体碰撞。 */
     @Override
     public void tick() {
         if (!this.level().isClientSide) {
+            if (this.tickCount >= lifetimeTicks) {
+                this.discard();
+                return;
+            }
             followOwner();
             super.tick();
+            if (this.isRemoved()) return;
             applySuction();
             consumeContactingProjectiles();
             return;

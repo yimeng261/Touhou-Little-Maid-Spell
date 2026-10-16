@@ -18,6 +18,15 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.animation.W
 public class MagicAnimationExtension implements ILittleMaid {
     @Override
     @OnlyIn(Dist.CLIENT)
+    public void addAdditionGeckoMaidLayer(
+            com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.GeckoEntityMaidRenderer<? extends net.minecraft.world.entity.Mob> renderer,
+            net.minecraft.client.renderer.entity.EntityRendererProvider.Context context) {
+        if (IronsSpellbooksCompat.isLoaded()) {
+            renderer.addGeoLayerRenderer(new com.github.yimeng261.maidspell.compat.irons_spellbooks.client.renderer.entity.PalmBlackHoleLocatorLayer<>(renderer, context));
+        }
+    }
+    @Override
+    @OnlyIn(Dist.CLIENT)
     public void registerMagicCastingAnimation(MagicCastingAnimationManager manager) {
         if (!IronsSpellbooksCompat.isLoaded()) {
             return;

@@ -135,13 +135,24 @@ public final class WinefoxBossSpells {
         return spell == SpellRegistry.none() ? 20 : Math.max(1, Mth.ceil(spell.getSpellCooldown() * scale));
     }
 
-    static WinefoxSpellChoice choiceFor(WinefoxBossSpellAction action) {
+    static WinefoxSpellChoice choiceFor(WinefoxBossSpellAction action, boolean secondPhase) {
         AbstractSpell spell = getSpell(action);
         if (spell == SpellRegistry.none()) return null;
-        int level = switch (action) {
+        int level = secondPhase ? switch (action) {
+            case COMPANION_BLACK_HOLE, SPELLBREAKING_ECHO -> 1;
+            case VOID_PHASE -> 2;
+            case ECHOING_STRIKES -> 3;
+            case ABYSSAL_SHROUD, COUNTERSPELL, EVASION, CLEANSE -> 2;
+            case BLACK_HOLE, THREE_ENCLOSURES -> 4;
+            case SUMMON_SWORDS, MODIFIED_TELEPORT, ARROW_VOLLEY, ARCANE_SHACKLE -> 5;
+            default -> 6;
+        } : switch (action) {
+            case COMPANION_BLACK_HOLE, SPELLBREAKING_ECHO -> 1;
             case EVASION, CLEANSE -> 1;
+            case SUNBEAM -> 3;
             case BLACK_HOLE -> 3;
             case SUMMON_SWORDS, MODIFIED_TELEPORT, ARROW_VOLLEY, ARCANE_SHACKLE -> 4;
+            case THREE_ENCLOSURES -> 3;
             default -> 5;
         };
         return WinefoxSpellChoice.valid(spell.getSpellId(), level);
@@ -151,12 +162,13 @@ public final class WinefoxBossSpells {
         return WinefoxCombatGoal.defaultChoices(secondPhase);
     }
 
-    /** 这两个法术要在施法数据里带上目标实体，没有目标就没法施。 */
+    /** 这些法术需要在施法数据里带上目标实体，没有目标就不应启动。 */
     private static boolean needsTargetData(WinefoxBossSpellAction action) {
         return action == WinefoxBossSpellAction.MODIFIED_TELEPORT
                 || action == WinefoxBossSpellAction.SWORD_PRISON
                 || action == WinefoxBossSpellAction.ARROW_VOLLEY
-                || action == WinefoxBossSpellAction.ARCANE_SHACKLE;
+                || action == WinefoxBossSpellAction.ARCANE_SHACKLE
+                || action == WinefoxBossSpellAction.SEVEN_STAR_GUIDANCE;
     }
 
     public static boolean isCasting(LivingEntity entity) {
@@ -166,7 +178,7 @@ public final class WinefoxBossSpells {
         return entity instanceof IMagicEntity magicEntity && magicEntity.isCasting();
     }
 
-    public static boolean hasVoidPhase(MagicalWinefoxBossEntity boss) {
+    public static boolean hasVoidPhase(LivingEntity boss) {
         return boss.hasEffect(IronsSpellbooksCompatEffects.VOID_PHASE);
     }
 
@@ -199,7 +211,8 @@ public final class WinefoxBossSpells {
             case COUNTERSPELL -> SpellRegistry.COUNTERSPELL_SPELL.get();
             case MAGIC_ARROW -> SpellRegistry.MAGIC_ARROW_SPELL.get();
             case SUMMON_SWORDS -> SpellRegistry.SUMMON_SWORDS.get();
-            case FIREBALL -> SpellRegistry.FIREBALL_SPELL.get();
+            case CHAIN_LIGHTNING -> SpellRegistry.CHAIN_LIGHTNING_SPELL.get();
+            case SUNBEAM -> SpellRegistry.SUNBEAM_SPELL.get();
             case LIGHTNING_LANCE -> SpellRegistry.LIGHTNING_LANCE_SPELL.get();
             case LIGHTNING_BOLT -> SpellRegistry.LIGHTNING_BOLT_SPELL.get();
             case ARROW_VOLLEY -> SpellRegistry.ARROW_VOLLEY_SPELL.get();
@@ -221,7 +234,10 @@ public final class WinefoxBossSpells {
             case BLACK_HOLE -> SpellRegistry.BLACK_HOLE_SPELL.get();
             case TRIPLE_STAR_ARROW -> IronsSpellbooksCompatSpells.TRIPLE_STAR_ARROW.get();
             case COMPANION_BLACK_HOLE -> IronsSpellbooksCompatSpells.COMPANION_BLACK_HOLE.get();
+            case PALM_BLACK_HOLE -> IronsSpellbooksCompatSpells.PALM_BLACK_HOLE.get();
             case SPELLBREAKING_ECHO -> IronsSpellbooksCompatSpells.SPELLBREAKING_ECHO.get();
+            case THREE_ENCLOSURES -> IronsSpellbooksCompatSpells.THREE_ENCLOSURES.get();
+            case SEVEN_STAR_GUIDANCE -> IronsSpellbooksCompatSpells.SEVEN_STAR_GUIDANCE.get();
         };
     }
 

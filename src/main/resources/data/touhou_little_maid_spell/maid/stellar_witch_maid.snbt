@@ -38,12 +38,12 @@
         {id: "irons_spellbooks:evasion", index: 1, level: 5},
         {id: "touhou_little_maid_spell:star_shadow_strike", index: 2, level: 5},
         {id: "irons_spellbooks:magic_missile", index: 3, level: 10},
-        {id: "irons_spellbooks:black_hole", index: 4, level: 4},
+        {id: "irons_spellbooks:sunbeam", index: 4, level: 3},
         {id: "touhou_little_maid_spell:sword_prison", index: 5, level: 5},
         {id: "touhou_little_maid_spell:starfall_modified", index: 6, level: 9},
         {id: "touhou_little_maid_spell:triple_star_arrow", index: 7, level: 9},
         {id: "touhou_little_maid_spell:teleport_modified", index: 8, level: 4},
-        {id: "irons_spellbooks:fireball", index: 9, level: 5},
+        {id: "irons_spellbooks:chain_lightning", index: 9, level: 5},
         {id: "irons_spellbooks:lightning_bolt", index: 10, level: 10},
         {id: "irons_spellbooks:heal", index: 11, level: 8}
       ]}

@@ -10,6 +10,7 @@ import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaid
 import com.github.yimeng261.maidspell.crafting.MaidSpellIngredientTypes;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.effect.MaidSpellEffects;
+import com.github.yimeng261.maidspell.effect.StaranchorStunEffect;
 import com.github.yimeng261.maidspell.event.FoxLeafOwnerWaterWalking;
 import com.github.yimeng261.maidspell.event.MaidSpellEventHandler;
 import com.github.yimeng261.maidspell.event.StaranchorPearlEvents;
@@ -69,6 +70,7 @@ public class MaidSpellMod {
         NeoForge.EVENT_BUS.register(MaidSpellEventHandler.class);
         NeoForge.EVENT_BUS.register(FoxLeafOwnerWaterWalking.class);
         NeoForge.EVENT_BUS.register(StaranchorPearlEvents.class);
+        NeoForge.EVENT_BUS.register(StaranchorStunEffect.class);
         NeoForge.EVENT_BUS.register(TravelerTitlesStructureEvents.class);
         if (IronsSpellbooksCompat.isLoaded()) {
             NeoForge.EVENT_BUS.register(WinefoxStructureMusicEvents.class);

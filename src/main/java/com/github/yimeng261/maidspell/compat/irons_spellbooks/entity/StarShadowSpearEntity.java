@@ -247,16 +247,15 @@ public class StarShadowSpearEntity extends ThrownTrident implements GeoEntity {
             return;
         }
         var impact = result.getLocation();
-        var source = this.damageSources().indirectMagic(this, this.getOwner());
         if (directTarget != null) {
-            directTarget.hurt(source, 20.0F);
+            WinefoxSpearImpactEffects.applyImpactDamage(directTarget, this, this.getOwner(), 20.0F);
         }
         for (LivingEntity nearby : level.getEntitiesOfClass(LivingEntity.class,
             new AABB(impact, impact).inflate(3.0D), entity -> entity != directTarget
                 && entity != this.getOwner() && IAuthoritativeHealth.combatAlive(entity)
                 && entity.position().distanceToSqr(impact) <= 9.0D
                 && !MaidSpellAllyResolver.areFriendly(this.getOwner(), entity))) {
-            nearby.hurt(source, 10.0F);
+            WinefoxSpearImpactEffects.applyImpactDamage(nearby, this, this.getOwner(), 10.0F);
         }
         level.playSound(null, impact.x, impact.y, impact.z,
             SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.HOSTILE, 1.0F, 1.4F);

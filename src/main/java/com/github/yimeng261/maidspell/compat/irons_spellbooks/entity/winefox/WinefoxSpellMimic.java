@@ -51,7 +51,7 @@ final class WinefoxSpellMimic {
         SpellData selected = spells.get(boss.getRandom().nextInt(spells.size()));
         AbstractSpell spell = selected.getSpell();
         if (spell != null) {
-            WinefoxBossSpells.castInstant(boss, boss.getTarget(), spell, selected.getLevel());
+            boss.spells().castInstant(boss.getTarget(), spell, selected.getLevel());
         }
     }
 

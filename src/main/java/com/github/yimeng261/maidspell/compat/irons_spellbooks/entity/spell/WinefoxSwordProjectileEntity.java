@@ -52,7 +52,7 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
     private static final EntityDataAccessor<Float> DATA_LANDING_Y =
             SynchedEntityData.defineId(WinefoxSwordProjectileEntity.class, EntityDataSerializers.FLOAT);
     private static final int PLANTED_LIFETIME = 80;
-    private static final int DAMAGE_INTERVAL = 4;
+    private static final int DAMAGE_INTERVAL = 8;
     private static final double PULL_STRENGTH = 0.035D;
 
     private final AnimatableInstanceCache animationCache = GeckoLibUtil.createInstanceCache(this);
@@ -212,6 +212,27 @@ public class WinefoxSwordProjectileEntity extends AbstractMagicProjectile
         if (!isNoGravity()) {
             setDeltaMovement(movement.x, movement.y - 0.05D, movement.z);
         }
+    }
+
+    /** 剑阵控制器在世界之外复用它，以保留弹射物伤害与命中钩子。 */
+    void prepareArrayContact(Vec3 position, Vec3 movement, boolean planted) {
+        setPos(position);
+        setDeltaMovement(movement);
+        if (movement.lengthSqr() > 1.0E-8D) ProjectileUtil.rotateTowardsMovement(this, 1.0F);
+        entityData.set(DATA_PLANTED, planted);
+    }
+
+    boolean canArrayHit(Entity entity) {
+        return canHitEntity(entity);
+    }
+
+    void hitArrayFlight(EntityHitResult hit) {
+        super.onHitEntity(hit);
+        applyContactEffect(hit.getEntity());
+    }
+
+    void applyArrayContact(Entity entity) {
+        applyContactEffect(entity);
     }
 
     private void applyContactEffect(Entity entity) {

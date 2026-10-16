@@ -27,6 +27,13 @@ public class MaidSpellSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> STAR_SHADOW_STRIKE = SOUNDS.register("star_shadow_strike",
         () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "star_shadow_strike")));
 
+    public static final DeferredHolder<SoundEvent, SoundEvent> PALM_BLACK_HOLE_LOOP = SOUNDS.register("palm_black_hole_loop",
+        () -> SoundEvent.createFixedRangeEvent(
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "palm_black_hole_loop"), 48.0F));
+    public static final DeferredHolder<SoundEvent, SoundEvent> PALM_BLACK_HOLE_EXPLOSION = SOUNDS.register("palm_black_hole_explosion",
+        () -> SoundEvent.createFixedRangeEvent(
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "palm_black_hole_explosion"), 48.0F));
+
     public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_ATK_1 = registerWinefoxSound("atk1");
     public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_ATK_2 = registerWinefoxSound("atk2");
     public static final DeferredHolder<SoundEvent, SoundEvent> WINEFOX_ATK_3 = registerWinefoxSound("atk3");

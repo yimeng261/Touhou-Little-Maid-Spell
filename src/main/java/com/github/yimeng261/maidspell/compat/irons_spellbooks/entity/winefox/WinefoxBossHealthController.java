@@ -1,6 +1,8 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 
 import com.github.yimeng261.maidspell.api.IBossDamageClamp;
+import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityHealthAccessor;
 import com.github.yimeng261.maidspell.utils.BossLifecycleAccess;
 import net.minecraft.util.Mth;
@@ -113,12 +115,32 @@ public final class WinefoxBossHealthController {
             return false;
         }
         float adjusted = applyDamageMultipliers(boss, amount, maidDamage);
+        if (Config.winefoxDamageDebugLogging) {
+            Global.LOGGER.info("[WinefoxDamage] stage=input boss={} tick={} state={} phaseTwo={} "
+                            + "source={} attacker={} direct={} maid={} raw={} baseAdjusted={} "
+                            + "globalMultiplier={} maidMultiplier={} phaseMultiplier={} health={}",
+                    boss.getUUID(), boss.tickCount, boss.maidspell$encounterState(), boss.isPhaseTwo(),
+                    source.getMsgId(), source.getEntity() == null ? "none" : source.getEntity().getUUID(),
+                    source.getDirectEntity() == null ? "none" : source.getDirectEntity().getUUID(),
+                    maidDamage, amount, adjusted, boss.maidspell$damageMultiplier(),
+                    maidDamage ? boss.maidspell$maidDamageMultiplier() : 1.0D,
+                    boss.isPhaseTwo() && boss.isBattleActive() ? boss.maidspell$phaseTwoDamageMultiplier() : 1.0D,
+                    previous);
+        }
         if (adjusted <= 0.0F) {
+            logBlockedHit(boss, source, amount, "zero_base_damage");
             return false;
         }
         // 原版结算链负责护甲、抗性、吸收与事件；Mixin 将链内读血改为权威值，
         // setHealth 仍回到 write()，上限与间隔在那里执行。
         boss.maidspell$runVanillaDamagePipeline(source, adjusted);
+        if (Config.winefoxDamageDebugLogging) {
+            Global.LOGGER.info("[WinefoxDamage] stage=result boss={} tick={} source={} healthBefore={} "
+                            + "healthAfter={} netHealthLoss={} outcome={}",
+                    boss.getUUID(), boss.tickCount, source.getMsgId(), previous,
+                    boss.maidspell$authoritativeHealth(), previous - boss.maidspell$authoritativeHealth(),
+                    boss.maidspell$authoritativeHealth() < previous ? "damaged" : "no_health_loss");
+        }
         return boss.maidspell$authoritativeHealth() < previous;
     }
 
@@ -128,10 +150,70 @@ public final class WinefoxBossHealthController {
         if (maidDamage) {
             adjusted *= (float) boss.maidspell$maidDamageMultiplier();
         }
-        if (boss.maidspell$isPlayerCombatPhaseTwo()) {
+        if (boss.isPhaseTwo() && boss.isBattleActive()) {
             adjusted *= (float) boss.maidspell$phaseTwoDamageMultiplier();
         }
         return adjusted;
+    }
+
+    // 在 sanitize() 丢弃溢出伤害之前，先读出请求的扣减量。
+    static float damageBeforeCap(float previous, float requested) {
+        return Float.isFinite(requested)
+                ? (float) Math.min(Float.MAX_VALUE, Math.max(0.0D, (double) previous - requested))
+                : 0.0F;
+    }
+
+    static float reduceAndCapDamage(float damage, double multiplier, float cap) {
+        return (float) Math.min(cap, Math.max(0.0D, damage * multiplier));
+    }
+
+    private static double adaptivePreCapMultiplier(MagicalWinefoxBossEntity boss) {
+        if (!boss.maidspell$adaptiveDamageEnabled()) {
+            return 1.0D;
+        }
+        double target = boss.maidspell$adaptiveTargetDps();
+        if (target <= 0.0D) {
+            return 1.0D;
+        }
+        double ratio = boss.maidspell$adaptiveAttemptedDps() / target;
+        double activation = boss.maidspell$adaptiveActivationRatio();
+        double saturation = Math.max(activation, boss.maidspell$adaptiveSaturationRatio());
+        if (ratio <= activation) {
+            return 1.0D;
+        }
+        double progress = Mth.clamp((ratio - activation) / (saturation - activation), 0.0D, 1.0D);
+        return Mth.lerp(progress, boss.maidspell$adaptiveStartMultiplier(),
+                boss.maidspell$adaptiveMinMultiplier());
+    }
+
+    private static double adaptivePostCapMultiplier(MagicalWinefoxBossEntity boss) {
+        if (!boss.maidspell$adaptiveDamageEnabled()) {
+            return 1.0D;
+        }
+        double target = boss.maidspell$adaptiveTargetDps();
+        if (target <= 0.0D) {
+            return 1.0D;
+        }
+        double ratio = boss.maidspell$adaptiveEffectiveDps() / target;
+        double activation = boss.maidspell$adaptiveActivationRatio();
+        double saturation = Math.max(activation, boss.maidspell$adaptiveSaturationRatio());
+        if (ratio <= activation) {
+            return 1.0D;
+        }
+        double progress = Mth.clamp((ratio - activation) / (saturation - activation), 0.0D, 1.0D);
+        return Mth.lerp(progress, boss.maidspell$adaptiveStartMultiplier(),
+                boss.maidspell$adaptiveMinMultiplier());
+    }
+
+    /** 常规单次上限之后的最终伤害预算，以每次命中的伤害量表示。 */
+    private static float adaptiveFinalDamageBudget(MagicalWinefoxBossEntity boss) {
+        if (!boss.maidspell$adaptiveDamageEnabled() || !boss.maidspell$isAdaptiveDamageActive()) {
+            return IBossDamageClamp.NO_DAMAGE_CAP;
+        }
+        double targetDps = boss.maidspell$adaptiveTargetDps();
+        double intervalSeconds = Math.max(1, boss.maidspell$hitIntervalTicks()) / 20.0D;
+        return (float) Math.max(0.0D, targetDps * intervalSeconds
+                * boss.maidspell$adaptiveFinalBudgetMultiplier());
     }
 
     /**
@@ -160,19 +242,84 @@ public final class WinefoxBossHealthController {
             if (isCappedCause(cause)) {
                 if (cause == Cause.EXTERNAL_UNKNOWN
                         && (state != WinefoxEncounterState.COMBAT || boss.isTransitioning())) {
+                    logBlockedWrite(boss, cause, previous, requested, "inactive_or_transitioning");
                     return;
                 }
                 if (isWithinHitInterval(boss)) {
+                    logBlockedWrite(boss, cause, previous, requested, "hit_interval");
                     return;
                 }
+                float incomingDamage = damageBeforeCap(previous, requested);
+                double multiplier = 1.0D;
+                double attemptedDps = Config.winefoxDamageDebugLogging ? boss.maidspell$adaptiveAttemptedDps() : 0.0D;
+                double effectiveDps = Config.winefoxDamageDebugLogging ? boss.maidspell$adaptiveEffectiveDps() : 0.0D;
+                double postMultiplier = 1.0D;
+                float budget = IBossDamageClamp.NO_DAMAGE_CAP;
+                boolean budgetApplied = false;
+                if (boss.maidspell$isAdaptiveDamageActive() && boss.maidspell$adaptiveDamageEnabled()) {
+                    // 原版伤害与额外的直接血量写入都汇聚到这里。
+                    // 先按此前的历史做决策，再在减免与上限之前记录完整的结算输入。
+                    multiplier = adaptivePreCapMultiplier(boss);
+                    boss.maidspell$recordAdaptiveAttempt(incomingDamage);
+                }
                 float cap = damageCap(boss);
-                if (cap != IBossDamageClamp.NO_DAMAGE_CAP) {
-                    health = Math.max(previous - cap, health);
+                float reducedDamage = reduceAndCapDamage(incomingDamage, multiplier, cap);
+                health = Math.max(0.0F, previous - reducedDamage);
+                float postCapDamage = previous - health;
+                double highDamageGuardMultiplier = 1.0D;
+                float highDamageThreshold = WinefoxHighDamageGuard.threshold(Config.winefoxMaxHealth);
+                boolean highDamageGuardActive = boss.maidspell$isAdaptiveDamageActive()
+                        && boss.maidspell$adaptiveDamageEnabled();
+                if (postCapDamage > 0.0F && boss.maidspell$isAdaptiveDamageActive()) {
+                    double target = boss.maidspell$adaptiveTargetDps();
+                    double effectiveRatio = target <= 0.0D ? 0.0D
+                            : boss.maidspell$adaptiveEffectiveDps() / target;
+                    budget = adaptiveFinalDamageBudget(boss);
+                    float allowed = postCapDamage;
+                    if (effectiveRatio > boss.maidspell$adaptiveActivationRatio()) {
+                        postMultiplier = adaptivePostCapMultiplier(boss);
+                        allowed *= (float) postMultiplier;
+                        if (budget != IBossDamageClamp.NO_DAMAGE_CAP) {
+                            budgetApplied = true;
+                            allowed = Math.min(allowed, budget);
+                        }
+                    }
+                    health = previous - Math.max(0.0F, allowed);
+                }
+                if (highDamageGuardActive) {
+                    WinefoxHighDamageGuard guard = boss.maidspell$highDamageGuard();
+                    highDamageGuardMultiplier = guard.multiplier();
+                    health = Math.max(0.0F, previous
+                            - (float) ((previous - health) * highDamageGuardMultiplier));
+                    if (health < previous) {
+                        guard.recordEffectiveHit(incomingDamage, highDamageThreshold);
+                    }
+                }
+                if (Config.winefoxDamageDebugLogging) {
+                    Global.LOGGER.info("[WinefoxDamage] stage=resolved boss={} tick={} cause={} phaseTwo={} "
+                                    + "adaptiveEnabled={} requestedHealth={} incoming={} attemptedDpsBefore={} "
+                                    + "effectiveDpsBefore={} targetDps={} activationRatio={} preMultiplier={} "
+                                    + "afterPreReduction={} hitCap={} afterCap={} postMultiplier={} "
+                                    + "budget={} budgetApplied={} highDamageThreshold={} highDamageGuardMultiplier={} "
+                                    + "highDamageGuardPending={} healthBefore={} healthAfter={} actualDamage={}",
+                            boss.getUUID(), boss.tickCount, cause, boss.isPhaseTwo(),
+                            boss.maidspell$adaptiveDamageEnabled(), requested, incomingDamage, attemptedDps,
+                            effectiveDps, boss.maidspell$adaptiveTargetDps(), boss.maidspell$adaptiveActivationRatio(),
+                            multiplier, incomingDamage * (double) multiplier,
+                            cap == IBossDamageClamp.NO_DAMAGE_CAP ? "unlimited" : cap,
+                            postCapDamage, postMultiplier,
+                            budget == IBossDamageClamp.NO_DAMAGE_CAP ? "unlimited" : budget,
+                            budgetApplied, highDamageThreshold, highDamageGuardMultiplier,
+                            boss.maidspell$highDamageGuard().pending(),
+                            previous, health, previous - health);
                 }
             }
         }
 
         restore(boss, health, previous, cause);
+        if (health < previous && isCappedCause(cause) && boss.maidspell$isAdaptiveDamageActive()) {
+            boss.maidspell$recordAdaptiveEffectiveDamage(previous - health);
+        }
     }
 
     /** 只有伤害类写入受上限与间隔约束；恢复类写入必须能自由写回。 */
@@ -189,6 +336,28 @@ public final class WinefoxBossHealthController {
      */
     public static boolean wouldBlockHitInterval(MagicalWinefoxBossEntity boss) {
         return isWithinHitInterval(boss);
+    }
+
+    static void logBlockedHit(MagicalWinefoxBossEntity boss, DamageSource source, float amount, String reason) {
+        if (Config.winefoxDamageDebugLogging) {
+            Global.LOGGER.info("[WinefoxDamage] stage=blocked_input boss={} tick={} source={} attacker={} "
+                            + "raw={} health={} reason={} hitInterval={} lastHitTick={}",
+                    boss.getUUID(), boss.tickCount, source.getMsgId(),
+                    source.getEntity() == null ? "none" : source.getEntity().getUUID(),
+                    amount, boss.maidspell$authoritativeHealth(), reason, boss.maidspell$hitIntervalTicks(),
+                    boss.maidspell$lastEffectiveHitTick());
+        }
+    }
+
+    private static void logBlockedWrite(MagicalWinefoxBossEntity boss, Cause cause, float previous,
+                                        float requested, String reason) {
+        if (Config.winefoxDamageDebugLogging) {
+            Global.LOGGER.info("[WinefoxDamage] stage=blocked_write boss={} tick={} cause={} state={} "
+                            + "requestedHealth={} incoming={} health={} reason={} hitInterval={} lastHitTick={}",
+                    boss.getUUID(), boss.tickCount, cause, boss.maidspell$encounterState(), requested,
+                    damageBeforeCap(previous, requested), previous, reason, boss.maidspell$hitIntervalTicks(),
+                    boss.maidspell$lastEffectiveHitTick());
+        }
     }
 
     private static boolean isWithinHitInterval(MagicalWinefoxBossEntity boss) {

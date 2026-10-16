@@ -46,7 +46,6 @@ public enum WinefoxAction {
     DEFEAT("death", 100, WinefoxTermination.HOLD_LAST_FRAME),
 
     SPEAR_THROW("iss:spear_throw", 64, WinefoxTermination.ONE_SHOT,
-        Event.sound(12, "atk2"), Event.sound(38, "magic01_shoot"),
         Event.at(40, EventKind.PROJECTILE)),
 
     /** 开战行礼与服务端倒计时共用 90 tick；ONE_SHOT 覆盖模型 JSON 的循环设置。 */
@@ -63,7 +62,9 @@ public enum WinefoxAction {
      * 的出枪同一条路：改动画时长只改这一处，实体的计时永远从这儿推导。
      */
     VOW_2("vow_2", 180, WinefoxTermination.ONE_SHOT,
-        Event.at(120, EventKind.SOUL_CHARM));
+        Event.at(120, EventKind.SOUL_CHARM)),
+
+    DIZZY("dizzy", 120, WinefoxTermination.LOOP);
 
     private static final WinefoxAction[] BY_ID = values();
 
