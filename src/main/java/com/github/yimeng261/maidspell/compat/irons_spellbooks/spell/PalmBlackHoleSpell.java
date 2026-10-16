@@ -20,7 +20,7 @@ import java.util.Optional;
 
 public class PalmBlackHoleSpell extends AbstractSpell implements BossExclusiveSpell {
     public static final ResourceLocation SPELL_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "palm_black_hole");
-    private static final AnimationHolder ANIMATION = new AnimationHolder("palm_black_hole", false, true);
+    private static final AnimationHolder ANIMATION = new AnimationHolder(SPELL_ID, false, true);
     private final DefaultConfig config = new DefaultConfig().setMinRarity(SpellRarity.LEGENDARY)
             .setSchoolResource(SchoolRegistry.ENDER_RESOURCE).setMaxLevel(1).setCooldownSeconds(60).build();
 
