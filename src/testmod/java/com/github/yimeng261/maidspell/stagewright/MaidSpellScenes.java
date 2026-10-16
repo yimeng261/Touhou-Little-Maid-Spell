@@ -19,6 +19,7 @@ import com.github.yimeng261.maidspell.stagewright.scenes.StellarStructureScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StructureEffectScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.FunctionScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.GuardScenes;
+import com.github.yimeng261.maidspell.stagewright.scenes.HiddenRetreatMaidScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.LootScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.MissingModScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.ModelPackScenes;
@@ -69,6 +70,7 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(StellarStructureScenes.dedicatedServer());
                 scenes.addAll(TemplateScenes.dedicatedServer());
                 scenes.addAll(ChallengeStateScenes.dedicatedServer());
+                scenes.addAll(HiddenRetreatMaidScenes.dedicatedServer());
             }
             case INTEGRATED_SERVER -> {
                 scenes.addAll(OwnerScenes.integratedServer());
