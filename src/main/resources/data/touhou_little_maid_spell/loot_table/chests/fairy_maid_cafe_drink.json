@@ -1,8 +1,17 @@
 {
   "neoforge:conditions": [
     {
-      "type": "neoforge:mod_loaded",
-      "modid": "youkaishomecoming"
+      "type": "neoforge:or",
+      "values": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaishomecoming"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaisfeasts"
+        }
+      ]
     }
   ],
   "pools": [
@@ -10,9 +19,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:espresso",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:espresso",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:dark_tea",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -24,9 +43,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:ristretto",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:ristretto",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:cornflower_tea",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -38,9 +67,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:americano",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:americano",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:genmai_tea",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -52,9 +91,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:latte",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:latte",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:oolong_tea",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -66,9 +115,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:cappuccino",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:cappuccino",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:lemon_black_tea",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -80,9 +139,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:macchiato",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:macchiato",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:yellow_tea",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -94,9 +163,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:con_panna",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:con_panna",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:white_tea",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -108,9 +187,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:mocha",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:mocha",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:tea_mocha",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -122,9 +211,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:affogato",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:affogato",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:matcha",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -136,9 +235,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:green_tea",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:green_tea",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:green_tea",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -150,9 +259,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:black_tea",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:black_tea",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:black_tea",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -164,9 +283,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:sakura_honey_tea",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:sakura_honey_tea",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:sakura_honey_tea",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -178,9 +307,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:tea_mocha",
-          "weight": 60
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:tea_mocha",
+              "weight": 60
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:tea_mocha",
+              "weight": 60
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -190,4 +329,3 @@
     }
   ]
 }
-

@@ -12,7 +12,7 @@ final class ConfigBaubles {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     private static final List<String> DEFAULT_WHITELIST = List.of(
             "regex:minecraft:.*", "regex:goety:.*", "regex:irons_spellbooks:.*",
-            "regex:ars_nouveau:.*", "regex:youkaishomecoming:.*", "regex:farmersdelight:.*",
+            "regex:ars_nouveau:.*", "regex:youkaishomecoming:.*", "regex:youkaisfeasts:.*", "regex:farmersdelight:.*",
             "regex:kaleidoscope_cookery:.*", "regex:alexsmobs:.*", "regex:alexscaves:.*",
             "regex:cataclysm:.*");
     private static final List<String> DEFAULT_BLACKLIST = List.of(

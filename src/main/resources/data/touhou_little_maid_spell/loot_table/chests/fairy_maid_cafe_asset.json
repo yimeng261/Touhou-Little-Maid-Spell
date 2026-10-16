@@ -1,8 +1,17 @@
 {
   "neoforge:conditions": [
     {
-      "type": "neoforge:mod_loaded",
-      "modid": "youkaishomecoming"
+      "type": "neoforge:or",
+      "values": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaishomecoming"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaisfeasts"
+        }
+      ]
     }
   ],
   "pools": [
@@ -92,4 +101,3 @@
     }
   ]
 }
-

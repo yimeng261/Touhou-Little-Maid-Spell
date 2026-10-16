@@ -115,6 +115,13 @@ license = "${mod_license}"
     side = "BOTH"
 
 [[dependencies."${mod_id}"]]
+    modId = "youkaisfeasts"
+    type = "optional"
+    versionRange = "[1.1.1,)"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies."${mod_id}"]]
     modId = "psi"
     type = "optional"
     versionRange = "[1.21.1-110,2.0.0),(2.0.0,)"
