@@ -29,7 +29,7 @@
   "item.maidspell.quick_chant_ring.desc2": "Reduces spell cooldown by %s%% per maid favorability level",
   "item.touhou_little_maid_spell.spring_ring": "Ember Blood Ring",
   "item.maidspell.spring_ring.desc1": "Together towards destruction",
-  "item.maidspell.spring_ring.desc2": "Increases damage by same percentage as maid's lost health percentage",
+  "item.maidspell.spring_ring.desc2": "Increases damage by the percentage that the maid's health is below or above her maximum",
   "item.maidspell.spring_ring.desc3": "Maximum %s%%",
   "item.touhou_little_maid_spell.double_heart_chain": "Double Heart Chain",
   "item.maidspell.double_heart_chain.desc1": "Bound by vows, eternal bond",
@@ -86,6 +86,11 @@
   "structure.touhou_little_maid_spell.elven_realm": "Elven Realm",
   "structure.touhou_little_maid_spell.enchantress_footsteps_mushroom_fields": "Enchantress' Footsteps - Mushroom Island House",
   "structure.touhou_little_maid_spell.woods_perch": "Enchantress' Footsteps - Woods Perch",
+  "structure.touhou_little_maid_spell.cherry_cabin": "Cherry Cabin",
+  "structure.touhou_little_maid_spell.enchantress_footsteps_crimson_cabin": "Enchantress' Footsteps - Crimson Cabin",
+  "structure.touhou_little_maid_spell.enchantress_footsteps_basalt_forge": "Enchantress' Footsteps - Basalt Forge",
+  "structure.touhou_little_maid_spell.enchantress_footsteps_warped_perch": "Enchantress' Footsteps - Warped Perch",
+  "structure.touhou_little_maid_spell.enchantress_footsteps_soulvalley_nook": "Enchantress' Footsteps - Soul Valley Nook",
   "structure.touhou_little_maid_spell.enchantress_footsteps_graveyard": "Enchantress' Footsteps - Graveyard",
   "structure.touhou_little_maid_spell.enchantress_footsteps_oasis": "Enchantress' Footsteps - Oasis",
   "structure.touhou_little_maid_spell.stellar_endshore": "Stellar Endshore",
@@ -209,6 +214,7 @@
   "item.maidspell.sliver_cercis.desc3": "Malice returns to its source",
   "item.maidspell.soul_book.desc4": "Also intercepts abnormal damage-resolution paths for both players and maids",
   "dimension.touhou_little_maid_spell.the_retreat": "The Retreat",
+  "dimension.touhou_little_maid_spell.independent_retreat": "Private Hidden Retreat",
   "item.touhou_little_maid_spell.melee_task_icon": "Melee Spell Icon",
   "item.maidspell.melee_task_icon.desc": "Icon for melee spell combat task",
   "item.touhou_little_maid_spell.far_task_icon": "Ranged Spell Icon",
@@ -743,5 +749,7 @@
   "command.maidspell.retreat.reset.no_record": "This player has no Retreat dimension record to reset.",
   "command.maidspell.retreat.reset.success": "Reset the Retreat dimension record for %s.",
   "spell.touhou_little_maid_spell.palm_black_hole": "Palm Black Hole",
-  "entity.touhou_little_maid_spell.palm_black_hole": "Palm Black Hole"
+  "entity.touhou_little_maid_spell.palm_black_hole": "Palm Black Hole",
+  "commands.touhou_little_maid_spell.retreat_maid.status": "Hidden Retreat maid claimed by %s: %s",
+  "commands.touhou_little_maid_spell.retreat_maid.reset": "Reset Hidden Retreat maid claim for %s; previous claim: %s. Existing maids and buildings are unchanged."
 }

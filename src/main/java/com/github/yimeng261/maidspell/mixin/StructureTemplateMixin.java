@@ -1,6 +1,8 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.HiddenRetreatMaidRegistry;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.MaidOriginData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -54,6 +56,16 @@ public abstract class StructureTemplateMixin {
 
         ListTag posTag = tag.getList("Pos", 6);
         BlockPos blockPos = BlockPos.containing(posTag.getDouble(0), posTag.getDouble(1), posTag.getDouble(2));
+        if ("touhou_little_maid:maid".equals(tag.getString("id"))
+                && !tag.contains("Owner") && MaidOriginData.isHiddenRetreatMaid(tag)) {
+            try {
+                ci.setReturnValue(HiddenRetreatMaidRegistry.createTemplateMaid(accessor, tag, blockPos));
+            } catch (Exception exception) {
+                MaidSpellMod.LOGGER.warn("创建隐世之境模板女仆失败，位置: {}", blockPos, exception);
+                ci.setReturnValue(Optional.empty());
+            }
+            return;
+        }
         if ((MaidSpellMod.MOD_ID + ":stellar_witch").equals(tag.getString("id")) && posTag.size() == 3) {
             // Pos 已是变换后的世界坐标，而模板里记录的归位坐标不是，这里用实体实际位置覆盖。
             tag.put("WinefoxHomePos", NbtUtils.writeBlockPos(blockPos));

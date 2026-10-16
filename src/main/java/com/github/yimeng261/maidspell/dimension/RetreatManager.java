@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.dimension;
 
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.HiddenRetreatMaidRegistry;
 import com.github.yimeng261.maidspell.utils.PortableTimerMath;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -106,6 +107,9 @@ public class RetreatManager {
      * 正在进行的搜索，防止重复搜索
      */
     private static final Map<String, StructureSearchWorker> ongoingSearches = new ConcurrentHashMap<>();
+    // 生成许可和落点信箱按整个维度共用，共享模式下的搜索必须依次执行，
+    // 否则一个玩家的结果会被记到另一个玩家头上。
+    private static final SharedRetreatSearchQueue sharedSearchQueue = new SharedRetreatSearchQueue();
 
     /**
      * 结构 HolderSet 缓存（延迟初始化）
@@ -146,6 +150,7 @@ public class RetreatManager {
         playerRetreats.clear();
         structureCache.clear();
         ongoingSearches.clear();
+        sharedSearchQueue.clear();
         cachedStructureSet = null;
         searchingCounter.set(0);
         generatedStructurePositions.clear();
@@ -352,6 +357,8 @@ public class RetreatManager {
      * 使用 StructureSearchWorker 在主线程分帧执行，不阻塞也无线程安全问题。
      */
     public static CompletableFuture<BlockPos> searchStructure(ServerLevel level, UUID playerUUID, BlockPos playerPos) {
+        // 先在主线程把认领数据加载好，之后工作线程只读已加载的实例。
+        HiddenRetreatMaidRegistry.get(level.getServer());
         String searchKey = makeSearchKey(level, playerUUID);
 
         // 已有搜索在进行，返回已有 Future
@@ -394,7 +401,7 @@ public class RetreatManager {
         }
 
         StructureSearchWorker search = new StructureSearchWorker(
-                level, holderSet, placement, searchCenter, 100, skipKnown
+                level, holderSet, placement, searchCenter, 100, skipKnown, playerUUID
         );
         ongoingSearches.put(searchKey, search);
 
@@ -406,8 +413,18 @@ public class RetreatManager {
             }
         });
 
-        // 启动搜索（注册到 WorldWorkerManager）
-        search.start();
+        // 启动搜索（注册到 WorldWorkerManager）；共享模式按维度排队
+        if (Config.enablePrivateDimensions) {
+            search.start();
+        } else {
+            sharedSearchQueue.enqueue(level.dimension(), level.getServer(), search.getResultFuture(), () -> {
+                if (level.getServer().getLevel(level.dimension()) == level) {
+                    search.start();
+                } else {
+                    search.cancel();
+                }
+            });
+        }
 
         return search.getResultFuture();
     }

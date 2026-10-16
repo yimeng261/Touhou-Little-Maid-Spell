@@ -28,7 +28,7 @@
   "item.maidspell.quick_chant_ring.desc2": "メイドの好感度レベル1ごとに魔法のクールダウンを%s%%短縮する。",
   "item.touhou_little_maid_spell.spring_ring": "燼血の指輪",
   "item.maidspell.spring_ring.desc1": "共に滅びへ。",
-  "item.maidspell.spring_ring.desc2": "メイドの減少したHPの割合に応じて、同じ割合分メイドのダメージが増加する。",
+  "item.maidspell.spring_ring.desc2": "メイドの現在HPが最大HPを下回る、または上回る割合と同じ割合でダメージが増加する。",
   "item.maidspell.spring_ring.desc3": "最大%s%%",
   "item.touhou_little_maid_spell.double_heart_chain": "双心の鎖",
   "item.maidspell.double_heart_chain.desc1": "契りを交わし、永遠の絆を。",
@@ -83,6 +83,11 @@
   "structure.touhou_little_maid_spell.fallen_sanctum": "堕天した聖堂",
   "structure.touhou_little_maid_spell.enchantress_footsteps_mushroom_fields": "魔女の足跡 - キノコ島の家",
   "structure.touhou_little_maid_spell.woods_perch": "魔女の足跡 - 樹林の隠れ家",
+  "structure.touhou_little_maid_spell.cherry_cabin": "桜の炊事小屋",
+  "structure.touhou_little_maid_spell.enchantress_footsteps_crimson_cabin": "魔女の足跡 - 真紅の森の小屋",
+  "structure.touhou_little_maid_spell.enchantress_footsteps_basalt_forge": "魔女の足跡 - 玄武岩の鍛冶場",
+  "structure.touhou_little_maid_spell.enchantress_footsteps_warped_perch": "魔女の足跡 - 歪んだ森の隠れ家",
+  "structure.touhou_little_maid_spell.enchantress_footsteps_soulvalley_nook": "魔女の足跡 - ソウルサンドの谷の片隅",
   "structure.touhou_little_maid_spell.enchantress_footsteps_graveyard": "魔女の足跡 - 墓園",
   "structure.touhou_little_maid_spell.enchantress_footsteps_oasis": "魔女の足跡 - オアシス",
   "item.touhou_little_maid_spell.chaos_book": "混沌の書",
@@ -189,6 +194,7 @@
   "item.touhou_little_maid_spell.owner_clear_tool.success": "メイド「%s」の主人「%s」の登録を削除しました",
   "item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat": "ご主人様のお腕前、相変わらず見事でございますね",
   "dimension.touhou_little_maid_spell.the_retreat": "隠世の境",
+  "dimension.touhou_little_maid_spell.independent_retreat": "独立した隠遁の地",
   "item.touhou_little_maid_spell.melee_task_icon": "魔法戦闘アイコン",
   "item.maidspell.melee_task_icon.desc": "魔法戦闘タスクアイコン",
   "item.touhou_little_maid_spell.far_task_icon": "遠距離魔法アイコン",
@@ -567,5 +573,7 @@
   "item.touhou_little_maid_spell.loot.travel_diary.oasis.page_1": "季節：夏の夜\n通り過ぎる風よ、遠い国へ吹くなら、そこにいる旅人を私の代わりに見守っておくれ。",
   "item.touhou_little_maid_spell.loot.travel_diary.oasis.page_2": "束の間の泉を、長く続く甘い恵みに変えた。この地の緑について誰かに尋ねられたら、枯らしたくないと願った者がいたと伝えてほしい。かつて私が、あなたに星空のすべてを残したように。",
   "spell.touhou_little_maid_spell.palm_black_hole": "掌のブラックホール",
-  "entity.touhou_little_maid_spell.palm_black_hole": "掌のブラックホール"
+  "entity.touhou_little_maid_spell.palm_black_hole": "掌のブラックホール",
+  "commands.touhou_little_maid_spell.retreat_maid.status": "プレイヤー %s の隠世のメイド引き取り記録：%s",
+  "commands.touhou_little_maid_spell.retreat_maid.reset": "プレイヤー %s の隠世のメイド引き取り記録をリセットしました。以前の記録：%s。既存のメイドと建物は変更されません。"
 }

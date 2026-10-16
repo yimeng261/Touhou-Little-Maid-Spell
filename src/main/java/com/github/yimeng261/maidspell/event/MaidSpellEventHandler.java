@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.event;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidBackpackChangeEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidAndItemTransformEvent;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTamedEvent;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.HiddenRetreatMaidRegistry;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.MaidOriginData;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -37,7 +38,6 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -686,10 +686,11 @@ public class MaidSpellEventHandler {
 
         if (!player.level().isClientSide() && player.level() instanceof ServerLevel level) {
             Global.updateMaidInfo(maid, true);
-            if(maid.isOrderedToSit()&&!maid.isStructureSpawn()&&isInHiddenRetreatStructure(level, maid.blockPosition())){
-                MaidOriginData.markHiddenRetreatMaid(maid);
+            if (MaidOriginData.isHiddenRetreatMaid(maid)) {
                 player.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat").withStyle(ChatFormatting.LIGHT_PURPLE));
             }
+
+            HiddenRetreatMaidRegistry.recognizeMaid(maid);
 
             // 推送末影腰包数据更新
             EnderPocketBauble.pushEnderPocketDataToClient((ServerPlayer) player);
@@ -699,6 +700,7 @@ public class MaidSpellEventHandler {
     @SubscribeEvent
     public static void onMaidToItem(MaidAndItemTransformEvent.ToItem event) {
         MaidOriginData.writeTransportData(event.getMaid(), event.getData());
+        HiddenRetreatMaidRegistry.recognizeMaid(event.getMaid());
     }
 
     @SubscribeEvent
@@ -805,32 +807,6 @@ public class MaidSpellEventHandler {
                  COMMAND,
                  DISPENSER -> false;
         };
-    }
-
-    /**
-     * 检查指定位置是否在hidden_retreat结构中
-     * @param level 维度
-     * @param pos 检查的位置
-     * @return 如果在hidden_retreat结构中返回true
-     */
-    private static boolean isInHiddenRetreatStructure(ServerLevel level, BlockPos pos) {
-        try {
-            // 检查当前位置是否在hidden_retreat结构中
-            // 使用结构管理器检查
-            var structureManager = level.structureManager();
-            var hiddenRetreatStructureSet = level.registryAccess()
-                .registryOrThrow(Registries.STRUCTURE)
-                .getOptional(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat"));
-
-            if (hiddenRetreatStructureSet.isPresent()) {
-                // 检查此位置是否在hidden_retreat结构的范围内
-                var structureStart = structureManager.getStructureWithPieceAt(pos, hiddenRetreatStructureSet.get());
-                return structureStart.isValid();
-            }
-        } catch (Exception e) {
-            LogUtils.getLogger().debug("Error checking hidden_retreat structure at {}: {}", pos, e.getMessage());
-        }
-        return false;
     }
 
     private static void restoreRetreatLocationIfNeeded(ServerPlayer player) {

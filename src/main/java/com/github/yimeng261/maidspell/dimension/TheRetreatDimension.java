@@ -43,6 +43,10 @@ import java.util.concurrent.CompletableFuture;
  */
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class TheRetreatDimension {
+    private static final String PRIVATE_RETREAT_PREFIX = "the_retreat_";
+    private static final ResourceLocation SHARED_RETREAT_LOCATION =
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "the_retreat");
+
     // 估算点比估算地表高 5 格，再留出噪声误差的余量
     private static final int MAX_GROUND_SEARCH_DEPTH = 16;
 
@@ -57,9 +61,45 @@ public class TheRetreatDimension {
         );
     }
 
+    /** 共享归隐之地的维度 key，同时也是 FTB Quests 里「任意归隐之地」条件使用的占位维度。 */
+    public static ResourceKey<Level> getSharedRetreatDimension() {
+        return ResourceKey.create(Registries.DIMENSION, SHARED_RETREAT_LOCATION);
+    }
+
     public static boolean isRetreatDimension(ResourceLocation dimensionLocation) {
-        return dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID)
-                && dimensionLocation.getPath().startsWith("the_retreat");
+        return isSharedRetreatDimension(dimensionLocation)
+                || isPrivateRetreatDimension(dimensionLocation);
+    }
+
+    /** 是否为共享归隐之地。 */
+    public static boolean isSharedRetreatDimension(ResourceLocation dimensionLocation) {
+        return SHARED_RETREAT_LOCATION.equals(dimensionLocation);
+    }
+
+    /** 是否为以玩家 UUID 命名的独立归隐之地，路径形如 {@code the_retreat_<下划线分隔的 uuid>}。 */
+    public static boolean isPrivateRetreatDimension(ResourceLocation dimensionLocation) {
+        if (!MaidSpellMod.MOD_ID.equals(dimensionLocation.getNamespace())
+                || !dimensionLocation.getPath().startsWith(PRIVATE_RETREAT_PREFIX)) {
+            return false;
+        }
+
+        String encodedUuid = dimensionLocation.getPath().substring(PRIVATE_RETREAT_PREFIX.length());
+        if (encodedUuid.isEmpty()) {
+            return false;
+        }
+
+        try {
+            UUID uuid = UUID.fromString(encodedUuid.replace('_', '-'));
+            return uuid.toString().replace('-', '_').equals(encodedUuid);
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+    }
+
+    /** 任务里写死的是共享归隐之地时，匹配所有归隐之地；其余维度仍要求完全一致。 */
+    public static boolean matchesTaskDimension(ResourceLocation required, ResourceLocation actual) {
+        return required.equals(actual)
+                || isSharedRetreatDimension(required) && isPrivateRetreatDimension(actual);
     }
 
     /**

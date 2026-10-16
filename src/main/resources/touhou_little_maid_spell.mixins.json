@@ -38,6 +38,8 @@
     "ars.SpellContextAccessor",
     "ars.SpellContextMixin",
     "enigmatic.ExtradimensionalScepterHelperMixin",
+    "ftbquests.DimensionTaskMixin",
+    "ftbquests.KnownServerRegistriesMixin",
     "goety.CuriosFinderMixin",
     "goety.EsotericTesseractMixin",
     "goety.MobUtilMixin",
@@ -83,6 +85,7 @@
   ],
   "client": [
     "ClientPacketListenerMixin",
+    "explorerscompass.StructureUtilsMixin",
     "iss.ClientMagicDataMixin",
     "iss.MaidEntityAnimateStateMixin",
     "iss.PalmBlackHoleRippleAlignmentMixin",
