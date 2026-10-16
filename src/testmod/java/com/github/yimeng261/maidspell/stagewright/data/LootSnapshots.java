@@ -31,6 +31,8 @@ public final class LootSnapshots {
         GROUPS.put("enchantress_footsteps_outpost", List.of("touhou_little_maid_spell:chests/enchantress_footsteps_pillager_outpost_1", "touhou_little_maid_spell:chests/enchantress_footsteps_pillager_outpost_2"));
         GROUPS.put("enchantress_footsteps_village", List.of("touhou_little_maid_spell:chests/enchantress_footsteps_village_food", "touhou_little_maid_spell:chests/enchantress_footsteps_village_asset", "touhou_little_maid_spell:chests/enchantress_footsteps_village_desert", "touhou_little_maid_spell:chests/enchantress_footsteps_village_plains", "touhou_little_maid_spell:chests/enchantress_footsteps_village_savanna", "touhou_little_maid_spell:chests/enchantress_footsteps_village_snowy", "touhou_little_maid_spell:chests/enchantress_footsteps_village_taiga"));
         GROUPS.put("enchantress_footsteps_graveyard", List.of("goety:chests/graveyard_loot", "goety:chests/graveyard_treasure"));
+        GROUPS.put("cherry_cabin", List.of("touhou_little_maid_spell:chests/cherry_cabin_food_1", "touhou_little_maid_spell:chests/cherry_cabin_food_2", "touhou_little_maid_spell:chests/cherry_cabin_food_3", "touhou_little_maid_spell:chests/cherry_cabin_asset_without_iss"));
+        GROUPS.put("enchantress_footsteps_nether", List.of("touhou_little_maid_spell:chests/enchantress_footsteps_nether_1", "touhou_little_maid_spell:chests/enchantress_footsteps_nether_2", "touhou_little_maid_spell:chests/enchantress_footsteps_nether_3", "touhou_little_maid_spell:chests/enchantress_footsteps_nether_4"));
         GROUPS.put("entities", List.of("touhou_little_maid_spell:entities/shadow_assassin", "touhou_little_maid_spell:entities/holy_construct", "touhou_little_maid_spell:entities/corrupted_knight", "touhou_little_maid_spell:entities/elf_templar"));
         REACHABLE.put("touhou_little_maid_spell:chests/hidden_cherry_tree", Set.of(
                 "minecraft:glow_berries",
@@ -417,6 +419,78 @@ public final class LootSnapshots {
                 "minecraft:air",
                 "minecraft:glow_berries",
                 "touhou_little_maid_spell:yue_linglan"));
+        REACHABLE.put("touhou_little_maid_spell:chests/cherry_cabin_food_1", Set.of(
+                "farmersdelight:cabbage",
+                "farmersdelight:ham",
+                "farmersdelight:pumpkin_slice",
+                "farmersdelight:rice",
+                "farmersdelight:tomato",
+                "minecraft:beef",
+                "minecraft:beetroot",
+                "minecraft:chicken",
+                "minecraft:cod",
+                "minecraft:egg",
+                "minecraft:golden_apple",
+                "minecraft:golden_carrot",
+                "minecraft:mutton",
+                "minecraft:porkchop",
+                "minecraft:rabbit",
+                "minecraft:salmon",
+                "minecraft:sweet_berries"));
+        REACHABLE.put("touhou_little_maid_spell:chests/cherry_cabin_food_2", Set.of(
+                "farmersdelight:apple_pie_slice",
+                "farmersdelight:cake_slice",
+                "farmersdelight:chocolate_pie_slice",
+                "farmersdelight:glow_berry_custard",
+                "farmersdelight:honey_cookie",
+                "farmersdelight:milk_bottle",
+                "farmersdelight:sweet_berry_cheesecake_slice",
+                "farmersdelight:sweet_berry_cookie",
+                "minecraft:cookie"));
+        REACHABLE.put("touhou_little_maid_spell:chests/cherry_cabin_food_3", Set.of(
+                "farmersdelight:apple_cider",
+                "farmersdelight:melon_juice",
+                "farmersdelight:melon_popsicle",
+                "minecraft:glow_berries",
+                "minecraft:ice",
+                "minecraft:melon_slice",
+                "minecraft:snowball",
+                "minecraft:sweet_berries"));
+        REACHABLE.put("touhou_little_maid_spell:chests/cherry_cabin_asset_without_iss", Set.of(
+                "irons_spellbooks:divine_pearl",
+                "minecraft:diamond",
+                "minecraft:emerald",
+                "minecraft:gold_ingot",
+                "touhou_little_maid:power_point"));
+        REACHABLE.put("touhou_little_maid_spell:chests/enchantress_footsteps_nether_1", Set.of(
+                "minecraft:blaze_rod",
+                "minecraft:diamond",
+                "minecraft:gold_ingot",
+                "minecraft:gold_nugget",
+                "minecraft:netherite_scrap",
+                "minecraft:quartz",
+                "touhou_little_maid:power_point"));
+        REACHABLE.put("touhou_little_maid_spell:chests/enchantress_footsteps_nether_2", Set.of(
+                "irons_spellbooks:hogskin",
+                "irons_spellbooks:netherward_tincture",
+                "minecraft:blaze_powder",
+                "minecraft:glass_bottle",
+                "minecraft:potion[potion=minecraft:awkward]"));
+        REACHABLE.put("touhou_little_maid_spell:chests/enchantress_footsteps_nether_3", Set.of(
+                "irons_spellbooks:common_ink",
+                "irons_spellbooks:uncommon_ink",
+                "minecraft:netherite_scrap",
+                "minecraft:soul_sand",
+                "minecraft:wither_rose",
+                "minecraft:wither_skeleton_skull"));
+        REACHABLE.put("touhou_little_maid_spell:chests/enchantress_footsteps_nether_4", Set.of(
+                "irons_spellbooks:blank_rune",
+                "irons_spellbooks:rare_ink",
+                "irons_spellbooks:uncommon_ink",
+                "minecraft:gold_nugget",
+                "minecraft:saddle",
+                "minecraft:warped_fungus",
+                "minecraft:warped_fungus_on_a_stick"));
     }
 }
 

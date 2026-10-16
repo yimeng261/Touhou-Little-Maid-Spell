@@ -77,6 +77,22 @@ public final class StructureScenes {
             new Spec("enchantress_footsteps_outpost", 4, false),
             new Spec("enchantress_footsteps_graveyard", 2, false));
 
+    /** 单模板结构（optional_mod_template）：场景名、所属结构名、要放置的模板、强制加载区块半径、是否带结构女仆。 */
+    private record SingleTemplate(String name, String structure, int radius, boolean maid) {
+    }
+
+    private static final List<SingleTemplate> SINGLE_TEMPLATES = List.of(
+            new SingleTemplate("cherry_cabin", "cherry_cabin", 2, true),
+            // 不装铁魔法时代替 cherry_cabin 的模板
+            new SingleTemplate("cherry_cabin_without_iss", "cherry_cabin", 2, true),
+            new SingleTemplate("enchantress_footsteps_basalt_forge", "enchantress_footsteps_basalt_forge", 2, false),
+            new SingleTemplate("enchantress_footsteps_crimson_cabin", "enchantress_footsteps_crimson_cabin", 2, false),
+            new SingleTemplate("enchantress_footsteps_soulvalley_nook", "enchantress_footsteps_soulvalley_nook", 2, false),
+            // 不装 Goety 时代替 soulvalley_nook 的模板
+            new SingleTemplate("enchantress_footsteps_soulvalley_nook_without_goety",
+                    "enchantress_footsteps_soulvalley_nook", 2, false),
+            new SingleTemplate("enchantress_footsteps_warped_perch", "enchantress_footsteps_warped_perch", 2, false));
+
     private static final List<String> VILLAGE_BIOMES = List.of("desert", "plains", "savanna", "snowy", "taiga");
 
     private static final String VILLAGE = Checks.NS + "enchantress_footsteps/village/";
@@ -125,6 +141,10 @@ public final class StructureScenes {
             Function<SceneContext, StructureStage.Placed> place = ctx -> StructureStage.place(ctx, structure);
             addCategories(scenes, "structure." + spec.path(), spec.radius(), spec.maid(), spec.knownDead(), place);
         }
+        for (SingleTemplate single : SINGLE_TEMPLATES) {
+            addCategories(scenes, "structure." + single.name(), single.radius(), single.maid(), Set.of(),
+                    ctx -> placeSingleTemplate(ctx, single));
+        }
         for (String biome : VILLAGE_BIOMES) {
             String village = "minecraft:village_" + biome;
             // 街道：从补充街道池组装一层（相邻的原版街道/尽头片一并放置）
@@ -154,6 +174,13 @@ public final class StructureScenes {
         scenes.add(Checks.scene("structure.templatesUseOnlyRegisteredBlocks", 20, StructureScenes::onlyRegisteredBlocks));
         scenes.add(structureScene("village.plains.house.chairsNotInBlocks", 2, StructureScenes::chairsNotInBlocks));
         return scenes;
+    }
+
+    /** 按指定模板直接放置单模板结构（含不装联动模组时的回退模板），不经过结构自身的选址判定。 */
+    private static StructureStage.Placed placeSingleTemplate(SceneContext ctx, SingleTemplate single) {
+        SinglePoolElement element = StructurePoolElement.single(Checks.NS + single.name())
+                .apply(StructureTemplatePool.Projection.RIGID);
+        return StructureStage.placeElement(ctx, Checks.NS + single.structure(), element, Rotation.NONE);
     }
 
     private static StructureStage.Placed placeHouse(SceneContext ctx, String biome) {

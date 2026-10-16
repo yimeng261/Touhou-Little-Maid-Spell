@@ -25,6 +25,7 @@ import com.github.yimeng261.maidspell.stagewright.scenes.MissingModScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.ModelPackScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.NaturalScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.NpcScenes;
+import com.github.yimeng261.maidspell.stagewright.scenes.OptionalWorldgenScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.OwnerScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.RetreatCacheScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.RetreatScenes;
@@ -51,6 +52,7 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(LootScenes.dedicatedServer());
                 scenes.addAll(StructureScenes.dedicatedServer());
                 scenes.addAll(NaturalScenes.dedicatedServer());
+                scenes.addAll(OptionalWorldgenScenes.dedicatedServer());
                 scenes.addAll(FunctionScenes.dedicatedServer());
                 scenes.addAll(BaubleRuntimeScenes.dedicatedServer());
                 scenes.addAll(DreamCrystalScenes.dedicatedServer());

@@ -64,6 +64,8 @@ public final class NaturalScenes {
     }
 
     private static final List<Reg> REGISTRATION = List.of(
+            new Reg("cherry_cabin", NS + "optional_mod_template", List.of("minecraft:cherry_grove"), "beard_thin",
+                    "cherry_cabin", 40, 16, 1735687961, 1.0F, ""),
             new Reg("elven_realm", NS + "relic_sanctum", List.of("minecraft:flower_forest"), "beard_box",
                     "elven_realm_set", 32, 16, 2063145721, 1.0F, ""),
             new Reg("enchantress_footsteps_graveyard", "minecraft:jigsaw", List.of("minecraft:plains", "minecraft:forest"),
@@ -79,6 +81,14 @@ public final class NaturalScenes {
                     List.of("minecraft:desert", "minecraft:plains", "minecraft:savanna", "minecraft:snowy_plains",
                             "minecraft:taiga", "#minecraft:is_mountain", "minecraft:grove"),
                     "beard_thin", "enchantress_footsteps_outpost", 36, 16, 1517026238, 0.2F, "minecraft:villages@10"),
+            new Reg("enchantress_footsteps_basalt_forge", NS + "optional_mod_template", List.of("minecraft:basalt_deltas"),
+                    "beard_thin", "enchantress_footsteps_basalt_forge", 32, 12, 1735687963, 1.0F, ""),
+            new Reg("enchantress_footsteps_crimson_cabin", NS + "optional_mod_template", List.of("minecraft:crimson_forest"),
+                    "beard_thin", "enchantress_footsteps_crimson_cabin", 32, 12, 1735687962, 1.0F, ""),
+            new Reg("enchantress_footsteps_soulvalley_nook", NS + "optional_mod_template", List.of("minecraft:soul_sand_valley"),
+                    "beard_thin", "enchantress_footsteps_soulvalley_nook", 32, 12, 1735687965, 1.0F, ""),
+            new Reg("enchantress_footsteps_warped_perch", NS + "optional_mod_template", List.of("minecraft:warped_forest"),
+                    "beard_thin", "enchantress_footsteps_warped_perch", 32, 12, 1735687964, 1.0F, ""),
             new Reg("fairy_maid_cafe", NS + "land_jigsaw",
                     List.of("minecraft:cherry_grove", "minecraft:bamboo_jungle", "minecraft:meadow",
                             "minecraft:sparse_jungle", "minecraft:flower_forest"),
@@ -104,14 +114,15 @@ public final class NaturalScenes {
 
     /** 各维度可能生成的本模组结构集（群系源与结构群系有交集的集合）。 */
     private static final Map<String, Set<String>> DIMENSION_SETS = Map.of(
-            OVERWORLD, Set.of("elven_realm_set", "enchantress_footsteps_graveyard", "enchantress_footsteps_igloo",
+            OVERWORLD, Set.of("cherry_cabin", "elven_realm_set", "enchantress_footsteps_graveyard", "enchantress_footsteps_igloo",
                     "enchantress_footsteps_mushroom_fields", "enchantress_footsteps_oasis", "enchantress_footsteps_outpost", "fairy_maid_cafe_set",
                     "hidden_cherry_tree_set", "hidden_retreat_set", "relic_sanctum_set", "starfall_garden_set", "woods_perch",
                     "yin_yang_altar_set"),
-            NETHER, Set.of("fallen_sanctum_set"),
+            NETHER, Set.of("fallen_sanctum_set", "enchantress_footsteps_basalt_forge", "enchantress_footsteps_crimson_cabin",
+                    "enchantress_footsteps_soulvalley_nook", "enchantress_footsteps_warped_perch"),
             END, Set.of("starwatch_tower_set", "stellar_endshore_set"),
             // #minecraft:is_mountain 含樱花林，前哨的结构集也在归隐之地的候选里（由白名单挡住）
-            RETREAT, Set.of("enchantress_footsteps_outpost", "fairy_maid_cafe_set", "hidden_cherry_tree_set", "hidden_retreat_set",
+            RETREAT, Set.of("cherry_cabin", "enchantress_footsteps_outpost", "fairy_maid_cafe_set", "hidden_cherry_tree_set", "hidden_retreat_set",
                     "starfall_garden_set"));
 
     /** "不应生成在水面/水底"的检查：不检查、必须通过、已知缺陷（required=false）。 */

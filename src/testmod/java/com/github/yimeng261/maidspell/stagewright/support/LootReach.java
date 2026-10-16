@@ -85,7 +85,7 @@ public final class LootReach {
     private static void walkEntry(MinecraftServer server, JsonObject entry, Set<String> out, Set<String> visiting) {
         String type = strip(entry.get("type").getAsString());
         switch (type) {
-            case "item" -> out.add(ResourceLocation.parse(entry.get("name").getAsString()) + qualifier(entry));
+            case "item", "touhou_little_maid_spell:optional_mod_item" -> out.add(ResourceLocation.parse(entry.get("name").getAsString()) + qualifier(entry));
             case "tag" -> out.add("#" + entry.get("name").getAsString());
             case "loot_table" -> {
                 JsonElement value = entry.get("value");
