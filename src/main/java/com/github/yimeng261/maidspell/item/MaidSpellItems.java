@@ -31,6 +31,7 @@ import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercis;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBook;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementCore;
 import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCore;
+import com.github.yimeng261.maidspell.item.bauble.spellRangeTable.SpellRangeTable;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturn;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringRing;
 import com.github.yimeng261.maidspell.item.bauble.transmogNecklace.TransmogNecklace;
@@ -77,6 +78,7 @@ public class MaidSpellItems {
     public static final DeferredItem<Item> WOUND_RIME_BLADE = ITEMS.register("wound_rime_blade", WoundRimeBlade::new);
     public static final DeferredItem<Item> ANCHOR_CORE = ITEMS.register("anchor_core", AnchorCore::new);
     public static final DeferredItem<Item> SPELL_OVERLIMIT_CORE = ITEMS.register("spell_overlimit_core", SpellOverlimitCore::new);
+    public static final DeferredItem<Item> SPELL_RANGE_TABLE = ITEMS.register("spell_range_table", SpellRangeTable::new);
     public static final DeferredItem<Item> SPRING_BLOOM_RETURN = ITEMS.register("spring_bloom_return", SpringBloomReturn::new);
     public static final DeferredItem<Item> FRAGRANT_INGENUITY = ITEMS.register("fragrant_ingenuity", FragrantIngenuity::new);
 
