@@ -22,6 +22,8 @@ import java.util.Optional;
  * <p>高度做成可配的 {@link #baseHeight} 加抖动，是因为一整片末地全在同一个 Y 上会看出是刷出来的；抖动后仍会夹住上界，见 {@link #MAX_STRUCTURE_HEIGHT}。
  */
 public class StellarEndshoreStructure extends Structure {
+    /** Runtime-only anchor used by the fixed end spawn retrofit. */
+    private static final ThreadLocal<BlockPos> FIXED_ANCHOR = new ThreadLocal<>();
     public static final Codec<StellarEndshoreStructure> CODEC = RecordCodecBuilder.create(instance ->
             instance.group(
                     Structure.settingsCodec(instance),
@@ -52,6 +54,19 @@ public class StellarEndshoreStructure extends Structure {
     private final int baseHeight;
     private final int heightJitter;
 
+    public static void setFixedAnchor(BlockPos anchor) {
+        FIXED_ANCHOR.set(anchor);
+    }
+
+    public static void clearFixedAnchor() {
+        FIXED_ANCHOR.remove();
+    }
+
+    /** Converts the requested arena Y into the jigsaw start Y (the template floor is 27 blocks above it). */
+    public static int fixedStartY(int arenaY) {
+        return arenaY - ARENA_FLOOR_OFFSET;
+    }
+
     public StellarEndshoreStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool, int size,
                                     int maxDistanceFromCenter, int baseHeight, int heightJitter) {
         super(settings);
@@ -64,12 +79,14 @@ public class StellarEndshoreStructure extends Structure {
 
     @Override
     protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
-        int x = context.chunkPos().getMinBlockX() + 8;
-        int z = context.chunkPos().getMinBlockZ() + 8;
+        BlockPos fixedAnchor = FIXED_ANCHOR.get();
+        int x = fixedAnchor == null ? context.chunkPos().getMinBlockX() + 8 : fixedAnchor.getX();
+        int z = fixedAnchor == null ? context.chunkPos().getMinBlockZ() + 8 : fixedAnchor.getZ();
 
         // The template's arena is 28 blocks above its bottom; jigsaw lowers that bottom by one.
-        int y = this.baseHeight - ARENA_FLOOR_OFFSET;
-        if (this.heightJitter > 0) {
+        int y = fixedAnchor == null ? this.baseHeight - ARENA_FLOOR_OFFSET
+                : fixedStartY(fixedAnchor.getY());
+        if (fixedAnchor == null && this.heightJitter > 0) {
             y += context.random().nextInt(this.heightJitter * 2 + 1) - this.heightJitter;
         }
         y = Mth.clamp(

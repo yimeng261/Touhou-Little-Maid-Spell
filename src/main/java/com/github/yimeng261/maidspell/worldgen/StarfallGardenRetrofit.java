@@ -302,6 +302,8 @@ public final class StarfallGardenRetrofit {
                     ChunkStatus.STRUCTURE_STARTS, true);
             overworld.structureManager().setStartForStructure(
                     SectionPos.bottomOf(anchor), task.garden(), task.start(), anchor);
+            // 区块加载时 StructureCheck 已缓存旧的起点列表；补写索引不会自动更新 /locate 的缓存。
+            overworld.onStructureStartsAvailable(anchor);
             for (ChunkPos pos : chunks) {
                 ChunkAccess chunk = overworld.getChunk(pos.x, pos.z);
                 overworld.structureManager().addReferenceForStructure(
