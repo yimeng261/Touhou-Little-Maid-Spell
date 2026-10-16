@@ -34,6 +34,9 @@ import com.github.yimeng261.maidspell.stagewright.scenes.StructureScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.TemplateScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.SpellLogicScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.WinefoxLogicScenes;
+import com.github.yimeng261.maidspell.stagewright.client.PalmBlackHoleClientScenes;
+import com.github.yimeng261.maidspell.stagewright.client.SpellRendererClientScenes;
+import com.github.yimeng261.maidspell.stagewright.client.WinefoxConfigScreenClientScenes;
 import net.magicterra.stagewright.scene.Scene;
 import net.magicterra.stagewright.scene.SceneProvider;
 
@@ -89,6 +92,9 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(EnderPocketClientScenes.integratedServer());
                 scenes.addAll(ModelPackClientScenes.integratedServer());
                 scenes.addAll(BookClientScenes.integratedServer());
+                scenes.addAll(PalmBlackHoleClientScenes.integratedServer());
+                scenes.addAll(SpellRendererClientScenes.integratedServer());
+                scenes.addAll(WinefoxConfigScreenClientScenes.integratedServer());
             }
             case INTEGRATED_SERVER_SHARED -> scenes.addAll(SharedRetreatScenes.integratedServerShared());
             case DEDICATED_SERVER_WITH_CLIENT -> scenes.addAll(EnderPocketScenes.dedicatedServerWithClient());

@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.stagewright.client;
 
+import com.github.yimeng261.maidspell.stagewright.support.Mismatches;
 import net.magicterra.stagewright.scene.SceneContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -37,6 +38,15 @@ public final class ClientSide {
             action.run();
             return Boolean.TRUE;
         }, ignored -> then.run());
+    }
+
+    /** 在客户端线程上逐项比对，回到服务端线程后断言没有不一致。body 抛出的异常让场景失败。 */
+    public static void verify(SceneContext ctx, String label, Consumer<Mismatches> body) {
+        call(ctx, () -> {
+            Mismatches mismatches = new Mismatches();
+            body.accept(mismatches);
+            return mismatches;
+        }, mismatches -> mismatches.verify(ctx, label));
     }
 
     /** 当前界面里消息为该翻译键的第一个控件（没有时为 null）。只能在客户端线程上调用。 */
