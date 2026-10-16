@@ -177,6 +177,7 @@ public final class StructureScenes {
         }
         scenes.add(Checks.scene("structure.templatesUseOnlyRegisteredBlocks", 20, StructureScenes::onlyRegisteredBlocks));
         scenes.add(Checks.scene("structure.templateMaidsDeclareOrigin", 20, StructureScenes::templateMaidsDeclareOrigin));
+        scenes.add(Checks.scene("structure.templatesUseOnlyRegisteredItems", 20, StructureScenes::onlyRegisteredItems));
         scenes.add(structureScene("village.plains.house.chairsNotInBlocks", 2, StructureScenes::chairsNotInBlocks));
         return scenes;
     }
@@ -595,6 +596,60 @@ public final class StructureScenes {
         ctx.check(sources.containsAll(REQUIRED_MAID_SOURCES)).as("来源覆盖 " + REQUIRED_MAID_SOURCES + "，实际 " + sources).isTrue();
         for (String cafe : CAFE_TEMPLATES) {
             ctx.check(sourcesByFile.getOrDefault(cafe, Set.of())).as(cafe + " 里女仆的来源").isEqualTo(Set.of(Checks.NS + "fairy_maid_cafe"));
+        }
+    }
+
+    /** 本模组的全部结构模板，跳过所需联动模组不在场的替代模板。 */
+    private static Map<String, CompoundTag> loadedTemplates(SceneContext ctx) {
+        Map<String, CompoundTag> templates = new TreeMap<>();
+        var files = ctx.server().getResourceManager().listResources("structure",
+                rl -> rl.getNamespace().equals(MaidSpellMod.MOD_ID) && rl.getPath().endsWith(".nbt"));
+        for (var file : files.entrySet()) {
+            String path = file.getKey().getPath();
+            String id = Checks.NS + path.substring("structure/".length(), path.length() - ".nbt".length());
+            String requiredMod = TEMPLATE_REQUIRED_MOD.get(id);
+            if (requiredMod != null && !ModList.get().isLoaded(requiredMod)) {
+                continue;
+            }
+            try (var stream = file.getValue().open()) {
+                templates.put(id, net.minecraft.nbt.NbtIo.readCompressed(stream, net.minecraft.nbt.NbtAccounter.unlimitedHeap()));
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        }
+        return templates;
+    }
+
+    /** 模板里物品框、容器、实体背包等处的物品都已注册（没有声明依赖的模组物品读档时会被丢掉）。 */
+    private static void onlyRegisteredItems(SceneContext ctx) {
+        Set<String> missing = new TreeSet<>();
+        loadedTemplates(ctx).forEach((id, template) -> {
+            for (String list : List.of("entities", "blocks")) {
+                for (Tag element : template.getList(list, Tag.TAG_COMPOUND)) {
+                    collectUnknownItems(id, ((CompoundTag) element).getCompound("nbt"), missing);
+                }
+            }
+        });
+        ctx.check(missing).as("引用了未注册物品的模板").isEmpty();
+    }
+
+    /** 带字符串 id 和数量的复合标签按物品堆叠处理（1.21 的 count 或旧格式的 Count）。 */
+    private static void collectUnknownItems(String template, Tag tag, Set<String> missing) {
+        if (tag instanceof CompoundTag compound) {
+            if (compound.contains("id", Tag.TAG_STRING)
+                    && (compound.contains("count", Tag.TAG_ANY_NUMERIC) || compound.contains("Count", Tag.TAG_ANY_NUMERIC))) {
+                ResourceLocation item = ResourceLocation.tryParse(compound.getString("id"));
+                if (item == null || !BuiltInRegistries.ITEM.containsKey(item)) {
+                    missing.add(template + ": " + compound.getString("id"));
+                }
+            }
+            for (String key : compound.getAllKeys()) {
+                collectUnknownItems(template, compound.get(key), missing);
+            }
+        } else if (tag instanceof ListTag list) {
+            for (Tag element : list) {
+                collectUnknownItems(template, element, missing);
+            }
         }
     }
 }
