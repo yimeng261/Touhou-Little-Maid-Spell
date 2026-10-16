@@ -50,6 +50,7 @@
     "iss.ServerPlayerInvisibilityTargetMixin",
     "iss.ThunderstormEffectMixin",
     "iss.UtilsMixin",
+    "legendary.SmallAnnihilationBombEntityMixin",
     "tlm.AbstractMaidContainerMixin",
     "tlm.AltarRecipeSerializerMixin",
     "tlm.EntityMaidBaubleReviveCleanupMixin",
