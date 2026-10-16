@@ -26,8 +26,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.entries.LootPoolEntries;
+import net.minecraft.world.level.storage.loot.entries.LootPoolEntry;
+import net.minecraft.world.level.storage.loot.entries.LootPoolEntryContainer;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforgespi.language.IModInfo;
@@ -35,6 +39,7 @@ import net.neoforged.neoforgespi.language.IModInfo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -135,6 +140,7 @@ public final class MissingModScenes {
                         ctx -> rapierEnchantments(ctx, Map.of("minecraft:sharpness", 5, "farmersdelight:backstabbing", 3))),
                 Checks.scene("loot.optionalItemsDropWhenModsPresent", 20, MissingModScenes::optionalItemsDropWhenPresent),
                 Checks.scene("loot.optionalModItemSkipsUnknownItem", 20, MissingModScenes::optionalItemSkipsUnknown),
+                Checks.scene("loot.optionalModItemKeepsWeightAndQuality", 5, MissingModScenes::optionalItemWeight),
                 Checks.scene("mods_toml.optionalDependencies", 5, MissingModScenes::optionalDependencies));
     }
 
@@ -253,6 +259,32 @@ public final class MissingModScenes {
             }
         }
         ctx.check(dropped).as("缺失物品的条目被跳过，只掉落存在的物品").isEqualTo(Set.of("minecraft:diamond*1"));
+    }
+
+    /** 物品存在时条目照常展开：权重按 weight + quality × luck 计算，掉落一个该物品；物品不存在时不展开也不掉落。 */
+    private static void optionalItemWeight(SceneContext ctx) {
+        var context = new LootContext.Builder(new LootParams.Builder(ctx.level()).withLuck(1.0F)
+                .create(LootContextParamSets.EMPTY)).create(Optional.empty());
+        List<LootPoolEntry> rolls = new ArrayList<>();
+        ctx.check(optionalEntry(ctx, "minecraft:diamond").expand(context, rolls::add)).as("钻石条目展开").isTrue();
+        ctx.check(rolls).as("钻石条目展开出的抽取项").hasSize(1);
+        if (rolls.size() == 1) {
+            ctx.check(rolls.get(0).getWeight(1.0F)).as("weight 3 + quality 2 × luck 1").isEqualTo(5);
+            List<String> drops = new ArrayList<>();
+            rolls.get(0).createItemStack(stack -> drops.add(BuiltInRegistries.ITEM.getKey(stack.getItem()) + "*" + stack.getCount()), context);
+            ctx.check(drops).as("钻石条目的掉落").isEqualTo(List.of("minecraft:diamond*1"));
+        }
+        List<LootPoolEntry> missing = new ArrayList<>();
+        ctx.check(optionalEntry(ctx, "missing_integration:food").expand(context, missing::add)).as("缺失物品条目展开").isFalse();
+        ctx.check(missing).as("缺失物品条目展开出的抽取项").isEmpty();
+    }
+
+    private static LootPoolEntryContainer optionalEntry(SceneContext ctx, String item) {
+        JsonObject json = JsonParser.parseString("""
+                {"type":"touhou_little_maid_spell:optional_mod_item","name":"%s","weight":3,"quality":2}
+                """.formatted(item)).getAsJsonObject();
+        return LootPoolEntries.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, ctx.server().registryAccess()), json)
+                .getOrThrow(message -> new IllegalStateException("无法解析战利品条目: " + message));
     }
 
     /** 缺联动模组时战利品表仍然加载并能抽出物品，且抽不出缺席模组的物品。 */

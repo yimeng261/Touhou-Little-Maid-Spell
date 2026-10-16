@@ -4,26 +4,54 @@ import com.github.yimeng261.maidspell.stagewright.support.Checks;
 import com.github.yimeng261.maidspell.stagewright.support.Reflect;
 import com.github.yimeng261.maidspell.stagewright.support.Worldgen;
 import com.github.yimeng261.maidspell.worldgen.StarfallGardenPlacementGuard;
+import com.github.yimeng261.maidspell.worldgen.WorldgenTestAccess;
 import com.github.yimeng261.maidspell.worldgen.structure.OptionalModTemplateStructure;
 import net.magicterra.stagewright.scene.Scene;
 import net.magicterra.stagewright.scene.SceneContext;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
+import net.minecraft.core.Vec3i;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeGenerationSettings;
+import net.minecraft.world.level.biome.BiomeSpecialEffects;
+import net.minecraft.world.level.biome.FixedBiomeSource;
+import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
+import net.minecraft.world.level.chunk.ProtoChunk;
+import net.minecraft.world.level.chunk.UpgradeData;
+import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.StructureType;
+import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
+import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
+import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
+import net.minecraft.world.level.levelgen.structure.structures.BuriedTreasurePieces;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 
 import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
 
 /**
  * 可选模组模板结构的下界洞穴地面选址，以及星落之庭对其他结构落点的避让。
- * <p>选址用合成地形直接调用判定函数；避让用真实主世界的结构集落点计划。
+ * <p>选址用合成地形直接调用判定函数；避让既用真实主世界的结构集落点计划，也用合成的结构集与区块逐条核对规则。
  */
 public final class OptionalWorldgenScenes {
     private static final String OVERWORLD = "minecraft:overworld";
@@ -42,7 +70,15 @@ public final class OptionalWorldgenScenes {
         return List.of(
                 Checks.scene("optionalTemplate.netherFloorSelection", 5, OptionalWorldgenScenes::netherFloorSelection),
                 Checks.scene("starfallGarden.guardYieldsToOtherStructureStarts", 1200,
-                        OptionalWorldgenScenes::guardYieldsToOtherStarts).withArena(false));
+                        OptionalWorldgenScenes::guardYieldsToOtherStarts).withArena(false),
+                Checks.scene("starfallGarden.guard.rejectsSameAndNeighbourChunks", 5, OptionalWorldgenScenes::guardNeighbours),
+                Checks.scene("starfallGarden.guard.permitsTwoChunksAway", 5, OptionalWorldgenScenes::guardTwoAway),
+                Checks.scene("starfallGarden.guard.ignoresOwnSetsButProtectsMixedSets", 5, OptionalWorldgenScenes::guardOwnSets),
+                Checks.scene("starfallGarden.guard.independentOfSetOrder", 5, OptionalWorldgenScenes::guardSetOrder),
+                Checks.scene("starfallGarden.guard.respectsFrequencyAndExclusion", 5, OptionalWorldgenScenes::guardFrequency),
+                Checks.scene("starfallGarden.guard.ignoresSetsUnavailableInDimension", 5, OptionalWorldgenScenes::guardDimension),
+                Checks.scene("starfallGarden.guard.savedValidStartsBlockRetrofit", 5, OptionalWorldgenScenes::savedStarts),
+                Checks.scene("starfallGarden.guard.savedReferencesBlockRetrofit", 5, OptionalWorldgenScenes::savedReferences));
     }
 
     private static void netherFloorSelection(SceneContext ctx) {
@@ -136,5 +172,163 @@ public final class OptionalWorldgenScenes {
             }
         }
         ctx.check(free).as("原点附近没有其他结构落点的区块数").isAtLeast(1);
+    }
+
+    // ---- 合成结构集上的避让规则 ----
+
+    /** 避让检查只读结构集的落点计划，不会真的尝试生成别的结构。 */
+    private static final class InertStructure extends Structure {
+        private InertStructure(Holder<Biome> biome) {
+            super(new StructureSettings(HolderSet.direct(biome), Map.of(),
+                    GenerationStep.Decoration.SURFACE_STRUCTURES, TerrainAdjustment.NONE));
+        }
+
+        @Override
+        protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
+            throw new AssertionError("避让检查不能尝试生成其他结构");
+        }
+
+        @Override
+        public @NotNull StructureType<?> type() {
+            throw new AssertionError("避让检查只需要结构集的 placement");
+        }
+    }
+
+    private static Holder<Biome> newBiome() {
+        return Holder.direct(new Biome.BiomeBuilder().hasPrecipitation(true).temperature(0.8F).downfall(0.4F)
+                .specialEffects(new BiomeSpecialEffects.Builder().fogColor(0).waterColor(0).waterFogColor(0).skyColor(0).build())
+                .mobSpawnSettings(MobSpawnSettings.EMPTY).generationSettings(BiomeGenerationSettings.EMPTY).build());
+    }
+
+    /** 同一合成群系里的庭院与另一个结构。 */
+    private record Fixture(Holder<Biome> biome, Structure garden, Structure other) {
+        private static Fixture create() {
+            Holder<Biome> biome = newBiome();
+            return new Fixture(biome, new InertStructure(biome), new InertStructure(biome));
+        }
+
+        @SafeVarargs
+        private ChunkGeneratorStructureState state(Holder<StructureSet>... sets) {
+            return ChunkGeneratorStructureState.createForFlat(null, 42L, new FixedBiomeSource(biome), Arrays.stream(sets));
+        }
+
+        private boolean attempt(ChunkGeneratorStructureState state, ChunkPos pos) {
+            return StarfallGardenPlacementGuard.hasNearbyStructureAttempt(state, garden, pos);
+        }
+    }
+
+    private static Holder<StructureSet> set(StructurePlacement placement, Structure... structures) {
+        return Holder.direct(new StructureSet(Arrays.stream(structures)
+                .map(structure -> new StructureSet.StructureSelectionEntry(Holder.direct(structure), 1)).toList(), placement));
+    }
+
+    /** separation = spacing - 1，落点固定在 64 的倍数，正好覆盖区块边界和负坐标。 */
+    private static RandomSpreadStructurePlacement gridPlacement() {
+        return new RandomSpreadStructurePlacement(64, 63, RandomSpreadType.LINEAR, 123);
+    }
+
+    private static RandomSpreadStructurePlacement everyChunkPlacement() {
+        return new RandomSpreadStructurePlacement(1, 0, RandomSpreadType.LINEAR, 123);
+    }
+
+    /** 落点区块本身和相邻 8 个区块都让出，且不会触发其他结构的生成。 */
+    private static void guardNeighbours(SceneContext ctx) {
+        Fixture f = Fixture.create();
+        var state = f.state(set(gridPlacement(), f.other()));
+        List<String> notYielded = new ArrayList<>();
+        for (int anchorX : new int[]{-64, 0, 64}) {
+            for (int anchorZ : new int[]{-64, 0, 64}) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        ChunkPos pos = new ChunkPos(anchorX + dx, anchorZ + dz);
+                        if (!f.attempt(state, pos)) {
+                            notYielded.add(pos.toString());
+                        }
+                    }
+                }
+            }
+        }
+        ctx.check(notYielded).as("落点周围没让出的区块").isEmpty();
+    }
+
+    /** 相隔两个区块及以上（含负坐标）的候选不受影响。 */
+    private static void guardTwoAway(SceneContext ctx) {
+        Fixture f = Fixture.create();
+        var state = f.state(set(gridPlacement(), f.other()));
+        for (ChunkPos candidate : List.of(new ChunkPos(2, 0), new ChunkPos(-2, 0),
+                new ChunkPos(0, 2), new ChunkPos(0, -2), new ChunkPos(-62, 66))) {
+            ctx.check(f.attempt(state, candidate)).as(candidate + " 被让出").isFalse();
+        }
+    }
+
+    /** 只含庭院自己的结构集不算；混合结构集里有别的结构时照样避让。 */
+    private static void guardOwnSets(SceneContext ctx) {
+        Fixture f = Fixture.create();
+        var ownSet = set(everyChunkPlacement(), f.garden());
+        ctx.check(f.attempt(f.state(ownSet), new ChunkPos(0, 0))).as("只有庭院自己的结构集").isFalse();
+        ctx.check(f.attempt(f.state(ownSet, set(everyChunkPlacement(), f.garden(), f.other())), new ChunkPos(0, 0)))
+                .as("混合结构集").isTrue();
+    }
+
+    /** 结果与结构集的先后顺序无关。 */
+    private static void guardSetOrder(SceneContext ctx) {
+        Fixture f = Fixture.create();
+        var ownSet = set(everyChunkPlacement(), f.garden());
+        var otherSet = set(gridPlacement(), f.other());
+        ctx.check(f.attempt(f.state(ownSet, otherSet), new ChunkPos(1, -1))).as("自己的在前").isTrue();
+        ctx.check(f.attempt(f.state(otherSet, ownSet), new ChunkPos(1, -1))).as("别人的在前").isTrue();
+    }
+
+    /** 频率为 0 的结构集、和庭院互斥的结构集都不会让庭院避让。 */
+    private static void guardFrequency(SceneContext ctx) {
+        Fixture f = Fixture.create();
+        var disabled = new RandomSpreadStructurePlacement(Vec3i.ZERO, StructurePlacement.FrequencyReductionMethod.DEFAULT,
+                0.0F, 123, Optional.empty(), 1, 0, RandomSpreadType.LINEAR);
+        ctx.check(f.attempt(f.state(set(disabled, f.other())), new ChunkPos(0, 0))).as("频率为 0").isFalse();
+        var ownSet = set(everyChunkPlacement(), f.garden());
+        var excluded = new RandomSpreadStructurePlacement(Vec3i.ZERO, StructurePlacement.FrequencyReductionMethod.DEFAULT,
+                1.0F, 123, Optional.of(new StructurePlacement.ExclusionZone(ownSet, 1)), 1, 0, RandomSpreadType.LINEAR);
+        ctx.check(f.attempt(f.state(ownSet, set(excluded, f.other())), new ChunkPos(0, 0))).as("与庭院互斥").isFalse();
+    }
+
+    /** 当前维度群系里不会出现的结构所在的结构集不参与避让。 */
+    private static void guardDimension(SceneContext ctx) {
+        Fixture f = Fixture.create();
+        Structure unavailable = new InertStructure(newBiome());
+        ctx.check(f.attempt(f.state(set(everyChunkPlacement(), unavailable)), new ChunkPos(0, 0)))
+                .as("别的群系才有的结构").isFalse();
+    }
+
+    private static ProtoChunk chunk(SceneContext ctx) {
+        return new ProtoChunk(new ChunkPos(0, 0), UpgradeData.EMPTY, LevelHeightAccessor.create(-64, 384),
+                ctx.server().registryAccess().registryOrThrow(Registries.BIOME), null);
+    }
+
+    private static StructureStart start(Structure structure) {
+        return new StructureStart(structure, new ChunkPos(0, 0), 0, new PiecesContainer(
+                List.of(new BuriedTreasurePieces.BuriedTreasurePiece(new BlockPos(0, 64, 0)))));
+    }
+
+    /** 已存的有效起点挡住补生成；失败的起点和庭院自己的起点不挡。 */
+    private static void savedStarts(SceneContext ctx) {
+        Fixture f = Fixture.create();
+        ProtoChunk chunk = chunk(ctx);
+        chunk.setStartForStructure(f.garden(), start(f.garden()));
+        chunk.setStartForStructure(f.other(), StructureStart.INVALID_START);
+        ctx.check(WorldgenTestAccess.hasOtherStructure(chunk, f.garden())).as("只有庭院起点和失败起点").isFalse();
+        chunk.setStartForStructure(f.other(), start(f.other()));
+        ctx.check(WorldgenTestAccess.hasOtherStructure(chunk, f.garden())).as("有别的有效起点").isTrue();
+    }
+
+    /** 起点在远处区块的结构，只要本区块存了引用就挡住补生成；查询过但没有引用的不算。 */
+    private static void savedReferences(SceneContext ctx) {
+        Fixture f = Fixture.create();
+        ProtoChunk chunk = chunk(ctx);
+        chunk.addReferenceForStructure(f.garden(), ChunkPos.asLong(0, 0));
+        // 原版查询一个没有引用的结构会返回空集合，不能把它当成占用
+        chunk.getReferencesForStructure(f.other());
+        ctx.check(WorldgenTestAccess.hasOtherStructure(chunk, f.garden())).as("只有庭院引用").isFalse();
+        chunk.addReferenceForStructure(f.other(), ChunkPos.asLong(5, -5));
+        ctx.check(WorldgenTestAccess.hasOtherStructure(chunk, f.garden())).as("有别的结构引用").isTrue();
     }
 }

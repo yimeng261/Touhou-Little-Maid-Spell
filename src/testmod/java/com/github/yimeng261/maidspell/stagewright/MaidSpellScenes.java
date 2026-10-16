@@ -32,6 +32,8 @@ import com.github.yimeng261.maidspell.stagewright.scenes.RetreatScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.SharedRetreatScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StructureScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.TemplateScenes;
+import com.github.yimeng261.maidspell.stagewright.scenes.SpellLogicScenes;
+import com.github.yimeng261.maidspell.stagewright.scenes.WinefoxLogicScenes;
 import net.magicterra.stagewright.scene.Scene;
 import net.magicterra.stagewright.scene.SceneProvider;
 
@@ -73,6 +75,8 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(TemplateScenes.dedicatedServer());
                 scenes.addAll(ChallengeStateScenes.dedicatedServer());
                 scenes.addAll(HiddenRetreatMaidScenes.dedicatedServer());
+                scenes.addAll(SpellLogicScenes.dedicatedServer());
+                scenes.addAll(WinefoxLogicScenes.dedicatedServer());
             }
             case INTEGRATED_SERVER -> {
                 scenes.addAll(OwnerScenes.integratedServer());

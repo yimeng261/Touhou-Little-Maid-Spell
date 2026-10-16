@@ -1,5 +1,7 @@
 package com.github.yimeng261.maidspell.stagewright.scenes;
 
+import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.MaidOriginData;
 import com.github.yimeng261.maidspell.stagewright.data.StructureSnapshots;
 import com.github.yimeng261.maidspell.stagewright.support.Actors;
 import com.github.yimeng261.maidspell.stagewright.support.Checks;
@@ -47,6 +49,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -173,6 +176,7 @@ public final class StructureScenes {
             }
         }
         scenes.add(Checks.scene("structure.templatesUseOnlyRegisteredBlocks", 20, StructureScenes::onlyRegisteredBlocks));
+        scenes.add(Checks.scene("structure.templateMaidsDeclareOrigin", 20, StructureScenes::templateMaidsDeclareOrigin));
         scenes.add(structureScene("village.plains.house.chairsNotInBlocks", 2, StructureScenes::chairsNotInBlocks));
         return scenes;
     }
@@ -528,5 +532,69 @@ public final class StructureScenes {
             }
         }
         ctx.check(missing).as("引用了未注册方块的模板").isEmpty();
+    }
+
+    /** 必须出现在模板女仆来源标记里的结构。 */
+    private static final Set<String> REQUIRED_MAID_SOURCES = Set.of(Checks.NS + "elven_realm", Checks.NS + "fairy_maid_cafe",
+            Checks.NS + "fallen_sanctum", Checks.NS + "relic_sanctum", MaidOriginData.HIDDEN_RETREAT_SOURCE);
+
+    /** 两版咖啡厅模板都要带咖啡厅来源的女仆。 */
+    private static final List<String> CAFE_TEMPLATES = List.of("structure/fairy_maid_cafe/fairy_maid_cafe.nbt",
+            "structure/fairy_maid_cafe/fairy_maid_cafe_youkaisfeasts.nbt");
+
+    /**
+     * 本模组每个模板里的女仆都带来源标记；带永久效果的声明保留永久效果；
+     * 隐世之境的等待女仆带隐世女仆标记且没有主人。
+     */
+    private static void templateMaidsDeclareOrigin(SceneContext ctx) {
+        List<String> problems = new ArrayList<>();
+        Set<String> sources = new TreeSet<>();
+        Map<String, Set<String>> sourcesByFile = new TreeMap<>();
+        var files = ctx.server().getResourceManager().listResources("structure",
+                rl -> rl.getNamespace().equals(MaidSpellMod.MOD_ID) && rl.getPath().endsWith(".nbt"));
+        for (var file : files.entrySet()) {
+            String label = file.getKey().getPath();
+            CompoundTag template;
+            try (var stream = file.getValue().open()) {
+                template = net.minecraft.nbt.NbtIo.readCompressed(stream, net.minecraft.nbt.NbtAccounter.unlimitedHeap());
+            } catch (java.io.IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+            int index = 0;
+            for (Tag element : template.getList("entities", Tag.TAG_COMPOUND)) {
+                CompoundTag maid = ((CompoundTag) element).getCompound("nbt");
+                if (!"touhou_little_maid:maid".equals(maid.getString("id"))) {
+                    continue;
+                }
+                String where = label + " 第 " + index++ + " 个女仆";
+                CompoundTag origin = MaidOriginData.getOrigin(maid);
+                String source = origin.getString("Source");
+                if (origin.getInt("Version") != MaidOriginData.ORIGIN_VERSION || source.isEmpty()) {
+                    problems.add(where + " 来源标记不完整: " + origin);
+                    continue;
+                }
+                sources.add(source);
+                sourcesByFile.computeIfAbsent(label, key -> new TreeSet<>()).add(source);
+                boolean permanent = maid.getList("active_effects", Tag.TAG_COMPOUND).stream()
+                        .anyMatch(effect -> ((CompoundTag) effect).getInt("duration") == -1);
+                if (permanent && !MaidOriginData.preservesPermanentEffects(maid)) {
+                    problems.add(where + " 带永久效果却没声明保留");
+                }
+                if (MaidOriginData.HIDDEN_RETREAT_SOURCE.equals(source)) {
+                    if (!maid.getCompound("NeoForgeData").getBoolean(MaidOriginData.HIDDEN_RETREAT_MAID)) {
+                        problems.add(where + " 缺隐世女仆标记");
+                    }
+                    if (maid.contains("Owner")) {
+                        problems.add(where + " 等待中的隐世女仆不应有主人");
+                    }
+                }
+            }
+        }
+        ctx.record("来源", sources);
+        ctx.check(problems).as("模板女仆的来源标记问题").isEmpty();
+        ctx.check(sources.containsAll(REQUIRED_MAID_SOURCES)).as("来源覆盖 " + REQUIRED_MAID_SOURCES + "，实际 " + sources).isTrue();
+        for (String cafe : CAFE_TEMPLATES) {
+            ctx.check(sourcesByFile.getOrDefault(cafe, Set.of())).as(cafe + " 里女仆的来源").isEqualTo(Set.of(Checks.NS + "fairy_maid_cafe"));
+        }
     }
 }
