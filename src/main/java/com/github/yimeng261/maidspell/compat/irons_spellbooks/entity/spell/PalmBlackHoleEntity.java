@@ -38,6 +38,7 @@ import java.util.UUID;
 
 /** 固定在原地的仪式锚点；渲染器与伤害波前共用它同步的年龄。 */
 public class PalmBlackHoleEntity extends Entity implements GeoEntity {
+    private static final byte VOID_EXPLOSION_EVENT = 61;
     private static final EntityDataAccessor<Integer> AGE = SynchedEntityData.defineId(
             PalmBlackHoleEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Float> START_HEIGHT = SynchedEntityData.defineId(
@@ -108,6 +109,9 @@ public class PalmBlackHoleEntity extends Entity implements GeoEntity {
                     SoundSource.HOSTILE, 1.0F, 1.0F);
             server.sendParticles(ParticleTypes.EXPLOSION, getX(), getY() + 0.25D, getZ(),
                     8, 0.5D, 0.1D, 0.5D, 0.03D);
+            // 用一个实体事件让放射状粒子在每个追踪客户端本地生成；
+            // 不同版本的铁魔法把火球爆炸网络包改过名，这里不依赖它。
+            server.broadcastEntityEvent(this, VOID_EXPLOSION_EVENT);
         }
         if (PalmBlackHoleTimeline.isPulseTick(age)) {
             applyPulse(server, caster);
@@ -131,6 +135,44 @@ public class PalmBlackHoleEntity extends Entity implements GeoEntity {
             }
         }
         if (age > PalmBlackHoleTimeline.IMPACT_TICK + PalmBlackHoleTimeline.WAVE_TICKS + 8) discard();
+    }
+
+    @Override
+    public void handleEntityEvent(byte event) {
+        if (event == VOID_EXPLOSION_EVENT) {
+            spawnVoidExplosionParticles();
+        } else {
+            super.handleEntityEvent(event);
+        }
+    }
+
+    private void spawnVoidExplosionParticles() {
+        if (!level().isClientSide) return;
+        double y = getY() + 0.3D;
+        // 沿用火球爆炸的翻涌环、烟云与火星，换成虚空配色。
+        int ringCount = 96;
+        for (int i = 0; i < ringCount; i++) {
+            double angle = Math.PI * 2.0D * i / ringCount;
+            double dx = Math.cos(angle);
+            double dz = Math.sin(angle);
+            double speed = 0.4D + random.nextDouble() * 0.25D;
+            level().addParticle(ParticleTypes.DRAGON_BREATH, true,
+                    getX() + dx, y + random.nextDouble() * 0.4D, getZ() + dz,
+                    dx * speed, 0.04D + random.nextDouble() * 0.08D, dz * speed);
+        }
+        for (int i = 0; i < 120; i++) {
+            Vec3 offset = new Vec3(random.nextGaussian(), random.nextGaussian() * 0.5D,
+                    random.nextGaussian()).scale(2.0D);
+            Vec3 motion = offset.normalize().scale(0.12D + random.nextDouble() * 0.12D);
+            level().addParticle(ParticleTypes.LARGE_SMOKE,
+                    getX() + offset.x, y + Math.abs(offset.y), getZ() + offset.z,
+                    motion.x, Math.abs(motion.y) + 0.03D, motion.z);
+            if (i % 2 == 0) {
+                level().addParticle(ParticleTypes.REVERSE_PORTAL, true,
+                        getX() + offset.x, y + Math.abs(offset.y), getZ() + offset.z,
+                        motion.x * 2.0D, Math.abs(motion.y), motion.z * 2.0D);
+            }
+        }
     }
 
     private void applyPulse(ServerLevel server, LivingEntity caster) {

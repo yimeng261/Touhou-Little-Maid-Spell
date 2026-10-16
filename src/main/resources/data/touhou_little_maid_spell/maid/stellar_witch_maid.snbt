@@ -27,28 +27,33 @@
     {Slot: 7, id: "touhou_little_maid_spell:staranchor_pearl", count: 1}
   ]},
   MaidInventory: {Size: 36, Items: [
-    {Slot: 1, id: "touhou_little_maid_spell:star_shadow_longsword", count: 1, components: {
+    {Slot: 0, id: "touhou_little_maid_spell:star_shadow_longsword", count: 1, components: {
+      "minecraft:repair_cost": 3,
+      "minecraft:enchantments": {levels: {"minecraft:sharpness": 5, "minecraft:unbreaking": 3}},
       "irons_spellbooks:spell_container": {maxSpells: 1, spellWheel: 1b, mustEquip: 0b, data: [
-        {id: "touhou_little_maid_spell:void_phase", index: 0, level: 1, locked: 1b}
+        {id: "touhou_little_maid_spell:void_phase", index: 0, level: 5}
       ]}
     }},
+    {Slot: 1, id: "touhou_little_maid_spell:star_shadow_staff", count: 1},
     {Slot: 2, id: "irons_spellbooks:dragonskin_spell_book", count: 1, components: {
-      "irons_spellbooks:spell_container": {maxSpells: 12, spellWheel: 1b, mustEquip: 1b, data: [
+      "irons_spellbooks:spell_container": {maxSpells: 20, spellWheel: 1b, mustEquip: 1b, data: [
         {id: "touhou_little_maid_spell:magic_shotgun", index: 0, level: 5},
-        {id: "irons_spellbooks:evasion", index: 1, level: 5},
+        {id: "irons_spellbooks:echoing_strikes", index: 1, level: 5},
         {id: "touhou_little_maid_spell:star_shadow_strike", index: 2, level: 5},
         {id: "irons_spellbooks:magic_missile", index: 3, level: 10},
-        {id: "irons_spellbooks:sunbeam", index: 4, level: 3},
+        {id: "touhou_little_maid_spell:seven_star_guidance", index: 4, level: 10},
         {id: "touhou_little_maid_spell:sword_prison", index: 5, level: 5},
         {id: "touhou_little_maid_spell:starfall_modified", index: 6, level: 9},
         {id: "touhou_little_maid_spell:triple_star_arrow", index: 7, level: 9},
         {id: "touhou_little_maid_spell:teleport_modified", index: 8, level: 4},
-        {id: "irons_spellbooks:chain_lightning", index: 9, level: 5},
-        {id: "irons_spellbooks:lightning_bolt", index: 10, level: 10},
-        {id: "irons_spellbooks:heal", index: 11, level: 8}
+        {id: "touhou_little_maid_spell:companion_black_hole", index: 9, level: 5},
+        {id: "irons_spellbooks:evasion", index: 10, level: 5},
+        {id: "touhou_little_maid_spell:spellbreaking_echo", index: 11, level: 5},
+        {id: "irons_spellbooks:lightning_bolt", index: 12, level: 10},
+        {id: "irons_spellbooks:chain_lightning", index: 13, level: 5},
+        {id: "irons_spellbooks:heal", index: 14, level: 8}
       ]}
     }},
-    {Slot: 3, id: "touhou_little_maid_spell:star_shadow_staff", count: 1},
     {Slot: 30, id: "touhou_little_maid_spell:star_glow_flower_cluster", count: 1},
     {Slot: 31, id: "touhou_little_maid_spell:star_glow_flower_cluster", count: 1},
     {Slot: 32, id: "touhou_little_maid_spell:star_glow_flower_cluster", count: 1},

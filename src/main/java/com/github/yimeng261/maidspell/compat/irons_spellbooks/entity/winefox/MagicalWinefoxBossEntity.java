@@ -299,6 +299,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private double palmBlackHoleBaseY = Double.NaN;
     private double palmBlackHoleBaseX;
     private double palmBlackHoleBaseZ;
+    @Nullable
+    private MobEffectInstance palmBlackHoleShroud;
     /** 一次性法术的闸门，跨目标行为重启与区块卸载依然保留。 */
     private boolean summonSwordsUsedThisPhase;
     private boolean palmBlackHoleTriggeredThisPhase;
@@ -526,9 +528,12 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         super.tick();
         // 遭遇结束或施法数据被外部重置时，施法回调可能被跳过；
         // 绝不能把旧仪式的原点带进下一次施法。
-        if (!this.level().isClientSide && Double.isFinite(this.palmBlackHoleBaseY)
-                && !this.isCastingPalmBlackHole()) {
-            this.endPalmBlackHoleCast();
+        if (!this.level().isClientSide) {
+            if (this.isCastingPalmBlackHole()) {
+                this.ensurePalmBlackHoleShroud();
+            } else if (Double.isFinite(this.palmBlackHoleBaseY) || this.palmBlackHoleShroud != null) {
+                this.endPalmBlackHoleCast();
+            }
         }
     }
 
@@ -1849,15 +1854,57 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.getNavigation().stop();
         this.resetFlightControl();
         this.setDeltaMovement(Vec3.ZERO);
+        this.ensurePalmBlackHoleShroud();
     }
 
     /** 仪式完成或被打断之后，恢复常规的战斗飞行。 */
     public void endPalmBlackHoleCast() {
+        if (this.level().isClientSide) return;
+        // 仪式开始前可能已有一次普通的「深渊庇佑」在生效；
+        // 只移除本次仪式添加的那一个实例，不动另一个增益。
+        if (this.palmBlackHoleShroud != null
+                && this.getEffect(MobEffectRegistry.ABYSSAL_SHROUD) == this.palmBlackHoleShroud) {
+            this.removeEffect(MobEffectRegistry.ABYSSAL_SHROUD);
+        }
+        this.palmBlackHoleShroud = null;
         if (!Double.isFinite(this.palmBlackHoleBaseY)) return;
         this.palmBlackHoleBaseY = Double.NaN;
         this.getNavigation().stop();
         this.resetFlightControl();
         this.setDeltaMovement(Vec3.ZERO);
+    }
+
+    private void ensurePalmBlackHoleShroud() {
+        if (this.hasEffect(MobEffectRegistry.ABYSSAL_SHROUD)) return;
+        MobEffectInstance shroud = new MobEffectInstance(MobEffectRegistry.ABYSSAL_SHROUD,
+                com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.PalmBlackHoleTimeline
+                        .IMPACT_TICK + 1, 0, false, false, true);
+        if (this.addEffect(shroud)) {
+            this.palmBlackHoleShroud = this.getEffect(MobEffectRegistry.ABYSSAL_SHROUD);
+        }
+    }
+
+    @Override
+    public boolean addEffect(MobEffectInstance effect, @Nullable Entity source) {
+        MobEffectInstance ritual = this.palmBlackHoleShroud;
+        if (ritual == null || effect == ritual || effect.getEffect().value() != ritual.getEffect().value()
+                || this.getEffect(ritual.getEffect()) != ritual) {
+            return super.addEffect(effect, source);
+        }
+        // LivingEntity 会就地更新已有效果，仅凭实例身份分不清是不是后来的施法；
+        // 此处把这个槽位让给普通效果，沿用它自己的持续时间，哪怕更短。
+        this.palmBlackHoleShroud = null;
+        boolean removed = this.removeEffect(ritual.getEffect());
+        boolean accepted = super.addEffect(effect, source);
+        if (!accepted) {
+            if (!removed && this.getEffect(ritual.getEffect()) == ritual) {
+                this.palmBlackHoleShroud = ritual;
+            } else if (!this.hasEffect(ritual.getEffect()) && super.addEffect(ritual, this)) {
+                // 被拒绝的外来效果不能夺走仍在进行的仪式的保护。
+                this.palmBlackHoleShroud = this.getEffect(ritual.getEffect());
+            }
+        }
+        return accepted;
     }
 
     boolean maidspell$summonSwordsUsedThisPhase() {
@@ -3849,6 +3896,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         tag.putBoolean("WinefoxTrueDamageUsed", this.trueDamageUsed);
         tag.putBoolean("WinefoxSummonSwordsUsedThisPhase", this.summonSwordsUsedThisPhase);
         tag.putBoolean("WinefoxPalmBlackHoleTriggeredThisPhase", this.palmBlackHoleTriggeredThisPhase);
+        tag.putBoolean("WinefoxPalmBlackHoleShroud", this.palmBlackHoleShroud != null
+                && this.getEffect(MobEffectRegistry.ABYSSAL_SHROUD) == this.palmBlackHoleShroud);
         this.spellController.saveEncounter(tag);
         CompoundTag invisibility = new CompoundTag();
         invisibility.putInt("SearchTicks", this.invisibilityTracker.remainingTicks);
@@ -3922,6 +3971,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.trueDamageUsed = tag.getBoolean("WinefoxTrueDamageUsed");
         this.summonSwordsUsedThisPhase = tag.getBoolean("WinefoxSummonSwordsUsedThisPhase");
         this.palmBlackHoleTriggeredThisPhase = tag.getBoolean("WinefoxPalmBlackHoleTriggeredThisPhase");
+        // 归属跨区块卸载保留，被打断的恢复施法才不会残留这个增益。
+        this.palmBlackHoleShroud = tag.getBoolean("WinefoxPalmBlackHoleShroud")
+                ? this.getEffect(MobEffectRegistry.ABYSSAL_SHROUD) : null;
         this.spellController.loadEncounter(tag);
         this.invisibilityTracker.reset();
         CompoundTag invisibility = tag.getCompound("WinefoxInvisibility");
