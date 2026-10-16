@@ -11,8 +11,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.EnchantedBookItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.EnchantmentInstance;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraftforge.items.ItemHandlerHelper;
@@ -96,6 +100,8 @@ public final class WinefoxTrades {
                 new ItemStack(MaidSpellItems.JINGXU_YOULAN.get())));
         offers.add(offer(emeralds(STAR_GLOW_PRICE),
                 new ItemStack(MaidSpellItems.STAR_GLOW_FLOWER_CLUSTER.get(), 4)));
+        offers.add(offer(emeralds(half(5, discounted)), enchantedBook(Enchantments.MENDING, 1)));
+        offers.add(offer(emeralds(half(4, discounted)), enchantedBook(Enchantments.ALL_DAMAGE_PROTECTION, 4)));
     }
 
     /** 战胜后才摆出来的那一档。 */
@@ -116,6 +122,7 @@ public final class WinefoxTrades {
         // 它们**不**实现 BossExclusiveSpell —— 这里就是在卖，玩家拿到卷轴是设计的一部分。
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.TRIPLE_STAR_ARROW.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.COMPANION_BLACK_HOLE.get())));
+        offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.SPELLBREAKING_ECHO.get())));
     }
 
     /**
@@ -137,6 +144,10 @@ public final class WinefoxTrades {
         ItemStack scroll = new ItemStack(ItemRegistry.SCROLL.get());
         ISpellContainer.createScrollContainer(spell, SCROLL_LEVEL, scroll);
         return scroll;
+    }
+
+    private static ItemStack enchantedBook(Enchantment enchantment, int level) {
+        return EnchantedBookItem.createForEnchantment(new EnchantmentInstance(enchantment, level));
     }
 
     /** 不限购的行：左上角小字那一列（补给与卷轴）。 */

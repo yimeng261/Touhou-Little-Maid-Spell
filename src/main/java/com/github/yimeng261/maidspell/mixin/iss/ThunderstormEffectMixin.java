@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.mixin.iss;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
 import io.redspace.ironsspellbooks.effect.ThunderstormEffect;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
@@ -13,13 +14,13 @@ import java.util.List;
 import java.util.function.Predicate;
 
 /**
- * 在 ISS 雷暴落雷前，从候选名单中排除女仆。
+ * 在 ISS 雷暴落雷前，从候选名单中排除女仆与非战斗状态的星之魔女。
  * Redirect 与 At 均须 remap=true：类级 remap=false 只适用于 ISS 成员，
  * 注入目标中的原版方法仍需映射到正式包名称。
  */
 @Mixin(value = ThunderstormEffect.class, remap = false)
 public abstract class ThunderstormEffectMixin {
-    /** 复用 ISS 查询并过滤女仆；签名须匹配擦除泛型后的调用描述符。 */
+    /** 复用 ISS 查询并过滤目标；签名须匹配擦除泛型后的调用描述符。 */
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Redirect(
             method = "applyEffectTick(Lnet/minecraft/world/entity/LivingEntity;I)V",
@@ -32,9 +33,8 @@ public abstract class ThunderstormEffectMixin {
     )
     private List maidspell$excludeMaidsFromThunderstorm(Level level, Class entityClass, AABB area, Predicate predicate) {
         List targets = level.getEntitiesOfClass(entityClass, area, predicate);
-        if (!targets.isEmpty() && targets.stream().anyMatch(EntityMaid.class::isInstance)) {
-            targets.removeIf(EntityMaid.class::isInstance);
-        }
+        targets.removeIf(target -> target instanceof EntityMaid
+            || target instanceof MagicalWinefoxBossEntity boss && !boss.isBattleActive());
         return targets;
     }
 }

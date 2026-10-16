@@ -8,10 +8,14 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.HolyConstru
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.ShadowAssassinEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.CompanionBlackHoleEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SpellbreakingEchoEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SevenStarGuidanceEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCloudEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ModifiedStarfallCometEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.StarShadowStrikeEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.ThreeEnclosuresFieldEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.WinefoxSwordProjectileEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SwordArrayEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.PalmBlackHoleEntity;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
@@ -94,6 +98,14 @@ public final class IronsSpellbooksCompatEntities {
                             .updateInterval(1)
                             .build("winefox_sword_projectile"));
 
+    public static final RegistryObject<EntityType<SwordArrayEntity>> SWORD_ARRAY =
+            ENTITY_TYPES.register("sword_array",
+                    () -> EntityType.Builder.<SwordArrayEntity>of(SwordArrayEntity::new, MobCategory.MISC)
+                            .sized(0.35F, 0.35F)
+                            .clientTrackingRange(8)
+                            .updateInterval(20)
+                            .build("sword_array"));
+
     public static final RegistryObject<EntityType<StarShadowStrikeEntity>> STAR_SHADOW_STRIKE =
             ENTITY_TYPES.register("star_shadow_strike",
                     () -> EntityType.Builder.<StarShadowStrikeEntity>of(
@@ -137,8 +149,34 @@ public final class IronsSpellbooksCompatEntities {
                             .updateInterval(1)
                             .build("spellbreaking_echo"));
 
+    public static final RegistryObject<EntityType<ThreeEnclosuresFieldEntity>> THREE_ENCLOSURES =
+            ENTITY_TYPES.register("three_enclosures",
+                    () -> EntityType.Builder.<ThreeEnclosuresFieldEntity>of(
+                                    ThreeEnclosuresFieldEntity::new, MobCategory.MISC)
+                            // The renderer draws a 20-block-wide, 8-block-tall prism.
+                            // Keep the culling box large enough for the whole field;
+                            // the entity is non-physical and non-pickable.
+                            .sized(20.0F, 8.0F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("three_enclosures"));
+
+    public static final RegistryObject<EntityType<SevenStarGuidanceEntity>> SEVEN_STAR_GUIDANCE =
+            ENTITY_TYPES.register("seven_star_guidance",
+                    () -> EntityType.Builder.<SevenStarGuidanceEntity>of(
+                                    SevenStarGuidanceEntity::new, MobCategory.MISC)
+                            .sized(0.1F, 0.1F)
+                            .clientTrackingRange(64)
+                            .updateInterval(1)
+                            .build("seven_star_guidance"));
+
     private IronsSpellbooksCompatEntities() {
     }
+
+    public static final RegistryObject<EntityType<PalmBlackHoleEntity>> PALM_BLACK_HOLE =
+            ENTITY_TYPES.register("palm_black_hole", () -> EntityType.Builder
+                    .<PalmBlackHoleEntity>of(PalmBlackHoleEntity::new, MobCategory.MISC)
+                    .sized(0.1F, 0.1F).clientTrackingRange(64).updateInterval(1).build("palm_black_hole"));
 
     public static void register(IEventBus eventBus) {
         ENTITY_TYPES.register(eventBus);

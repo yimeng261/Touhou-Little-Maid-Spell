@@ -1,8 +1,11 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell;
 
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import io.redspace.ironsspellbooks.entity.spells.black_hole.BlackHole;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -12,7 +15,14 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.entity.PartEntity;
+import software.bernie.geckolib.animatable.GeoEntity;
+import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.core.animation.AnimationController;
+import software.bernie.geckolib.core.animation.RawAnimation;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
+import javax.annotation.Nullable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Map;
@@ -23,7 +33,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * 跟随施法者的小型黑洞，继承 ISS 的吸附逻辑。
  * 原版追踪名单不可由子类访问，吸附对象由 {@code CompanionBlackHoleFilterMixin} 过滤。
  */
-public class CompanionBlackHoleEntity extends BlackHole {
+public class CompanionBlackHoleEntity extends BlackHole implements GeoEntity {
+
+    private static final RawAnimation IDLE_ANIMATION =
+            RawAnimation.begin().thenLoop("animation.supernova_black_hole.idle");
+    private final AnimatableInstanceCache animationCache = GeckoLibUtil.createInstanceCache(this);
+    private int lifetimeTicks = 32 * 20;
 
     /** 球心固定在施法者眼睛上方 5 格，与法术等级无关。 */
     public static final double HOVER_ABOVE_EYES = 5.0D;
@@ -63,12 +78,45 @@ public class CompanionBlackHoleEntity extends BlackHole {
         this.setOwner(owner);
     }
 
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "black_hole", 0,
+                state -> state.setAndContinue(IDLE_ANIMATION)));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return animationCache;
+    }
+
+    /** 旧版 ISS 没有 setDuration；本地阈值仍使用父类持久化的 tickCount。 */
+    public void setLifetimeTicks(int ticks) {
+        lifetimeTicks = Math.max(1, ticks);
+    }
+
+    @Override
+    protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        tag.putInt("CompanionLifetime", lifetimeTicks);
+    }
+
+    @Override
+    protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        if (tag.contains("CompanionLifetime")) setLifetimeTicks(tag.getInt("CompanionLifetime"));
+    }
+
     /** 服务端依次跟随、执行原版吸附、加强吸力并处理球体碰撞。 */
     @Override
     public void tick() {
         if (!this.level().isClientSide) {
+            if (this.tickCount >= lifetimeTicks) {
+                this.discard();
+                return;
+            }
             followOwner();
             super.tick();
+            if (this.isRemoved()) return;
             applySuction();
             consumeContactingProjectiles();
             return;
@@ -96,8 +144,7 @@ public class CompanionBlackHoleEntity extends BlackHole {
                 center.x + reach, center.y + reach, center.z + reach);
 
         for (Entity entity : this.level().getEntities(this, area,
-                candidate -> candidate instanceof Projectile projectile
-                             && projectile.getOwner() != caster)) {
+                candidate -> shouldPullProjectile(candidate, caster))) {
             Vec3 toCenter = center.subtract(entity.position());
             double distance = toCenter.length();
             if (distance > reach) {
@@ -156,8 +203,7 @@ public class CompanionBlackHoleEntity extends BlackHole {
             return;
         }
         if (target instanceof Projectile projectile) {
-            // 保留施法者自己的弹射物。
-            if (projectile.getOwner() == caster) {
+            if (isProtectedOwner(caster, projectile.getOwner())) {
                 return;
             }
         } else {
@@ -166,7 +212,7 @@ public class CompanionBlackHoleEntity extends BlackHole {
             }
             // 仅消除能确认归属的敌方法术。
             Entity spellOwner = resolvedOwner(target);
-            if (spellOwner == null || spellOwner == caster) {
+            if (spellOwner == null || isProtectedOwner(caster, spellOwner)) {
                 return;
             }
         }
@@ -174,6 +220,24 @@ public class CompanionBlackHoleEntity extends BlackHole {
         if (crossesSphere(candidate, center, radius)) {
             target.discard();
         }
+    }
+
+    /** 原版追踪与额外吸力共用过滤，避免友方弹体先被吸走再获吞噬豁免。 */
+    public static boolean shouldPullProjectile(Entity entity, @Nullable Entity caster) {
+        return caster != null && entity instanceof Projectile projectile
+               && !isProtectedOwner(caster, projectile.getOwner());
+    }
+
+    /** 女仆主人的 UUID 也匹配召唤物的主人链，无须主人当前在线。 */
+    private static boolean isProtectedOwner(Entity caster, @Nullable Entity owner) {
+        if (owner == caster) {
+            return true;
+        }
+        if (owner == null || !(caster instanceof EntityMaid maid)) {
+            return false;
+        }
+        UUID maidOwnerId = maid.getOwnerUUID();
+        return maidOwnerId != null && MaidSpellAllyResolver.collectAffinityIds(owner).contains(maidOwnerId);
     }
 
     /** 排除召唤生物和多部件实体的部件；部件归属由父实体处理。 */

@@ -30,6 +30,13 @@ public class MaidSpellSounds {
     public static final RegistryObject<SoundEvent> STAR_SHADOW_STRIKE = SOUNDS.register("star_shadow_strike",
         () -> SoundEvent.createVariableRangeEvent(new ResourceLocation(MaidSpellMod.MOD_ID, "star_shadow_strike")));
 
+    public static final RegistryObject<SoundEvent> PALM_BLACK_HOLE_LOOP = SOUNDS.register("palm_black_hole_loop",
+            () -> SoundEvent.createFixedRangeEvent(
+                    new ResourceLocation(MaidSpellMod.MOD_ID, "palm_black_hole_loop"), 48.0F));
+    public static final RegistryObject<SoundEvent> PALM_BLACK_HOLE_EXPLOSION = SOUNDS.register("palm_black_hole_explosion",
+            () -> SoundEvent.createFixedRangeEvent(
+                    new ResourceLocation(MaidSpellMod.MOD_ID, "palm_black_hole_explosion"), 48.0F));
+
     public static final RegistryObject<SoundEvent> WINEFOX_ATK_1 = registerWinefoxSound("atk1");
     public static final RegistryObject<SoundEvent> WINEFOX_ATK_2 = registerWinefoxSound("atk2");
     public static final RegistryObject<SoundEvent> WINEFOX_ATK_3 = registerWinefoxSound("atk3");

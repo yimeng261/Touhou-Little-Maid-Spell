@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.client.gui;
 
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.WinefoxSpellSelectionClient;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
 import com.github.yimeng261.maidspell.network.message.WinefoxChallengeConfigMessage;
@@ -11,6 +12,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
@@ -18,6 +20,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.client.gui.widget.ScrollPanel;
 import net.minecraftforge.fml.ModList;
 import org.lwjgl.glfw.GLFW;
 
@@ -34,10 +37,10 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
     private static final int[] ROOMY_SPELL_ROW_Y = {41, 59, 93, 111};
     private static final int[] COMPACT_SPELL_ROW_Y = {37, 65};
     private static final String[] FIELD_KEYS = {
-            "max_health", "damage_multiplier", "spell_power_multiplier", "hit_damage_cap",
+            "max_health", "armor", "damage_multiplier", "spell_power_multiplier", "hit_damage_cap",
             "hit_interval", "maid_damage_multiplier", "damage_to_maid", "phase_two_multiplier"};
 
-    private final EditBox[] fields = new EditBox[8];
+    private final EditBox[] fields = new EditBox[FIELD_KEYS.length];
     private final WinefoxSpellChoice[] first = new WinefoxSpellChoice[WinefoxSpellChoice.MAX_SLOTS_PER_PHASE];
     private final WinefoxSpellChoice[] second = new WinefoxSpellChoice[WinefoxSpellChoice.MAX_SLOTS_PER_PHASE];
     private final Button[] presetButtons = new Button[WinefoxChallengePresets.COUNT * 3];
@@ -47,7 +50,7 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
     private CycleButton<Boolean> maidToggle;
     private Button modeButton;
     private Button presetsButton;
-    private Button basicPageButton;
+    private BasicSettingsPanel basicPanel;
     private Button phasePageButton;
     private Button basicResetButton;
     private Button advancedResetButton;
@@ -60,7 +63,6 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
     private boolean initialized;
     private boolean imitatePlayer;
     private boolean imitateMaid;
-    private int basicPage;
     private int phasePage;
     private int selectedSlot = -1;
     private int inventoryY;
@@ -84,6 +86,7 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
     @Override
     protected void init() {
         if (initialized) draft = currentConfig();
+        float previousScroll = basicPanel == null ? 0.0F : basicPanel.scrollPosition();
         imageHeight = Math.min(232, Math.max(172, height - 8));
         super.init();
         inventoryY = imageHeight - 86;
@@ -92,16 +95,16 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
         menu.positionInventory(inventoryY);
         inventoryLabelX = 9;
         inventoryLabelY = inventoryY - 10;
+        basicPanel = addRenderableOnly(new BasicSettingsPanel(previousScroll));
         double[] numbers = values(draft);
         for (int i = 0; i < fields.length; i++) {
-            int index = i < firstPageFieldCount() ? i : i - firstPageFieldCount();
             int fieldIndex = i;
-            EditBox field = new CommitEditBox(leftPos + 9 + index % 2 * 84,
-                    topPos + 39 + index / 2 * 31, 76, 18,
+            EditBox field = new BasicSettingEditBox(leftPos + 9 + i % 2 * 80,
+                    topPos + 39 + i / 2 * 31, 74, 18,
                     Component.translatable(KEY + FIELD_KEYS[i]), () -> normalizeBasicField(fieldIndex));
             field.setMaxLength(18);
-            field.setValue(i == 4 ? Integer.toString(draft.hitIntervalTicks()) : Double.toString(numbers[i]));
-            fields[i] = addRenderableWidget(field);
+            field.setValue(i == 5 ? Integer.toString(draft.hitIntervalTicks()) : Double.toString(numbers[i]));
+            fields[i] = addWidget(field);
         }
         imitatePlayer = draft.imitatePlayerSpells();
         imitateMaid = draft.imitateMaidSpells();
@@ -132,11 +135,6 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
             selectSlot(-1);
             refreshPageText();
         }).bounds(leftPos + 182, topPos + 65, 116, 18).build());
-        basicPageButton = addRenderableWidget(Button.builder(Component.empty(), button -> {
-            basicPage = 1 - basicPage;
-            refreshPageText();
-            updateVisibility();
-        }).bounds(leftPos + 182, topPos + 34, 116, 18).build());
         modeButton = addRenderableWidget(Button.builder(Component.empty(), button -> {
             advanced = !advanced;
             if (advanced) placeDefaults();
@@ -164,17 +162,14 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
                     button -> deletePreset(preset)).bounds(leftPos + 261, y, 36, 18).build());
         }
         initialized = true;
+        basicPanel.positionFields();
         updateVisibility();
     }
 
     private static double[] values(WinefoxChallengeConfig config) {
-        return new double[]{config.maxHealth(), config.damageMultiplier(), config.spellPowerMultiplier(),
+        return new double[]{config.maxHealth(), config.armor(), config.damageMultiplier(), config.spellPowerMultiplier(),
                 config.hitDamageCapRatio(), config.hitIntervalTicks(), config.maidDamageMultiplier(),
                 config.damageToMaidMultiplier(), config.phaseTwoDamageMultiplier()};
-    }
-
-    private int firstPageFieldCount() {
-        return twoRowsPerPhase ? 5 : 4;
     }
 
     private int spellPageCount() {
@@ -194,13 +189,13 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
 
     private void updateVisibility() {
         for (int i = 0; i < fields.length; i++) {
-            boolean show = !advanced && (basicPage == 0 ? i < firstPageFieldCount()
-                    : i >= firstPageFieldCount());
+            boolean show = !advanced;
             fields[i].visible = show;
             fields[i].active = show;
         }
+        basicPanel.visible = !advanced;
+        if (advanced && Arrays.asList(fields).contains(getFocused())) setFocused(null);
         boolean editing = !presetsOpen;
-        basicPageButton.visible = editing && !advanced;
         phasePageButton.visible = editing && advanced;
         playerToggle.visible = editing && advanced;
         maidToggle.visible = editing && advanced;
@@ -221,7 +216,6 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
     private void refreshPageText() {
         modeButton.setMessage(Component.translatable(KEY + (advanced ? "basic" : "advanced")));
         presetsButton.setMessage(Component.translatable(KEY + (presetsOpen ? "back" : "presets")));
-        basicPageButton.setMessage(Component.translatable(KEY + "basic_page", basicPage + 1, 2));
         phasePageButton.setMessage(Component.translatable(KEY + "spell_page", phasePage + 1, spellPageCount()));
     }
 
@@ -229,7 +223,7 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
         WinefoxChallengeConfig defaults = menu.getDefaults();
         double[] numbers = values(defaults);
         for (int i = 0; i < fields.length; i++) {
-            fields[i].setValue(i == 4 ? Integer.toString(defaults.hitIntervalTicks()) : Double.toString(numbers[i]));
+            fields[i].setValue(i == 5 ? Integer.toString(defaults.hitIntervalTicks()) : Double.toString(numbers[i]));
         }
     }
 
@@ -252,10 +246,11 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
     private WinefoxChallengeConfig currentConfig() {
         WinefoxChallengeConfig fallback = draft;
         return new WinefoxChallengeConfig(
-                parse(fields[0], fallback.maxHealth()), parse(fields[1], fallback.damageMultiplier()),
-                parse(fields[2], fallback.spellPowerMultiplier()), parse(fields[3], fallback.hitDamageCapRatio()),
-                parseInt(fields[4], fallback.hitIntervalTicks()), parse(fields[5], fallback.maidDamageMultiplier()),
-                parse(fields[6], fallback.damageToMaidMultiplier()), parse(fields[7], fallback.phaseTwoDamageMultiplier()),
+                parse(fields[0], fallback.maxHealth()), parse(fields[1], fallback.armor()),
+                parse(fields[2], fallback.damageMultiplier()), parse(fields[3], fallback.spellPowerMultiplier()),
+                parse(fields[4], fallback.hitDamageCapRatio()), parseInt(fields[5], fallback.hitIntervalTicks()),
+                parse(fields[6], fallback.maidDamageMultiplier()), parse(fields[7], fallback.damageToMaidMultiplier()),
+                parse(fields[8], fallback.phaseTwoDamageMultiplier()),
                 imitatePlayer, imitateMaid, parseInt(chance, fallback.imitateChancePercent()),
                 chosen(first), chosen(second), defaultsPlaced).sanitized(menu.getDefaults());
     }
@@ -279,7 +274,7 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
     private void normalizeBasicField(int index) {
         EditBox field = fields[index];
         double normalized = values(currentConfig())[index];
-        if (index == 4) {
+        if (index == 5) {
             int value = parseInt(field, Integer.MIN_VALUE);
             if (value != (int) normalized) field.setValue(Integer.toString((int) normalized));
         } else {
@@ -302,7 +297,139 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
         normalizeChanceField();
     }
 
-    private final class CommitEditBox extends EditBox {
+    private final class BasicSettingsPanel extends ScrollPanel {
+        private boolean visible;
+
+        private BasicSettingsPanel(float previousScroll) {
+            super(WinefoxChallengeConfigScreen.this.minecraft, 166,
+                    (inventoryY >= 104 ? inventoryLabelY - 3 : inventoryY - 3) - 25,
+                    topPos + 25, leftPos + 8, 2, 6, 0xFFC6C6C6);
+            scrollDistance = Math.max(0.0F, Math.min(previousScroll, getContentHeight() - (height - border)));
+        }
+
+        private float scrollPosition() {
+            return scrollDistance;
+        }
+
+        private void positionFields() {
+            for (int i = 0; i < fields.length; i++) {
+                fields[i].setY(top + border + 12 + i / 2 * 31 - (int) scrollDistance);
+            }
+        }
+
+        @Override
+        protected int getContentHeight() {
+            return ((fields.length + 1) / 2 - 1) * 31 + 32;
+        }
+
+        @Override
+        protected int getScrollAmount() {
+            return 31;
+        }
+
+        private void revealField(EditBox field) {
+            positionFields();
+            if (field.getY() - 12 < top + border) {
+                scrollDistance -= top + border - (field.getY() - 12);
+            } else if (field.getY() + field.getHeight() > bottom - border) {
+                scrollDistance += field.getY() + field.getHeight() - (bottom - border);
+            }
+            scrollDistance = Math.max(0.0F,
+                    Math.min(scrollDistance, getContentHeight() - (height - border)));
+            positionFields();
+        }
+
+        private boolean containsFieldArea(double mouseX, double mouseY) {
+            return isMouseOver(mouseX, mouseY) && mouseX < right - 6;
+        }
+
+        @Override
+        public boolean isMouseOver(double mouseX, double mouseY) {
+            return visible && super.isMouseOver(mouseX, mouseY);
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            if (!isMouseOver(mouseX, mouseY)) return false;
+            positionFields();
+            return super.mouseClicked(mouseX, mouseY, button);
+        }
+
+        @Override
+        public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+            if (!isMouseOver(mouseX, mouseY)) return false;
+            boolean handled = super.mouseScrolled(mouseX, mouseY, delta);
+            positionFields();
+            return handled;
+        }
+
+        @Override
+        public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+            boolean handled = super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+            if (handled) positionFields();
+            return handled;
+        }
+
+        @Override
+        public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            if (visible) super.render(graphics, mouseX, mouseY, partialTick);
+        }
+
+        @Override
+        protected void drawPanel(GuiGraphics graphics, int entryRight, int relativeY,
+                                 Tesselator tessellator, int mouseX, int mouseY) {
+            positionFields();
+            boolean hovered = isMouseOver(mouseX, mouseY);
+            for (int i = 0; i < fields.length; i++) {
+                EditBox field = fields[i];
+                graphics.drawString(font, Component.translatable(KEY + FIELD_KEYS[i] + "_short"),
+                        field.getX(), field.getY() - 12, 0x303030, false);
+                field.render(graphics, hovered ? mouseX : -1, hovered ? mouseY : -1, 0.0F);
+            }
+        }
+
+        private void renderFieldTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+            if (!isMouseOver(mouseX, mouseY) || mouseX >= right - 6) return;
+            for (int i = 0; i < fields.length; i++) {
+                EditBox field = fields[i];
+                int labelY = field.getY() - 12;
+                if (mouseX >= field.getX() && mouseX < field.getX() + field.getWidth()
+                        && mouseY >= labelY && mouseY < labelY + 9) {
+                    graphics.renderTooltip(font, Component.translatable(KEY + FIELD_KEYS[i]), mouseX, mouseY);
+                    break;
+                }
+            }
+        }
+
+        @Override
+        public NarrationPriority narrationPriority() {
+            return NarrationPriority.NONE;
+        }
+
+        @Override
+        public void updateNarration(NarrationElementOutput output) {
+            // The input widgets are registered directly with the screen for narration.
+        }
+    }
+
+    private final class BasicSettingEditBox extends CommitEditBox {
+        private BasicSettingEditBox(int x, int y, int width, int height, Component label, Runnable onCommit) {
+            super(x, y, width, height, label, onCommit);
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            return basicPanel.containsFieldArea(mouseX, mouseY) && super.mouseClicked(mouseX, mouseY, button);
+        }
+
+        @Override
+        public void setFocused(boolean focused) {
+            super.setFocused(focused);
+            if (focused) basicPanel.revealField(this);
+        }
+    }
+
+    private class CommitEditBox extends EditBox {
         private final Runnable onCommit;
 
         private CommitEditBox(int x, int y, int width, int height, Component label, Runnable onCommit) {
@@ -351,7 +478,7 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
         draft = preset;
         double[] numbers = values(preset);
         for (int i = 0; i < fields.length; i++) {
-            fields[i].setValue(i == 4 ? Integer.toString(preset.hitIntervalTicks()) : Double.toString(numbers[i]));
+            fields[i].setValue(i == 5 ? Integer.toString(preset.hitIntervalTicks()) : Double.toString(numbers[i]));
         }
         chance.setValue(Integer.toString(preset.imitateChancePercent()));
         playerToggle.setValue(preset.imitatePlayerSpells());
@@ -460,6 +587,13 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (!advanced) {
+            basicPanel.positionFields();
+            if (basicPanel.mouseClicked(mouseX, mouseY, button)) {
+                setFocused(null);
+                return true;
+            }
+        }
         if (advanced && !presetsOpen) {
             int area = spellAreaAt(mouseX, mouseY);
             if (area >= 0) {
@@ -483,7 +617,24 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
     }
 
     @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (!advanced && basicPanel.isMouseOver(mouseX, mouseY)) {
+            if (Arrays.asList(fields).contains(getFocused())) setFocused(null);
+            return basicPanel.mouseScrolled(mouseX, mouseY, delta);
+        }
+        return super.mouseScrolled(mouseX, mouseY, delta);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        if (!advanced && basicPanel.mouseDragged(mouseX, mouseY, button, deltaX, deltaY)) return true;
+        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+    }
+
+    @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        // Release the scrollbar even when the pointer has left the parameter area.
+        if (basicPanel.mouseReleased(mouseX, mouseY, button)) return true;
         if (!draggedScroll.isEmpty()) {
             int area = spellAreaAt(mouseX, mouseY);
             if (area >= 0) acceptScroll(area, draggedScroll);
@@ -540,13 +691,6 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
                     twoRowsPerPhase ? 29 : 25, 0x303030, false);
             graphics.drawString(font, Component.translatable(KEY + "phase_two"), 9,
                     twoRowsPerPhase ? 81 : 53, 0x303030, false);
-        } else {
-            for (int i = 0; i < fields.length; i++) {
-                if (basicPage == 0 ? i >= firstPageFieldCount() : i < firstPageFieldCount()) continue;
-                int index = i < firstPageFieldCount() ? i : i - firstPageFieldCount();
-                graphics.drawString(font, Component.translatable(KEY + FIELD_KEYS[i] + "_short"),
-                        9 + index % 2 * 84, 27 + index / 2 * 31, 0x303030, false);
-            }
         }
         if (presetsOpen) {
             for (int i = 0; i < WinefoxChallengePresets.COUNT; i++) {
@@ -583,16 +727,7 @@ public class WinefoxChallengeConfigScreen extends AbstractContainerScreen<Winefo
         }
         if (!draggedScroll.isEmpty()) graphics.renderItem(draggedScroll, mouseX - 8, mouseY - 8);
         if (!advanced) {
-            for (int i = 0; i < fields.length; i++) {
-                if (basicPage == 0 ? i >= firstPageFieldCount() : i < firstPageFieldCount()) continue;
-                int index = i < firstPageFieldCount() ? i : i - firstPageFieldCount();
-                int x = leftPos + 9 + index % 2 * 84;
-                int y = topPos + 27 + index / 2 * 31;
-                if (mouseX >= x && mouseX < x + 76 && mouseY >= y && mouseY < y + 9) {
-                    graphics.renderTooltip(font, Component.translatable(KEY + FIELD_KEYS[i]), mouseX, mouseY);
-                    break;
-                }
-            }
+            basicPanel.renderFieldTooltip(graphics, mouseX, mouseY);
             return;
         }
         List<Rect2i> areas = visibleSpellAreas();

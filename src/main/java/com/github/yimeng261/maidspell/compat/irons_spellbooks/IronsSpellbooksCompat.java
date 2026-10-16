@@ -7,6 +7,8 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLon
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarWitchHatItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.VoidPhaseDamageHandler;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.StaranchorStunSpellInterrupt;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.PalmBlackHoleScrollVisibility;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxBossSleepGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxKnockbackGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxSpellPowerBonus;
@@ -40,9 +42,11 @@ public final class IronsSpellbooksCompat {
         IronsSpellbooksCompatEntities.register(eventBus);
         IronsSpellbooksCompatEffects.register(eventBus);
         IronsSpellbooksCompatSpells.register(eventBus);
+        eventBus.register(PalmBlackHoleScrollVisibility.class);
         eventBus.addListener((FMLLoadCompleteEvent event) ->
                 event.enqueueWork(AuthoritativeHealthReturnTransformer::install));
         MinecraftForge.EVENT_BUS.register(VoidPhaseDamageHandler.class);
+        MinecraftForge.EVENT_BUS.register(StaranchorStunSpellInterrupt.class);
         MinecraftForge.EVENT_BUS.register(WinefoxBossSleepGuard.class);
         MinecraftForge.EVENT_BUS.register(WinefoxNonLethalGuard.class);
         // 抗推力也挂在这儿而不是用 @Mod.EventBusSubscriber：那个类引用酒狐实体，

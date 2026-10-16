@@ -31,8 +31,8 @@ public class SpellbreakingEchoSpell extends AbstractSpell {
     public static final ResourceLocation SPELL_ID = new ResourceLocation(MaidSpellMod.MOD_ID, "spellbreaking_echo");
 
     private static final int CAST_TIME_TICKS = 16;
-    private static final int BASE_DURATION_TICKS = 80;
-    private static final int DURATION_PER_LEVEL_TICKS = 40;
+    private static final int BASE_DURATION_TICKS = 3 * 20;
+    private static final int DURATION_PER_LEVEL_TICKS = 20;
     private static final float BASE_RADIUS = 3.0F;
     private static final float RADIUS_PER_LEVEL = 0.5F;
 
@@ -43,7 +43,7 @@ public class SpellbreakingEchoSpell extends AbstractSpell {
             .setMinRarity(SpellRarity.EPIC)
             .setSchoolResource(SchoolRegistry.ENDER_RESOURCE)
             .setMaxLevel(5)
-            .setCooldownSeconds(30)
+            .setCooldownSeconds(45)
             .build();
 
     public SpellbreakingEchoSpell() {
@@ -96,6 +96,12 @@ public class SpellbreakingEchoSpell extends AbstractSpell {
                 Component.translatable("ui.irons_spellbooks.duration", getDurationTicks(spellLevel) / 20));
     }
 
+    @Override
+    public boolean checkPreCastConditions(Level level, int spellLevel, LivingEntity caster, MagicData magicData) {
+        return !CompanionBlackHoleSpell.hasActiveDefensiveBlackHole(level, caster)
+                && super.checkPreCastConditions(level, spellLevel, caster, magicData);
+    }
+
     /**
      * 先设置球体半径再计算落点，之后由实体跟随施法者。
      * 球体半径与效果范围分开设置，避免把碰撞盒一起放大。
@@ -103,7 +109,7 @@ public class SpellbreakingEchoSpell extends AbstractSpell {
     @Override
     public void onCast(Level level, int spellLevel, LivingEntity caster,
                        CastSource castSource, MagicData magicData) {
-        if (!level.isClientSide) {
+        if (!level.isClientSide && !CompanionBlackHoleSpell.hasActiveDefensiveBlackHole(level, caster)) {
             SpellbreakingEchoEntity echo = new SpellbreakingEchoEntity(level, caster);
             float ballRadius = getBallRadius(spellLevel);
             echo.setRadius(ballRadius);

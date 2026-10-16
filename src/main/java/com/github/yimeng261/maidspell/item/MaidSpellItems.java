@@ -85,7 +85,7 @@ public class MaidSpellItems {
     public static final RegistryObject<Item> SPELL_OVERLIMIT_CORE = ITEMS.register("spell_overlimit_core", SpellOverlimitCore::new);
     public static final RegistryObject<Item> SPRING_BLOOM_RETURN = ITEMS.register("spring_bloom_return", SpringBloomReturn::new);
     public static final RegistryObject<Item> FRAGRANT_INGENUITY = ITEMS.register("fragrant_ingenuity", FragrantIngenuity::new);
-    // 星锚珍珠：玩家右键获得 30 秒虚空漫步，女仆佩戴可代挡虚空伤害并消耗耐久
+    // 星锚珍珠：玩家右键获得 35 秒虚空漫步，女仆佩戴可代挡虚空伤害并消耗耐久
     public static final RegistryObject<Item> STARANCHOR_PEARL = ITEMS.register("staranchor_pearl", StaranchorPearl::new);
     //public static final RegistryObject<Item> CRYSTAL_CIRCUIT = ITEMS.register("crystal_circuit", CrystalCircuit::new);
 

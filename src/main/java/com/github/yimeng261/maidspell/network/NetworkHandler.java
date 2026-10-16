@@ -22,7 +22,7 @@ import java.util.Optional;
  * 网络消息处理器
  */
 public class NetworkHandler {
-    private static final String PROTOCOL_VERSION = "9";
+    private static final String PROTOCOL_VERSION = "10";
     
     @SuppressWarnings("removal")
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(

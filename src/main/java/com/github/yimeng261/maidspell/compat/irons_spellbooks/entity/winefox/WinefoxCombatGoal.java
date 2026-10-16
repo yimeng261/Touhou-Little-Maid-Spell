@@ -4,7 +4,8 @@ import com.github.yimeng261.maidspell.winefox.WinefoxChallengeConfig;
 import com.github.yimeng261.maidspell.winefox.WinefoxSpellChoice;
 
 import com.github.yimeng261.maidspell.compat.geckolib.GeckoLibCompat;
-import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.spell.SpellbreakingEchoEntity;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.CompanionBlackHoleSpell;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.SpellbreakingEchoSpell;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -105,12 +106,15 @@ final class WinefoxCombatGoal extends Goal {
     private static final double ABYSSAL_SHROUD_FIRST_HEALTH_THRESHOLD = 0.9D;
     private static final double ABYSSAL_SHROUD_HEALTH_THRESHOLD_STEP = 0.1D;
     private static final float ABYSSAL_SHROUD_CAST_CHANCE = 0.5F;
+    private static final String SUMMON_SWORDS_SPELL_ID = "irons_spellbooks:summon_swords";
+    private static final String PALM_BLACK_HOLE_SPELL_ID = "touhou_little_maid_spell:palm_black_hole";
 
     private static final List<WinefoxBossSpellAction> PHASE_ONE_SPELLS = List.of(
         WinefoxBossSpellAction.MAGIC_MISSILE,
         WinefoxBossSpellAction.MAGIC_ARROW,
         WinefoxBossSpellAction.SUMMON_SWORDS,
-        WinefoxBossSpellAction.FIREBALL,
+        WinefoxBossSpellAction.CHAIN_LIGHTNING,
+        WinefoxBossSpellAction.SUNBEAM,
         WinefoxBossSpellAction.LIGHTNING_LANCE,
         WinefoxBossSpellAction.LIGHTNING_BOLT,
         WinefoxBossSpellAction.ARROW_VOLLEY,
@@ -120,16 +124,17 @@ final class WinefoxCombatGoal extends Goal {
         WinefoxBossSpellAction.MODIFIED_STARFALL,
         WinefoxBossSpellAction.MAGIC_SHOTGUN,
         WinefoxBossSpellAction.CLEANSE,
-        WinefoxBossSpellAction.BLACK_HOLE,
         WinefoxBossSpellAction.TRIPLE_STAR_ARROW,
         WinefoxBossSpellAction.COMPANION_BLACK_HOLE,
-        WinefoxBossSpellAction.SPELLBREAKING_ECHO);
+        WinefoxBossSpellAction.SPELLBREAKING_ECHO,
+        WinefoxBossSpellAction.SEVEN_STAR_GUIDANCE);
     private static final List<WinefoxBossSpellAction> PHASE_TWO_CLOSE_SPELLS = List.of(
         WinefoxBossSpellAction.ECHOING_STRIKES,
         WinefoxBossSpellAction.SHADOW_SLASH,
         WinefoxBossSpellAction.MODIFIED_TELEPORT,
         WinefoxBossSpellAction.STAR_SHADOW_STRIKE,
         WinefoxBossSpellAction.SHOCKWAVE,
+        WinefoxBossSpellAction.SUMMON_SWORDS,
         WinefoxBossSpellAction.SPELLBREAKING_ECHO);
     private static final List<WinefoxBossSpellAction> PHASE_TWO_FAR_SPELLS = List.of(
         WinefoxBossSpellAction.SHADOW_SLASH,
@@ -142,6 +147,7 @@ final class WinefoxCombatGoal extends Goal {
         if (secondPhase) {
             actions.add(WinefoxBossSpellAction.MAGIC_SHOTGUN);
             actions.add(WinefoxBossSpellAction.CLEANSE);
+            actions.add(WinefoxBossSpellAction.PALM_BLACK_HOLE);
             actions.addAll(PHASE_TWO_CLOSE_SPELLS);
             for (WinefoxBossSpellAction action : PHASE_TWO_FAR_SPELLS) {
                 if (!actions.contains(action)) actions.add(action);
@@ -151,9 +157,8 @@ final class WinefoxCombatGoal extends Goal {
         }
         List<WinefoxSpellChoice> choices = new ArrayList<>();
         for (WinefoxBossSpellAction action : actions) {
-            if (action == WinefoxBossSpellAction.SPELLBREAKING_ECHO
-                    || !WinefoxBossSpells.isSpellAvailable(action)) continue;
-            WinefoxSpellChoice choice = WinefoxBossSpells.choiceFor(action);
+            if (!WinefoxBossSpells.isSpellAvailable(action)) continue;
+            WinefoxSpellChoice choice = WinefoxBossSpells.choiceFor(action, secondPhase);
             if (choice != null) choices.add(choice);
         }
         return List.copyOf(choices);
@@ -183,8 +188,10 @@ final class WinefoxCombatGoal extends Goal {
     private static final int SPEAR_RETRY_INTERVAL = 20;
     private static final int VOID_PHASE_CHECK_INTERVAL = 200;
     private static final int HEAL_CHECK_INTERVAL = 200;
+    private static final int COMPANION_BLACK_HOLE_CHECK_INTERVAL = 30 * 20;
+    private static final float COMPANION_BLACK_HOLE_CAST_CHANCE = 0.5F;
     private static final int SPELLBREAKING_ECHO_STILL_TICKS = 40;
-    private static final double SPELLBREAKING_ECHO_MOVE_DISTANCE_SQR = 9.0D;
+    private static final double SPELLBREAKING_ECHO_MOVE_DISTANCE_SQR = 1.0D;
 
     private final MagicalWinefoxBossEntity boss;
     private final EnumMap<WinefoxBossSpellAction, Integer> spellCooldowns =
@@ -198,6 +205,8 @@ final class WinefoxCombatGoal extends Goal {
     private int spearCheckCooldown;
     private int voidPhaseCheckCooldown;
     private int healCheckCooldown;
+    private int companionBlackHoleCheckCooldown;
+    private boolean companionBlackHoleCastPending;
     private int meleeComboRemaining;
     private int movementRefreshCooldown;
     private double orbitDirection = 1.0D;
@@ -214,6 +223,10 @@ final class WinefoxCombatGoal extends Goal {
     private double starfallHealthThreshold;
     private double abyssalShroudHealthThreshold = ABYSSAL_SHROUD_FIRST_HEALTH_THRESHOLD;
     private boolean phaseTwo;
+    /** Summon Swords is a phase signature; each phase may successfully cast it once. */
+    private boolean summonSwordsUsed;
+    /** Palm Black Hole is guaranteed once when phase two reaches 25% health. */
+    private boolean palmBlackHoleTriggered;
     @Nullable
     private WinefoxBossSpellAction burstAction;
     private int burstShots;
@@ -257,12 +270,25 @@ final class WinefoxCombatGoal extends Goal {
     @Override
     public void start() {
         this.phaseTwo = this.boss.isPhaseTwo();
+        this.summonSwordsUsed = this.boss.maidspell$summonSwordsUsedThisPhase();
+        this.palmBlackHoleTriggered = this.boss.maidspell$palmBlackHoleTriggeredThisPhase();
+        // A fresh encounter starts full-health in phase one; re-arm one-shot spells
+        // after the previous encounter returned the boss to her idle state.
+        if (!this.phaseTwo && this.boss.maidspell$authoritativeHealth()
+                >= this.boss.maidspell$bossMaxHealth() * 0.99D) {
+            this.summonSwordsUsed = false;
+            this.palmBlackHoleTriggered = false;
+            this.boss.maidspell$setSummonSwordsUsedThisPhase(false);
+            this.boss.maidspell$setPalmBlackHoleTriggeredThisPhase(false);
+        }
         this.spellDecisionCooldown = 0;
         this.escapeTeleportCheckCooldown = ESCAPE_TELEPORT_CHECK_INTERVAL;
         this.counterspellCheckCooldown = COUNTERSPELL_CHECK_INTERVAL;
         this.spearCheckCooldown = SPEAR_CHECK_INTERVAL;
         this.voidPhaseCheckCooldown = VOID_PHASE_CHECK_INTERVAL;
         this.healCheckCooldown = HEAL_CHECK_INTERVAL;
+        this.companionBlackHoleCheckCooldown = COMPANION_BLACK_HOLE_CHECK_INTERVAL;
+        this.companionBlackHoleCastPending = false;
         this.spellCooldowns.clear();
         this.customSpellCooldowns.clear();
         this.meleeCooldown = 0;
@@ -298,6 +324,7 @@ final class WinefoxCombatGoal extends Goal {
 
     @Override
     public void stop() {
+        this.boss.cancelSwordPrisonCombo();
         this.boss.getNavigation().stop();
         this.burstAction = null;
         this.burstShots = 0;
@@ -305,7 +332,7 @@ final class WinefoxCombatGoal extends Goal {
         // 把该法术的收尾动画播出来。迁移前这里紧跟一句 stopCastAnimation() 压掉它
         // （"打断"不该有收尾），现在压不了了 —— 施法动画整条归铁魔法的同步数据管。
         // 这与普通女仆、以及铁魔法自己所有怪物的表现一致。
-        this.boss.cancelCast();
+        this.boss.spells().cancel();
         this.boss.cancelSpearThrow();
         this.closeRangeTicks = 0;
         this.resetStationaryTracking();
@@ -318,6 +345,7 @@ final class WinefoxCombatGoal extends Goal {
     public void tick() {
         LivingEntity target = this.boss.getTarget();
         if (target == null || !target.isAlive()) {
+            this.boss.cancelSwordPrisonCombo();
             this.resetStationaryTracking();
             return;
         }
@@ -329,6 +357,9 @@ final class WinefoxCombatGoal extends Goal {
             this.onPhaseChanged();
         }
         this.tickStationaryTracking();
+        if (this.tickSwordPrisonCombo(target)) {
+            return;
+        }
         if (this.boss.isBusyCombatAction()) {
             return;
         }
@@ -339,6 +370,45 @@ final class WinefoxCombatGoal extends Goal {
         } else {
             this.tickPhaseOne(target, horizontalDistance);
         }
+    }
+
+    private boolean tickSwordPrisonCombo(LivingEntity target) {
+        WinefoxSwordCombo combo = this.boss.swordPrisonCombo;
+        if (!combo.isActive()) return false;
+        if (target != this.boss.swordPrisonComboTarget || !this.boss.isViableTarget(target)
+            || target.level() != this.boss.level() || this.boss.isTransitioning()) {
+            this.boss.cancelSwordPrisonCombo();
+            return true;
+        }
+        this.boss.getNavigation().stop();
+        this.boss.setDeltaMovement(Vec3.ZERO);
+        WinefoxSwordCombo.Step step = combo.step(this.boss.tickCount);
+        if (step == WinefoxSwordCombo.Step.PAUSE || this.boss.isBusyCombatAction()) return true;
+        if (step == WinefoxSwordCombo.Step.TELEPORT) {
+            if (this.boss.teleportToward(target)) {
+                combo.teleported();
+            } else {
+                this.boss.cancelSwordPrisonCombo();
+            }
+            return true;
+        }
+        if (step == WinefoxSwordCombo.Step.FLASH_CASTING || step == WinefoxSwordCombo.Step.SLASH_CASTING) {
+            if (!this.boss.isCasting()) this.boss.cancelSwordPrisonCombo();
+            return true;
+        }
+        WinefoxBossSpellAction action = step == WinefoxSwordCombo.Step.FLASH
+            ? WinefoxBossSpellAction.MODIFIED_TELEPORT : WinefoxBossSpellAction.STAR_SHADOW_STRIKE;
+        if (this.boss.spells().cast(target, action, this.randomSpellLevel(action))) {
+            combo.castStarted(action);
+            this.spellCooldowns.put(action, this.getSpellCooldown(action));
+            WinefoxSpellChoice choice = WinefoxBossSpells.choiceFor(action, this.phaseTwo);
+            if (choice != null) this.customSpellCooldowns.put(choice.id(), this.getSpellCooldown(action));
+            this.spellDecisionCooldown = SPELL_DECISION_INTERVAL;
+            this.meleeComboRemaining = 0;
+        } else {
+            this.boss.cancelSwordPrisonCombo();
+        }
+        return true;
     }
 
     private void tickPhaseOne(LivingEntity target, double horizontalDistance) {
@@ -358,6 +428,9 @@ final class WinefoxCombatGoal extends Goal {
         }
 
         if (this.tickAbyssalShroud(target)) {
+            return;
+        }
+        if (this.tryPeriodicCompanionBlackHole(target)) {
             return;
         }
         if (this.tryStationaryEcho(target)) {
@@ -426,6 +499,10 @@ final class WinefoxCombatGoal extends Goal {
         }
         int spellLevel = this.randomSpellLevel(action);
         if (this.castAction(target, action, spellLevel)) {
+            if (action == WinefoxBossSpellAction.SUMMON_SWORDS) {
+                this.summonSwordsUsed = true;
+                this.boss.maidspell$setSummonSwordsUsedThisPhase(true);
+            }
             this.spellCooldowns.put(action, this.getSpellCooldown(action));
         }
     }
@@ -450,10 +527,64 @@ final class WinefoxCombatGoal extends Goal {
         if (this.boss.getRandom().nextFloat() >= ABYSSAL_SHROUD_CAST_CHANCE) {
             return false;
         }
-        return this.castAction(target, WinefoxBossSpellAction.ABYSSAL_SHROUD, 1);
+        return this.castAction(target, WinefoxBossSpellAction.ABYSSAL_SHROUD, this.phaseTwo ? 2 : 1);
     }
 
-    /** 忽略正常悬浮；水平位置连续 40 tick 留在三格内才算停驻。 */
+    /** Cast the phase-two signature exactly once when health reaches 25%. */
+    private boolean tickPalmBlackHoleAtThreshold(LivingEntity target) {
+        if (this.palmBlackHoleTriggered
+                || this.boss.maidspell$palmBlackHoleTriggeredThisPhase()
+                || this.boss.maidspell$authoritativeHealth() / this.boss.maidspell$bossMaxHealth() > 0.25D
+                || !this.isSpellReady(WinefoxBossSpellAction.PALM_BLACK_HOLE)
+                || !WinefoxBossSpells.isSpellAvailable(WinefoxBossSpellAction.PALM_BLACK_HOLE)) {
+            return false;
+        }
+        if (!this.castAction(target, WinefoxBossSpellAction.PALM_BLACK_HOLE, 1)) {
+            return false;
+        }
+        this.palmBlackHoleTriggered = true;
+        this.boss.maidspell$setPalmBlackHoleTriggeredThisPhase(true);
+        this.spellCooldowns.put(WinefoxBossSpellAction.PALM_BLACK_HOLE,
+                this.getSpellCooldown(WinefoxBossSpellAction.PALM_BLACK_HOLE));
+        return true;
+    }
+
+    /** 每轮只尝试一次；判定发生在吟唱中时，等空闲后出招，不重复掷概率。 */
+    private boolean tryPeriodicCompanionBlackHole(LivingEntity target) {
+        if (!this.companionBlackHoleCastPending) {
+            return false;
+        }
+        this.companionBlackHoleCastPending = false;
+        WinefoxBossSpellAction action = WinefoxBossSpellAction.COMPANION_BLACK_HOLE;
+        if (!this.isSpellReady(action)) {
+            return false;
+        }
+        WinefoxChallengeConfig config = this.boss.maidspell$challengeConfig();
+        WinefoxSpellChoice choice = null;
+        if (config != null && !config.phaseOneSpells().isEmpty()) {
+            choice = config.phaseOneSpells().stream()
+                    .filter(spell -> CompanionBlackHoleSpell.SPELL_ID.toString().equals(spell.id()))
+                    .findFirst().orElse(null);
+            if (choice == null || this.customSpellCooldowns.containsKey(choice.id())) {
+                return false;
+            }
+        }
+        boolean started = choice == null
+                ? this.boss.spells().cast(target, action, this.randomSpellLevel(action))
+                : this.boss.spells().castCustom(target, choice);
+        if (!started) {
+            return false;
+        }
+        this.spellCooldowns.put(action, this.getSpellCooldown(action));
+        if (choice != null) {
+            this.customSpellCooldowns.put(choice.id(),
+                    WinefoxBossSpells.customCooldown(choice, PHASE_ONE_COOLDOWN_SCALE));
+        }
+        this.spellDecisionCooldown = SPELL_DECISION_INTERVAL;
+        return true;
+    }
+
+    /** 忽略正常悬浮；水平位置连续 40 tick 留在一格内才算停驻。 */
     private void tickStationaryTracking() {
         Vec3 position = this.boss.position();
         if (this.stationaryAnchor == null) {
@@ -480,21 +611,40 @@ final class WinefoxCombatGoal extends Goal {
     private boolean tryStationaryEcho(LivingEntity target) {
         WinefoxBossSpellAction action = WinefoxBossSpellAction.SPELLBREAKING_ECHO;
         if (this.stationaryTicks < SPELLBREAKING_ECHO_STILL_TICKS
-            || this.stationaryEchoTriggered || !this.isSpellReady(action)
-            || !this.boss.level().getEntitiesOfClass(SpellbreakingEchoEntity.class,
-                this.boss.getBoundingBox().inflate(16.0D), echo -> echo.getOwner() == this.boss).isEmpty()) {
+            || this.stationaryEchoTriggered || !this.isSpellReady(action)) {
             return false;
         }
-        if (!WinefoxBossSpells.cast(this.boss, target, action, this.randomSpellLevel(action))) {
+        WinefoxChallengeConfig config = this.boss.maidspell$challengeConfig();
+        List<WinefoxSpellChoice> pool = config == null ? List.of()
+                : this.phaseTwo ? config.phaseTwoSpells() : config.phaseOneSpells();
+        WinefoxSpellChoice choice = pool.stream()
+                .filter(spell -> SpellbreakingEchoSpell.SPELL_ID.toString().equals(spell.id()))
+                .findFirst().orElse(null);
+        if (choice != null && this.customSpellCooldowns.containsKey(choice.id())) {
+            return false;
+        }
+        boolean started = choice == null
+                ? this.boss.spells().cast(target, action, this.randomSpellLevel(action))
+                : this.boss.spells().castCustom(target, choice);
+        if (!started) {
             return false;
         }
         this.stationaryEchoTriggered = true;
         this.spellCooldowns.put(action, this.getSpellCooldown(action));
+        if (choice != null) {
+            double scale = this.phaseTwo ? PHASE_TWO_COOLDOWN_SCALE : PHASE_ONE_COOLDOWN_SCALE;
+            this.customSpellCooldowns.put(choice.id(), WinefoxBossSpells.customCooldown(choice, scale));
+        }
         this.spellDecisionCooldown = SPELL_DECISION_INTERVAL;
         return true;
     }
 
     private void tickPhaseTwo(LivingEntity target, double horizontalDistance) {
+        if (this.boss.isCastingPalmBlackHole()) {
+            this.boss.getNavigation().stop();
+            this.boss.setDeltaMovement(Vec3.ZERO);
+            return;
+        }
         this.movePhaseTwo(target, horizontalDistance);
 
         if (this.boss.isCasting()) {
@@ -503,6 +653,9 @@ final class WinefoxCombatGoal extends Goal {
         }
 
         if (this.tickAbyssalShroud(target)) {
+            return;
+        }
+        if (this.tickPalmBlackHoleAtThreshold(target)) {
             return;
         }
         if (this.tryStationaryEcho(target)) {
@@ -529,7 +682,7 @@ final class WinefoxCombatGoal extends Goal {
             this.voidPhaseCheckCooldown = VOID_PHASE_CHECK_INTERVAL;
             if (!WinefoxBossSpells.hasVoidPhase(this.boss)
                 && this.boss.getRandom().nextFloat() < 0.5F
-                && this.castAction(target, WinefoxBossSpellAction.VOID_PHASE, 1)) {
+                && this.castAction(target, WinefoxBossSpellAction.VOID_PHASE, 2)) {
                 this.spellCooldowns.put(WinefoxBossSpellAction.VOID_PHASE,
                         this.getSpellCooldown(WinefoxBossSpellAction.VOID_PHASE));
                 return;
@@ -539,7 +692,7 @@ final class WinefoxCombatGoal extends Goal {
             this.healCheckCooldown = HEAL_CHECK_INTERVAL;
             if (this.boss.maidspell$authoritativeHealth() < this.boss.maidspell$bossMaxHealth()
                 && this.boss.getRandom().nextFloat() < 0.5F
-                && this.castAction(target, WinefoxBossSpellAction.HEAL, 5)) {
+                && this.castAction(target, WinefoxBossSpellAction.HEAL, 6)) {
                 this.spellCooldowns.put(WinefoxBossSpellAction.HEAL,
                     this.getSpellCooldown(WinefoxBossSpellAction.HEAL));
                 return;
@@ -583,13 +736,17 @@ final class WinefoxCombatGoal extends Goal {
         }
         if (action == WinefoxBossSpellAction.MAGIC_SHOTGUN) {
             this.startBurst(action, 1 + this.boss.getRandom().nextInt(2),
-                1 + this.boss.getRandom().nextInt(5), MAGIC_SHOTGUN_BURST_INTERVAL_TICKS);
+                2 + this.boss.getRandom().nextInt(5), MAGIC_SHOTGUN_BURST_INTERVAL_TICKS);
             this.spellCooldowns.put(action, this.getSpellCooldown(action));
             this.tickBurst(target);
             return;
         }
         int spellLevel = this.randomSpellLevel(action);
         if (this.castAction(target, action, spellLevel)) {
+            if (action == WinefoxBossSpellAction.SUMMON_SWORDS) {
+                this.summonSwordsUsed = true;
+                this.boss.maidspell$setSummonSwordsUsedThisPhase(true);
+            }
             this.spellCooldowns.put(action, this.getSpellCooldown(action));
         }
     }
@@ -777,17 +934,35 @@ final class WinefoxCombatGoal extends Goal {
         if (pool.isEmpty()) return false;
         List<WinefoxSpellChoice> available = new ArrayList<>();
         for (WinefoxSpellChoice choice : pool) {
+            if (this.summonSwordsUsed && isSummonSwords(choice)) continue;
+            // 这两个技能由定时 / 停驻条件触发，不能从配置池提前随机释放。
+            if (SpellbreakingEchoSpell.SPELL_ID.toString().equals(choice.id())
+                    || !secondPhase && CompanionBlackHoleSpell.SPELL_ID.toString().equals(choice.id())) continue;
+            // Palm Black Hole is armed by the phase-two health threshold below.
+            if (isPalmBlackHole(choice)) continue;
             if (!customSpellCooldowns.containsKey(choice.id())) available.add(choice);
         }
         while (!available.isEmpty()) {
             WinefoxSpellChoice choice = available.remove(this.boss.getRandom().nextInt(available.size()));
-            if (WinefoxBossSpells.castCustom(this.boss, target, choice)) {
+            if (this.boss.spells().castCustom(target, choice)) {
+                if (isSummonSwords(choice)) {
+                    this.summonSwordsUsed = true;
+                    this.boss.maidspell$setSummonSwordsUsedThisPhase(true);
+                }
                 double scale = secondPhase ? PHASE_TWO_COOLDOWN_SCALE : PHASE_ONE_COOLDOWN_SCALE;
                 customSpellCooldowns.put(choice.id(), WinefoxBossSpells.customCooldown(choice, scale));
                 break;
             }
         }
         return true;
+    }
+
+    private static boolean isSummonSwords(WinefoxSpellChoice choice) {
+        return choice != null && SUMMON_SWORDS_SPELL_ID.equals(choice.id());
+    }
+
+    private static boolean isPalmBlackHole(WinefoxSpellChoice choice) {
+        return choice != null && PALM_BLACK_HOLE_SPELL_ID.equals(choice.id());
     }
 
     @Nullable
@@ -808,14 +983,18 @@ final class WinefoxCombatGoal extends Goal {
                                                LivingEntity target, double horizontalDistance) {
         List<WinefoxBossSpellAction> eligible = new ArrayList<>();
         for (WinefoxBossSpellAction action : pool) {
-            // 破法回响只由停驻判定触发，不能由随机法术池提前抽到。
-            if (action == WinefoxBossSpellAction.SPELLBREAKING_ECHO) {
+            // 破法回响只由停驻判定触发；伴星黑洞在一阶段只由定时判定触发。
+            if (action == WinefoxBossSpellAction.SPELLBREAKING_ECHO
+                    || !this.phaseTwo && action == WinefoxBossSpellAction.COMPANION_BLACK_HOLE) {
                 continue;
             }
             if (!WinefoxBossSpells.isSpellAvailable(action)) {
                 continue;
             }
             if (!this.isSpellReady(action)) {
+                continue;
+            }
+            if (action == WinefoxBossSpellAction.SUMMON_SWORDS && this.summonSwordsUsed) {
                 continue;
             }
             if (action == WinefoxBossSpellAction.HEAL
@@ -856,12 +1035,9 @@ final class WinefoxCombatGoal extends Goal {
         return eligible.get(eligible.size() - 1);
     }
 
-    /** 普通法术权重为 2；一阶段黑洞权重为 1。 */
+    /** 默认池权重；玩家自定义池仍按原来的等概率抽取。 */
     private int maidspell$weight(WinefoxBossSpellAction action) {
-        if (action == WinefoxBossSpellAction.BLACK_HOLE) {
-            return this.phaseTwo ? 2 : 1;
-        }
-        return 2;
+        return action.defaultSelectionWeight(this.phaseTwo);
     }
 
     /** 施法失败时下一 tick 重试，不消耗连发次数。 */
@@ -901,7 +1077,7 @@ final class WinefoxCombatGoal extends Goal {
      * 由 {@code ISSCastingAnimationProvider} 播（第 6 步之前是实体这边另开一条同步字段自己播）。 冷却统一在"发起成功"时记，而不是原来那样瞬发的记在发起、长吟唱的记在结束。
      */
     private boolean castAction(LivingEntity target, WinefoxBossSpellAction action, int spellLevel) {
-        boolean cast = WinefoxBossSpells.cast(this.boss, target, action, spellLevel);
+        boolean cast = this.boss.spells().cast(target, action, spellLevel);
         if (!cast) {
             if (action == WinefoxBossSpellAction.MODIFIED_TELEPORT) {
                 cast = this.boss.teleportAwayFrom(target, 8.0D);
@@ -920,14 +1096,32 @@ final class WinefoxCombatGoal extends Goal {
     }
 
     private int randomSpellLevel(WinefoxBossSpellAction action) {
+        if (action == WinefoxBossSpellAction.COMPANION_BLACK_HOLE
+                || action == WinefoxBossSpellAction.SPELLBREAKING_ECHO) {
+            return 1;
+        }
+        if (this.phaseTwo) {
+            return switch (action) {
+                case VOID_PHASE -> 2;
+                case ECHOING_STRIKES -> 3;
+                case ABYSSAL_SHROUD, COUNTERSPELL, EVASION, CLEANSE -> 2;
+                case MAGIC_SHOTGUN -> 2 + this.boss.getRandom().nextInt(5);
+                case BLACK_HOLE, THREE_ENCLOSURES -> 4;
+                case SUMMON_SWORDS, MODIFIED_TELEPORT, ARROW_VOLLEY, ARCANE_SHACKLE -> 5;
+                default -> 6;
+            };
+        }
         return switch (action) {
             case ABYSSAL_SHROUD, COUNTERSPELL, VOID_PHASE, EVASION, CLEANSE -> 1;
+            case SUNBEAM -> 3;
             case MAGIC_SHOTGUN -> 1 + this.boss.getRandom().nextInt(5);
             // 黑洞的伤害不吃等级（{@code spellPowerPerLevel} 为 0），等级只抬半径：
             // 一级 6 格、五级 14 格，而它自己会在场上留 32 秒。取三级（约 10 格）——
             // 再大就是把整座擂台连人带怪一起吸住半分钟，和「一阶段的开场压迫感」不是一回事。
             case BLACK_HOLE -> 3;
             case SUMMON_SWORDS, MODIFIED_TELEPORT, ARROW_VOLLEY, ARCANE_SHACKLE -> 4;
+            case THREE_ENCLOSURES -> 3;
+            case SEVEN_STAR_GUIDANCE -> 5;
             default -> 5;
         };
     }
@@ -984,6 +1178,11 @@ final class WinefoxCombatGoal extends Goal {
         if (this.healCheckCooldown > 0) {
             --this.healCheckCooldown;
         }
+        if (!this.phaseTwo && --this.companionBlackHoleCheckCooldown <= 0) {
+            this.companionBlackHoleCheckCooldown = COMPANION_BLACK_HOLE_CHECK_INTERVAL;
+            this.companionBlackHoleCastPending =
+                    this.boss.getRandom().nextFloat() < COMPANION_BLACK_HOLE_CAST_CHANCE;
+        }
     }
 
     /**
@@ -994,7 +1193,14 @@ final class WinefoxCombatGoal extends Goal {
      * 拿着法杖放二阶段的近战法术，且每 tick 都判定为"阶段不一致"反复重置冷却。
      */
     private void onPhaseChanged() {
+        this.boss.cancelSwordPrisonCombo();
         this.phaseTwo = this.boss.isPhaseTwo();
+        this.summonSwordsUsed = false;
+        this.boss.maidspell$setSummonSwordsUsedThisPhase(false);
+        // A command may have entered phase two and already started the signature ritual.
+        // Preserve that cast's latch so the next AI tick cannot arm a duplicate release.
+        this.palmBlackHoleTriggered = this.boss.isCastingPalmBlackHole();
+        this.boss.maidspell$setPalmBlackHoleTriggeredThisPhase(this.palmBlackHoleTriggered);
         this.burstAction = null;
         this.burstShots = 0;
         this.closeRangeTicks = 0;
@@ -1005,6 +1211,8 @@ final class WinefoxCombatGoal extends Goal {
         this.spearCheckCooldown = SPEAR_CHECK_INTERVAL;
         this.voidPhaseCheckCooldown = VOID_PHASE_CHECK_INTERVAL;
         this.healCheckCooldown = HEAL_CHECK_INTERVAL;
+        this.companionBlackHoleCheckCooldown = COMPANION_BLACK_HOLE_CHECK_INTERVAL;
+        this.companionBlackHoleCastPending = false;
         this.resetStationaryTracking();
         this.resetPhaseOneFloat();
         this.refreshMovementPattern();

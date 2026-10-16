@@ -14,6 +14,7 @@ import com.github.yimeng261.maidspell.event.StaranchorPearlEvents;
 import com.github.yimeng261.maidspell.event.TravelerTitlesStructureEvents;
 import com.github.yimeng261.maidspell.event.WinefoxStructureMusicEvents;
 import com.github.yimeng261.maidspell.effect.MaidSpellEffects;
+import com.github.yimeng261.maidspell.effect.StaranchorStunEffect;
 import com.github.yimeng261.maidspell.entity.MaidSpellEntities;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
@@ -58,6 +59,7 @@ public class MaidSpellMod {
         forgeBus.register(MaidSpellEventHandler.class);
         forgeBus.register(FoxLeafOwnerWaterWalking.class);
         forgeBus.register(StaranchorPearlEvents.class);
+        forgeBus.register(StaranchorStunEffect.class);
         forgeBus.register(TravelerTitlesStructureEvents.class);
         if (IronsSpellbooksCompat.isLoaded()) {
             forgeBus.register(WinefoxStructureMusicEvents.class);

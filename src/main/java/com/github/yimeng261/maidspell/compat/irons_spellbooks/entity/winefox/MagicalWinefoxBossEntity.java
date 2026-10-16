@@ -12,6 +12,12 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.SwordRingScheduler
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatItems;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
+import com.github.yimeng261.maidspell.effect.StaranchorStunEffect;
+import com.github.yimeng261.maidspell.effect.MaidSpellEffects;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.SwordPrisonSpell;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.ModifiedTeleportSpell;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.StarShadowStrikeSpell;
 import com.github.yimeng261.maidspell.compat.geckolib.GeckoLibCompat;
 import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityHealthAccessor;
 import com.github.yimeng261.maidspell.api.IPersistentEncounterEntity;
@@ -20,6 +26,8 @@ import com.github.yimeng261.maidspell.api.IBossSyncedDataGuard;
 import com.github.yimeng261.maidspell.utils.BossLifecycleAccess;
 import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
+import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
+import io.redspace.ironsspellbooks.registries.MobEffectRegistry;
 import io.redspace.ironsspellbooks.capabilities.magic.PlayerRecasts;
 import io.redspace.ironsspellbooks.capabilities.magic.SummonManager;
 import io.redspace.ironsspellbooks.entity.mobs.IMagicSummon;
@@ -27,6 +35,8 @@ import io.redspace.ironsspellbooks.entity.mobs.abstract_spell_casting_mob.Abstra
 import io.redspace.ironsspellbooks.network.casting.SyncEntityDataPacket;
 import io.redspace.ironsspellbooks.setup.PacketDistributor;
 import java.util.HashSet;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -61,6 +71,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
@@ -95,12 +106,14 @@ import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.sounds.SoundEvent;
 import java.util.OptionalInt;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.api.IBossDamageClamp;
 import com.github.yimeng261.maidspell.api.ITrueDamageRedirect;
 import com.github.yimeng261.maidspell.mixin.accessor.MobFlagsAccessor;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.item.common.StarglintDaggerItem;
 import com.github.yimeng261.maidspell.winefox.WinefoxChallengeConfig;
 import com.github.yimeng261.maidspell.winefox.WinefoxChallengeProgress;
@@ -143,11 +156,14 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     /** 常规胜利次数落 NBT；旧存档缺键时从零开始。 */
     private static final String PLAYER_WIN_COUNT_TAG = "WinefoxPlayerWinCount";
-    private static final String SOLO_WIN_AFTER_THREE_TAG = "WinefoxSoloWinAfterThree";
+    /** 保留旧 NBT 键名，避免丢失已有存档的零女仆伤害胜利记录。 */
+    private static final String SOLO_WIN_AFTER_REQUIRED_WINS_TAG = "WinefoxSoloWinAfterThree";
     private static final EntityDataAccessor<Integer> ACTION =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> ACTION_SERIAL =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> SWORD_PRISON_RECOVERING =
+        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> PHASE_TWO =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> TRANSITIONING =
@@ -178,8 +194,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /** 玩家挑战结束后的行礼动画时长。 */
     private static final int CURTSY_RETURN_HOME_TICKS = 6 * 20;
 
-    /** 驯服先需三场非限制胜利，之后再赢一场女仆零伤害的战斗。 */
-    private static final int VOW_REQUIRED_PLAYER_WINS = 3;
+    /** 驯服先需两场非限制胜利，之后再赢一场女仆零伤害的战斗。 */
+    private static final int VOW_REQUIRED_PLAYER_WINS = 2;
     private static final int VOW_DIALOGUE_INTERVAL_TICKS = 2 * 20;
 
     /** 誓约没在演（可以做别的：交易、邀战、闲谈）。 */
@@ -194,6 +210,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     /** 场上连续 30 秒没有可打的目标就收场，见 {@link #tickBattleOver}。 */
     private static final int BATTLE_OVER_GRACE_TICKS = 600;
+
+    private static final int TARGET_HOLD_TICKS = 3 * 20;
 
     /** AI 连段窗口，不随动画时长变化。 */
     private static final int SWORD_COMBO_RESET_TICKS = 40;
@@ -266,7 +284,18 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     /** 服务端动作起始 tick，用于连段窗口判断。 */
     private int actionStartTick;
+    private int swordPrisonRecoveryEndTick;
+    final WinefoxSwordCombo swordPrisonCombo = new WinefoxSwordCombo();
+    @Nullable
+    LivingEntity swordPrisonComboTarget;
     private double flightTargetY;
+    /** Palm Black Hole lifts the boss two blocks for the duration of its cast. */
+    private double palmBlackHoleBaseY = Double.NaN;
+    private double palmBlackHoleBaseX;
+    private double palmBlackHoleBaseZ;
+    /** One-shot spell guards survive Goal restarts and chunk unloads. */
+    private boolean summonSwordsUsedThisPhase;
+    private boolean palmBlackHoleTriggeredThisPhase;
     /** 每 tick 重算，供后续 travel 的爬升分支读取。 */
     private boolean fastAscending;
     /**
@@ -291,6 +320,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private BlockPos homePos;
     /** 开场白的排队播报，见 {@link WinefoxDialogue}。 */
     private final WinefoxDialogue dialogue = new WinefoxDialogue();
+    private final WinefoxDialogue invisibilityDialogue = new WinefoxDialogue();
+    private final WinefoxInvisibilityTracker invisibilityTracker = new WinefoxInvisibilityTracker();
+    private final WinefoxSpellController spellController = new WinefoxSpellController(this);
+    @Nullable
+    private UUID lastPlayerTargetId;
     /** 本场累计吃到的伤害，以及其中出自女仆的部分。用来算「女仆代打」的伤害占比。 */
     private float totalDamageTaken;
     private float maidDamageTaken;
@@ -301,6 +335,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private int returnHomeTicks;
     /** 连续多少 tick 没有可打的目标了，见 {@link #tickBattleOver}。 */
     private int noTargetTicks;
+    private int targetSwitchAllowedTick;
     /**
      * 上一次<b>有效受击</b>的 {@code tickCount}；{@link Long#MIN_VALUE} 表示这一场还没挨过打。
      *
@@ -310,6 +345,13 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * <b>所有</b>会落到 {@code hurt()} 的伤害统一到同一个间隔上。
      */
     private long lastHitTick = Long.MIN_VALUE;
+    /** Short-lived input/output histories used by the phase-two adaptive damage controller. */
+    private final Deque<AdaptiveDamageSample> adaptiveAttemptedDamage = new ArrayDeque<>();
+    private final Deque<AdaptiveDamageSample> adaptiveEffectiveDamage = new ArrayDeque<>();
+    private final WinefoxHighDamageGuard highDamageGuard = new WinefoxHighDamageGuard();
+
+    private record AdaptiveDamageSample(long tick, float amount) {
+    }
     /** 她输过至少一次，交易就此开放。落 NBT，不随重新挑战撤销。 */
     private boolean tradingUnlocked;
     /**
@@ -319,8 +361,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 分开记而不是拿交易解锁当依据，是因为那个是一位布尔，说不清「赢过几场」。
      */
     private int playerWinCount;
-    /** 三场常规胜利之后，是否又赢过一场女仆没有造成伤害的战斗。 */
-    private boolean soloWinAfterThree;
+    /** 达到常规胜利次数要求之后，是否又赢过一场女仆没有造成伤害的战斗。 */
+    private boolean soloWinAfterRequiredWins;
     /** 「归星」驯服的进度，取值见 {@code VOW_STAGE_*}。 */
     private int vowStage;
     /**
@@ -429,6 +471,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 仅服务端设置；首次装备同步不会发送空槽位，客户端预设可能无法被纠正。
         if (!level.isClientSide) {
             this.equipStarMajoGear();
+            this.applyArmor();
         }
     }
 
@@ -467,8 +510,20 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.maidspell$clearExpectedHealthWrite();
         if (!this.level().isClientSide && this.authoritativeMaxHealthReady) {
             this.maidspell$reconcileMaxHealthAttribute();
+            if (this.isSeated()) {
+                this.ensureHomePos();
+            }
+            if (this.getY() < this.level().getMinBuildHeight() - 64.0D) {
+                this.recoverFromVoid();
+            }
         }
         super.tick();
+        // Cast callbacks can be skipped when the encounter ends or spell data is
+        // reset externally. Never carry the old ritual origin into another cast.
+        if (!this.level().isClientSide && Double.isFinite(this.palmBlackHoleBaseY)
+                && !this.isCastingPalmBlackHole()) {
+            this.endPalmBlackHoleCast();
+        }
     }
 
     /**
@@ -505,7 +560,66 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.lastHitTick = Long.MIN_VALUE;
     }
 
-    /** 供控制器判断是否叠加二阶段减伤；只有正式玩家挑战会走倍率链。 */
+    void maidspell$recordAdaptiveAttempt(float amount) {
+        this.recordAdaptiveSample(this.adaptiveAttemptedDamage, amount);
+    }
+
+    void maidspell$recordAdaptiveEffectiveDamage(float amount) {
+        this.recordAdaptiveSample(this.adaptiveEffectiveDamage, amount);
+    }
+
+    private void recordAdaptiveSample(Deque<AdaptiveDamageSample> history, float amount) {
+        if (!Float.isFinite(amount) || amount <= 0.0F) {
+            return;
+        }
+        this.pruneAdaptiveHistory(history);
+        history.addLast(new AdaptiveDamageSample(this.tickCount, amount));
+    }
+
+    private void pruneAdaptiveHistory(Deque<AdaptiveDamageSample> history) {
+        long oldest = this.tickCount - Math.max(1, this.maidspell$adaptiveWindowTicks());
+        while (!history.isEmpty() && history.peekFirst().tick() < oldest) {
+            history.removeFirst();
+        }
+    }
+
+    private double adaptiveDamagePerSecond(Deque<AdaptiveDamageSample> history) {
+        this.pruneAdaptiveHistory(history);
+        if (history.isEmpty()) {
+            return 0.0D;
+        }
+        double total = 0.0D;
+        for (AdaptiveDamageSample sample : history) {
+            total += sample.amount();
+        }
+        long elapsed = Math.max(1L, this.tickCount - history.peekFirst().tick());
+        return total * 20.0D / elapsed;
+    }
+
+    double maidspell$adaptiveAttemptedDps() {
+        return this.adaptiveDamagePerSecond(this.adaptiveAttemptedDamage);
+    }
+
+    double maidspell$adaptiveEffectiveDps() {
+        return this.adaptiveDamagePerSecond(this.adaptiveEffectiveDamage);
+    }
+
+    void maidspell$resetAdaptiveDamageHistory() {
+        this.adaptiveAttemptedDamage.clear();
+        this.adaptiveEffectiveDamage.clear();
+        this.highDamageGuard.setPending(false);
+    }
+
+    WinefoxHighDamageGuard maidspell$highDamageGuard() {
+        return this.highDamageGuard;
+    }
+
+    /** Adaptive damage protection applies to every active combat phase. */
+    boolean maidspell$isAdaptiveDamageActive() {
+        return this.isBattleActive();
+    }
+
+    /** Formal-player-only phase-two predicate retained for challenge-specific callers. */
     boolean maidspell$isPlayerCombatPhaseTwo() {
         return this.isPlayerCombatActive() && this.isPhaseTwo();
     }
@@ -520,16 +634,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         super.hurt(source, amount);
     }
 
-    /**
-     * 单次受击上限的兜底出口。正常伤害在 {@code write()} 里就已经被限住，这里只兜"绕过
-     * {@code hurt()} 直接调 {@code actuallyHurt}"那条路。两条路径共用同一份配置。
-     */
+    /** Defer all caps to write(), so adaptive pressure sees the full resolved damage. */
     @Override
     public float maidspell$maxDamagePerHit(float finalDamage) {
-        if (this.maidspell$encounterState() != WinefoxEncounterState.COMBAT) {
-            return IBossDamageClamp.NO_DAMAGE_CAP;
-        }
-        return WinefoxBossHealthController.damageCap(this);
+        return IBossDamageClamp.NO_DAMAGE_CAP;
     }
 
     @Override
@@ -773,6 +881,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
                 && this.maidspell$encounterState() != WinefoxEncounterState.CHALLENGE_START) {
             return false;
         }
+        if (!this.ensureHomePos()) {
+            return false;
+        }
         if (!this.maidspell$setEncounterState(state)) {
             return false;
         }
@@ -841,6 +952,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     @Override
     public void travel(Vec3 travelVector) {
+        if (this.isDizzy() || this.entityData.get(SWORD_PRISON_RECOVERING) || this.swordPrisonCombo.isActive()) {
+            this.setDeltaMovement(Vec3.ZERO);
+            return;
+        }
         if (this.isSeated()) {
             // A seated winefox is anchored to the swing. Do not let a combat
             // move controller or a stale vertical impulse move her afterward.
@@ -850,6 +965,31 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (this.isDefeated() || this.returnHomeTicks > 0) {
             // 归位时屏蔽控制器残留输入，保留重力供战败落地。
             super.travel(Vec3.ZERO);
+            return;
+        }
+        if (this.isCastingPalmBlackHole()) {
+            this.setDeltaMovement(Vec3.ZERO);
+            // Remote mobs already interpolate server movement in LivingEntity.aiStep.
+            // A second local lift and X/Z latch overwrite that position and separate
+            // the visible model from the server hitbox used for interaction.
+            if (this.level().isClientSide) return;
+            // This cast is an intentional vertical tableau. Keep horizontal and
+            // stale controller input out, then approach exactly two blocks above
+            // the release position at the normal phase-two flight speed.
+            if (!Double.isFinite(this.palmBlackHoleBaseY)) {
+                // Recover the origin if a cast was restored from saved spell data.
+                this.palmBlackHoleBaseX = this.getX();
+                this.palmBlackHoleBaseZ = this.getZ();
+                this.palmBlackHoleBaseY = this.getY();
+            }
+            double targetY = this.palmBlackHoleBaseY + 2.0D;
+            double vertical = Mth.clamp(targetY - this.getY(),
+                    -this.maxVerticalSpeed(), this.maxVerticalSpeed());
+            this.move(net.minecraft.world.entity.MoverType.SELF, new Vec3(0.0D, vertical, 0.0D));
+            // MoveControl may have advanced the mob before travel; restore the
+            // exact cast origin so the tableau remains in place server-side.
+            this.setPos(this.palmBlackHoleBaseX, this.getY(), this.palmBlackHoleBaseZ);
+            this.setDeltaMovement(Vec3.ZERO);
             return;
         }
         if (this.isNoGravity() && this.getTarget() != null && this.getTarget().isAlive()) {
@@ -990,7 +1130,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     public static AttributeSupplier.Builder createAttributes() {
         AttributeSupplier.Builder builder = Monster.createMonsterAttributes()
             .add(Attributes.MAX_HEALTH, 600.0D)
-            .add(Attributes.ARMOR, 20.0D)
+            .add(Attributes.ARMOR, 12.0D)
             .add(Attributes.ARMOR_TOUGHNESS, 8.0D)
             .add(Attributes.ATTACK_DAMAGE, 10.0D)
             .add(Attributes.ATTACK_KNOCKBACK, 1.0)
@@ -1010,7 +1150,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 构造器里已经装备过了，这里只是兜底：Mob.finalizeSpawn 可能按难度重置装备槽。
         this.equipStarMajoGear();
         // 生成点即秋千位：结构里她本来就摆在秋千上，战败之后要回到这儿。
-        this.homePos = this.blockPosition();
+        BlockPos spawnPos = this.blockPosition();
+        if (!this.level().isOutsideBuildHeight(spawnPos)) {
+            this.homePos = spawnPos;
+        }
         return result;
     }
 
@@ -1052,6 +1195,14 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         return stack;
     }
 
+    private void applyArmor() {
+        AttributeInstance armor = this.getAttribute(Attributes.ARMOR);
+        if (armor != null) {
+            armor.setBaseValue(this.activeChallengeConfig != null
+                    ? this.activeChallengeConfig.armor() : Config.winefoxArmor);
+        }
+    }
+
     /** 独立投枪动作，不与剑牢法术共用弹体。 */
     public void startSpearThrow(LivingEntity target) {
         this.cancelCast();
@@ -1059,6 +1210,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.resetFlightControl();
         this.setDeltaMovement(Vec3.ZERO);
         this.beginAction(WinefoxAction.SPEAR_THROW);
+        this.level().playSound(null, this.blockPosition(),
+                MaidSpellSounds.WINEFOX_ATK_2.get(), this.getSoundSource(), 1.0F, 1.0F);
         this.spearPending = true;
         this.spearTarget = target;
     }
@@ -1099,6 +1252,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return;
         }
         GeckoLibCompat.spawnBossSpear(this, target);
+        this.level().playSound(null, this.blockPosition(),
+                MaidSpellSounds.WINEFOX_MAGIC_SHOOT.get(), this.getSoundSource(), 1.0F, 1.0F);
     }
 
     /**
@@ -1135,6 +1290,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      */
     @Override
     public void aiStep() {
+        // Update concealment before goal selection and ISS can release a spell this tick.
+        if (!this.level().isClientSide && this.isBattleActive()) {
+            this.tickPlayerInvisibility();
+        }
         super.aiStep();
         if (this.level().isClientSide) {
             return;
@@ -1149,6 +1308,15 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 台词播报和回秋千的倒计时放那边会永远停在第一 tick。
         // 誓约那一段同样全程坐在秋千上（誓约不改遭遇状态，见 startVowFirst），所以也挂在这儿。
         this.dialogue.tick(this);
+        if (this.isBattleActive()) this.invisibilityDialogue.tick(this);
+        else this.invisibilityDialogue.clear();
+        this.spellController.tick();
+        if (this.isDizzy() && !StaranchorStunEffect.isStunned(this)) {
+            this.clearAction();
+        }
+        if (this.entityData.get(SWORD_PRISON_RECOVERING) && this.tickCount >= this.swordPrisonRecoveryEndTick) {
+            this.entityData.set(SWORD_PRISON_RECOVERING, false);
+        }
         this.tickActionEvents();
         this.tickChallengeStart();
         this.tickVow();
@@ -1192,6 +1360,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.entityData.define(CURTSYING, false);
         this.entityData.define(ACTION, WinefoxAction.NONE.id());
         this.entityData.define(ACTION_SERIAL, 0);
+        this.entityData.define(SWORD_PRISON_RECOVERING, false);
         this.entityData.define(PHASE_TWO, false);
         this.entityData.define(TRANSITIONING, false);
         this.entityData.define(RESTRICTED, false);
@@ -1268,6 +1437,13 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     /** 坐姿不选目标；正式挑战中到达生命地板的玩家也不再是有效目标。 */
     boolean isViableTarget(@Nullable LivingEntity candidate) {
+        return this.isEligibleTarget(candidate)
+            && this.invisibilityTracker.allows(candidate.getUUID())
+            && (!(candidate instanceof Player player) || !isConcealed(player)
+                || this.canDetectTarget(player));
+    }
+
+    private boolean isEligibleTarget(@Nullable LivingEntity candidate) {
         if (this.isSeated() || this.isDefeated() || this.returnHomeTicks > 0 || this.challengeStartTicks > 0) {
             return false;
         }
@@ -1308,6 +1484,89 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 普通生物不把 1 点血当成“已打服”，否则 canAttack/releaseSubduedTarget
         // 会在最后一击前把它们放掉。
         return true;
+    }
+
+    static boolean isConcealed(LivingEntity target) {
+        return target.isInvisible() || target.hasEffect(MobEffects.INVISIBILITY)
+            || target.hasEffect(MobEffectRegistry.TRUE_INVISIBILITY.get());
+    }
+
+    boolean canDetectTarget(LivingEntity target) {
+        double range = this.getAttributeValue(Attributes.FOLLOW_RANGE);
+        if (isConcealed(target)) {
+            double visibility = target.getVisibilityPercent(this);
+            boolean trueInvisibility = target.hasEffect(MobEffectRegistry.TRUE_INVISIBILITY.get());
+            if (trueInvisibility) {
+                visibility = Math.min(visibility, target.isCrouching() ? 0.056D : 0.07D);
+            } else if (target.hasEffect(MobEffects.INVISIBILITY) && !target.isInvisible()) {
+                visibility *= 0.7D * Math.max(0.1F, target.getArmorCoverPercentage());
+            }
+            range = WinefoxInvisibilityTracker.detectionRange(range, visibility);
+        }
+        return target.level() == this.level() && this.distanceToSqr(target) <= range * range;
+    }
+
+    /** Used only to relax ISS's blanket true-invisibility veto for this boss. */
+    public boolean canDiscoverInvisibleTarget(LivingEntity target) {
+        return this.isBattleActive() && this.isViableTarget(target)
+            && this.canDetectTarget(target) && this.hasLineOfSight(target);
+    }
+
+    private void tickPlayerInvisibility() {
+        this.invisibilityTracker.tick();
+        Player player = this.maidspell$challenger();
+        if (player == null) {
+            double followRange = this.getAttributeValue(Attributes.FOLLOW_RANGE);
+            for (Player candidate : this.level().players()) {
+                if (this.isEligibleTarget(candidate) && isConcealed(candidate)
+                        && this.distanceToSqr(candidate) <= followRange * followRange) {
+                    player = candidate;
+                    break;
+                }
+            }
+        }
+        if (player == null && this.getTarget() instanceof Player current) player = current;
+        if (player == null && this.lastPlayerTargetId != null) {
+            player = this.level().getPlayerByUUID(this.lastPlayerTargetId);
+        }
+        if (player != null && this.isEligibleTarget(player)) {
+            boolean hidden = isConcealed(player);
+            WinefoxInvisibilityTracker.Reaction reaction = this.invisibilityTracker.observe(
+                player.getUUID(), hidden, false,
+                Config.winefoxInvisibilitySearchTicks);
+            if (reaction.firstInvisibility()) {
+                this.resetAmbientDialogueCooldown();
+                this.invisibilityDialogue.speak(WinefoxDialogue.invisibilityLost(), 40);
+            }
+        }
+        LivingEntity target = this.getTarget();
+        if (target != null && !this.isViableTarget(target)) {
+            this.cancelSwordPrisonCombo();
+            this.spellController.cancel();
+            this.cancelSpearThrow();
+            this.getNavigation().stop();
+            this.getMoveControl().setWantedPosition(this.getX(), this.getY(), this.getZ(), 0.0D);
+            super.setTarget(null);
+            this.targetSwitchAllowedTick = 0;
+        }
+        if (player != null && isConcealed(player) && this.canDiscoverInvisibleTarget(player)) {
+            this.setTarget(player);
+            if (this.getTarget() == player && this.invisibilityTracker.observe(player.getUUID(),
+                    true, true, Config.winefoxInvisibilitySearchTicks).foundInvisiblePlayer()) {
+                this.resetAmbientDialogueCooldown();
+                this.invisibilityDialogue.append(WinefoxDialogue.invisibilityFound(), 40);
+            }
+        }
+    }
+
+    public WinefoxSpellController spells() {
+        return this.spellController;
+    }
+
+    @Override
+    public void cancelCast() {
+        super.cancelCast();
+        if (this.spellController != null) this.spellController.clear();
     }
 
     /**
@@ -1555,7 +1814,123 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     boolean isBusyCombatAction() {
-        return this.isTransitioning() || this.isThrowingSpear();
+        boolean swordPrisonPause = this.entityData.get(SWORD_PRISON_RECOVERING)
+            && (this.level().isClientSide || this.tickCount < this.swordPrisonRecoveryEndTick);
+        return this.isTransitioning() || this.isThrowingSpear() || this.isDizzy()
+            || swordPrisonPause || this.isCastingPalmBlackHole();
+    }
+
+    public boolean isCastingPalmBlackHole() {
+        return this.isCasting() && this.isPhaseTwo() && this.isBattleActive()
+            && com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.PalmBlackHoleSpell
+                .SPELL_ID.toString().equals(this.getMagicData().getCastingSpellId());
+    }
+
+    /** Called by the Palm Black Hole spell immediately before its ritual entity is spawned. */
+    public void beginPalmBlackHoleCast() {
+        if (this.level().isClientSide) return;
+        this.palmBlackHoleBaseX = this.getX();
+        this.palmBlackHoleBaseZ = this.getZ();
+        this.palmBlackHoleBaseY = this.getY();
+        this.setNoGravity(true);
+        this.getNavigation().stop();
+        this.resetFlightControl();
+        this.setDeltaMovement(Vec3.ZERO);
+    }
+
+    /** Restore ordinary combat flight after a completed or cancelled ritual. */
+    public void endPalmBlackHoleCast() {
+        if (!Double.isFinite(this.palmBlackHoleBaseY)) return;
+        this.palmBlackHoleBaseY = Double.NaN;
+        this.getNavigation().stop();
+        this.resetFlightControl();
+        this.setDeltaMovement(Vec3.ZERO);
+    }
+
+    boolean maidspell$summonSwordsUsedThisPhase() {
+        return this.summonSwordsUsedThisPhase;
+    }
+
+    void maidspell$setSummonSwordsUsedThisPhase(boolean used) {
+        this.summonSwordsUsedThisPhase = used;
+    }
+
+    boolean maidspell$palmBlackHoleTriggeredThisPhase() {
+        return this.palmBlackHoleTriggeredThisPhase;
+    }
+
+    void maidspell$setPalmBlackHoleTriggeredThisPhase(boolean triggered) {
+        this.palmBlackHoleTriggeredThisPhase = triggered;
+    }
+
+    private boolean isDizzy() {
+        return this.currentAction() == WinefoxAction.DIZZY;
+    }
+
+    public void startStaranchorStun() {
+        if (this.level().isClientSide || this.isCastingPalmBlackHole()) return;
+        this.removeEffect(IronsSpellbooksCompatEffects.VOID_PHASE.get());
+        if (!this.isBattleActive() || this.isDizzy()) return;
+        this.cancelSwordPrisonCombo();
+        this.cancelCast();
+        this.cancelSpearThrow();
+        this.entityData.set(SWORD_PRISON_RECOVERING, false);
+        // Finish the state change without releasing its interrupted knockback.
+        if (this.isTransitioning()) {
+            this.entityData.set(TRANSITIONING, false);
+            this.entityData.set(PHASE_TWO, this.phaseTransitionTarget);
+            this.equipPhaseWeapon(this.phaseTransitionTarget);
+            this.phaseTransitionTicks = 0;
+            this.nextSwordVariant = 0;
+        }
+        this.getNavigation().stop();
+        this.setDeltaMovement(Vec3.ZERO);
+        this.beginAction(WinefoxAction.DIZZY);
+    }
+
+    @Override
+    public void initiateCastSpell(AbstractSpell spell, int spellLevel) {
+        if (this.level().isClientSide) {
+            super.initiateCastSpell(spell, spellLevel);
+            return;
+        }
+        if (this.isCasting() || this.isBusyCombatAction() || StaranchorStunEffect.isStunned(this)) {
+            return;
+        }
+        if (this.swordPrisonCombo.isActive()) {
+            WinefoxSwordCombo.Step step = this.swordPrisonCombo.step(this.tickCount);
+            boolean expected = step == WinefoxSwordCombo.Step.FLASH
+                && ModifiedTeleportSpell.SPELL_ID.equals(spell.getSpellResource())
+                || step == WinefoxSwordCombo.Step.SLASH
+                && StarShadowStrikeSpell.SPELL_ID.equals(spell.getSpellResource());
+            if (!expected) return;
+        }
+        if (SwordPrisonSpell.SPELL_ID.equals(spell.getSpellResource())) {
+            LivingEntity target = this.getTarget();
+            if (!this.isViableTarget(target) || !this.teleportAwayFrom(target, 6.0D, 6.0D)) {
+                return;
+            }
+            this.getNavigation().stop();
+        }
+        super.initiateCastSpell(spell, spellLevel);
+    }
+
+    public void recoverAfterSwordPrison(LivingEntity target) {
+        if (this.level().isClientSide) return;
+        this.swordPrisonCombo.start(this.tickCount);
+        this.swordPrisonComboTarget = target;
+        this.swordPrisonRecoveryEndTick = this.tickCount + WinefoxSwordCombo.PAUSE_TICKS;
+        this.entityData.set(SWORD_PRISON_RECOVERING, true);
+        this.getNavigation().stop();
+        this.setDeltaMovement(Vec3.ZERO);
+    }
+
+    void cancelSwordPrisonCombo() {
+        boolean wasActive = this.swordPrisonCombo.isActive();
+        this.swordPrisonCombo.cancel();
+        this.swordPrisonComboTarget = null;
+        this.entityData.set(SWORD_PRISON_RECOVERING, false);
+        if (wasActive && this.isCasting()) this.cancelCast();
     }
 
     /**
@@ -1728,7 +2103,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             this.hint(player, "entity.touhou_little_maid_spell.stellar_witch.vow_already_bound");
             return;
         }
-        if (this.playerWinCount < VOW_REQUIRED_PLAYER_WINS || !this.soloWinAfterThree) {
+        if (this.playerWinCount < VOW_REQUIRED_PLAYER_WINS || !this.soloWinAfterRequiredWins) {
             this.hint(player, "entity.touhou_little_maid_spell.stellar_witch.vow_conditions_unmet");
             return;
         }
@@ -1961,6 +2336,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
         this.customChallenge = WinefoxChallengeConfig.hasPendingConfig(invitation);
         this.activeChallengeConfig = WinefoxChallengeConfig.takeFromItem(invitation);
+        this.applyArmor();
         challenger.getInventory().setChanged();
         this.maidspell$setMaxHealth((float) this.activeChallengeConfig.maxHealth());
         WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.RESET,
@@ -2006,6 +2382,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             this.clearAction();
             this.maidspell$setEncounterState(WinefoxEncounterState.SEATED);
             this.activeChallengeConfig = null;
+            this.applyArmor();
             this.customChallenge = false;
             this.maidspell$setMaxHealth((float) Config.winefoxMaxHealth);
             com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxSpellPowerBonus.apply(this);
@@ -2044,6 +2421,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private void speakDialogue(List<Component> lines, int intervalTicks) {
         this.resetAmbientDialogueCooldown();
         this.dialogue.speak(lines, intervalTicks);
+    }
+
+    void speakSpellDialogue(Component line) {
+        this.resetAmbientDialogueCooldown();
+        WinefoxDialogue.sendToNearby(this, line, 48.0D);
     }
 
     private void tickGreeting() {
@@ -2110,6 +2492,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     @Override
     protected void customServerAiStep() {
         boolean wasCasting = this.isCasting();
+        boolean wasSwordCombo = this.swordPrisonCombo.isActive();
+        String castingSpellId = this.getMagicData().getCastingSpellId();
         int castTicksRemaining = this.getMagicData().getCastDurationRemaining();
         super.customServerAiStep();
         // AbstractSpellCastingMob performs the spell's onCast callback and
@@ -2118,13 +2502,19 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // long cast still has more than one tick remaining and is ignored.
         if (wasCasting && !this.isCasting() && castTicksRemaining <= 1
                 && this.isBattleActive() && !this.isTransitioning()) {
-            WinefoxSpellMimic.afterSpell(this);
+            if (ModifiedTeleportSpell.SPELL_ID.toString().equals(castingSpellId)) {
+                this.swordPrisonCombo.spellReleased(WinefoxBossSpellAction.MODIFIED_TELEPORT);
+            } else if (StarShadowStrikeSpell.SPELL_ID.toString().equals(castingSpellId)) {
+                this.swordPrisonCombo.spellReleased(WinefoxBossSpellAction.STAR_SHADOW_STRIKE);
+            }
+            if (!this.swordPrisonCombo.isActive()) this.swordPrisonComboTarget = null;
+            if (!wasSwordCombo && !this.swordPrisonCombo.isActive()) {
+                WinefoxSpellMimic.afterSpell(this);
+            }
         }
         // 坐着的情况不在这儿处理：isImmobile() 为真时整条 serverAiStep 都不跑，
-        // 写在这里的分支永远到不了。那一段归 tickSeatedAnchor。
         if (this.returnHomeTicks > 0) {
             // 已经宣布收场、正在回秋千的路上，这 60t 里不许再锁新目标：
-            // 锁了也会在 tickReturnHome 那一刻被回满血抹掉，等于白打一场。
             this.setTarget(null);
             return;
         }
@@ -2160,7 +2550,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     /** 每场战斗只触发一次半血转阶段。 */
     private void tickPhaseThresholds() {
-        if (this.isTransitioning()) {
+        // 战斗结束与阶段检查在 customServerAiStep 的同一 tick 内执行。
+        // tickBattleOver() 可能已经把遭遇推进到 RETURNING；此时不能再因为
+        // 残余血量低于阈值启动一个永远不会被 server AI 继续推进的转场。
+        if (!this.isBattleActive() || this.returnHomeTicks > 0 || this.isTransitioning()) {
             return;
         }
         float healthFraction = this.maidspell$authoritativeHealth() / this.maidspell$bossMaxHealth();
@@ -2173,12 +2566,19 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * @param toPhaseTwo 转场结束后是否处于二阶段；{@code false} 就是被治疗回血后的退形
      */
     private void startPhaseTransition(boolean toPhaseTwo) {
+        // 入口也做一次防御性校验，避免未来新增其它调用点绕过
+        // tickPhaseThresholds() 的战斗状态检查。
+        if (!this.isBattleActive() || this.returnHomeTicks > 0 || this.isDefeated()) {
+            return;
+        }
+        this.cancelSwordPrisonCombo();
         // 转阶段要独占动作层，先把在飞的吟唱掐掉，免得法术在转场动画里落地。
         // 掐掉本身会让客户端算出 END 相位、想播一遍收尾动画，但转阶段这 120t 里
         // WinefoxActionAnimationProvider 一直占着 magic_casting 通道（优先级 200），
         // 施法 provider 挤不进来，所以看不到。
         this.cancelCast();
         this.cancelSpearThrow();
+        this.maidspell$resetAdaptiveDamageHistory();
         this.phaseTransitionTicks = PHASE_TRANSITION_TICKS;
         this.phaseTransitionKnockbackReleased = false;
         this.phaseTransitionWeaponSwapped = false;
@@ -2219,7 +2619,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.nextSwordVariant = 0;
         if (this.phaseTransitionTarget) {
             // 虚空相位是二阶段的开场增益，退形时不给。
-            WinefoxBossSpells.cast(this, this.getTarget(), WinefoxBossSpellAction.VOID_PHASE, 1);
+            this.spells().cast(this.getTarget(), WinefoxBossSpellAction.VOID_PHASE, 2);
         }
     }
 
@@ -2240,6 +2640,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     private void prioritizePlayerTarget() {
         if (this.tickCount % 10 != 0) {
+            return;
+        }
+        Player challenger = this.preferredChallengeTarget();
+        if (challenger != null) {
+            this.setTarget(challenger);
             return;
         }
         LivingEntity currentTarget = this.getTarget();
@@ -2269,6 +2674,14 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
     }
 
+    @Nullable
+    private Player preferredChallengeTarget() {
+        Player challenger = this.maidspell$challenger();
+        return this.isViableTarget(challenger)
+            && this.canDetectTarget(challenger)
+            && this.hasLineOfSight(challenger) ? challenger : null;
+    }
+
     /** 覆盖主动索敌与受击还击，防止到达生命地板的玩家重新成为目标。 */
     @Override
     public boolean canAttack(@NotNull LivingEntity target) {
@@ -2277,7 +2690,36 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     @Override
     public void setTarget(@Nullable LivingEntity target) {
-        super.setTarget(this.isBattleActive() ? target : null);
+        if (!this.isBattleActive()) {
+            this.targetSwitchAllowedTick = 0;
+            super.setTarget(null);
+            return;
+        }
+        if (target != null && !this.isViableTarget(target)) {
+            return;
+        }
+        LivingEntity current = this.getTarget();
+        Player challenger = this.preferredChallengeTarget();
+        // Retaliation and target goals use the same player preference and hold window.
+        if (target != null && challenger != null) {
+            target = challenger;
+        }
+        if (target == current) {
+            return;
+        }
+        boolean currentValid = this.isViableTarget(current) && !current.isRemoved()
+            && current.level() == this.level()
+            && this.distanceToSqr(current) <= Mth.square(this.getAttributeValue(Attributes.FOLLOW_RANGE));
+        if (currentValid && ((target == null && current == challenger)
+            || this.tickCount < this.targetSwitchAllowedTick || this.isCasting()
+            || this.isBusyCombatAction() || !this.canStartNewComboAction())) {
+            return;
+        }
+        super.setTarget(target);
+        if (target != null && this.getTarget() == target) {
+            if (target instanceof Player) this.lastPlayerTargetId = target.getUUID();
+            this.targetSwitchAllowedTick = this.tickCount + TARGET_HOLD_TICKS;
+        }
     }
 
     @Override
@@ -2308,6 +2750,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     @Override
     public boolean canBeAffected(MobEffectInstance effect) {
+        // Reject the stun itself: immobility also stops ISS's casting timer in server AI.
+        if (this.isCastingPalmBlackHole() && effect.getEffect() == MaidSpellEffects.STARANCHOR_STUN.get()) {
+            return false;
+        }
         return this.isBattleActive() && super.canBeAffected(effect);
     }
 
@@ -2374,9 +2820,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
         // 仅无归属的 out_of_world 伤害视为意外掉出世界；法术借用此类型但带施法者。
         boolean unattributed = source.getEntity() == null;
-        if (source.is(net.minecraft.world.damagesource.DamageTypes.GENERIC_KILL)
-                || source.is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD) && unattributed
-                || source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) && unattributed) {
+        if (source.is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD) && unattributed && (this.getY() < this.level().getMinBuildHeight() - 64.0D)) {
+            this.recoverFromVoid();
+            return false;
+        }
+        if (source.is(net.minecraft.world.damagesource.DamageTypes.GENERIC_KILL) && unattributed) {
             this.maidspell$returnAuthorized();
             return false;
         }
@@ -2396,6 +2844,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         boolean maidDamage = playerDuelDamage && anyMaidDamage;
         // 受击间隔在 super.hurt 前判定，避免被挡伤害仍触发动画与击退。
         if (WinefoxBossHealthController.wouldBlockHitInterval(this)) {
+            WinefoxBossHealthController.logBlockedHit(this, source, amount, "hit_interval");
             return false;
         }
         float healthBefore = this.maidspell$authoritativeHealth();
@@ -2513,6 +2962,16 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 行礼位与归位倒计时（两种演出的时长与台词不同）。
      */
     private void maidspell$teardownCombat() {
+        this.cancelSwordPrisonCombo();
+        this.removeEffect(MaidSpellEffects.STARANCHOR_STUN.get());
+        this.entityData.set(SWORD_PRISON_RECOVERING, false);
+        // 收场优先于转阶段。若两者在同一 tick 交叉，必须让服务端计时和
+        // 客户端同步动作一起收敛，否则 returnHomeTicks>0 会跳过后续 AI，
+        // 把 TRANSITIONING 留在半截状态。
+        this.entityData.set(TRANSITIONING, false);
+        this.phaseTransitionTicks = 0;
+        this.phaseTransitionKnockbackReleased = false;
+        this.phaseTransitionWeaponSwapped = false;
         this.cancelCast();
         this.cancelSpearThrow();
         this.clearAction();
@@ -2562,7 +3021,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             // 任何一句出错都会跳到下面的 catch，而赢就是赢，不该因为发奖失败少算一场。
             if (!this.isRestricted()) {
                 if (this.playerWinCount >= VOW_REQUIRED_PLAYER_WINS && !this.maidDamageOccurred) {
-                    this.soloWinAfterThree = true;
+                    this.soloWinAfterRequiredWins = true;
                 }
                 this.playerWinCount++;
             }
@@ -2588,7 +3047,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     /**
-     * 发战败奖励。
+     * 发战败奖励，包括总计 1200 点经验的经验球。
      *
      * <p><b>必须自己调 {@code dropFromLootTable}。</b>原版死亡流程已被禁用，
      * 只有有归属的合法战败才能调用这个奖励入口。
@@ -2600,6 +3059,40 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (!this.isRestricted() && !this.customChallenge) {
             this.spawnAtLocation(new ItemStack(MaidSpellItems.NEBULA_CORE.get()));
         }
+        if (this.level() instanceof ServerLevel serverLevel) {
+            ExperienceOrb.award(serverLevel, this.position(), 1200);
+        }
+    }
+
+    private boolean ensureHomePos() {
+        if (this.homePos == null) {
+            BlockPos candidate = this.blockPosition();
+            // Never turn a position outside the world into a persistent return point.
+            if (this.level().isOutsideBuildHeight(candidate)) {
+                return false;
+            }
+            this.homePos = candidate;
+        }
+        return !this.level().isOutsideBuildHeight(this.homePos);
+    }
+
+    /** Void recovery uses the recorded home, including while seated or already returning. */
+    private void recoverFromVoid() {
+        if (this.homePos == null || this.level().isOutsideBuildHeight(this.homePos)) {
+            return;
+        }
+        this.maidspell$returnAuthorized();
+        if (this.isSeated()) {
+            this.teleportTo(this.homePos.getX() + 0.5D, this.homePos.getY() + SEATED_HOVER_OFFSET,
+                this.homePos.getZ() + 0.5D);
+            this.setDeltaMovement(Vec3.ZERO);
+            this.resetFlightControl();
+            this.setNoGravity(true);
+            this.resetFallDistance();
+        } else {
+            this.returnHomeTicks = 1;
+            this.tickReturnHome();
+        }
     }
 
     /** 坐姿在 aiStep 锚定；结构生成可能跳过 finalizeSpawn，首次坐定时补记 homePos。 */
@@ -2608,12 +3101,14 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return;
         }
         this.setTarget(null);
-        if (this.homePos == null) {
-            this.homePos = this.blockPosition();
+        if (!this.ensureHomePos()) {
+            return;
         }
+        double seatedX = this.homePos.getX() + 0.5D;
         double seatedY = this.homePos.getY() + SEATED_HOVER_OFFSET;
-        if (Math.abs(this.getY() - seatedY) > 1.0E-4D) {
-            this.setPos(this.getX(), seatedY, this.getZ());
+        double seatedZ = this.homePos.getZ() + 0.5D;
+        if (this.position().distanceToSqr(seatedX, seatedY, seatedZ) > 1.0E-8D) {
+            this.teleportTo(seatedX, seatedY, seatedZ);
         }
         this.setNoGravity(true);
         this.setDeltaMovement(Vec3.ZERO);
@@ -2744,6 +3239,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.setDeltaMovement(Vec3.ZERO);
         this.resetFlightControl();
         this.setNoGravity(true);
+        this.resetFallDistance();
         if (!this.getMainHandItem().isEmpty()) {
             this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         }
@@ -2760,6 +3256,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.removeAllEffects();
         // 回满权威生命并退回一阶段，下一场挑战才从完整状态开始。
         this.activeChallengeConfig = null;
+        this.applyArmor();
         this.maidspell$setMaxHealth((float) Config.winefoxMaxHealth);
         com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxSpellPowerBonus.apply(this);
         WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.RESET,
@@ -2918,8 +3415,15 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return;
         }
         for (EntityMaid maid : serverLevel.getEntitiesOfClass(EntityMaid.class,
-            this.getBoundingBox().inflate(128.0D), this::isRetiredByThisBoss)) {
-            this.retiredMaidIds.add(maid.getUUID());
+            this.getBoundingBox().inflate(128.0D), maid -> this.isRetiredByThisBoss(maid)
+                || this.isBattleActive() && this.isChallengeParticipant(maid)
+                    && !isRetiredMaid(maid) && maid.isAlive() && maid.getHealth() <= duelSurvivalFloor())) {
+            if (this.isRetiredByThisBoss(maid)) {
+                this.retiredMaidIds.add(maid.getUUID());
+            } else {
+                // Damage events have finished writing health before this tick-time retirement.
+                this.retireMaidFromChallenge(maid);
+            }
         }
 
         boolean challengeActive = !this.isSeated()
@@ -3154,6 +3658,38 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
                 ? this.activeChallengeConfig.phaseTwoDamageMultiplier() : Config.winefoxPhaseTwoDamageMultiplier;
     }
 
+    boolean maidspell$adaptiveDamageEnabled() {
+        return Config.winefoxAdaptiveDamageEnabled;
+    }
+
+    double maidspell$adaptiveTargetDps() {
+        return Math.max(0.0D, this.maidspell$bossMaxHealth() * Config.winefoxAdaptiveTargetDpsRatio);
+    }
+
+    int maidspell$adaptiveWindowTicks() {
+        return Config.winefoxAdaptiveWindowTicks;
+    }
+
+    double maidspell$adaptiveActivationRatio() {
+        return Config.winefoxAdaptiveActivationRatio;
+    }
+
+    double maidspell$adaptiveStartMultiplier() {
+        return Config.winefoxAdaptiveStartMultiplier;
+    }
+
+    double maidspell$adaptiveMinMultiplier() {
+        return Config.winefoxAdaptiveMinMultiplier;
+    }
+
+    double maidspell$adaptiveSaturationRatio() {
+        return Config.winefoxAdaptiveSaturationRatio;
+    }
+
+    double maidspell$adaptiveFinalBudgetMultiplier() {
+        return Config.winefoxAdaptiveFinalBudgetMultiplier;
+    }
+
     public boolean isBattleMusicActive() {
         return this.entityData.get(BATTLE_MUSIC);
     }
@@ -3165,10 +3701,15 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 直到下一场重新开打（{@link #acceptChallenge}）才刷新。
      */
     private void resetBattleTally() {
+        this.spellController.resetEncounter();
+        this.invisibilityTracker.reset();
+        this.invisibilityDialogue.clear();
+        this.lastPlayerTargetId = null;
         this.totalDamageTaken = 0.0F;
         this.maidDamageTaken = 0.0F;
         this.maidDamageOccurred = false;
         this.trueDamageUsed = false;
+        this.maidspell$resetAdaptiveDamageHistory();
     }
 
     /** 读档后修正旧版战败实体的持物、重力和生命值状态。 */
@@ -3271,6 +3812,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
         tag.put("MaidSpellWinefoxLifecycle", lifecycle);
         tag.putBoolean("WinefoxPhaseTwo", this.isPhaseTwo());
+        tag.putBoolean("WinefoxHighDamageGuard", this.highDamageGuard.pending());
         tag.putBoolean("WinefoxTransitioning", this.isTransitioning());
         tag.putInt("WinefoxTransitionTicks", this.phaseTransitionTicks);
         tag.putBoolean("WinefoxTransitionToPhaseTwo", this.phaseTransitionTarget);
@@ -3283,13 +3825,29 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         tag.putFloat("WinefoxMaidDamageTaken", this.maidDamageTaken);
         tag.putBoolean("WinefoxMaidDamageOccurred", this.maidDamageOccurred);
         tag.putBoolean("WinefoxTrueDamageUsed", this.trueDamageUsed);
+        tag.putBoolean("WinefoxSummonSwordsUsedThisPhase", this.summonSwordsUsedThisPhase);
+        tag.putBoolean("WinefoxPalmBlackHoleTriggeredThisPhase", this.palmBlackHoleTriggeredThisPhase);
+        this.spellController.saveEncounter(tag);
+        CompoundTag invisibility = new CompoundTag();
+        invisibility.putInt("SearchTicks", this.invisibilityTracker.remainingTicks);
+        if (this.invisibilityTracker.searchingPlayer != null) {
+            invisibility.putUUID("SearchingPlayer", this.invisibilityTracker.searchingPlayer);
+        }
+        if (this.lastPlayerTargetId != null) invisibility.putUUID("LastPlayerTarget", this.lastPlayerTargetId);
+        ListTag noticed = new ListTag();
+        this.invisibilityTracker.noticedPlayers.forEach(id -> noticed.add(NbtUtils.createUUID(id)));
+        invisibility.put("NoticedPlayers", noticed);
+        ListTag found = new ListTag();
+        this.invisibilityTracker.foundPlayers.forEach(id -> found.add(NbtUtils.createUUID(id)));
+        invisibility.put("FoundPlayers", found);
+        tag.put("WinefoxInvisibility", invisibility);
         tag.putBoolean("WinefoxTradingUnlocked", this.tradingUnlocked);
         // 报价使用次数随 Offers 落 NBT，避免重登后重置每日限购。
         if (this.offers != null && !this.offers.isEmpty()) {
             tag.put("Offers", this.offers.createTag());
         }
         tag.putInt(PLAYER_WIN_COUNT_TAG, this.playerWinCount);
-        tag.putBoolean(SOLO_WIN_AFTER_THREE_TAG, this.soloWinAfterThree);
+        tag.putBoolean(SOLO_WIN_AFTER_REQUIRED_WINS_TAG, this.soloWinAfterRequiredWins);
         tag.putInt(VOW_STAGE_TAG, this.vowStage);
         tag.putInt(VOW_TICKS_TAG, this.vowTicks);
         tag.putBoolean(VOW_SEALED_TAG, this.vowSealed);
@@ -3327,6 +3885,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         try {
         super.readAdditionalSaveData(tag);
         this.entityData.set(PHASE_TWO, tag.getBoolean("WinefoxPhaseTwo"));
+        this.highDamageGuard.setPending(tag.getBoolean("WinefoxHighDamageGuard"));
         if (tag.contains("WinefoxHomePos")) {
             this.homePos = NbtUtils.readBlockPos(tag.getCompound("WinefoxHomePos"));
         }
@@ -3339,6 +3898,23 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.maidDamageTaken = tag.getFloat("WinefoxMaidDamageTaken");
         this.maidDamageOccurred = tag.getBoolean("WinefoxMaidDamageOccurred") || this.maidDamageTaken > 0.0F;
         this.trueDamageUsed = tag.getBoolean("WinefoxTrueDamageUsed");
+        this.summonSwordsUsedThisPhase = tag.getBoolean("WinefoxSummonSwordsUsedThisPhase");
+        this.palmBlackHoleTriggeredThisPhase = tag.getBoolean("WinefoxPalmBlackHoleTriggeredThisPhase");
+        this.spellController.loadEncounter(tag);
+        this.invisibilityTracker.reset();
+        CompoundTag invisibility = tag.getCompound("WinefoxInvisibility");
+        this.invisibilityTracker.searchingPlayer = invisibility.hasUUID("SearchingPlayer")
+            ? invisibility.getUUID("SearchingPlayer") : null;
+        this.invisibilityTracker.remainingTicks = this.invisibilityTracker.searchingPlayer == null ? 0
+            : Mth.clamp(invisibility.getInt("SearchTicks"), 0, 1200);
+        this.lastPlayerTargetId = invisibility.hasUUID("LastPlayerTarget")
+            ? invisibility.getUUID("LastPlayerTarget") : null;
+        for (Tag id : invisibility.getList("NoticedPlayers", Tag.TAG_INT_ARRAY)) {
+            this.invisibilityTracker.noticedPlayers.add(NbtUtils.loadUUID(id));
+        }
+        for (Tag id : invisibility.getList("FoundPlayers", Tag.TAG_INT_ARRAY)) {
+            this.invisibilityTracker.foundPlayers.add(NbtUtils.loadUUID(id));
+        }
         this.tradingUnlocked = tag.getBoolean("WinefoxTradingUnlocked");
         // 交易表读回来时<b>按当前代码重造、只把用过的次数搬回去</b>，而不是照用存档里那张。
         // 两个理由：反序列化出来的是普通 MerchantOffers，外层那个负责跨天清零的 DailyQuotaTable
@@ -3350,10 +3926,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             this.offers = WinefoxTrades.rebuildKeepingUses(savedOffers, this.tradingUnlocked);
             this.offersBuiltForUnlocked = this.tradingUnlocked;
         }
-        // 老存档没有这几个键：胜利场次读出 0（那三场得补，本来就没数过），誓约一律回到「没开始」。
+        // 老存档没有这几个键：胜利场次读出 0（常规胜利得补，本来就没数过），誓约一律回到「没开始」。
         // 两个默认值都是保守的那一侧 —— 缺键绝不会让一只没被驯服过的她凭空带上誓约。
         this.playerWinCount = tag.getInt(PLAYER_WIN_COUNT_TAG);
-        this.soloWinAfterThree = tag.getBoolean(SOLO_WIN_AFTER_THREE_TAG);
+        this.soloWinAfterRequiredWins = tag.getBoolean(SOLO_WIN_AFTER_REQUIRED_WINS_TAG);
         this.vowSealed = tag.getBoolean(VOW_SEALED_TAG);
         this.vowCharmGiven = tag.getBoolean(VOW_CHARM_TAG);
         this.vowPlayerId = tag.hasUUID(VOW_PLAYER_TAG) ? tag.getUUID(VOW_PLAYER_TAG) : null;
@@ -3387,6 +3963,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 她战败之后是留在场上的，读档得接着躺着，不能爬起来重新开打。
         this.entityData.set(CURTSYING, tag.getBoolean("WinefoxCurtsying"));
         this.maidspell$readLifecycle(tag);
+        this.applyArmor();
         this.setPersistenceRequired();
         if (this.isDefeated()) {
             this.setInvulnerable(true);
@@ -3609,6 +4186,52 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
     }
 
+    /** Administrator spell preview: enter phase two at 25% health and replay the full ritual. */
+    public boolean maidspell$testPalmBlackHoleAuthorized() {
+        if (this.level().isClientSide || this.isRemoved()
+                || this.maidspell$rewardState() == WinefoxRewardState.GRANTING || !this.ensureHomePos()) {
+            return false;
+        }
+        if (this.isDefeated() || this.maidspell$encounterState() == WinefoxEncounterState.RETURNING) {
+            this.maidspell$repairAuthorized();
+            this.tickReturnHome();
+        }
+        if (this.isSeated()) {
+            if (!this.maidspell$beginEncounter(WinefoxEncounterState.COMBAT)) return false;
+            this.resetBattleTally();
+        } else if (this.maidspell$encounterState() == WinefoxEncounterState.CHALLENGE_START) {
+            if (!this.maidspell$setEncounterState(WinefoxEncounterState.COMBAT)) return false;
+        }
+
+        // Repeated previews must replace any cast, combo, stun or unfinished phase animation.
+        this.cancelSwordPrisonCombo();
+        this.spells().cancel();
+        this.cancelSpearThrow();
+        this.removeEffect(MaidSpellEffects.STARANCHOR_STUN.get());
+        this.clearAction();
+        this.challengeStartTicks = 0;
+        this.noTargetTicks = 0;
+        this.phaseTransitionTicks = 0;
+        this.phaseTransitionKnockbackReleased = false;
+        this.phaseTransitionWeaponSwapped = false;
+        this.phaseTransitionTarget = true;
+        this.entityData.set(TRANSITIONING, false);
+        this.entityData.set(CURTSYING, false);
+        this.entityData.set(PHASE_TWO, true);
+        this.equipPhaseWeapon(true);
+        this.setInvulnerable(false);
+        this.maidspell$resetHitInterval();
+        this.maidspell$resetAdaptiveDamageHistory();
+        WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.ADMIN,
+            () -> this.setHealth(this.maidspell$bossMaxHealth() * 0.25F));
+        this.bossEvent.setVisible(true);
+        this.bossEvent.setProgress(0.25F);
+        this.entityData.set(BATTLE_MUSIC, true);
+        boolean started = this.spells().cast(this.getTarget(), WinefoxBossSpellAction.PALM_BLACK_HOLE, 1);
+        this.maidspell$setPalmBlackHoleTriggeredThisPhase(started);
+        return started;
+    }
+
     public boolean maidspell$resolvePendingReward(boolean reissue) {
         if (this.level().isClientSide || this.maidspell$rewardState() != WinefoxRewardState.GRANTING) {
             return false;
@@ -3639,11 +4262,14 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         return Component.literal("Winefox " + this.getUUID() + " encounter=" + this.encounterId
             + "#" + this.entityData.get(ENCOUNTER_SERIAL) + " " + this.maidspell$encounterState()
             + " health=" + this.maidspell$authoritativeHealth() + "/" + this.maidspell$bossMaxHealth()
+            + " phase=" + (this.isPhaseTwo() ? 2 : 1)
+            + " spell=" + (this.isCasting() ? this.getMagicData().getCastingSpellId() : "none")
             + " reward=" + this.maidspell$rewardState() + " unattributed=" + this.unattributedDamage
+            + " home=" + (this.homePos == null ? "unset" : this.homePos.toShortString())
             // 驯服那几项也报出来：胜利进度是攒在实体上的暗账，出了"为什么点她没反应"的疑问时，
             // 这一行是唯一能一眼看出是场次不够、还是誓约早就成了的地方。
             + " wins=" + this.playerWinCount + "/" + VOW_REQUIRED_PLAYER_WINS
-            + " soloWin=" + this.soloWinAfterThree
+            + " soloWin=" + this.soloWinAfterRequiredWins
             + " vow=" + this.vowStage + (this.vowSealed ? "(sealed)" : "")
             + " vowTicks=" + this.vowTicks);
     }

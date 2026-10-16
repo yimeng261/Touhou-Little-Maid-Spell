@@ -5,7 +5,10 @@ public enum WinefoxBossSpellAction {
     COUNTERSPELL,
     MAGIC_ARROW,
     SUMMON_SWORDS,
-    FIREBALL,
+    /** Chain lightning replaced the old fireball entry in the default pool. */
+    CHAIN_LIGHTNING,
+    /** Sunbeam (烈阳射线), fixed at level 3 in phase one defaults. */
+    SUNBEAM,
     LIGHTNING_LANCE,
     LIGHTNING_BOLT,
     ARROW_VOLLEY,
@@ -29,18 +32,26 @@ public enum WinefoxBossSpellAction {
     BLACK_HOLE,
     /**
      * 三矢连星：万法酒狐专属，一次施法连发三支魔法箭。
-     *
-     * <p>和 {@link #MAGIC_ARROW} 是两项而不是替换关系：那一项是原版法术的单发，这一项是模组自己的
-     * 三连发。两项各自有独立冷却，所以她既可能单发点射、也可能来一轮三连。
      */
     TRIPLE_STAR_ARROW,
 
     /**
      * 伴星黑洞：头顶 5 格的跟随型小黑洞，只吸别人的弹射物。
-     *
-     * <p>和 {@link #BLACK_HOLE} 是两项：那一项是原版那种把人和怪一起吸住的大黑洞，
-     * 这一项是挂在头顶、专治弹道的防守件。两项各有独立冷却，她可以两个都放。
      */
     COMPANION_BLACK_HOLE,
-    SPELLBREAKING_ECHO
+    SPELLBREAKING_ECHO,
+    /** 三垣连星：以目标为中心收缩的三棱柱场地。 */
+    THREE_ENCLOSURES,
+    /** 七星引路：固定北斗星阵，七次落击后由斗柄完成必中收束。 */
+    SEVEN_STAR_GUIDANCE,
+    PALM_BLACK_HOLE;
+
+    /** Ordinary spells weigh two; only the indicated phase reduces each special spell. */
+    public int defaultSelectionWeight(boolean secondPhase) {
+        if (this == BLACK_HOLE && !secondPhase || this == SWORD_PRISON && secondPhase) {
+            return 1;
+        }
+        return 2;
+    }
+
 }

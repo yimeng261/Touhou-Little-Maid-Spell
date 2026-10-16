@@ -22,6 +22,8 @@ public final class MaidSpellEffects {
     /** 虚空漫步：星锚珍珠给的状态，期间免疫虚空伤害。 */
     public static final RegistryObject<MobEffect> VOID_WALK =
             MOB_EFFECTS.register("void_walk", VoidWalkEffect::new);
+    public static final RegistryObject<MobEffect> STARANCHOR_STUN =
+            MOB_EFFECTS.register("staranchor_stun", StaranchorStunEffect::new);
 
     private MaidSpellEffects() {
     }

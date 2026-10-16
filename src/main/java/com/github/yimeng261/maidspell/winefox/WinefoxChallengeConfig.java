@@ -19,6 +19,7 @@ import java.util.List;
  */
 public record WinefoxChallengeConfig(
         double maxHealth,
+        double armor,
         double damageMultiplier,
         double spellPowerMultiplier,
         double hitDamageCapRatio,
@@ -43,13 +44,14 @@ public record WinefoxChallengeConfig(
     public static double minimumBasicValue(int index, WinefoxChallengeConfig defaults) {
         return switch (index) {
             case 0 -> Math.max(1.0D, defaults.maxHealth / 2.0D);
-            case 1 -> defaults.damageMultiplier / 2.0D;
-            case 2 -> defaults.spellPowerMultiplier / 2.0D;
-            case 3 -> defaults.hitDamageCapRatio / 2.0D;
-            case 4 -> Math.ceil(defaults.hitIntervalTicks / 2.0D);
-            case 5 -> defaults.maidDamageMultiplier / 2.0D;
-            case 6 -> defaults.damageToMaidMultiplier / 2.0D;
-            case 7 -> defaults.phaseTwoDamageMultiplier / 2.0D;
+            case 1 -> defaults.armor / 2.0D;
+            case 2 -> defaults.damageMultiplier / 2.0D;
+            case 3 -> defaults.spellPowerMultiplier / 2.0D;
+            case 4 -> defaults.hitDamageCapRatio / 2.0D;
+            case 5 -> Math.ceil(defaults.hitIntervalTicks / 2.0D);
+            case 6 -> defaults.maidDamageMultiplier / 2.0D;
+            case 7 -> defaults.damageToMaidMultiplier / 2.0D;
+            case 8 -> defaults.phaseTwoDamageMultiplier / 2.0D;
             default -> throw new IllegalArgumentException("Unknown Winefox setting: " + index);
         };
     }
@@ -65,6 +67,7 @@ public record WinefoxChallengeConfig(
     public static WinefoxChallengeConfig defaults() {
         return new WinefoxChallengeConfig(
                 Config.winefoxMaxHealth,
+                Config.winefoxArmor,
                 Config.winefoxDamageMultiplier,
                 Config.winefoxSpellPowerMultiplier,
                 Config.winefoxHitDamageCapRatio,
@@ -87,13 +90,14 @@ public record WinefoxChallengeConfig(
     public WinefoxChallengeConfig sanitized(WinefoxChallengeConfig defaults) {
         return new WinefoxChallengeConfig(
                 clamp(maxHealth, minimumBasicValue(0, defaults), 100_000.0D),
-                clamp(damageMultiplier, minimumBasicValue(1, defaults), 100.0D),
-                clamp(spellPowerMultiplier, minimumBasicValue(2, defaults), 1_000.0D),
-                clamp(hitDamageCapRatio, minimumBasicValue(3, defaults), 1.0D),
-                Math.max((int) minimumBasicValue(4, defaults), Math.min(MAX_INTERVAL, hitIntervalTicks)),
-                clamp(maidDamageMultiplier, minimumBasicValue(5, defaults), 1.0D),
-                clamp(damageToMaidMultiplier, minimumBasicValue(6, defaults), 100.0D),
-                clamp(phaseTwoDamageMultiplier, minimumBasicValue(7, defaults), 1.0D),
+                clamp(armor, minimumBasicValue(1, defaults), 30.0D),
+                clamp(damageMultiplier, minimumBasicValue(2, defaults), 100.0D),
+                clamp(spellPowerMultiplier, minimumBasicValue(3, defaults), 1_000.0D),
+                clamp(hitDamageCapRatio, minimumBasicValue(4, defaults), 1.0D),
+                Math.max((int) minimumBasicValue(5, defaults), Math.min(MAX_INTERVAL, hitIntervalTicks)),
+                clamp(maidDamageMultiplier, minimumBasicValue(6, defaults), 1.0D),
+                clamp(damageToMaidMultiplier, minimumBasicValue(7, defaults), 100.0D),
+                clamp(phaseTwoDamageMultiplier, minimumBasicValue(8, defaults), 1.0D),
                 imitatePlayerSpells,
                 imitateMaidSpells,
                 Math.max(minimumImitateChancePercent(defaults), Math.min(100, imitateChancePercent)),
@@ -139,6 +143,7 @@ public record WinefoxChallengeConfig(
     public CompoundTag toTag() {
         CompoundTag tag = new CompoundTag();
         tag.putDouble("MaxHealth", maxHealth);
+        tag.putDouble("Armor", armor);
         tag.putDouble("DamageMultiplier", damageMultiplier);
         tag.putDouble("SpellPowerMultiplier", spellPowerMultiplier);
         tag.putDouble("HitDamageCapRatio", hitDamageCapRatio);
@@ -157,6 +162,7 @@ public record WinefoxChallengeConfig(
 
     public void writeToBuffer(FriendlyByteBuf buffer) {
         buffer.writeDouble(maxHealth);
+        buffer.writeDouble(armor);
         buffer.writeDouble(damageMultiplier);
         buffer.writeDouble(spellPowerMultiplier);
         buffer.writeDouble(hitDamageCapRatio);
@@ -182,6 +188,7 @@ public record WinefoxChallengeConfig(
                 buffer.readDouble(),
                 buffer.readDouble(),
                 buffer.readDouble(),
+                buffer.readDouble(),
                 buffer.readInt(),
                 buffer.readDouble(),
                 buffer.readDouble(),
@@ -198,6 +205,7 @@ public record WinefoxChallengeConfig(
         WinefoxChallengeConfig fallback = defaults();
         return new WinefoxChallengeConfig(
                 tag.contains("MaxHealth", CompoundTag.TAG_DOUBLE) ? tag.getDouble("MaxHealth") : fallback.maxHealth,
+                tag.contains("Armor", CompoundTag.TAG_DOUBLE) ? tag.getDouble("Armor") : fallback.armor,
                 tag.contains("DamageMultiplier", CompoundTag.TAG_DOUBLE) ? tag.getDouble("DamageMultiplier") : fallback.damageMultiplier,
                 tag.contains("SpellPowerMultiplier", CompoundTag.TAG_DOUBLE) ? tag.getDouble("SpellPowerMultiplier") : fallback.spellPowerMultiplier,
                 tag.contains("HitDamageCapRatio", CompoundTag.TAG_DOUBLE) ? tag.getDouble("HitDamageCapRatio") : fallback.hitDamageCapRatio,
