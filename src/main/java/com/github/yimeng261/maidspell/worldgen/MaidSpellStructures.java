@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.worldgen.structure.FallenSanctumStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.FairyMaidCafeStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenCherryTreeStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
+import com.github.yimeng261.maidspell.worldgen.structure.OptionalModTemplateStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.RelicSanctumStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.StarfallGardenStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.StarwatchTowerStructure;
@@ -17,6 +18,11 @@ import net.minecraftforge.registries.RegistryObject;
 
 public class MaidSpellStructures {
     public static final DeferredRegister<StructureType<?>> STRUCTURE_TYPES = DeferredRegister.create(Registries.STRUCTURE_TYPE, MaidSpellMod.MOD_ID);
+
+    public static final RegistryObject<StructureType<OptionalModTemplateStructure>> OPTIONAL_MOD_TEMPLATE = STRUCTURE_TYPES.register(
+            "optional_mod_template",
+            () -> () -> OptionalModTemplateStructure.CODEC
+    );
     
     // 隐居之地结构（基于拼图系统）
     public static final RegistryObject<StructureType<HiddenRetreatStructure>> HIDDEN_RETREAT = STRUCTURE_TYPES.register(

@@ -20,6 +20,7 @@ import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.item.MaidSpellCreativeTab;
 import com.github.yimeng261.maidspell.item.bauble.spellWhiteList.contianer.MaidSpellContainers;
 import com.github.yimeng261.maidspell.network.NetworkHandler;
+import com.github.yimeng261.maidspell.loot.OptionalModLootItem;
 import com.github.yimeng261.maidspell.painting.MaidSpellPaintings;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
@@ -78,6 +79,7 @@ public class MaidSpellMod {
         MaidSpellEffects.MOB_EFFECTS.register(modBus);
         MaidSpellEntities.register(modBus);
         MaidSpellPaintings.register(modBus);
+        OptionalModLootItem.TYPES.register(modBus);
         IronsSpellbooksCompat.init(modBus);
         GeckoLibCompat.init(modBus);
         // 注册自定义结构

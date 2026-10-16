@@ -200,6 +200,7 @@ public final class StarfallGardenRetrofit {
                                   StarfallGardenStructure garden, List<ChunkPos> candidates) {
         var chunkGenerator = overworld.getChunkSource().getGenerator();
         var randomState = overworld.getChunkSource().randomState();
+        var structureState = overworld.getChunkSource().getGeneratorState();
         long seed = overworld.getSeed();
 
         int tried = 0;
@@ -209,13 +210,24 @@ public final class StarfallGardenRetrofit {
             }
             tried++;
 
+            // 先查落点计划，连尚未生成、最终可能失败的其他结构也要避让。
+            if (StarfallGardenPlacementGuard.hasNearbyStructureAttempt(structureState, garden, candidate)) {
+                continue;
+            }
+
             // 每个候选都要重开一次窗口：上一个候选可能已经把闸门关回去了。
             if (!StarfallGardenData.unlockForRetrofit()) {
                 return;
             }
             StructureStart start;
-            StarfallGardenData.enterRetrofitGeneration();
             try {
+                // 此时闸门已预约，读邻区块不会意外触发另一座庭院的正常生成。
+                // 先查完存档中的旧结构再计算拼图，避免写入任何庭院方块后才发现冲突。
+                if (StarfallGardenPlacementGuard.hasExistingNearbyStructure(overworld, garden, candidate)) {
+                    StarfallGardenData.relockAfterRetrofit();
+                    continue;
+                }
+                StarfallGardenData.enterRetrofitGeneration();
                 start = garden.generate(overworld.registryAccess(), chunkGenerator,
                         chunkGenerator.getBiomeSource(), randomState, overworld.getStructureManager(),
                         seed, candidate, 0, overworld, holder -> true);
