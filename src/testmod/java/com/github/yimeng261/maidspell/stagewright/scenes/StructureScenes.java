@@ -36,6 +36,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.AABB;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 
@@ -494,10 +495,19 @@ public final class StructureScenes {
                 .isEqualTo((long) positions.size());
     }
 
+    /** 只在对应联动模组在场时才会被选用的模板（两个模组互斥，不在场时它的方块本就未注册）。 */
+    private static final Map<String, String> TEMPLATE_REQUIRED_MOD = Map.of(
+            Checks.NS + "fairy_maid_cafe/fairy_maid_cafe", "youkaishomecoming",
+            Checks.NS + "fairy_maid_cafe/fairy_maid_cafe_youkaisfeasts", "youkaisfeasts");
+
     /** 模板里的方块都来自已注册的方块（没有声明依赖的模组方块会变成空气）。 */
     private static void onlyRegisteredBlocks(SceneContext ctx) {
         List<String> missing = new ArrayList<>();
         for (String template : StructureSnapshots.TEMPLATES.keySet()) {
+            String requiredMod = TEMPLATE_REQUIRED_MOD.get(template);
+            if (requiredMod != null && !ModList.get().isLoaded(requiredMod)) {
+                continue;
+            }
             ResourceLocation id = ResourceLocation.parse(template);
             ResourceLocation file = ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "structure/" + id.getPath() + ".nbt");
             try (var stream = ctx.server().getResourceManager().getResourceOrThrow(file).open()) {
