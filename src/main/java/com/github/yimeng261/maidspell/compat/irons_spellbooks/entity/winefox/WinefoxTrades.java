@@ -120,13 +120,12 @@ public final class WinefoxTrades {
                 new ItemStack(IronsSpellbooksCompatItems.STAR_SHADOW_STAFF.get()), GEAR_DAILY_LIMIT));
         offers.add(offer(emeralds(16), new ItemStack(MaidSpellItems.NEBULA_CORE.get()),
                 new ItemStack(IronsSpellbooksCompatItems.STAR_SHADOW_LONGSWORD.get()), GEAR_DAILY_LIMIT));
-        // 四张卷轴都是她自己在擂台上用的那几发：逐星飞瀑、星隙闪袭、星影斩击、星影剑阵（原「剑牢」）。
+        // 共 8 张卷轴，均为 1 级、10 绿宝石。前四张是她自己在擂台上用的逐星飞瀑、星隙闪袭、星影斩击、星影剑阵（原「剑牢」）。
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.MODIFIED_STARFALL.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.MODIFIED_TELEPORT.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.STAR_SHADOW_STRIKE.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.SWORD_PRISON.get())));
-        // 两发后加的：三矢连星与伴星黑洞，同样 1 级、同样 10 绿宝石。
-        // 它们**不**实现 BossExclusiveSpell —— 这里就是在卖，玩家拿到卷轴是设计的一部分。
+        // 后四张是三矢连星、伴星黑洞、破法回响、七星引路；卷轴由这里出售，玩家拿到卷轴是设计的一部分。
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.TRIPLE_STAR_ARROW.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.COMPANION_BLACK_HOLE.get())));
         offers.add(offer(emeralds(10), scroll(IronsSpellbooksCompatSpells.SPELLBREAKING_ECHO.get())));
