@@ -8,9 +8,11 @@ import net.neoforged.fml.loading.FMLPaths;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 /**
- * 把旧版放在 config 根目录下的通用、客户端配置文件一次性迁移到按功能拆分后的新位置。
+ * 把旧版放在 config 根目录下的通用、客户端配置文件一次性迁移到按功能拆分后的新位置，
+ * 并把 baubles.toml 里仍按旧分组存放的项挪到现在的分组。
  * <p>读写都用同步模式：NightConfig 默认的异步写盘在 close 时不保证落盘，随后改名旧文件就会丢掉配置。
  */
 final class ConfigMigration {
@@ -28,6 +30,7 @@ final class ConfigMigration {
             MaidSpellMod.LOGGER.warn("Could not migrate winefox.toml to boss.toml", exception);
         }
         migrateCommon(configDir.resolve(LEGACY_COMMON));
+        migrateBaublesLayout(configDir.resolve(MaidSpellMod.MOD_ID).resolve("baubles.toml"));
         migrateClient(configDir.resolve(LEGACY_CLIENT));
     }
 
@@ -76,6 +79,49 @@ final class ConfigMigration {
             MaidSpellMod.LOGGER.info("Migrated legacy client config to {}", target);
         } catch (Exception exception) {
             MaidSpellMod.LOGGER.warn("Could not migrate legacy client config {}", legacy, exception);
+        }
+    }
+
+    /**
+     * 回春返照各项从 baubles 根挪进 utility 组，梦云水晶组 dream_crystal 整体并进 special 组；
+     * 新位置已有值时以新位置为准，旧位置的值直接丢弃。
+     */
+    static void migrateBaublesLayout(Path file) {
+        if (!Files.isRegularFile(file)) {
+            return;
+        }
+        try (CommentedFileConfig config = CommentedFileConfig.builder(file).preserveInsertionOrder().sync().build()) {
+            config.load();
+            if (!(config.get("baubles") instanceof CommentedConfig baubles)) {
+                return;
+            }
+            boolean moved = false;
+            for (String key : List.copyOf(baubles.valueMap().keySet())) {
+                if (key.startsWith("springBloomReturn")) {
+                    relocate(baubles, baubles, key, "utility");
+                    moved = true;
+                }
+            }
+            if (baubles.get(List.of("dream_crystal")) instanceof CommentedConfig dreamCrystal) {
+                for (String key : List.copyOf(dreamCrystal.valueMap().keySet())) {
+                    relocate(dreamCrystal, baubles, key, "special");
+                }
+                baubles.remove(List.of("dream_crystal"));
+                moved = true;
+            }
+            if (moved) {
+                config.save();
+                MaidSpellMod.LOGGER.info("Moved Spring Bloom Return and Dream Crystal entries in {} to their new groups", file);
+            }
+        } catch (Exception exception) {
+            MaidSpellMod.LOGGER.warn("Could not move bauble config entries in {}", file, exception);
+        }
+    }
+
+    private static void relocate(CommentedConfig from, CommentedConfig baubles, String key, String group) {
+        Object value = from.remove(List.of(key));
+        if (baubles.get(List.of(group, key)) == null) {
+            baubles.set(List.of(group, key), value);
         }
     }
 

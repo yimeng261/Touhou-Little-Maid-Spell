@@ -133,17 +133,6 @@ final class ConfigBaubles {
                 .comment("女仆喂主人吃点东西时，女仆自己涨多少好感 (默认: 2)",
                         "Fragrant Ingenuity favour the maid gains when she feeds her owner.")
                 .defineInRange("fragrantIngenuityFavorabilityGain", 2, 1, 10);
-        FRAGRANT_INGENUITY_BUFF_DURATION = BUILDER
-                .comment("馥郁巧思喂食时给主人施加的随机增益时长，单位 tick",
-                        "Duration in ticks of the random beneficial effect granted when the maid feeds her owner.")
-                .defineInRange("fragrantIngenuityBuffDuration", 2400, 200, 120000);
-        FRAGRANT_INGENUITY_EFFECT_BLACKLIST = BUILDER
-                .comment("馥郁巧思随机效果黑名单；支持完整 id 和 regex: 正则，默认与梦云水晶相同",
-                        "Fragrant Ingenuity effect blacklist; supports ids and regex: patterns, defaults to Dream Crystal's list.")
-                .defineListAllowEmpty(
-                List.of("fragrantIngenuityEffectBlacklist"), () -> DEFAULT_BLACKLIST, obj -> obj instanceof String);
-        BUILDER.pop();
-
         SPRING_BLOOM_RETURN_MAX_STACKS = BUILDER
                 .comment("春花-返最多能存几层，层数就是她替主人挨刀的次数 (默认: 3)",
                         "Spring Bloom Return: maximum number of stored stacks.")
@@ -176,6 +165,16 @@ final class ConfigBaubles {
                 .comment("春花-返触发时返还的剩余法术冷却比例；好感 2 级起生效",
                         "Spring Bloom Return refunds this fraction of remaining spell cooldowns from favour level 2.")
                 .defineInRange("springBloomReturnCooldownRefundRatio", 0.20, 0.0, 1.0);
+        FRAGRANT_INGENUITY_BUFF_DURATION = BUILDER
+                .comment("馥郁巧思喂食时给主人施加的随机增益时长，单位 tick",
+                        "Duration in ticks of the random beneficial effect granted when the maid feeds her owner.")
+                .defineInRange("fragrantIngenuityBuffDuration", 2400, 200, 120000);
+        FRAGRANT_INGENUITY_EFFECT_BLACKLIST = BUILDER
+                .comment("馥郁巧思随机效果黑名单；支持完整 id 和 regex: 正则，默认与梦云水晶相同",
+                        "Fragrant Ingenuity effect blacklist; supports ids and regex: patterns, defaults to Dream Crystal's list.")
+                .defineListAllowEmpty(
+                List.of("fragrantIngenuityEffectBlacklist"), () -> DEFAULT_BLACKLIST, obj -> obj instanceof String);
+        BUILDER.pop();
 
         BUILDER.comment("触发机制相关饰品配置",
                         "Trigger mechanism bauble configurations").push("triggers");
@@ -219,10 +218,6 @@ final class ConfigBaubles {
                 .comment("距上一次受伤不到这么多 tick 的话，这一击整个不生效；魂之书真正值钱的是这条 (默认: 10 tick，即 0.5 秒)",
                         "A hit arriving sooner than this after the previous one is cancelled outright.")
                 .defineInRange("soulBookDamageIntervalThreshold", 10, 1, 100);
-        BUILDER.pop();
-
-        BUILDER.comment("梦云水晶相关配置",
-                        "Dream Crystal configurations").push("dream_crystal");
         DREAM_CRYSTAL_EFFECT_BLACKLIST = BUILDER
                 .comment("梦云水晶随机效果黑名单；支持完整 id 和 regex: 正则",
                         "Dream Crystal effect blacklist; supports full ids and regex: patterns.")
