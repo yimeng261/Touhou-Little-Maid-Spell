@@ -266,21 +266,20 @@ public final class StarfallGardenRetrofit {
                 return false;
             }
             MinecraftServer server = overworld.getServer();
-            if (!StarfallGardenData.recordPlacementAttempt(server, box.getCenter())) {
-                return false;
-            }
             if (!StarfallGardenData.tryReserve()) {
                 // 选点期间世界生成先占到了名额
-                StarfallGardenData.refundPlacementAttempt(server);
                 MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
                 return false;
             }
             // 名额已预约，读邻区块不会意外触发另一座庭院的正常生成。
-            // 旧区块里保存的起点和引用要在写任何方块之前查完，发现冲突就换下一个候选。
+            // 旧区块里保存的起点和引用要在写任何方块、记放置次数之前查完，发现冲突就退还名额换下一个候选。
             if (hasExistingNearbyStructure(overworld, garden, candidate)) {
                 StarfallGardenData.releaseReserve();
-                StarfallGardenData.refundPlacementAttempt(server);
                 continue;
+            }
+            if (!StarfallGardenData.recordPlacementAttempt(server, box.getCenter())) {
+                StarfallGardenData.releaseReserve();
+                return false;
             }
 
             pendingPlacement = new PlacementTask(overworld, garden, start, candidate,
