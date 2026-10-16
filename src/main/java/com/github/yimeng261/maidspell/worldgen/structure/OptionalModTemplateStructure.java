@@ -174,31 +174,11 @@ public class OptionalModTemplateStructure extends Structure {
             if (!anchored) {
                 continue;
             }
+            int top = floor + surfaceOffset + height - 1;
             boolean suitable = true;
             for (NoiseColumn column : columns) {
-                boolean supported = false;
-                for (int y = floor; y >= floor - maxTerrainStep; y--) {
-                    BlockState state = column.getBlock(y);
-                    if (isNetherGround(state)) {
-                        supported = true;
-                        break;
-                    }
-                    if (!isOpenSpace(state)) {
-                        break;
-                    }
-                }
-                if (!supported) {
+                if (!columnFits(column, floor, top, maxTerrainStep)) {
                     suitable = false;
-                    break;
-                }
-                int top = floor + surfaceOffset + height - 1;
-                for (int y = floor + 1; y <= top + 1; y++) {
-                    if (!isOpenSpace(column.getBlock(y))) {
-                        suitable = false;
-                        break;
-                    }
-                }
-                if (!suitable) {
                     break;
                 }
             }
@@ -207,6 +187,30 @@ public class OptionalModTemplateStructure extends Structure {
             }
         }
         return OptionalInt.empty();
+    }
+
+    /** 单列是否合适：floor 向下 maxTerrainStep 格内有洞穴地面支撑，且 floor 之上到模板顶上一格都是开阔空间。 */
+    private static boolean columnFits(NoiseColumn column, int floor, int top, int maxTerrainStep) {
+        boolean supported = false;
+        for (int y = floor; y >= floor - maxTerrainStep; y--) {
+            BlockState state = column.getBlock(y);
+            if (isNetherGround(state)) {
+                supported = true;
+                break;
+            }
+            if (!isOpenSpace(state)) {
+                break;
+            }
+        }
+        if (!supported) {
+            return false;
+        }
+        for (int y = floor + 1; y <= top + 1; y++) {
+            if (!isOpenSpace(column.getBlock(y))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean isDryGround(BlockState state) {
