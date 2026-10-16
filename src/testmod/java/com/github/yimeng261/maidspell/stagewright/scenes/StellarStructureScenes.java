@@ -7,6 +7,8 @@ import com.github.yimeng261.maidspell.stagewright.support.Lang;
 import com.github.yimeng261.maidspell.stagewright.support.StructureStage;
 import com.github.yimeng261.maidspell.stagewright.support.WorldExtract;
 import com.github.yimeng261.maidspell.worldgen.StarfallGardenData;
+import com.github.yimeng261.maidspell.worldgen.StellarEndshoreFixedSpawn;
+import com.github.yimeng261.maidspell.worldgen.structure.StellarEndshoreStructure;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.magicterra.stagewright.scene.Scene;
@@ -28,6 +30,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.PaintingVariantTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.decoration.PaintingVariant;
 import net.minecraft.world.item.ItemStack;
@@ -71,6 +74,8 @@ public final class StellarStructureScenes {
     public static List<Scene> dedicatedServer() {
         List<Scene> scenes = new ArrayList<>();
         scenes.add(Checks.superflat("stellar_endshore.placedWithWitch", 80, StellarStructureScenes::endshore).withChunkRadius(5));
+        scenes.add(Checks.scene("stellar_endshore.fixedAnchorSelection", 5, StellarStructureScenes::fixedAnchorSelection));
+        scenes.add(Checks.scene("stellar_endshore.biomeTagCoversEndBarrens", 5, StellarStructureScenes::endshoreBiomes));
         scenes.add(Checks.superflat("starwatch_tower.placedWithAstroMancer", 80, StellarStructureScenes::tower).withChunkRadius(4));
         scenes.add(Checks.superflat("starwatch_tower.bookshelfKeepsSweepingEdge", 80, StellarStructureScenes::sweepingEdgeBook)
                 .withChunkRadius(4));
@@ -92,6 +97,28 @@ public final class StellarStructureScenes {
         long witches = WorldExtract.entities(ctx.level(), placed).stream()
                 .filter(e -> BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).toString().equals(NS + "stellar_witch")).count();
         ctx.check(witches).as("结构里的星之魔女数").isEqualTo(1L);
+    }
+
+    /** 不同种子选出的固定锚点都是四个方向锚点之一，同一种子结果稳定；竞技场 Y 换算成拼图起点 Y 时减去 27。 */
+    private static void fixedAnchorSelection(SceneContext ctx) {
+        List<BlockPos> anchors = List.of(new BlockPos(800, 150, 0), new BlockPos(-800, 200, 0),
+                new BlockPos(0, 200, 800), new BlockPos(0, 200, -800));
+        for (long seed : new long[]{0L, 1L, -1L, Long.MIN_VALUE, Long.MAX_VALUE}) {
+            BlockPos anchor = StellarEndshoreFixedSpawn.selectAnchor(seed);
+            ctx.check(anchors.contains(anchor)).as("种子 " + seed + " 选出的锚点 " + anchor).isTrue();
+            ctx.check(StellarEndshoreFixedSpawn.selectAnchor(seed)).as("种子 " + seed + " 重复选择").isEqualTo(anchor);
+        }
+        ctx.check(StellarEndshoreStructure.fixedStartY(200)).as("Y=200 的拼图起点").isEqualTo(173);
+    }
+
+    /** 自然生成的生物群系标签含末地荒地，原有的末地小型岛屿仍在。 */
+    private static void endshoreBiomes(SceneContext ctx) {
+        var tag = TagKey.create(Registries.BIOME, ResourceLocation.parse(NS + "has_structure/stellar_endshore"));
+        var biomes = ctx.server().registryAccess().registryOrThrow(Registries.BIOME);
+        List<ResourceLocation> ids = new ArrayList<>();
+        biomes.getTagOrEmpty(tag).forEach(holder -> holder.unwrapKey().ifPresent(key -> ids.add(key.location())));
+        ctx.check(ids.contains(ResourceLocation.withDefaultNamespace("end_barrens"))).as("标签含末地荒地").isTrue();
+        ctx.check(ids.contains(ResourceLocation.withDefaultNamespace("small_end_islands"))).as("标签含末地小型岛屿").isTrue();
     }
 
     private static void tower(SceneContext ctx) {
