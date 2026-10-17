@@ -1,9 +1,11 @@
 package com.github.yimeng261.maidspell.stagewright.scenes;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.HiddenRetreatMaidRegistry;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.MaidOriginData;
 import com.github.yimeng261.maidspell.dimension.HiddenRetreatMaidData;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
+import com.github.yimeng261.maidspell.stagewright.support.Actors;
 import com.github.yimeng261.maidspell.stagewright.support.Checks;
 import com.github.yimeng261.maidspell.stagewright.support.Reflect;
 import net.magicterra.stagewright.scene.Scene;
@@ -52,8 +54,8 @@ public final class HiddenRetreatMaidScenes {
                 HiddenRetreatMaidScenes::originAloneGrantsNothing));
         scenes.add(Checks.scene("retreatMaid.claims.surviveRestartAndStayPerPlayer", 5,
                 HiddenRetreatMaidScenes::claimsSurviveRestart));
-        scenes.add(Checks.scene("retreatMaid.claims.constructionFailureReleasesPermit", 5,
-                HiddenRetreatMaidScenes::constructionFailureReleasesPermit));
+        scenes.add(Checks.scene("retreatMaid.claims.templateMaidFollowsClaim", 5,
+                HiddenRetreatMaidScenes::templateMaidFollowsClaim));
         scenes.add(Checks.scene("retreatMaid.claims.sharedStructureOwnerCannotBeReassigned", 5,
                 HiddenRetreatMaidScenes::structureOwnership));
         scenes.add(Checks.scene("retreatMaid.dimension.sharedConditionAcceptsAnyPrivateRetreat", 5,
@@ -185,25 +187,28 @@ public final class HiddenRetreatMaidScenes {
         HiddenRetreatMaidData loaded = reload(ctx, data);
         ctx.check(loaded.hasClaim(FIRST)).as("重启后保留认领").isTrue();
         ctx.check(loaded.hasClaim(SECOND)).as("别的玩家没有认领").isFalse();
-        ctx.check(loaded.tryBeginSpawn(FIRST)).as("已认领的玩家不再发许可").isFalse();
-        ctx.check(loaded.tryBeginSpawn(SECOND)).as("未认领的玩家可以发许可").isTrue();
-        loaded.finishSpawn(SECOND);
         ctx.check(loaded.reset(FIRST)).as("重置认领").isTrue();
-        ctx.check(loaded.tryBeginSpawn(FIRST)).as("重置后可以再发许可").isTrue();
+        ctx.check(loaded.hasClaim(FIRST)).as("重置后没有认领").isFalse();
     }
 
-    /** 创建许可是短时的：不会存成认领，构造失败释放后可重试，认领之后不再发许可。 */
-    private static void constructionFailureReleasesPermit(SceneContext ctx) {
-        HiddenRetreatMaidData data = new HiddenRetreatMaidData();
-        ctx.check(data.tryBeginSpawn(FIRST)).as("第一次发许可").isTrue();
-        ctx.check(data.tryBeginSpawn(FIRST)).as("许可未释放时不重复发").isFalse();
-        HiddenRetreatMaidData restarted = reload(ctx, data);
-        ctx.check(restarted.tryBeginSpawn(FIRST)).as("未释放的许可不会落盘").isTrue();
-        data.finishSpawn(FIRST);
-        ctx.check(data.tryBeginSpawn(FIRST)).as("释放后可以重试").isTrue();
-        data.claim(FIRST);
-        data.finishSpawn(FIRST);
-        ctx.check(data.tryBeginSpawn(FIRST)).as("认领之后不再发许可").isFalse();
+    /** 归属玩家未认领时，每座结构的模板女仆都生成（含并行装饰的多座）；认领之后不再生成。 */
+    private static void templateMaidFollowsClaim(SceneContext ctx) {
+        HiddenRetreatMaidData data = HiddenRetreatMaidRegistry.get(ctx.server());
+        UUID player = UUID.randomUUID();
+        BlockPos first = ctx.origin();
+        BlockPos second = ctx.origin().offset(32, 0, 0);
+        ResourceLocation dimension = ctx.level().dimension().location();
+        for (BlockPos pos : List.of(first, second)) {
+            data.bindStructure(new HiddenRetreatMaidData.StructureOwner(dimension, pos.getX() - 4, pos.getY() - 4,
+                    pos.getZ() - 4, pos.getX() + 4, pos.getY() + 4, pos.getZ() + 4, player));
+        }
+        CompoundTag tag = new CompoundTag();
+        tag.putString("id", Actors.MAID);
+        ctx.check(HiddenRetreatMaidRegistry.createTemplateMaid(ctx.level(), tag.copy(), first).isPresent()).as("第一座结构").isTrue();
+        ctx.check(HiddenRetreatMaidRegistry.createTemplateMaid(ctx.level(), tag.copy(), second).isPresent()).as("第二座结构").isTrue();
+        data.claim(player);
+        ctx.check(HiddenRetreatMaidRegistry.createTemplateMaid(ctx.level(), tag.copy(), first).isPresent()).as("认领之后").isFalse();
+        data.reset(player);
     }
 
     private static HiddenRetreatMaidData.StructureOwner owner(UUID player) {

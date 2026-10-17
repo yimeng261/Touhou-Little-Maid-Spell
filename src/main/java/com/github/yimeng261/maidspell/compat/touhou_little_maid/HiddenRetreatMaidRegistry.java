@@ -126,15 +126,7 @@ public final class HiddenRetreatMaidRegistry {
             // 还没归属的共享结构不能消耗别的玩家的名额。
             return EntityType.create(tag, accessor.getLevel());
         }
-        if (!data.tryBeginSpawn(owner)) {
-            return Optional.empty();
-        }
-        try {
-            Optional<Entity> result = EntityType.create(tag, accessor.getLevel());
-            return data.hasClaim(owner) ? Optional.empty() : result;
-        } finally {
-            // 构造失败既不算遇到过，也不算认领，始终允许重试。
-            data.finishSpawn(owner);
-        }
+        // 认领在驯服时才记下，未认领前每座结构都生成女仆；并行装饰的多座结构也按同一规则，不会随机丢掉一只。
+        return data.hasClaim(owner) ? Optional.empty() : EntityType.create(tag, accessor.getLevel());
     }
 }

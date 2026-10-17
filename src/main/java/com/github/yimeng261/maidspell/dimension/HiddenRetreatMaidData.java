@@ -20,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class HiddenRetreatMaidData extends SavedData {
     public static final String DATA_NAME = "touhou_little_maid_spell_retreat_maid_claims";
     private final Set<UUID> claimedPlayers = ConcurrentHashMap.newKeySet();
-    private final Set<UUID> pendingSpawns = ConcurrentHashMap.newKeySet();
     // 不可变快照：结构装饰线程只读，写入只在服务端主线程。
     private volatile List<StructureOwner> structureOwners = List.of();
 
@@ -46,21 +45,6 @@ public final class HiddenRetreatMaidData extends SavedData {
         return true;
     }
 
-    /** 短时的创建许可，不会作为不可撤销的认领落盘。 */
-    public boolean tryBeginSpawn(UUID player) {
-        if (hasClaim(player) || !pendingSpawns.add(player)) {
-            return false;
-        }
-        if (hasClaim(player)) {
-            pendingSpawns.remove(player);
-            return false;
-        }
-        return true;
-    }
-
-    public void finishSpawn(UUID player) {
-        pendingSpawns.remove(player);
-    }
 
     public record StructureOwner(ResourceLocation dimension, int minX, int minY, int minZ,
                                  int maxX, int maxY, int maxZ, UUID player) {
