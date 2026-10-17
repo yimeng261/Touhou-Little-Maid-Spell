@@ -45,11 +45,6 @@ public abstract class StructureTemplateMixin implements StructureTemplateAccesso
         this.maidSpell$ownTemplate = own;
     }
 
-    @Override
-    public boolean maidspell$isOwnTemplate() {
-        return maidSpell$ownTemplate;
-    }
-
     @Shadow
     private static Optional<Entity> createEntityIgnoreException(ServerLevelAccessor level, CompoundTag tag) {
         throw new AssertionError();

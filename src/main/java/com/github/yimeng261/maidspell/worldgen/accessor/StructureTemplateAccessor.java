@@ -9,8 +9,6 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 public interface StructureTemplateAccessor {
     void maidspell$setOwnTemplate(boolean own);
 
-    boolean maidspell$isOwnTemplate();
-
     static void markOwn(StructureTemplate template) {
         ((StructureTemplateAccessor) template).maidspell$setOwnTemplate(true);
     }
