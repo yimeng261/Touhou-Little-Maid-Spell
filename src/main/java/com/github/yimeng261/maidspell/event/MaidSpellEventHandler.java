@@ -23,6 +23,7 @@ import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService
 import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBauble;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
+import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBell;
 import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.github.yimeng261.maidspell.spell.manager.AllianceManager;
@@ -740,6 +741,7 @@ public class MaidSpellEventHandler {
         YueLinglanBlockEntity.clearAllStructureSearchCaches();
         SpellBookManager.clearAll();
         MaidSuppressionZone.clear();
+        WindSeekingBell.clearAwaitingResults();
     }
 
     private static void cleanupMaidBaubleRuntimeState(UUID maidId) {

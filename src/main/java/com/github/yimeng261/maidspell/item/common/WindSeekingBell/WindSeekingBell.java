@@ -25,7 +25,9 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -36,6 +38,17 @@ import java.util.concurrent.CompletableFuture;
  * 3. Shift+右键：从归隐之地返回主世界
  */
 public class WindSeekingBell extends Item {
+    /**
+     * 已发起搜索、结果回调还没在主线程处理完的玩家（只在主线程读写）。
+     * 搜索完成到回调执行之间再次使用会另起一次搜索并绑定另一座结构，之后扣配额失败，那座结构就没人能领；
+     * 同一搜索的重复回调也会再扣一次配额。期间再用铃只提示仍在搜索。
+     */
+    private static final Set<UUID> AWAITING_RESULT = new HashSet<>();
+
+    /** 停服时回调可能再也不会执行，清掉等待标记，免得同一进程里下次进存档用不了铃。 */
+    public static void clearAwaitingResults() {
+        AWAITING_RESULT.clear();
+    }
 
     private static final Component NO_STRUCTURE_MESSAGE = Component.translatable(
         "item.touhou_little_maid_spell.wind_seeking_bell.no_structure"
@@ -194,6 +207,12 @@ public class WindSeekingBell extends Item {
         if (player.getCooldowns().isOnCooldown(this)) {
             return;
         }
+        if (AWAITING_RESULT.contains(player.getUUID())) {
+            player.displayClientMessage(
+                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure")
+                            .withStyle(ChatFormatting.YELLOW), true);
+            return;
+        }
 
         long searchStartTime = System.currentTimeMillis();
 
@@ -256,13 +275,16 @@ public class WindSeekingBell extends Item {
                         .withStyle(ChatFormatting.YELLOW), true);
 
         // 5. 发起搜索
+        UUID playerId = player.getUUID();
+        AWAITING_RESULT.add(playerId);
         CompletableFuture<BlockPos> future = RetreatManager.searchStructure(
-                serverLevel, player.getUUID(), playerPos);
+                serverLevel, playerId, playerPos);
 
         // 6. 处理结果
         future.thenAccept(result -> {
             long searchTime = System.currentTimeMillis() - searchStartTime;
             serverLevel.getServer().execute(() -> {
+                AWAITING_RESULT.remove(playerId);
                 if (result != null) {
                     // 共享模式 + 配额限制：消耗配额，失败则中止
                     if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
@@ -307,6 +329,7 @@ public class WindSeekingBell extends Item {
                 }
             });
         }).exceptionally(throwable -> {
+            serverLevel.getServer().execute(() -> AWAITING_RESULT.remove(playerId));
             Throwable cause = throwable instanceof java.util.concurrent.CompletionException
                     ? throwable.getCause() : throwable;
             if (!(cause instanceof java.util.concurrent.CancellationException)) {
