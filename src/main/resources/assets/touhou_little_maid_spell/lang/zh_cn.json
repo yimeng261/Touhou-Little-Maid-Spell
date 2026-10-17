@@ -362,6 +362,7 @@
   "touhou_little_maid_spell.configuration.allowAllStructures": "是否允许所有结构在归隐之地生成 (默认: false)\ntrue: 放行所有结构，忽略白名单\nfalse: 仅允许白名单中的结构生成",
   "touhou_little_maid_spell.configuration.allowedStructures": "允许在归隐之地生成的结构白名单（allowAllStructures 为 false 时生效）",
   "touhou_little_maid_spell.configuration.dreamCrystalEffectBlacklist": "梦云水晶随机正面效果黑名单，黑名单内的效果不会被随机赋予",
+  "touhou_little_maid_spell.configuration.dreamCrystalEffectBlacklistMigrationVersion": "梦云水晶与馥郁巧思黑名单的默认值迁移版本，请勿手动修改",
   "touhou_little_maid_spell.configuration.movement": "移动相关饰品配置",
   "touhou_little_maid_spell.configuration.floatingFoxLeafOwnerRange": "浮波狐叶主人水面行走有效范围（格） (默认: 16.0)",
   "touhou_little_maid_spell.configuration.moltenFoxLeafOwnerRange": "熔岩狐叶主人岩浆行走有效范围（格） (默认: 16.0)",

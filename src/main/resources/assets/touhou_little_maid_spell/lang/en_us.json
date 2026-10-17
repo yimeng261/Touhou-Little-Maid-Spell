@@ -364,6 +364,7 @@
   "touhou_little_maid_spell.configuration.allowAllStructures": "Whether to allow all structures in retreat dimensions (default: false)\ntrue: Allow all structures, ignore whitelist\nfalse: Only allow whitelisted structures",
   "touhou_little_maid_spell.configuration.allowedStructures": "Whitelist of structures allowed in retreat dimensions (effective when allowAllStructures is false)",
   "touhou_little_maid_spell.configuration.dreamCrystalEffectBlacklist": "Dream Crystal random beneficial effect blacklist",
+  "touhou_little_maid_spell.configuration.dreamCrystalEffectBlacklistMigrationVersion": "Dream Crystal and Fragrant Ingenuity blacklist migration version (do not edit)",
   "touhou_little_maid_spell.configuration.movement": "Movement-related bauble configurations",
   "touhou_little_maid_spell.configuration.floatingFoxLeafOwnerRange": "Floating Fox Leaf owner water walking range (blocks) (default: 16.0)",
   "touhou_little_maid_spell.configuration.moltenFoxLeafOwnerRange": "Molten Fox Leaf owner lava walking range (blocks) (default: 16.0)",
