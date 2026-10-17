@@ -124,6 +124,8 @@ public final class StructureScenes {
             new PaintingTemplate("starfall_garden_5", Checks.NS + "starfall_garden", 3),
             new PaintingTemplate("hidden_retreat/hidden_retreat_building", Checks.NS + "hidden_retreat", 2),
             new PaintingTemplate("fairy_maid_cafe/fairy_maid_cafe", Checks.NS + "fairy_maid_cafe", 2),
+            new PaintingTemplate("fairy_maid_cafe/fairy_maid_cafe_youkaisfeasts", Checks.NS + "fairy_maid_cafe", 2),
+            new PaintingTemplate("cherry_cabin", Checks.NS + "cherry_cabin", 2),
             new PaintingTemplate("enchantress_footsteps/village/snowy_house", "minecraft:village_snowy", 2));
 
     /**

@@ -324,7 +324,7 @@ public final class NpcScenes {
         ctx.check(root.canUse(op.withPermission(0))).as("非 OP 能用").isFalse();
         Set<String> actions = new TreeSet<>();
         root.getChildren().forEach(target -> target.getChildren().forEach(action -> actions.add(action.getName())));
-        ctx.check(actions).as("子命令").isEqualTo(new TreeSet<>(List.of("status", "return", "repair", "reward_confirm", "reward_reissue", "destroy")));
+        ctx.check(actions).as("子命令").isEqualTo(new TreeSet<>(List.of("status", "return", "repair", "reward_confirm", "reward_reissue", "destroy", "palm_black_hole")));
     }
 
     /** 最多 4 朵，破坏时按朵数掉落，属于花。 */

@@ -249,7 +249,7 @@ public final class StellarContentScenes {
         ctx.check(result).as("四个秘银锭围着星陨石合成的结果").isEqualTo(NS + "returning_star");
     }
 
-    /** 玩家右键：耗 8 点耐久、获得 30 秒虚空漫步，期间虚空伤害无效；耐久见底时碎掉；不可修复。 */
+    /** 玩家右键：耗 8 点耐久、获得 35 秒虚空漫步并进入 30 秒冷却，期间虚空伤害无效；耐久见底时碎掉；不可修复。 */
     private static void pearlPlayer(SceneContext ctx) {
         ServerPlayer player = Owners.visitor(ctx, "TlmsPearlUser", 0, 0, 0);
         ItemStack pearl = Actors.stack(NS + "staranchor_pearl");
@@ -257,7 +257,8 @@ public final class StellarContentScenes {
         pearl.getItem().use(ctx.level(), player, InteractionHand.MAIN_HAND);
         ctx.check(pearl.getDamageValue()).as("用一次后的耐久损耗").isEqualTo(8);
         ctx.check(player.hasEffect(MaidSpellEffects.VOID_WALK)).as("获得虚空漫步").isTrue();
-        ctx.check(player.getEffect(MaidSpellEffects.VOID_WALK).getDuration()).as("虚空漫步时长").isBetween(590, 600);
+        ctx.check(player.getEffect(MaidSpellEffects.VOID_WALK).getDuration()).as("虚空漫步时长").isBetween(690, 700);
+        ctx.check(player.getCooldowns().isOnCooldown(pearl.getItem())).as("用后进入冷却").isTrue();
         float before = player.getHealth();
         player.invulnerableTime = 0;
         player.hurt(player.damageSources().fellOutOfWorld(), 4);
@@ -265,8 +266,12 @@ public final class StellarContentScenes {
         ctx.check(pearl.isRepairable()).as("星锚珍珠可修复").isFalse();
         int damage = pearl.getDamageValue();
         pearl.getItem().use(ctx.level(), player, InteractionHand.MAIN_HAND);
+        ctx.check(pearl.getDamageValue()).as("冷却中重复使用不消耗耐久").isEqualTo(damage);
+        player.getCooldowns().removeCooldown(pearl.getItem());
+        pearl.getItem().use(ctx.level(), player, InteractionHand.MAIN_HAND);
         ctx.check(pearl.getDamageValue()).as("虚空漫步仍在时重复使用不消耗耐久").isEqualTo(damage);
         player.removeEffect(MaidSpellEffects.VOID_WALK);
+        player.getCooldowns().removeCooldown(pearl.getItem());
         pearl.setDamageValue(pearl.getMaxDamage() - 4);
         pearl.getItem().use(ctx.level(), player, InteractionHand.MAIN_HAND);
         ctx.check(player.getMainHandItem().isEmpty()).as("耐久耗尽后珍珠碎掉").isTrue();

@@ -105,7 +105,7 @@ public final class NaturalScenes {
                     List.of("#minecraft:is_overworld"), "none", "starfall_garden_set", 24, 12, 20130426, 1.0F, ""),
             new Reg("starwatch_tower", NS + "starwatch_tower", List.of("minecraft:end_highlands"), "beard_thin",
                     "starwatch_tower_set", 23, 12, 1472905386, 1.0F, ""),
-            new Reg("stellar_endshore", NS + "stellar_endshore", List.of("minecraft:small_end_islands"), "none",
+            new Reg("stellar_endshore", NS + "stellar_endshore", List.of("minecraft:end_barrens", "minecraft:small_end_islands"), "none",
                     "stellar_endshore_set", 512, 448, 826719453, 1.0F, ""),
             new Reg("woods_perch", "minecraft:jigsaw", List.of("minecraft:forest", "minecraft:flower_forest"),
                     "beard_thin", "woods_perch", 36, 16, 1248316572, 1.0F, ""),
