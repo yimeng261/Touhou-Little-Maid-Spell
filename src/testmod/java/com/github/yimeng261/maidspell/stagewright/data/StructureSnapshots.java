@@ -774,6 +774,8 @@ public final class StructureSnapshots {
                 "minecraft:glow_item_frame|item=youkaishomecoming:mocha",
                 "minecraft:painting|variant=minecraft:aztec2",
                 "minecraft:painting|variant=minecraft:sunset",
+                "touhou_little_maid:fairy",
+                "touhou_little_maid:fairy",
                 "touhou_little_maid:maid|gear=youkaishomecoming:latte"),
             List.of(
                 Map.ofEntries(Map.entry("model_id", "geckolib:winefox_little"), Map.entry("favorability", "3"), Map.entry("sitting", "1"), Map.entry("task", "touhou_little_maid:idle"), Map.entry("structureSpawn", "0"), Map.entry("backpack", "touhou_little_maid:small_backpack"), Map.entry("scheduleMode", "ALL"), Map.entry("hand", "youkaishomecoming:latte,"), Map.entry("armor", ",,,"), Map.entry("inventory", "0:minecraft:glass_bottle,1:youkaishomecoming:affogato,2:youkaishomecoming:con_panna,3:youkaishomecoming:cappuccino,4:youkaishomecoming:macchiato,5:youkaishomecoming:mocha"), Map.entry("baubles", "7:touhou_little_maid_spell:fragrant_ingenuity"), Map.entry("blueNoteSpells", ""), Map.entry("effects", "youkaishomecoming:caffeinated,youkaishomecoming:sober")))));
