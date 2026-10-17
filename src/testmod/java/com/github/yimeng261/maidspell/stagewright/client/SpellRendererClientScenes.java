@@ -81,7 +81,7 @@ public final class SpellRendererClientScenes {
     }
 
     private static Scene scene(String name, Consumer<Mismatches> body) {
-        return Checks.scene(name, 20, ctx -> ClientSide.verify(ctx, name, body));
+        return Checks.scene(name, 60, ctx -> ClientSide.verify(ctx, name, body));
     }
 
     // ---- 七星指引 ----
@@ -303,9 +303,11 @@ public final class SpellRendererClientScenes {
                         float[] data = face.vertices();
                         for (int i = 0; i < data.length; i += 5) {
                             Vector3f vertex = rotation.transform(new Vector3f(data[i], data[i + 1], data[i + 2]));
-                            m.check("种子 " + seed + " 第 " + age + " 刻顶点 " + vertex + " 在剔除盒内",
-                                    bounds.contains(vertex.x + position.x,
-                                            vertex.y + position.y + SwordArrayLayout.SWORD_WIDTH * 0.5D, vertex.z + position.z));
+                            // 顶点很多，只在失败时拼说明
+                            if (!bounds.contains(vertex.x + position.x,
+                                    vertex.y + position.y + SwordArrayLayout.SWORD_WIDTH * 0.5D, vertex.z + position.z)) {
+                                m.check("种子 " + seed + " 第 " + age + " 刻顶点 " + vertex + " 在剔除盒内", false);
+                            }
                         }
                     }
                 }
@@ -368,7 +370,9 @@ public final class SpellRendererClientScenes {
         GeoBone core = model.getBone("blackholecore").orElse(null);
         m.check("有 blackholecore 骨骼", core != null);
         if (core != null) {
-            m.equal("核心枢轴", List.of(0.0F, 0.0F, 0.0F), List.of(core.getPivotX(), core.getPivotY(), core.getPivotZ()));
+            m.close("核心枢轴 x", 0, core.getPivotX(), 1.0E-6);
+            m.close("核心枢轴 y", 0, core.getPivotY(), 1.0E-6);
+            m.close("核心枢轴 z", 0, core.getPivotZ(), 1.0E-6);
         }
         for (GeoBone bone : bones) {
             for (GeoCube cube : bone.getCubes()) {

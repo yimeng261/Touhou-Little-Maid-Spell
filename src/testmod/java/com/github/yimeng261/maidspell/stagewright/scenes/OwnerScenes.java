@@ -125,7 +125,7 @@ public final class OwnerScenes {
                 .as("关闭界面后白名单记录的法术").isEqualTo(List.of("irons_spellbooks:firebolt"));
     }
 
-    /** 喋血之心：自有女仆打出伤害时主人按比例回血；别人的女仆打出伤害不给这个玩家回血。 */
+    /** 喋血之心：自有女仆打出伤害时主人按目标实际扣血量的比例回血；别人的女仆打出伤害不给这个玩家回血。 */
     private static void bleedingHeart(SceneContext ctx, ServerPlayer player) {
         EntityMaid own = Players.ownedMaid(ctx, player, 2, 0, 0, NS + "bleeding_heart");
         EntityMaid stranger = Actors.stillMaid(ctx, -2, 0, 0);
@@ -136,9 +136,12 @@ public final class OwnerScenes {
             player.setHealth(10);
             otherTarget.hurt(stranger.damageSources().mobAttack(stranger), 8);
             ctx.check(player.getHealth()).as("别人的喋血之心女仆打出 8 点后玩家生命").isCloseTo(10, 1e-4);
+            float before = target.getHealth();
             target.hurt(own.damageSources().mobAttack(own), 8);
-            ctx.check(player.getHealth()).as("自有喋血之心女仆打出 8 点后主人生命")
-                    .isCloseTo(10 + 8 * Config.bleedingHeartHealRatio, 1e-4);
+            // 僵尸自带护甲，实际扣血少于 8
+            float dealt = before - target.getHealth();
+            ctx.check(player.getHealth()).as("自有喋血之心女仆打出 8 点（实际扣血 " + dealt + "）后主人生命")
+                    .isCloseTo(10 + dealt * Config.bleedingHeartHealRatio, 1e-4);
         });
     }
 
