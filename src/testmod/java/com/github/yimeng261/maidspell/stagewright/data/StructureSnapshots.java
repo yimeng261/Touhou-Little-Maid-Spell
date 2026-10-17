@@ -862,7 +862,7 @@ public final class StructureSnapshots {
                 "minecraft:glow_item_frame|item=youkaisfeasts:black_tea",
                 "minecraft:glow_item_frame|item=youkaisfeasts:dark_tea",
                 "minecraft:glow_item_frame|item=youkaisfeasts:green_tea",
-                "minecraft:glow_item_frame|item=youkaisfeasts:lemon_black_tea",
+                "minecraft:glow_item_frame|item=youkaisfeasts:saidi_tea",
                 "minecraft:glow_item_frame|item=youkaisfeasts:matcha",
                 "minecraft:glow_item_frame|item=youkaisfeasts:tea_leaves",
                 "minecraft:glow_item_frame|item=youkaisfeasts:tea_mocha",
@@ -871,7 +871,7 @@ public final class StructureSnapshots {
                 "minecraft:painting|variant=minecraft:sunset",
                 "touhou_little_maid:maid|gear=youkaisfeasts:oolong_tea"),
             List.of(
-                Map.ofEntries(Map.entry("model_id", "geckolib:winefox_little"), Map.entry("favorability", "3"), Map.entry("sitting", "1"), Map.entry("task", "touhou_little_maid:idle"), Map.entry("structureSpawn", "0"), Map.entry("backpack", "touhou_little_maid:small_backpack"), Map.entry("scheduleMode", "ALL"), Map.entry("hand", "youkaisfeasts:oolong_tea,"), Map.entry("armor", ",,,"), Map.entry("inventory", "0:minecraft:glass_bottle,1:youkaisfeasts:matcha,2:youkaisfeasts:white_tea,3:youkaisfeasts:lemon_black_tea,4:youkaisfeasts:yellow_tea,5:youkaisfeasts:tea_mocha"), Map.entry("baubles", "7:touhou_little_maid_spell:fragrant_ingenuity"), Map.entry("blueNoteSpells", ""), Map.entry("effects", "youkaisfeasts:sober")))));
+                Map.ofEntries(Map.entry("model_id", "geckolib:winefox_little"), Map.entry("favorability", "3"), Map.entry("sitting", "1"), Map.entry("task", "touhou_little_maid:idle"), Map.entry("structureSpawn", "0"), Map.entry("backpack", "touhou_little_maid:small_backpack"), Map.entry("scheduleMode", "ALL"), Map.entry("hand", "youkaisfeasts:oolong_tea,"), Map.entry("armor", ",,,"), Map.entry("inventory", "0:minecraft:glass_bottle,1:youkaisfeasts:matcha,2:youkaisfeasts:white_tea,3:youkaisfeasts:saidi_tea,4:youkaisfeasts:yellow_tea,5:youkaisfeasts:tea_mocha"), Map.entry("baubles", "7:touhou_little_maid_spell:fragrant_ingenuity"), Map.entry("blueNoteSpells", ""), Map.entry("effects", "youkaisfeasts:sober")))));
         TEMPLATES.put("touhou_little_maid_spell:fallen_sanctum/fallen_sanctum_1", new Template(
             List.of(
                 "goety:dark_altar",
