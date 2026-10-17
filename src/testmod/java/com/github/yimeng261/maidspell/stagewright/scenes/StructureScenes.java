@@ -292,6 +292,11 @@ public final class StructureScenes {
      * 预期挂靠格是模板 blockPos 经原版变换后的位置，偏一格也算错。
      */
     private static void paintingsStayAnchored(SceneContext ctx, PaintingTemplate painting, Rotation rotation) {
+        String requiredMod = TEMPLATE_REQUIRED_MOD.get(Checks.NS + painting.path());
+        if (requiredMod != null && !ModList.get().isLoaded(requiredMod)) {
+            ctx.skip("没装 " + requiredMod + "，不会选用这个模板");
+            return;
+        }
         ServerLevel level = ctx.level();
         StructureStage.Placed placed = StructureStage.placeElement(ctx, painting.structure(),
                 Worldgen.poolElement(level, Checks.NS + painting.path()), rotation);
