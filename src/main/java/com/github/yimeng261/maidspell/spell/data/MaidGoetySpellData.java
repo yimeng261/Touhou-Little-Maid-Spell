@@ -3,7 +3,7 @@ package com.github.yimeng261.maidspell.spell.data;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import net.minecraft.world.item.ItemStack;
-import za.co.infernos.goety.api.magic.ISpell;
+import com.Polarice3.Goety.api.magic.ISpell;
 
 import java.util.Map;
 import java.util.UUID;
@@ -24,6 +24,8 @@ public class MaidGoetySpellData extends IMaidSpellData {
     private int maxCastingTime = 0;
     private ISpell currentSpell = null;
     private ItemStack currentFocus = null;
+    // 本次施法所用的法杖，Goety 的 castDuration/Cooldown 等按它计算，WandUtil.findWand 也返回它
+    private ItemStack currentStaff = null;
 
     // === 蓄力法术状态 ===
     private int coolCounter = 0;
@@ -61,6 +63,10 @@ public class MaidGoetySpellData extends IMaidSpellData {
      */
     public static void remove(UUID maidUuid) {
         MAID_DATA_MAP.remove(maidUuid);
+    }
+
+    public static void clearAll() {
+        MAID_DATA_MAP.clear();
     }
 
 
@@ -125,8 +131,9 @@ public class MaidGoetySpellData extends IMaidSpellData {
     /**
      * 重置施法状态（保留冷却数据）
      */
+    @Override
     public void resetCastingState() {
-        this.setCasting(false);
+        super.resetCastingState();
         this.castingTime = 0;
         this.maxCastingTime = 0;
         this.currentSpell = null;
@@ -134,6 +141,7 @@ public class MaidGoetySpellData extends IMaidSpellData {
         this.shotsFired = 0;
         // 清理旧聚晶，避免异常中断后下一次 stopSpell 拿到过期 focus。
         this.currentFocus = null;
+        this.currentStaff = null;
     }
 
     /**
@@ -162,5 +170,13 @@ public class MaidGoetySpellData extends IMaidSpellData {
 
     public void setCurrentFocus(ItemStack currentFocus) {
         this.currentFocus = currentFocus;
+    }
+
+    public ItemStack getCurrentStaff() {
+        return currentStaff;
+    }
+
+    public void setCurrentStaff(ItemStack currentStaff) {
+        this.currentStaff = currentStaff;
     }
 }

@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.spell.providers;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.api.ISpellBookProvider;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.spell.data.MaidGoetySpellData;
@@ -10,14 +11,16 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.slf4j.Logger;
-import za.co.infernos.goety.api.items.magic.IFocus;
-import za.co.infernos.goety.api.magic.IChargingSpell;
-import za.co.infernos.goety.api.magic.ISpell;
-import za.co.infernos.goety.common.items.handler.FocusBagItemHandler;
-import za.co.infernos.goety.common.items.magic.FocusBag;
-import za.co.infernos.goety.common.magic.SpellStat;
-import za.co.infernos.goety.utils.WandUtil;
+import com.Polarice3.Goety.api.items.magic.IFocus;
+import com.Polarice3.Goety.api.items.magic.IWand;
+import com.Polarice3.Goety.api.magic.IChargingSpell;
+import com.Polarice3.Goety.api.magic.ISpell;
+import com.Polarice3.Goety.common.items.handler.FocusBagItemHandler;
+import com.Polarice3.Goety.common.items.magic.FocusBag;
+import com.Polarice3.Goety.common.magic.SpellStat;
+import com.Polarice3.Goety.utils.WandUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +40,8 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
      * 构造函数，绑定 MaidGoetySpellData 数据类型
      */
     public GoetyProvider() {
-        super(MaidGoetySpellData::getOrCreate, ItemStack.class);
+        super(MaidGoetySpellData::getOrCreate, MaidGoetySpellData::get,
+                MaidGoetySpellData::remove, MaidGoetySpellData::clearAll, ItemStack.class);
     }
 
     @Override
@@ -77,7 +81,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
 
         // 检查目标（只在开始施法时检查一次）
         LivingEntity target = data.getTarget();
-        if (target == null || !target.isAlive()) {
+        if (!IAuthoritativeHealth.combatAlive(target)) {
             return;
         }
 
@@ -125,7 +129,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
             ISpell spell = data.getCurrentSpell();
             ItemStack focus = getCurrentFocus(data);
             // Goety 的 stopSpell 需要已施法时间，而不是剩余时间。
-            spell.stopSpell(serverLevel, maid, data.getSpellBook(), focus, data.getCastingTime(), getSpellStats(maid, spell));
+            spell.stopSpell(serverLevel, maid, getCurrentStaff(data), focus, data.getCastingTime(), getSpellStats(maid, spell));
         }
 
         // 设置部分冷却
@@ -153,8 +157,10 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
         int randomIndex = (int) (Math.random() * availableFoci.size());
         ItemStack focusStack = availableFoci.get(randomIndex);
         if (focusStack.getItem() instanceof IFocus focus) {
-            getData(maid).setCurrentFocus(focusStack);
-            return focus.getSpell();
+            ISpell spell = focus.getSpell();
+            data.setCurrentFocus(focusStack);
+            data.setCurrentStaff(findSpellStaff(maid, data, spell));
+            return spell;
         }
         return null;
     }
@@ -167,12 +173,13 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
                     spell.castingVolume(), spell.castingPitch());
         }
 
-        int castDuration = spell.castDuration(maid, getData(maid).getSpellBook());
+        int castDuration = spell.castDuration(maid, getCurrentStaff(getData(maid)));
 
         // 即时法术特殊处理（只有非蓄力法术才可能是即时的）
         if (castDuration <= 0 && !(spell instanceof IChargingSpell)) {
             executeInstantSpell(maid, spell);
             setCooldown(maid, spell);
+            resetCastingState(maid, getData(maid));
             return;
         }
 
@@ -194,10 +201,10 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
 
     private void executeInstantSpell(EntityMaid maid, ISpell spell) {
         if (maid.level() instanceof ServerLevel serverLevel) {
-            ItemStack spellBook = getData(maid).getSpellBook();
+            ItemStack staff = getCurrentStaff(getData(maid));
             SpellStat spellStat = getSpellStats(maid, spell);
-            spell.startSpell(serverLevel, maid, spellBook, spellStat);
-            spell.SpellResult(serverLevel, maid, spellBook, spellStat);
+            spell.startSpell(serverLevel, maid, staff, spellStat);
+            spell.SpellResult(serverLevel, maid, staff, spellStat);
         }
     }
 
@@ -217,7 +224,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
 
     private void startSpellExecution(EntityMaid maid, ISpell spell) {
         if (maid.level() instanceof ServerLevel serverLevel) {
-            spell.startSpell(serverLevel, maid, getData(maid).getSpellBook(), getSpellStats(maid, spell));
+            spell.startSpell(serverLevel, maid, getCurrentStaff(getData(maid)), getSpellStats(maid, spell));
         }
     }
 
@@ -225,34 +232,12 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
         LivingEntity target = data.getTarget();
 
         // 只有当目标存在且存活时才更新朝向
-        if (target != null && target.isAlive()) {
+        if (IAuthoritativeHealth.combatAlive(target)) {
             BehaviorUtils.lookAtEntity(maid, target);
             // Goety 的投射物会立即读取 caster.getViewVector；非蓄力瞬发法术也必须同步精确朝向。
-            updatePreciseOrientation(maid, data);
+            updatePreciseOrientation(maid, target);
         }
         // 如果目标不存在，保持当前朝向继续施法
-    }
-
-    private void updatePreciseOrientation(EntityMaid maid, MaidGoetySpellData data) {
-        LivingEntity target = data.getTarget();
-        if (target == null) return;
-
-        double dx = target.getX() - maid.getX();
-        double dy = target.getEyeY() - maid.getEyeY();
-        double dz = target.getZ() - maid.getZ();
-        double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-
-        float yaw = (float) (Math.atan2(dz, dx) * 180.0 / Math.PI) - 90.0F;
-        float pitch = (float) (-(Math.atan2(dy, horizontalDistance) * 180.0 / Math.PI));
-
-        maid.setYRot(yaw);
-        maid.setXRot(pitch);
-        maid.setYHeadRot(yaw);
-        maid.yBodyRot = yaw;
-        maid.yRotO = yaw;
-        maid.xRotO = pitch;
-        maid.yHeadRotO = yaw;
-        maid.yBodyRotO = yaw;
     }
 
     private void processSpellCasting(EntityMaid maid) {
@@ -264,7 +249,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
 
         // Goety 原版 DarkWand 会在每个使用 tick 驱动 useSpell，持续类法术依赖这个节奏。
         if (maid.level() instanceof ServerLevel serverLevel) {
-            spell.useSpell(serverLevel, maid, data.getSpellBook(),
+            spell.useSpell(serverLevel, maid, getCurrentStaff(data),
                     data.getCastingTime(), getSpellStats(maid, spell));
         }
 
@@ -285,19 +270,20 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
         MaidGoetySpellData data = getData(maid);
         if (data == null) return;
 
-        int castUp = chargingSpell.castUp(maid, data.getSpellBook());
+        ItemStack staff = getCurrentStaff(data);
+        int castUp = chargingSpell.castUp(maid, staff);
         if (castUp > 0 && data.getCastingTime() < castUp) {
             return;
         }
 
         data.incrementCoolCounter();
-        int requiredCooldown = chargingSpell.Cooldown(maid, data.getSpellBook(), data.getShotsFired());
+        int requiredCooldown = chargingSpell.Cooldown(maid, staff, data.getShotsFired());
 
         // 蓄力完成后按 Goety 的 Cooldown 节奏触发每一段 SpellResult。
         if (data.getCoolCounter() >= requiredCooldown) {
             data.setCoolCounter(0);
             executeChargingShot(maid, chargingSpell);
-            int shootCount = chargingSpell.shotsNumber(maid, data.getSpellBook());
+            int shootCount = chargingSpell.shotsNumber(maid, staff);
             if (shootCount > 0 && data.getShotsFired() >= shootCount) {
                 completeCasting(maid);
             }
@@ -309,12 +295,13 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
         if (data == null) return;
 
         LOGGER.debug("执行蓄力法术射击: {}, 女仆: {}", chargingSpell.getClass().getSimpleName(), maid.getName().getString());
+        ItemStack staff = getCurrentStaff(data);
         // 与 DarkWand.increaseShots 保持一致，多段法术需要递增后才能按 shotsNumber 收束。
-        if (chargingSpell.shotsNumber(maid, data.getSpellBook()) > 0) {
+        if (chargingSpell.shotsNumber(maid, staff) > 0) {
             data.incrementShotsFired();
         }
         if (maid.level() instanceof ServerLevel serverLevel) {
-            chargingSpell.SpellResult(serverLevel, maid, data.getSpellBook(), getSpellStats(maid, chargingSpell));
+            chargingSpell.SpellResult(serverLevel, maid, staff, getSpellStats(maid, chargingSpell));
         }
 
     }
@@ -329,12 +316,12 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
         if (maid.level() instanceof ServerLevel serverLevel) {
             ISpell spell = data.getCurrentSpell();
             ItemStack focus = getCurrentFocus(data);
+            ItemStack staff = getCurrentStaff(data);
             // castTime 对齐 DarkWand.releaseUsing 的语义：从开始施法到停止时已经经过的 tick。
-            spell.stopSpell(serverLevel, maid, data.getSpellBook(), focus, data.getCastingTime(), getSpellStats(maid, spell));
+            spell.stopSpell(serverLevel, maid, staff, focus, data.getCastingTime(), getSpellStats(maid, spell));
             // 蓄力法术已在 Cooldown 节奏中触发 SpellResult，完成时不再额外补打一发。
             if (!(spell instanceof IChargingSpell)) {
-                spell.SpellResult(serverLevel, maid, data.getSpellBook(),
-                        getSpellStats(maid, spell));
+                spell.SpellResult(serverLevel, maid, staff, getSpellStats(maid, spell));
             }
             SpringBloomReturnBauble.onSpellCast(
                     maid,
@@ -371,7 +358,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
     }
 
     private int getChargingCooldown(EntityMaid maid, MaidGoetySpellData data, IChargingSpell spell, int fullCooldown) {
-        int shotCount = spell.shotsNumber(maid, data.getSpellBook());
+        int shotCount = spell.shotsNumber(maid, getCurrentStaff(data));
         if (shotCount <= 0) {
             return fullCooldown;
         }
@@ -388,5 +375,55 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
 
     private ItemStack getCurrentFocus(MaidGoetySpellData data) {
         return data != null && data.getCurrentFocus() != null ? data.getCurrentFocus() : ItemStack.EMPTY;
+    }
+
+    /**
+     * 本次施法的法杖；没有可用法杖时退回聚晶袋
+     */
+    private ItemStack getCurrentStaff(MaidGoetySpellData data) {
+        if (data == null) {
+            return ItemStack.EMPTY;
+        }
+        if (isUsableStaff(data.getCurrentStaff())) {
+            return data.getCurrentStaff();
+        }
+        return data.getSpellBook() != null ? data.getSpellBook() : ItemStack.EMPTY;
+    }
+
+    /**
+     * 从女仆背包里挑本次施法的法杖：
+     * 镶着同一颗聚晶的优先，其次是法术相同的，再次是法术类型相符的，最后取第一根法杖；一根都没有时返回空
+     */
+    private ItemStack findSpellStaff(EntityMaid maid, MaidGoetySpellData data, ISpell spell) {
+        ItemStack focus = getCurrentFocus(data);
+        ItemStack typeMatch = ItemStack.EMPTY;
+        ItemStack firstWand = ItemStack.EMPTY;
+        IItemHandler inventory = maid.getAvailableInv(true);
+
+        for (int slot = 0; slot < inventory.getSlots(); slot++) {
+            ItemStack stack = inventory.getStackInSlot(slot);
+            if (stack.isEmpty() || !(stack.getItem() instanceof IWand wand)) {
+                continue;
+            }
+            if (firstWand.isEmpty()) {
+                firstWand = stack;
+            }
+            if (!focus.isEmpty() && ItemStack.isSameItemSameComponents(focus, IWand.getFocus(stack))) {
+                return stack;
+            }
+            ISpell wandSpell = wand.getSpell(stack);
+            if (spell != null && wandSpell != null && wandSpell.getClass() == spell.getClass()) {
+                return stack;
+            }
+            if (typeMatch.isEmpty() && spell != null && wand.getSpellType() == spell.getSpellType()) {
+                typeMatch = stack;
+            }
+        }
+
+        return typeMatch.isEmpty() ? firstWand : typeMatch;
+    }
+
+    private boolean isUsableStaff(ItemStack stack) {
+        return stack != null && !stack.isEmpty() && stack.getItem() instanceof IWand;
     }
 }

@@ -33,6 +33,9 @@ public record C2SEnderPocketMaidList(boolean fromMaidBackpack) implements Custom
     }
 
     public void handle(ServerPlayer player) {
+        if (!EnderPocketRequestRateLimiter.tryAcquire(player, EnderPocketRequestRateLimiter.Action.LIST)) {
+            return;
+        }
         List<EnderPocketService.EnderPocketMaidInfo> maidInfos =
                 EnderPocketService.getPlayerEnderPocketMaids(player);
 

@@ -7,8 +7,6 @@ import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.IGeoEntityRenderer
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.animated.ILocationModel;
 import com.github.tartaricacid.touhoulittlemaid.geckolib3.util.RenderUtils;
 import com.github.yimeng261.maidspell.client.model.UnholyHaloModel;
-import com.github.yimeng261.maidspell.item.MaidSpellItems;
-import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
@@ -50,12 +48,7 @@ public class GeckoLayerUnholyHalo<T extends Mob, R extends IGeoEntityRenderer<T>
                        float ageInTicks, float netHeadYaw, float headPitch) {
 
         EntityMaid maid = IMaid.convertToMaid(entity);
-        if (maid == null || maid.isInvisible() || maid.isSleeping()) {
-            return;
-        }
-
-        var unholyHat = MaidSpellItems.getUnholyHat();
-        if (unholyHat == null || !BaubleStateManager.hasBauble(maid, unholyHat)) {
+        if (maid == null || maid.isInvisible() || maid.isSleeping() || !MaidHaloRenderPriority.shouldRenderUnholyHalo(maid)) {
             return;
         }
 

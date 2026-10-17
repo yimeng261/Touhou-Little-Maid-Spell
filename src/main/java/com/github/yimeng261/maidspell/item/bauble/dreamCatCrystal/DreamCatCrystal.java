@@ -53,10 +53,6 @@ public class DreamCatCrystal extends Item {
             detailLines.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc9_true_damage")
                     .withStyle(ChatFormatting.RED));
         }
-        if (Config.dreamCrystalSetNoAiEnabled) {
-            detailLines.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc9_freeze")
-                    .withStyle(ChatFormatting.RED));
-        }
         detailLines.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc9_splash")
                 .withStyle(ChatFormatting.RED));
         detailLines.add(Component.translatable("item.touhou_little_maid_spell.dream_cat_crystal.desc10")

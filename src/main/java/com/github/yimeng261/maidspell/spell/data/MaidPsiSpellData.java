@@ -33,6 +33,10 @@ public class MaidPsiSpellData extends IMaidSpellData {
         return MAID_DATA.computeIfAbsent(maidUUID, MaidPsiSpellData::new);
     }
 
+    public static MaidPsiSpellData get(UUID maidUUID) {
+        return MAID_DATA.get(maidUUID);
+    }
+
     public static void remove(UUID maidUUID) {
         MAID_DATA.remove(maidUUID);
     }
@@ -62,8 +66,9 @@ public class MaidPsiSpellData extends IMaidSpellData {
     /**
      * 重置施法状态
      */
+    @Override
     public void resetCastingState() {
-        this.setCasting(false);
+        super.resetCastingState();
         this.currentSpell = null;
         this.castingTicks = 0;
     }

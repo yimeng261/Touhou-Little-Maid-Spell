@@ -26,6 +26,14 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String PSI_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.psi.";
     private static final String ARS_MOD_ID = "ars_nouveau";
     private static final String ARS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.ars.";
+    private static final String USEFULMAGIC_MOD_ID = "usefulmagic";
+    private static final String USEFULMAGIC_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.usefulmagic.";
+    private static final String LEGENDARY_MONSTERS_MOD_ID = "legendary_monsters";
+    private static final String LEGENDARY_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.legendary.";
+    private static final String EXPLORERS_COMPASS_MOD_ID = "explorerscompass";
+    private static final String EXPLORERS_COMPASS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.explorerscompass.";
+    private static final String FTB_QUESTS_MOD_ID = "ftbquests";
+    private static final String FTB_QUESTS_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.ftbquests.";
 
     private boolean isIronsSpellbooksLoaded = false;
     private boolean isTlmMagicAnimationSupported = false;
@@ -33,6 +41,10 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private boolean isGoetyLoaded = false;
     private boolean isPsiLoaded = false;
     private boolean isArsNouveauLoaded = false;
+    private boolean isUsefulMagicLoaded = false;
+    private boolean isLegendaryMonstersLoaded = false;
+    private boolean isExplorersCompassLoaded = false;
+    private boolean isFtbQuestsLoaded = false;
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -47,6 +59,10 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         isGoetyLoaded = LoadingModList.get().getModFileById(GOETY_MOD_ID) != null;
         isPsiLoaded = LoadingModList.get().getModFileById(PSI_MOD_ID) != null;
         isArsNouveauLoaded = LoadingModList.get().getModFileById(ARS_MOD_ID) != null;
+        isUsefulMagicLoaded = LoadingModList.get().getModFileById(USEFULMAGIC_MOD_ID) != null;
+        isLegendaryMonstersLoaded = LoadingModList.get().getModFileById(LEGENDARY_MONSTERS_MOD_ID) != null;
+        isExplorersCompassLoaded = LoadingModList.get().getModFileById(EXPLORERS_COMPASS_MOD_ID) != null;
+        isFtbQuestsLoaded = LoadingModList.get().getModFileById(FTB_QUESTS_MOD_ID) != null;
     }
 
     @Override
@@ -75,6 +91,18 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.startsWith(ARS_MIXIN_PACKAGE)) {
             return isArsNouveauLoaded;
+        }
+        if (mixinClassName.startsWith(USEFULMAGIC_MIXIN_PACKAGE)) {
+            return isUsefulMagicLoaded;
+        }
+        if (mixinClassName.startsWith(LEGENDARY_MIXIN_PACKAGE)) {
+            return isLegendaryMonstersLoaded;
+        }
+        if (mixinClassName.startsWith(EXPLORERS_COMPASS_MIXIN_PACKAGE)) {
+            return isExplorersCompassLoaded;
+        }
+        if (mixinClassName.startsWith(FTB_QUESTS_MIXIN_PACKAGE)) {
+            return isFtbQuestsLoaded;
         }
 
         // 其他 Mixin 正常加载

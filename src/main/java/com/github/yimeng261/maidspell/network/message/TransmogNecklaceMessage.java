@@ -29,6 +29,10 @@ public record TransmogNecklaceMessage(int inventorySlot, int styleIndex) impleme
     }
 
     public void handle(ServerPlayer player) {
+        // 槽位来自客户端，越界（尤其是负数）会让 Inventory#getItem 抛异常
+        if (inventorySlot < 0 || inventorySlot >= player.getInventory().getContainerSize()) {
+            return;
+        }
         ItemStack stack = player.getInventory().getItem(inventorySlot);
         if (inventorySlot == 40) {
             stack = player.getOffhandItem();

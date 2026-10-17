@@ -1,12 +1,11 @@
 package com.github.yimeng261.maidspell.compat.curios;
 
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
 import top.theillusivec4.curios.api.CuriosApi;
+import top.theillusivec4.curios.api.SlotResult;
 
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -38,6 +37,19 @@ public final class CuriosCompat {
     }
 
     /**
+     * 返回实体 curios 槽位中第一个匹配 filter 的 ItemStack，curios 未加载或没找到时返回空
+     */
+    public static ItemStack findFirstCurio(LivingEntity entity, Predicate<ItemStack> filter) {
+        if (!LOADED) {
+            return ItemStack.EMPTY;
+        }
+        return CuriosApi.getCuriosInventory(entity)
+                .flatMap(handler -> handler.findFirstCurio(filter))
+                .map(SlotResult::stack)
+                .orElse(ItemStack.EMPTY);
+    }
+
+    /**
      * 遍历女仆所有 curios 槽位中匹配 filter 的 ItemStack，对每个匹配的物品执行 action。
      * curios 未加载时直接返回。
      */
@@ -52,34 +64,6 @@ public final class CuriosCompat {
                         action.accept(stack);
                     }
                 })
-        );
-    }
-
-    /**
-     * 为实体的所有 curios 槽位类型各注册一个 transient slot modifier。
-     */
-    public static void addTransientSlotForAllTypes(LivingEntity entity, ResourceLocation id, double amount, AttributeModifier.Operation operation) {
-        if (!LOADED) {
-            return;
-        }
-        CuriosApi.getCuriosInventory(entity).ifPresent(handler ->
-                handler.getCurios().keySet().forEach(slotType -> {
-                    handler.removeSlotModifier(slotType, id);
-                    handler.addTransientSlotModifier(slotType, id, amount, operation);
-                })
-        );
-    }
-
-    /**
-     * 移除实体所有 curios 槽位类型上指定 id 的 slot modifier。
-     */
-    public static void removeSlotModifierForAllTypes(LivingEntity entity, ResourceLocation id) {
-        if (!LOADED) {
-            return;
-        }
-        CuriosApi.getCuriosInventory(entity).ifPresent(handler ->
-                handler.getCurios().keySet().forEach(slotType ->
-                        handler.removeSlotModifier(slotType, id))
         );
     }
 }

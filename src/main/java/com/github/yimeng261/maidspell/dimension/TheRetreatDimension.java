@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.dimension;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -11,14 +12,20 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.LevelEvent;
 
+import javax.annotation.Nullable;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -37,6 +44,13 @@ import java.util.concurrent.CompletableFuture;
  */
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class TheRetreatDimension {
+    private static final String PRIVATE_RETREAT_PREFIX = "the_retreat_";
+    private static final ResourceLocation SHARED_RETREAT_LOCATION =
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "the_retreat");
+
+    // 估算点比估算地表高 5 格，再留出噪声误差的余量
+    private static final int MAX_GROUND_SEARCH_DEPTH = 16;
+
     /**
      * 获取玩家专属的归隐之地维度ResourceKey
      * 格式：touhou_little_maid_spell:the_retreat_<player_uuid>
@@ -44,13 +58,55 @@ public class TheRetreatDimension {
     public static ResourceKey<Level> getPlayerRetreatDimension(UUID playerUUID) {
         return ResourceKey.create(
                 Registries.DIMENSION,
-                ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "the_retreat_" + playerUUID.toString().replace("-", "_"))
+                ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, PRIVATE_RETREAT_PREFIX + playerUUID.toString().replace("-", "_"))
         );
     }
 
+    /** 共享归隐之地的维度 key，同时也是 FTB Quests 里「任意归隐之地」条件使用的占位维度。 */
+    public static ResourceKey<Level> getSharedRetreatDimension() {
+        return ResourceKey.create(Registries.DIMENSION, SHARED_RETREAT_LOCATION);
+    }
+
     public static boolean isRetreatDimension(ResourceLocation dimensionLocation) {
-        return dimensionLocation.getNamespace().equals(MaidSpellMod.MOD_ID)
-                && dimensionLocation.getPath().startsWith("the_retreat");
+        return isSharedRetreatDimension(dimensionLocation)
+                || isPrivateRetreatDimension(dimensionLocation);
+    }
+
+    /** 是否为共享归隐之地。 */
+    public static boolean isSharedRetreatDimension(ResourceLocation dimensionLocation) {
+        return SHARED_RETREAT_LOCATION.equals(dimensionLocation);
+    }
+
+    /** 是否为以玩家 UUID 命名的独立归隐之地，路径形如 {@code the_retreat_<下划线分隔的 uuid>}。 */
+    public static boolean isPrivateRetreatDimension(ResourceLocation dimensionLocation) {
+        return privateRetreatOwner(dimensionLocation) != null;
+    }
+
+    /** 独立归隐之地名字里的玩家 UUID；不是独立归隐之地时返回 null。 */
+    @Nullable
+    public static UUID privateRetreatOwner(ResourceLocation dimensionLocation) {
+        if (!MaidSpellMod.MOD_ID.equals(dimensionLocation.getNamespace())
+                || !dimensionLocation.getPath().startsWith(PRIVATE_RETREAT_PREFIX)) {
+            return null;
+        }
+
+        String encodedUuid = dimensionLocation.getPath().substring(PRIVATE_RETREAT_PREFIX.length());
+        if (encodedUuid.isEmpty()) {
+            return null;
+        }
+
+        try {
+            UUID uuid = UUID.fromString(encodedUuid.replace('_', '-'));
+            return uuid.toString().replace('-', '_').equals(encodedUuid) ? uuid : null;
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    /** 任务里写死的是共享归隐之地时，匹配所有归隐之地；其余维度仍要求完全一致。 */
+    public static boolean matchesTaskDimension(ResourceLocation required, ResourceLocation actual) {
+        return required.equals(actual)
+                || isSharedRetreatDimension(required) && isPrivateRetreatDimension(actual);
     }
 
     /**
@@ -203,31 +259,100 @@ public class TheRetreatDimension {
             return createSafePlatform(level, new BlockPos(targetPos.getX(), safeY, targetPos.getZ()));
         }
 
-        // 限制搜索范围，避免过度迭代
-        int maxY = Math.min(level.getMaxBuildHeight() - 1, 319);
-        int minY = Math.max(level.getMinBuildHeight(), -64);
-
-        // 从高处向下搜索第一个固体方块
         try {
-            for (int y = maxY; y >= minY; y--) {
-                BlockPos pos = new BlockPos(targetPos.getX(), y, targetPos.getZ());
-                if (level.getBlockState(pos).isSolid()) {
-                    BlockPos safePos = pos.above();
-                    MaidSpellMod.LOGGER.debug("Found safe position at {}", safePos);
-                    return safePos;
-                }
+            // 原坐标能站人就原地落下（例如从洞穴里传送），否则按地形噪声估算地表
+            if (isSafeStandingPosition(level, targetPos)) {
+                MaidSpellMod.LOGGER.debug("Found direct safe position at {}", targetPos);
+                return targetPos.immutable();
+            }
+
+            DensityFunction depthFn = level.getChunkSource().randomState().router().depth();
+            int estimatedY = estimateSurfaceHeight(depthFn, targetPos.getX(), targetPos.getZ(), level);
+            BlockPos estimated = new BlockPos(targetPos.getX(), estimatedY, targetPos.getZ());
+            BlockPos ground = findGroundBelow(level, estimated);
+            if (ground != null) {
+                return ground;
+            }
+            // 估算点落在方块里（地形被改过、有建筑）或下方没有可站的地面时按高度图取地表
+            int surfaceY = level.getHeight(Heightmap.Types.MOTION_BLOCKING, targetPos.getX(), targetPos.getZ());
+            BlockPos surface = new BlockPos(targetPos.getX(), surfaceY, targetPos.getZ());
+            if (surfaceY > level.getMinBuildHeight() && isSafeStandingPosition(level, surface)) {
+                return surface;
             }
         } catch (Exception e) {
             MaidSpellMod.LOGGER.error("Error while finding safe position at {}: {}", targetPos, e.getMessage(), e);
         }
 
-        // 如果没有找到固体方块，在合理高度创建安全平台
         int platformY = Math.max(level.getSeaLevel() + 5, 100);
         BlockPos platformPos = new BlockPos(targetPos.getX(), platformY, targetPos.getZ());
         MaidSpellMod.LOGGER.info("No safe ground found, creating platform at {}", platformPos);
         return createSafePlatform(level, platformPos);
     }
 
+    /**
+     * 在单列上二分 depth 噪声估算地表高度，开销 O(logH)，不扫描方块也不查高度图。
+     */
+    private static int estimateSurfaceHeight(DensityFunction depthFn, int x, int z, ServerLevel level) {
+        int lo = level.getMinBuildHeight();
+        int hi = level.getMaxBuildHeight();
+
+        while (hi - lo > 2) {
+            int mid = (lo + hi) >>> 1;
+            double depthAtMid = depthFn.compute(new DensityFunction.SinglePointContext(x, mid, z));
+            if (depthAtMid > 0) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+
+        return hi + 5;
+    }
+
+    /**
+     * 从估算点往下逐格找第一个可站立的位置。估算不含峡谷、侵蚀与熔岩湖，
+     * 碰到方块或流体、或超出搜索深度都视为没找到。
+     */
+    private static BlockPos findGroundBelow(ServerLevel level, BlockPos start) {
+        for (int i = 0; i <= MAX_GROUND_SEARCH_DEPTH; i++) {
+            BlockPos pos = start.below(i);
+            if (!isOpenForPlayer(level, pos)) {
+                return null;
+            }
+            if (isSafeStandingPosition(level, pos)) {
+                return pos;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isSafeStandingPosition(ServerLevel level, BlockPos pos) {
+        if (pos.getY() <= level.getMinBuildHeight() || pos.getY() >= level.getMaxBuildHeight() - 1) {
+            return false;
+        }
+
+        BlockPos floorPos = pos.below();
+        BlockState floorState = level.getBlockState(floorPos);
+        if (!floorState.isFaceSturdy(level, floorPos, Direction.UP) || isHazardousFloor(floorState)) {
+            return false;
+        }
+
+        return isOpenForPlayer(level, pos) && isOpenForPlayer(level, pos.above());
+    }
+
+    private static boolean isOpenForPlayer(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        FluidState fluidState = level.getFluidState(pos);
+        return fluidState.isEmpty() && state.getCollisionShape(level, pos).isEmpty();
+    }
+
+    private static boolean isHazardousFloor(BlockState state) {
+        Block block = state.getBlock();
+        return block == Blocks.MAGMA_BLOCK
+                || block == Blocks.CAMPFIRE
+                || block == Blocks.SOUL_CAMPFIRE
+                || block == Blocks.CACTUS;
+    }
 
     /**
      * 创建安全平台

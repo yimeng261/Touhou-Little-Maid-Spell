@@ -1,6 +1,9 @@
 {
   "replace": false,
   "values": [
-    "touhou_little_maid_spell:fallen_sanctum"
+    {
+      "id": "touhou_little_maid_spell:fallen_sanctum",
+      "required": false
+    }
   ]
 }

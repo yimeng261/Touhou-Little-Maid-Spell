@@ -10,6 +10,7 @@
       "translate": "advancements.touhou_little_maid_spell.dream_crystal.all_spells_mastered.description"
     },
     "frame": "challenge",
+    "background": "minecraft:textures/block/cherry_planks.png",
     "show_toast": true,
     "announce_to_chat": true,
     "hidden": false

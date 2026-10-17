@@ -1,8 +1,17 @@
 {
   "neoforge:conditions": [
     {
-      "type": "neoforge:mod_loaded",
-      "modid": "youkaishomecoming"
+      "type": "neoforge:or",
+      "values": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaishomecoming"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaisfeasts"
+        }
+      ]
     }
   ],
   "type": "touhou_little_maid_spell:land_jigsaw",
@@ -19,5 +28,9 @@
   "max_distance_from_center": 80,
   "size": 1,
   "terrain_adaptation": "beard_box",
-  "avoid_water": true
+  "avoid_water": true,
+  "fallback": {
+    "mod": "youkaishomecoming",
+    "start_pool": "touhou_little_maid_spell:fairy_maid_cafe_youkaisfeasts"
+  }
 }

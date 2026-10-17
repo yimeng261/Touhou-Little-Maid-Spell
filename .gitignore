@@ -17,6 +17,10 @@ out
 build
 .gradle
 
+# 本地生成的引导/嵌套模组产物（只忽略仓库根目录，不影响各源集的 resources/META-INF）
+/META-INF/
+
 # other
 eclipse
 run
+run-stagewright-*/

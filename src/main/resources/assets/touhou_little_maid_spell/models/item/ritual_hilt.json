@@ -1,0 +1,4 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": { "layer0": "touhou_little_maid_spell:item/ritual_hilt" }
+}

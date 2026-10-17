@@ -3,7 +3,14 @@ package com.github.yimeng261.maidspell.mixin.tlm;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.network.message.OpenMaidGuiPackage;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -15,6 +22,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(value = OpenMaidGuiPackage.class, remap = false)
 public class OpenMaidGuiPackageMixin {
+    @WrapOperation(
+            method = "handle(Lcom/github/tartaricacid/touhoulittlemaid/network/message/OpenMaidGuiPackage;Lnet/minecraft/server/level/ServerPlayer;)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/world/level/Level;getEntity(I)Lnet/minecraft/world/entity/Entity;",
+                    remap = true
+            ),
+            remap = true
+    )
+    private static Entity maidspell$resolveRemoteMaid(Level level, int entityId, Operation<Entity> original,
+                                                      @Local(argsOnly = true) ServerPlayer sender) {
+        return EnderPocketService.resolvePacketEntity(original.call(level, entityId), entityId, sender, true);
+    }
 
     /**
      * 注入到 stillValid 方法开头，取消原方法并返回我们的逻辑
@@ -23,8 +43,7 @@ public class OpenMaidGuiPackageMixin {
     @Inject(method = "stillValid", at = @At("HEAD"), cancellable = true, remap = false)
     private static void stillValid(Player playerIn, EntityMaid maid, CallbackInfoReturnable<Boolean> cir) {
         if(maid.getMaidBauble().containsItem(MaidSpellItems.ENDER_POCKET.get())) {
-            boolean isValid = maid.isOwnedBy(playerIn) && !maid.isSleeping() && maid.isAlive();
-            cir.setReturnValue(isValid);
+            cir.setReturnValue(EnderPocketService.isGuiStillValid(playerIn, maid));
         }
     }
 }

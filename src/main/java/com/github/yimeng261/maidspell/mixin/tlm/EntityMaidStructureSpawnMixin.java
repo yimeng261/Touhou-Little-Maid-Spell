@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.mixin.tlm;
 
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.MaidOriginData;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
@@ -23,10 +24,12 @@ import java.util.Set;
 
 @Mixin(value = EntityMaid.class, remap = false)
 public class EntityMaidStructureSpawnMixin {
+    /** 结构生成时跳过随机模型的结构。 */
     @Unique
     private static final Set<ResourceLocation> maidspell$deniedStructures = Set.of(
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "fairy_maid_cafe"),
+            ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "cherry_cabin"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "relic_sanctum"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "fallen_sanctum"),
             ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "elven_realm")
@@ -55,6 +58,10 @@ public class EntityMaidStructureSpawnMixin {
             EntityMaid maid = (EntityMaid) (Object) this;
             BlockPos maidPos = maid.blockPosition();
             if (maidspell$isInProtectedStructure(worldIn, maidPos)) {
+                // 隐世女仆身份以模板 NBT 里的标记为准，这里只给带标记的女仆补齐来源
+                if (MaidOriginData.isHiddenRetreatMaid(maid)) {
+                    MaidOriginData.markHiddenRetreatMaid(maid);
+                }
                 this.structureSpawn = false;
                 Global.LOGGER.debug("Prevented finalizeSpawn processing for maid in protected structure at {}", maidPos);
                 cir.setReturnValue(spawnDataIn);
@@ -66,15 +73,20 @@ public class EntityMaidStructureSpawnMixin {
 
     @Unique
     private boolean maidspell$isInProtectedStructure(ServerLevelAccessor worldIn, BlockPos pos) {
-        StructureManager structureManager = worldIn.getLevel().structureManager();
-        Registry<net.minecraft.world.level.levelgen.structure.Structure> structureRegistry =
-                worldIn.registryAccess().registryOrThrow(Registries.STRUCTURE);
         for (ResourceLocation structureKey : maidspell$deniedStructures) {
-            var structure = structureRegistry.getOptional(structureKey);
-            if (structure.isPresent() && structureManager.getStructureWithPieceAt(pos, structure.get()).isValid()) {
+            if (maidspell$isInStructure(worldIn, pos, structureKey)) {
                 return true;
             }
         }
         return false;
+    }
+
+    @Unique
+    private boolean maidspell$isInStructure(ServerLevelAccessor worldIn, BlockPos pos, ResourceLocation structureKey) {
+        StructureManager structureManager = worldIn.getLevel().structureManager();
+        Registry<net.minecraft.world.level.levelgen.structure.Structure> structureRegistry =
+                worldIn.registryAccess().registryOrThrow(Registries.STRUCTURE);
+        var structure = structureRegistry.getOptional(structureKey);
+        return structure.isPresent() && structureManager.getStructureWithPieceAt(pos, structure.get()).isValid();
     }
 }

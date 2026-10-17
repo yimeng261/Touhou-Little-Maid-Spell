@@ -2,12 +2,16 @@ package com.github.yimeng261.maidspell.mixin.tlm;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.inventory.container.AbstractMaidContainer;
-import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketMaidProxyCache;
+import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.MaidMovementHelper;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -40,8 +44,7 @@ public class AbstractMaidContainerMixin {
             return;
         }
         if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
-            boolean isValid = maid.isOwnedBy(playerIn) && !maid.isSleeping() && maid.isAlive();
-            cir.setReturnValue(isValid);
+            cir.setReturnValue(EnderPocketService.isGuiStillValid(playerIn, maid));
         }
     }
 
@@ -53,6 +56,9 @@ public class AbstractMaidContainerMixin {
         MaidMovementHelper.stopAllMovement(maid);
     }
 
+    /**
+     * 常规查找失败时，客户端使用独立代理，服务端使用已授权的远程会话
+     */
     @Redirect(
             method = "<init>",
             at = @At(
@@ -63,18 +69,26 @@ public class AbstractMaidContainerMixin {
             remap = true
     )
     @Nullable
-    private Entity redirectGetEntity(Level level, int entityId) {
-        Entity entity = level.getEntity(entityId);
-        if (entity instanceof EntityMaid) {
-            return entity;
+    private Entity redirectGetEntity(Level level, int requestedEntityId,
+                                     @Nullable MenuType<?> menuType, int containerId,
+                                     Inventory inventory, int entityId) {
+        Entity entity = level.getEntity(requestedEntityId);
+        if (entity instanceof EntityMaid localMaid) {
+            if (!level.isClientSide() && inventory.player instanceof ServerPlayer serverPlayer) {
+                EnderPocketService.syncRemoteProxyBeforeMenu(serverPlayer, localMaid);
+            }
+            return localMaid;
         }
-        try {
-            return Global.activeMaids.stream()
-                    .filter(m -> m.getId() == entityId && BaubleStateManager.hasBauble(m, MaidSpellItems.ENDER_POCKET))
-                    .findFirst().orElse(null);
-        } catch (Exception e) {
-            Global.LOGGER.error("Failed to find maid in Global cache", e);
-            return entity;
+        if (level.isClientSide()) {
+            return EnderPocketMaidProxyCache.find(level, requestedEntityId);
         }
+        if (inventory.player instanceof ServerPlayer serverPlayer) {
+            EntityMaid remoteMaid = EnderPocketService.resolveRemoteMaid(serverPlayer, requestedEntityId);
+            if (remoteMaid != null) {
+                EnderPocketService.syncRemoteProxyBeforeMenu(serverPlayer, remoteMaid);
+            }
+            return remoteMaid;
+        }
+        return null;
     }
 }

@@ -63,6 +63,7 @@ public class MaidSpellCommand {
         // 女仆施法命令
         // /maidspell iron_cast <targets> <spell_id> [level]
         if (IronsSpellbooksCompat.isLoaded()) {
+            WinefoxLifecycleCommand.register(dispatcher);
             root.then(Commands.literal("iron_cast")
                     .then(Commands.argument("targets", EntityArgument.entities())
                             .then(Commands.argument("spell", ResourceLocationArgument.id())
@@ -112,7 +113,7 @@ public class MaidSpellCommand {
         }
 
         data.removeDimension(player.getUUID());
-        RetreatManager.updateCache(player.getUUID(), null);
+        RetreatManager.clearPlayerCache(player.getUUID());
         RetreatManager.removeCachedPlayerRetreat(player.getUUID());
 
         context.getSource().sendSuccess(() -> Component.translatable(
