@@ -10,6 +10,24 @@
 - 女仆施放 Goety 法术时会按聚晶与法术从背包中挑选法杖，整个施法过程都使用这根法杖 /
   Maids casting Goety spells now pick a wand from their inventory based on the focus and spell, and use that
   wand for the whole cast
+- 新增法术射表：女仆佩戴后坐下或骑乘时也会索敌施法 /
+  Added the Spell Range Table: maids wearing it also find targets and cast spells while sitting or riding
+- 新增结构落樱厨舍（需农夫乐事）与下界魔女足迹系列：玄武岩锻坊、绯红林屋、魂谷一隅、诡林栖所（需铁魔法）；未装铁魔法或 Goety 时改用不含其内容的模板，战利品中的可选模组物品缺失时整张战利品表仍然可用 /
+  Added the Cherry Cabin (requires Farmer's Delight) and the Nether Enchantress' Footsteps structures: Basalt
+  Forge, Crimson Cabin, Soul Valley Nook and Warped Perch (require Iron's Spells 'n Spellbooks); without Iron's
+  Spells 'n Spellbooks or Goety a template without their content is used, and missing optional-mod loot entries
+  no longer break the whole loot table
+- 仙女女仆咖啡厅换用新模板，安装 Youkais' Feasts 或妖怪归家之一即可生成 /
+  The Fairy Maid Cafe uses a new template and generates with either Youkais' Feasts or Youkai's Homecoming installed
+- 隐世女仆按玩家记录归属，每名玩家只会遇到一次隐世女仆；女仆转为物品或重新放出后保留身份；管理员可用 `/maidspell_retreat_maid status|reset <玩家 UUID>` 查询或重置 /
+  Hidden Retreat maids are now tracked per player, so each player meets one only once; the maid keeps her identity
+  after being turned into an item and released again; operators can query or reset a player's claim with
+  `/maidspell_retreat_maid status|reset <player UUID>`
+- 兼容 Explorer's Compass 与 FTB Quests：探险家指南针中独立归隐之地显示为可读名称；FTB Quests 中以归隐之地为目标的维度任务在任意玩家的独立归隐之地里都算完成 /
+  Explorer's Compass and FTB Quests compatibility: private Retreat dimensions show a readable name in Explorer's
+  Compass, and FTB Quests dimension tasks targeting The Retreat also complete in any player's private Retreat
+- 星之魔女交易新增七星指引卷轴，交易卷轴固定为 1 级 /
+  The Stellar Witch now also trades Seven-Star Guidance scrolls; traded scrolls are always level 1
 
 ### 修复 / Bug Fixes
 
@@ -49,6 +67,41 @@
 - 修复锚定核心在女仆失效或不在票据区块后仍保留强加载的问题；无主女仆也会被强加载 /
   Fixed the Anchor Core keeping chunks force-loaded after its maid became invalid or left the ticketed chunk;
   maids without an owner are now force-loaded as well
+- 修复共享归隐之地多名玩家同时搜索隐世之境时结果可能串号的问题，搜索改为依次排队 /
+  Fixed Hidden Retreat search results possibly going to the wrong player when several players searched at once in
+  a shared Retreat; searches are now queued one at a time
+- 修复寻风之铃在搜索结果返回前再次使用会另起一次搜索的问题，现在只提示仍在搜索 /
+  Fixed using the Wind Seeking Bell again before its search finished starting another search; it now only reports
+  that the search is still running
+- 修复多座隐世之境同时生成时个别结构缺少女仆的问题 /
+  Fixed some Hidden Retreats missing their maid when several were generated at the same time
+- 旧存档中没有标记的隐世女仆在驯服时仍能被识别 /
+  Hidden Retreat maids from old saves without the new marker are still recognized when tamed
+- 修复落樱厨舍座位上的女仆不生成的问题，并保留模板中的女仆模型 /
+  Fixed the maid seated in the Cherry Cabin not spawning; she now keeps the model from the template
+- 落樱厨舍去掉未声明依赖的 TACZ 枪械与弹药，无铁魔法版模板去掉所有铁魔法物品 /
+  Removed TACZ guns and ammo from the Cherry Cabin, and all Iron's Spells 'n Spellbooks items from its variant
+  without Iron's Spells 'n Spellbooks
+- 下界魔女旅行日记支持中英日三语并按段落分页，可以和其他旅行日记一样与星之魔女交换星陨石 /
+  The Nether Enchantress's Travel Journals are now translated into Chinese, English and Japanese, paginated by
+  paragraph, and can be exchanged with the Stellar Witch for a Star Meteorite like the other journals
+- Youkais' Feasts 版仙女女仆咖啡厅把需要果之乐事的柠檬红茶换成赛地茶 /
+  The Youkais' Feasts variant of the Fairy Maid Cafe replaces lemon black tea, which needs Fruits Delight, with
+  saidi tea
+- 圣遗礼拜堂首领女仆的雷暴与坚韧效果作为永久效果保留 /
+  The Relic Sanctum boss maid's thunderstorm and fortitude effects are now kept as permanent effects
+- 修复烬血之戒在生命超出上限时仍给增伤的问题，现在只按缺失生命加成 /
+  Fixed the Ember Blood Ring granting bonus damage while health exceeded the maximum; the bonus now scales only with
+  missing health
+- 修复星落之庭补生成与其他结构重叠的问题：避让其他结构集的计划落点与已有结构，换候选位置时不再多记一次放置次数 /
+  Fixed retroactive Starfall Garden generation overlapping other structures: it now avoids planned and existing
+  structures, and no longer counts an extra placement when switching candidates
+- 掌心黑洞的爆炸粒子不再依赖特定版本的铁魔法；施法期间的深渊护罩在结束或取消时只移除本次施法添加的部分，存档重载后也能正确恢复 /
+  Palm Black Hole explosion particles no longer depend on a specific Iron's Spells 'n Spellbooks version; the
+  abyssal shield applied during the cast only removes what that cast added when it ends or is cancelled, and is
+  restored correctly after a save is reloaded
+- 补上梦云水晶黑名单迁移版本配置项的名称翻译 /
+  Added the missing translation for the Dreamcloud Crystal blacklist migration version config option
 
 ### 优化 / Improvements
 
@@ -72,6 +125,13 @@
   automatically gain goety:explosive; customized blacklists are left unchanged
 - 如安装 Psi，需要 1.21.1-110 或更新版本 /
   If Psi is installed, version 1.21.1-110 or newer is required
+- 如安装 UsefulMagic，需要 3.1.0 或更新版本；UsefulMagic 3.1.1 附带的 CooParticlesAPI 2.5.5.3 会导致专用服务器启动崩溃，属该库自身问题 /
+  If UsefulMagic is installed, version 3.1.0 or newer is required; CooParticlesAPI 2.5.5.3, bundled with
+  UsefulMagic 3.1.1, crashes dedicated servers on startup, which is an issue in that library
+- 如安装农夫乐事，需要 1.3.0 或更新版本 /
+  If Farmer's Delight is installed, version 1.3.0 or newer is required
+- 如安装 Youkais' Feasts，需要 1.1.1 或更新版本 /
+  If Youkais' Feasts is installed, version 1.1.1 or newer is required
 
 ---
 
