@@ -38,6 +38,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -686,6 +687,11 @@ public class MaidSpellEventHandler {
 
         if (!player.level().isClientSide() && player.level() instanceof ServerLevel level) {
             Global.updateMaidInfo(maid, true);
+            // 生成时打标记之前就已存在的隐世女仆没有标记，按旧规则补认：坐着、不是结构随机生成、位于隐世之境结构里
+            if (!MaidOriginData.isHiddenRetreatMaid(maid) && maid.isOrderedToSit() && !maid.isStructureSpawn()
+                    && isInHiddenRetreatStructure(level, maid.blockPosition())) {
+                MaidOriginData.markHiddenRetreatMaid(maid);
+            }
             if (MaidOriginData.isHiddenRetreatMaid(maid)) {
                 player.sendSystemMessage(Component.translatable("item.touhou_little_maid_spell.maid_tamed_event.maid_in_hidden_retreat").withStyle(ChatFormatting.LIGHT_PURPLE));
             }
@@ -807,6 +813,12 @@ public class MaidSpellEventHandler {
                  COMMAND,
                  DISPENSER -> false;
         };
+    }
+
+    private static boolean isInHiddenRetreatStructure(ServerLevel level, BlockPos pos) {
+        var structure = level.registryAccess().registryOrThrow(Registries.STRUCTURE)
+                .getOptional(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "hidden_retreat"));
+        return structure.isPresent() && level.structureManager().getStructureWithPieceAt(pos, structure.get()).isValid();
     }
 
     private static void restoreRetreatLocationIfNeeded(ServerPlayer player) {
