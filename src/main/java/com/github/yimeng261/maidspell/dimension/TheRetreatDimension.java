@@ -25,6 +25,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.LevelEvent;
 
+import javax.annotation.Nullable;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -78,21 +79,27 @@ public class TheRetreatDimension {
 
     /** 是否为以玩家 UUID 命名的独立归隐之地，路径形如 {@code the_retreat_<下划线分隔的 uuid>}。 */
     public static boolean isPrivateRetreatDimension(ResourceLocation dimensionLocation) {
+        return privateRetreatOwner(dimensionLocation) != null;
+    }
+
+    /** 独立归隐之地名字里的玩家 UUID；不是独立归隐之地时返回 null。 */
+    @Nullable
+    public static UUID privateRetreatOwner(ResourceLocation dimensionLocation) {
         if (!MaidSpellMod.MOD_ID.equals(dimensionLocation.getNamespace())
                 || !dimensionLocation.getPath().startsWith(PRIVATE_RETREAT_PREFIX)) {
-            return false;
+            return null;
         }
 
         String encodedUuid = dimensionLocation.getPath().substring(PRIVATE_RETREAT_PREFIX.length());
         if (encodedUuid.isEmpty()) {
-            return false;
+            return null;
         }
 
         try {
             UUID uuid = UUID.fromString(encodedUuid.replace('_', '-'));
-            return uuid.toString().replace('-', '_').equals(encodedUuid);
+            return uuid.toString().replace('-', '_').equals(encodedUuid) ? uuid : null;
         } catch (IllegalArgumentException ignored) {
-            return false;
+            return null;
         }
     }
 

@@ -42,7 +42,6 @@ public class PlayerRetreatManager {
 
     private static final ResourceLocation RETREAT_TEMPLATE = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "the_retreat");
     private static final ResourceKey<Level> SHARED_RETREAT_KEY = TheRetreatDimension.getSharedRetreatDimension();
-    private static final String PRIVATE_RETREAT_PREFIX = "the_retreat_";
 
     /**
      * Valkyrien Skies 对服务器 tick 的阶段有严格约束：在某些阶段插入 addDimension/setPlayers 会直接崩。
@@ -484,18 +483,9 @@ public class PlayerRetreatManager {
             return null;
         }
 
-        ResourceLocation location = dimensionKey.location();
-        if (MaidSpellMod.MOD_ID.equals(location.getNamespace())
-                && location.getPath().startsWith(PRIVATE_RETREAT_PREFIX)) {
-            String encodedUuid = location.getPath().substring(PRIVATE_RETREAT_PREFIX.length());
-            try {
-                UUID parsed = UUID.fromString(encodedUuid.replace('_', '-'));
-                if (TheRetreatDimension.getPlayerRetreatDimension(parsed).equals(dimensionKey)) {
-                    return parsed;
-                }
-            } catch (IllegalArgumentException ignored) {
-                // 解析失败时使用调用方传入并校验过的主人
-            }
+        UUID parsed = TheRetreatDimension.privateRetreatOwner(dimensionKey.location());
+        if (parsed != null) {
+            return parsed;
         }
 
         if (fallbackPlayerUUID != null

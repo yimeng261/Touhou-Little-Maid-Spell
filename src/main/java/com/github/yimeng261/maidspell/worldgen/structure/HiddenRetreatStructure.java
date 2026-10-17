@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatDimensionData;
 import com.github.yimeng261.maidspell.dimension.RetreatManager;
+import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.github.yimeng261.maidspell.worldgen.accessor.RandomStateAccessor;
 import com.mojang.serialization.Codec;
@@ -167,8 +168,7 @@ public class HiddenRetreatStructure extends Structure {
                                             Predicate<Holder<Biome>> pValidBiome) {
         // 通过 RandomState 获取当前维度，确认是归隐之地维度
         ResourceKey<Level> dimKey = RandomStateAccessor.dimensionOf(pRandomState);
-        if (dimKey != null && dimKey.location().getNamespace().equals(MaidSpellMod.MOD_ID)
-                && dimKey.location().getPath().startsWith("the_retreat")) {
+        if (dimKey != null && TheRetreatDimension.isRetreatDimension(dimKey.location())) {
             // 私人模式：每个维度只允许生成一个结构
             if (Config.enablePrivateDimensions) {
                 if (!RetreatManager.tryMarkStructureGenerated(dimKey)) {

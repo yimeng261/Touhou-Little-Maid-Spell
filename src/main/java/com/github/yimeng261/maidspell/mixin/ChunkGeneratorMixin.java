@@ -1,7 +1,7 @@
 package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.Config;
-import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.mixin.accessor.StructureManagerAccessor;
 import com.github.yimeng261.maidspell.worldgen.accessor.RandomStateAccessor;
 import net.minecraft.core.BlockPos;
@@ -104,11 +104,6 @@ public abstract class ChunkGeneratorMixin {
 
     @Unique
     private static boolean maidspell$isRetreatDimension(@Nullable ResourceKey<Level> dimensionKey) {
-        if (dimensionKey == null) {
-            return false;
-        }
-        ResourceLocation loc = dimensionKey.location();
-        return loc.getNamespace().equals(MaidSpellMod.MOD_ID)
-                && loc.getPath().startsWith("the_retreat");
+        return dimensionKey != null && TheRetreatDimension.isRetreatDimension(dimensionKey.location());
     }
 }
