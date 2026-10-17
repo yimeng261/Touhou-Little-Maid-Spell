@@ -34,10 +34,13 @@ import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
  * 女仆法术数据的生命周期（专用服，主人为模拟玩家）：每个联动模组各验证一遍
  * 收进魂符再放出、区块卸载后 5 秒内回来与超过 5 秒、换维度、死亡、被复活饰品救下时法术书与冷却的去留；
  * 铁魔法真实施法中收进魂符、打开背包时停止施法；法术战斗任务的女仆被设成 NoAI 后自动恢复。
+ * 专用服拓扑不装 UsefulMagic，它的那一组放在集成拓扑跑。
  */
 public final class SpellLifecycleScenes {
     /** 各联动模组的法术提供者 ID。 */
     public static final List<String> MODS = List.of("irons_spellbooks", "ars_nouveau", "psi", "goety", "usefulmagic", "slashblade");
+    /** 专用服拓扑不装、只在集成拓扑验证的联动模组。 */
+    private static final String INTEGRATED_ONLY = "usefulmagic";
     /** 离开世界后法术数据保留的 tick 数。 */
     private static final int RETENTION = 100;
     private static final String PROBE_COOLDOWN = NS + "lifecycle_probe";
@@ -50,17 +53,28 @@ public final class SpellLifecycleScenes {
     public static List<Scene> dedicatedServer() {
         List<Scene> scenes = new ArrayList<>();
         for (String mod : MODS) {
-            scenes.add(Checks.superflat("spell.lifecycle." + mod + ".slabRoundTrip", 100, ctx -> slabRoundTrip(ctx, mod)));
-            scenes.add(Checks.superflat("spell.lifecycle." + mod + ".unloadBriefly", RETENTION + 40, ctx -> unload(ctx, mod, RETENTION / 2)));
-            scenes.add(Checks.superflat("spell.lifecycle." + mod + ".unloadLong", RETENTION * 2 + 40, ctx -> unload(ctx, mod, RETENTION + 20)));
-            scenes.add(Checks.superflat("spell.lifecycle." + mod + ".dimensionChange", 100, ctx -> dimensionChange(ctx, mod)));
-            scenes.add(Checks.superflat("spell.lifecycle." + mod + ".death", 40, ctx -> death(ctx, mod, false)));
-            scenes.add(Checks.superflat("spell.lifecycle." + mod + ".revived", 100, ctx -> death(ctx, mod, true)));
+            if (!mod.equals(INTEGRATED_ONLY)) {
+                scenes.addAll(lifecycle(mod));
+            }
         }
         scenes.add(Checks.superflat("spell.lifecycle.irons_spellbooks.slabWhileCasting", 1600, SpellLifecycleScenes::slabWhileCasting));
         scenes.add(Checks.superflat("spell.lifecycle.irons_spellbooks.backpackStopsCasting", 1600, SpellLifecycleScenes::backpackStopsCasting));
         scenes.add(Checks.superflat("spell.task.noAiRestoredForSpellTasks", 80, SpellLifecycleScenes::noAiRestored));
         return scenes;
+    }
+
+    public static List<Scene> integratedServer() {
+        return lifecycle(INTEGRATED_ONLY);
+    }
+
+    private static List<Scene> lifecycle(String mod) {
+        return List.of(
+                Checks.superflat("spell.lifecycle." + mod + ".slabRoundTrip", 100, ctx -> slabRoundTrip(ctx, mod)),
+                Checks.superflat("spell.lifecycle." + mod + ".unloadBriefly", RETENTION + 40, ctx -> unload(ctx, mod, RETENTION / 2)),
+                Checks.superflat("spell.lifecycle." + mod + ".unloadLong", RETENTION * 2 + 40, ctx -> unload(ctx, mod, RETENTION + 20)),
+                Checks.superflat("spell.lifecycle." + mod + ".dimensionChange", 100, ctx -> dimensionChange(ctx, mod)),
+                Checks.superflat("spell.lifecycle." + mod + ".death", 40, ctx -> death(ctx, mod, false)),
+                Checks.superflat("spell.lifecycle." + mod + ".revived", 100, ctx -> death(ctx, mod, true)));
     }
 
     // ---- 工具 ----

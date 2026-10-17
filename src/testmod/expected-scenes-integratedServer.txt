@@ -31,6 +31,13 @@ touhou_little_maid_spell.friendlyFire.ownerHitsOthers
 touhou_little_maid_spell.friendlyFire.teamFriendlyFireOff
 touhou_little_maid_spell.friendlyFire.playersFollowVanilla
 touhou_little_maid_spell.friendlyFire.goetyServantsOfOwnerSide
+# UsefulMagic 法术数据生命周期（专用服拓扑不装 UsefulMagic）
+touhou_little_maid_spell.spell.lifecycle.usefulmagic.slabRoundTrip
+touhou_little_maid_spell.spell.lifecycle.usefulmagic.unloadBriefly
+touhou_little_maid_spell.spell.lifecycle.usefulmagic.unloadLong
+touhou_little_maid_spell.spell.lifecycle.usefulmagic.dimensionChange
+touhou_little_maid_spell.spell.lifecycle.usefulmagic.death
+touhou_little_maid_spell.spell.lifecycle.usefulmagic.revived
 # 魂之书主人保护
 touhou_little_maid_spell.bauble.soul_book.ownerProtectionOnOff
 touhou_little_maid_spell.bauble.soul_book.ownerProtectionAfterCycles

@@ -268,12 +268,6 @@ touhou_little_maid_spell.spell.lifecycle.goety.unloadLong
 touhou_little_maid_spell.spell.lifecycle.goety.dimensionChange
 touhou_little_maid_spell.spell.lifecycle.goety.death
 touhou_little_maid_spell.spell.lifecycle.goety.revived
-touhou_little_maid_spell.spell.lifecycle.usefulmagic.slabRoundTrip
-touhou_little_maid_spell.spell.lifecycle.usefulmagic.unloadBriefly
-touhou_little_maid_spell.spell.lifecycle.usefulmagic.unloadLong
-touhou_little_maid_spell.spell.lifecycle.usefulmagic.dimensionChange
-touhou_little_maid_spell.spell.lifecycle.usefulmagic.death
-touhou_little_maid_spell.spell.lifecycle.usefulmagic.revived
 touhou_little_maid_spell.spell.lifecycle.slashblade.slabRoundTrip
 touhou_little_maid_spell.spell.lifecycle.slashblade.unloadBriefly
 touhou_little_maid_spell.spell.lifecycle.slashblade.unloadLong

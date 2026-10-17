@@ -87,6 +87,7 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(OwnerScenes.integratedServer());
                 scenes.addAll(RetreatScenes.integratedServer());
                 scenes.addAll(AllyScenes.integratedServer());
+                scenes.addAll(SpellLifecycleScenes.integratedServer());
                 scenes.addAll(BaubleRuntimeScenes.integratedServer());
                 scenes.addAll(EnderPocketScenes.integratedServer());
                 scenes.addAll(AnchorScenes.integratedServer());

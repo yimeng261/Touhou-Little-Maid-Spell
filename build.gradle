@@ -106,13 +106,18 @@ def optionalModGroups = ['io.redspace', 'maven.modrinth', 'vazkii.patchouli', 's
 // coremod 源集是 hurt 头部插桩的 Java coremod，单独打成 FMLModType: LIBRARY 的 jar（NeoForge 只从 PLUGIN 层加载 ICoreMod），
 // 发布时嵌套进主 jar，开发运行时以 jar 形式放进 main 的运行时类路径。
 // StageWright 测试场景放在 testmod 源集，不进发布 jar，继承 main 的开发类路径。
-// testmodMinimal / testmodNoFarmersDelight 没有自己的源码，复用 testmod 的场景，只换运行时模组组合。
+// testmodServer / testmodMinimal / testmodNoFarmersDelight 没有自己的源码，复用 testmod 的场景，只换运行时模组组合。
 // clientTest 是纯 JVM 的 JUnit 源集，通过 worlddriver RPC 附着到 hold 住的客户端做界面测试。
 sourceSets {
     coremod
     testmod {
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+    // CooParticlesAPI 2.5.5.3 在专用服通用初始化时扫描监听器会加载客户端类而崩溃，专用服拓扑不装它与 UsefulMagic
+    testmodServer {
+        runtimeClasspath = sourceSets.testmod.output + sourceSets.main.output + configurations.testmodRuntimeClasspath +
+                mainRuntimeWithout { id -> id.group == 'maven.modrinth' && id.module in ['usefulmagic', 'cooparticlesapi'] }
     }
     testmodMinimal {
         runtimeClasspath = sourceSets.testmod.output + sourceSets.main.output + configurations.testmodRuntimeClasspath +
@@ -123,8 +128,8 @@ sourceSets {
     }
     testmodNoFarmersDelight {
         runtimeClasspath = sourceSets.testmod.output + sourceSets.main.output + configurations.testmodRuntimeClasspath +
-                // 妖怪的归家强依赖农夫乐事，一并去掉
-                mainRuntimeWithout { id -> id.group == 'maven.modrinth' && id.module in ['farmers-delight', 'youkaishomecoming'] }
+                // 妖怪的归家强依赖农夫乐事，一并去掉；UsefulMagic 与 CooParticlesAPI 同 testmodServer
+                mainRuntimeWithout { id -> id.group == 'maven.modrinth' && id.module in ['farmers-delight', 'youkaishomecoming', 'usefulmagic', 'cooparticlesapi'] }
     }
     clientTest
 }
@@ -224,10 +229,10 @@ neoForge {
         // StageWright 专用服运行配置：类路径取 testmod 系列源集，测试框架和 worlddriver 只在这些运行里加载。
         // 端口避开本机其它开发服常用的 25565；带客户端的拓扑等客户端进服后再开跑场景
         [
-                dedicatedServer                : [sourceSets.testmod, '25591'],
+                dedicatedServer                : [sourceSets.testmodServer, '25591'],
                 dedicatedServerMinimal         : [sourceSets.testmodMinimal, '25593'],
                 dedicatedServerNoFarmersDelight: [sourceSets.testmodNoFarmersDelight, '25594'],
-                dedicatedServerWithClient      : [sourceSets.testmod, '25595'],
+                dedicatedServerWithClient      : [sourceSets.testmodServer, '25595'],
         ].each { topology, setup ->
             create("stagewright${topology.capitalize()}") {
                 server()
@@ -246,7 +251,7 @@ neoForge {
         // dedicatedServerWithClient 的客户端一侧：经网络加入上面的专用服，服务端场景跑完停服后退出
         stagewrightJoiningClient {
             client()
-            sourceSet = sourceSets.testmod
+            sourceSet = sourceSets.testmodServer
             gameDirectory = file('run-stagewright-joiningClient')
             systemProperty 'stagewright.client.connect', '127.0.0.1:25595'
             systemProperty 'maidspell.test.topology', 'dedicatedServerWithClient'
