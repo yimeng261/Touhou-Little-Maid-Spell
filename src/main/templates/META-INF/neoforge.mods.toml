@@ -138,7 +138,7 @@ license = "${mod_license}"
 [[dependencies."${mod_id}"]]
     modId = "usefulmagic"
     type = "optional"
-    versionRange = "[3.0.0,)"
+    versionRange = "[3.1.0,)"
     ordering = "NONE"
     side = "BOTH"
 

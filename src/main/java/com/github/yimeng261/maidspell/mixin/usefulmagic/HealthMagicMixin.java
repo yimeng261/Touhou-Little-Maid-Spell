@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import cn.coostack.usefulmagic.items.weapon.magic.HealthMagic;
+import cn.coostack.usefulmagic.items.weapon.magic.attack.HealthMagic;
 import cn.coostack.usefulmagic.sounds.UsefulMagicSoundEvents;
 import cn.coostack.usefulmagic.utils.MagicHelper;
 

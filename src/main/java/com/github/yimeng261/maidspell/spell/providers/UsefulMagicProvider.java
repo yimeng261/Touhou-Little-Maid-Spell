@@ -16,7 +16,7 @@ import net.neoforged.neoforge.items.wrapper.CombinedInvWrapper;
 
 import cn.coostack.usefulmagic.extend.EntityExtendKt;
 import cn.coostack.usefulmagic.items.prop.SpellBagItem;
-import cn.coostack.usefulmagic.items.weapon.magic.HealthMagic;
+import cn.coostack.usefulmagic.items.weapon.magic.attack.HealthMagic;
 import cn.coostack.usefulmagic.items.weapon.magic.MagicItem;
 import cn.coostack.usefulmagic.items.weapon.wands.MagicWand;
 import cn.coostack.usefulmagic.utils.MagicHelper;
