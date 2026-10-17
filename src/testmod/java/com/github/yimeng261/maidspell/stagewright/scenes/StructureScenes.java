@@ -257,9 +257,11 @@ public final class StructureScenes {
                 if (!(entity instanceof LivingEntity living) || knownDead.contains(type)) {
                     continue;
                 }
+                // 无重力的椅子是挂在墙上的门铃一类模型，本来就嵌在墙里
+                boolean wallMounted = type.equals(CHAIR) && living.isNoGravity();
                 if (!living.isAlive() || living.isRemoved()) {
                     dead.add(type + "@" + entity.blockPosition());
-                } else if (living.isInWall()) {
+                } else if (living.isInWall() && !wallMounted) {
                     inWall.add(type + "@" + entity.blockPosition());
                 }
             }
