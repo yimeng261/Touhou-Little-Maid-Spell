@@ -7,11 +7,11 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -130,10 +130,9 @@ public class OptionalModTemplateStructure extends Structure {
         int maxFloor = Integer.MIN_VALUE;
         for (int x : sampleX) {
             for (int z : sampleZ) {
-                int y = context.chunkGenerator().getFirstOccupiedHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG,
-                        context.heightAccessor(), context.randomState());
                 NoiseColumn column = context.chunkGenerator().getBaseColumn(x, z,
                         context.heightAccessor(), context.randomState());
+                int y = topOccupied(column, context.heightAccessor());
                 if (!isDryGround(column.getBlock(y))) {
                     return OptionalInt.empty();
                 }
@@ -145,6 +144,16 @@ public class OptionalModTemplateStructure extends Structure {
             }
         }
         return OptionalInt.of(maxFloor);
+    }
+
+    /** 与 WORLD_SURFACE_WG 的 getFirstOccupiedHeight 相同：自上而下第一个非空气方块，整列都是空气时为最低高度下一格。 */
+    private static int topOccupied(NoiseColumn column, LevelHeightAccessor heightAccessor) {
+        for (int y = heightAccessor.getMaxBuildHeight() - 1; y >= heightAccessor.getMinBuildHeight(); y--) {
+            if (!column.getBlock(y).isAir()) {
+                return y;
+            }
+        }
+        return heightAccessor.getMinBuildHeight() - 1;
     }
 
     private OptionalInt findNetherFloor(GenerationContext context, int[] sampleX, int[] sampleZ, int height) {
