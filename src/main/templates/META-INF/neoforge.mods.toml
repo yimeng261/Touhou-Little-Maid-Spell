@@ -107,6 +107,14 @@ license = "${mod_license}"
     ordering = "NONE"
     side = "BOTH"
 
+# 结构模板用到 1.3 才有的方块（亮光沙拉、绳栅栏、木篮）
+[[dependencies."${mod_id}"]]
+    modId = "farmersdelight"
+    type = "optional"
+    versionRange = "[1.3.0,)"
+    ordering = "NONE"
+    side = "BOTH"
+
 [[dependencies."${mod_id}"]]
     modId = "youkaishomecoming"
     type = "optional"

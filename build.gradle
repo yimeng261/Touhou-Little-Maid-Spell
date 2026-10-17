@@ -128,8 +128,8 @@ sourceSets {
     }
     testmodNoFarmersDelight {
         runtimeClasspath = sourceSets.testmod.output + sourceSets.main.output + configurations.testmodRuntimeClasspath +
-                // 妖怪的归家强依赖农夫乐事，一并去掉；UsefulMagic 与 CooParticlesAPI 同 testmodServer
-                mainRuntimeWithout { id -> id.group == 'maven.modrinth' && id.module in ['farmers-delight', 'youkaishomecoming', 'usefulmagic', 'cooparticlesapi'] }
+                // 妖怪的盛宴强依赖农夫乐事，一并去掉；UsefulMagic 与 CooParticlesAPI 同 testmodServer
+                mainRuntimeWithout { id -> id.group == 'maven.modrinth' && id.module in ['farmers-delight', 'gensokyo-delight-youkais-feasts', 'usefulmagic', 'cooparticlesapi'] }
     }
     clientTest
 }
@@ -373,8 +373,8 @@ dependencies {
     runtimeOnly("maven.modrinth:farmers-delight:${farmers_delight_version}")
     runtimeOnly("maven.modrinth:playeranimator:${playeranimator_version}")
     runtimeOnly("maven.modrinth:c2me-neoforge:${c2me_version}")
-    // 妖怪的归家
-    runtimeOnly("maven.modrinth:youkaishomecoming:${youkaishomecoming_version}")
+    // 幻想乡乐事～妖怪的盛宴（妖怪的归家 3.0.8 与农夫乐事 1.3 不兼容，开发环境换用它）
+    runtimeOnly("maven.modrinth:gensokyo-delight-youkais-feasts:${youkaisfeasts_version}")
 }
 
 // 客户端运行目录的种子文件（Provision 会清空运行目录，之后再写入）：客户端选项跳过首次启动的辅助功能引导页、
