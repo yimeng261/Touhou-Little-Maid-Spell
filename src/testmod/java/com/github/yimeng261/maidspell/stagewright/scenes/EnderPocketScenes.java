@@ -261,25 +261,27 @@ public final class EnderPocketScenes {
         ServerPlayer owner = Owners.visitor(ctx, "TlmsPocketRemote", 0, 0, -3);
         ServerLevel nether = ctx.server().getLevel(Level.NETHER);
         EntityMaid maid = pocketMaid(ctx, nether, new BlockPos(ctx.originX(), 70, ctx.originZ()), owner);
-        ctx.check(ctx.level().getEntity(maid.getId())).as("主世界按实体 ID 找到下界女仆").isNull();
-        ctx.check(openRemote(owner, maid)).as("建立跨维度远程会话").isTrue();
-        var context = Packets.from(owner);
-        int id = maid.getId();
-        MaidTaskPackage.handle(new MaidTaskPackage(id, SpellCombatFarTask.UID), context);
-        ctx.check(maid.getTask().getUid()).as("切换后的任务").isEqualTo(SpellCombatFarTask.UID);
-        MaidConfigPackage.handle(new MaidConfigPackage(id, maid.isHomeModeEnable(), !maid.isPickup(), !maid.isRideable(), maid.getSchedule()), context);
-        ctx.record("pickup/ride", maid.isPickup() + "/" + maid.isRideable());
-        ResourceLocation model = ResourceLocation.parse("touhou_little_maid:hakurei_reimu");
-        MaidModelPackage.handle(new MaidModelPackage(id, model), context);
-        ctx.check(maid.getModelId()).as("换模型后的模型").isEqualTo(model.toString());
-        Players.hold(owner, new ItemStack(Items.NAME_TAG));
-        SendNameTagPackage.handle(new SendNameTagPackage(id, "远程改名", false), context);
-        ctx.check(maid.getName().getString()).as("改名后的名字").isEqualTo("远程改名");
-        String sound = maid.getSoundPackId().equals("touhou_little_maid") ? "maidspell_test" : "touhou_little_maid";
-        SetMaidSoundIdPackage.handle(new SetMaidSoundIdPackage(id, sound), context);
-        ctx.check(maid.getSoundPackId()).as("换音效包后的音效包").isEqualTo(sound);
-        RequestEffectPackage.handle(new RequestEffectPackage(id), context);
-        ctx.passNote("请求药水效果未抛异常");
+        ctx.await(() -> nether.getEntity(maid.getUUID()) == maid && listed(owner).contains(maid.getUUID())).within(30).then(() -> {
+            ctx.check(ctx.level().getEntity(maid.getId())).as("主世界按实体 ID 找到下界女仆").isNull();
+            ctx.check(openRemote(owner, maid)).as("建立跨维度远程会话").isTrue();
+            var context = Packets.from(owner);
+            int id = maid.getId();
+            MaidTaskPackage.handle(new MaidTaskPackage(id, SpellCombatFarTask.UID), context);
+            ctx.check(maid.getTask().getUid()).as("切换后的任务").isEqualTo(SpellCombatFarTask.UID);
+            MaidConfigPackage.handle(new MaidConfigPackage(id, maid.isHomeModeEnable(), !maid.isPickup(), !maid.isRideable(), maid.getSchedule()), context);
+            ctx.record("pickup/ride", maid.isPickup() + "/" + maid.isRideable());
+            ResourceLocation model = ResourceLocation.parse("touhou_little_maid:hakurei_reimu");
+            MaidModelPackage.handle(new MaidModelPackage(id, model), context);
+            ctx.check(maid.getModelId()).as("换模型后的模型").isEqualTo(model.toString());
+            Players.hold(owner, new ItemStack(Items.NAME_TAG));
+            SendNameTagPackage.handle(new SendNameTagPackage(id, "远程改名", false), context);
+            ctx.check(maid.getName().getString()).as("改名后的名字").isEqualTo("远程改名");
+            String sound = maid.getSoundPackId().equals("touhou_little_maid") ? "maidspell_test" : "touhou_little_maid";
+            SetMaidSoundIdPackage.handle(new SetMaidSoundIdPackage(id, sound), context);
+            ctx.check(maid.getSoundPackId()).as("换音效包后的音效包").isEqualTo(sound);
+            RequestEffectPackage.handle(new RequestEffectPackage(id), context);
+            ctx.passNote("请求药水效果未抛异常");
+        });
     }
 
     /** 另一名玩家伪造 Dev 远程女仆的实体 ID 发包：打不中这只女仆，也不给 Dev 的会话续期。 */
