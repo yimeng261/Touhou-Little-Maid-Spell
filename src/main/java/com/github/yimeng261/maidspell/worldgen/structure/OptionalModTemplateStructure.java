@@ -12,7 +12,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pools.EmptyPoolElement;
@@ -21,6 +20,8 @@ import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
@@ -97,7 +98,8 @@ public class OptionalModTemplateStructure extends Structure {
         int[] sampleZ = sampleCoordinates(footprint.minZ(), centerZ, footprint.maxZ());
 
         OptionalInt floor = nether
-                ? findNetherFloor(context, sampleX, sampleZ, relativeBox.getYSpan())
+                ? findNetherFloor(context, baseColumns(context, element, rotation, horizontalOrigin, sampleX, sampleZ),
+                        relativeBox.getYSpan())
                 : findSurfaceFloor(context, sampleX, sampleZ);
         if (floor.isEmpty()) {
             return Optional.empty();
@@ -111,10 +113,13 @@ public class OptionalModTemplateStructure extends Structure {
             return Optional.empty();
         }
 
-        // Keep the beardifier's ground plane at the natural floor even for templates
-        // whose first layer contains flowers, furniture, and other ground decorations.
-        PoolElementStructurePiece piece = new PoolElementStructurePiece(context.structureTemplateManager(),
-                element, origin, -surfaceOffset, rotation, box);
+        // Terrain adaptation treats "lowest box y + groundLevelDelta" as the first layer above the
+        // ground: it carves from there up and fills below. That layer must be one above the natural
+        // floor (floor + 1); otherwise templates whose first layer holds flowers, furniture, or other
+        // ground decorations get the ground under them dug away. Site selection allows the ground to
+        // sit maxTerrainStep blocks below the anchor, so the foundation is filled that deep.
+        GroundedTemplatePiece piece = new GroundedTemplatePiece(context.structureTemplateManager(),
+                element, origin, 1 - surfaceOffset, rotation, box, maxTerrainStep + surfaceOffset);
         BlockPos center = new BlockPos(centerX, origin.getY(), centerZ);
         return Optional.of(new GenerationStub(center, builder -> builder.addPiece(piece)));
     }
@@ -158,15 +163,30 @@ public class OptionalModTemplateStructure extends Structure {
         return heightAccessor.getMinBuildHeight() - 1;
     }
 
-    private OptionalInt findNetherFloor(GenerationContext context, int[] sampleX, int[] sampleZ, int height) {
-        NoiseColumn[] columns = new NoiseColumn[sampleX.length * sampleZ.length];
-        int index = 0;
+    /**
+     * Columns checked by Nether site selection: one per solid block in the template's bottom layer.
+     * Cave floors are uneven, and a few samples would miss pits and cliff edges under the middle.
+     * Falls back to the footprint samples when the template blocks are unavailable.
+     */
+    private static List<BlockPos> baseColumns(GenerationContext context, StructurePoolElement element, Rotation rotation,
+                                              BlockPos horizontalOrigin, int[] sampleX, int[] sampleZ) {
+        List<BlockPos> columns = GroundedTemplatePiece.solidBase(context.structureTemplateManager(), element, rotation,
+                horizontalOrigin).stream().map(pos -> pos.atY(0)).distinct().toList();
+        if (!columns.isEmpty()) {
+            return columns;
+        }
+        List<BlockPos> samples = new ArrayList<>();
         for (int x : sampleX) {
             for (int z : sampleZ) {
-                columns[index++] = context.chunkGenerator().getBaseColumn(x, z,
-                        context.heightAccessor(), context.randomState());
+                samples.add(new BlockPos(x, 0, z));
             }
         }
+        return samples;
+    }
+
+    private OptionalInt findNetherFloor(GenerationContext context, List<BlockPos> positions, int height) {
+        NoiseColumn[] columns = positions.stream().map(pos -> context.chunkGenerator().getBaseColumn(pos.getX(), pos.getZ(),
+                context.heightAccessor(), context.randomState())).toArray(NoiseColumn[]::new);
         int minFloor = Math.max(context.chunkGenerator().getSeaLevel(),
                 context.heightAccessor().getMinBuildHeight() + 8);
         int maxTop = Math.min(MAX_NETHER_TEMPLATE_Y, context.heightAccessor().getMaxBuildHeight() - 2);
