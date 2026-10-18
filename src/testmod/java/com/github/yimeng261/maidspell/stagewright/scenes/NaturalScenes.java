@@ -8,17 +8,21 @@ import com.github.yimeng261.maidspell.stagewright.support.Reflect;
 import com.github.yimeng261.maidspell.stagewright.support.Worldgen;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.RelicSanctumStructure;
+import com.google.gson.JsonElement;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.serialization.JsonOps;
 import net.magicterra.stagewright.scene.Scene;
 import net.magicterra.stagewright.scene.SceneContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -29,8 +33,11 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.levelgen.DensityFunctions;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
+import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -61,7 +68,7 @@ import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
 
 /**
  * 自然生成场景：注册与群系/维度映射快照、固定种子（5471）的真实维度按放置网格抽样、
- * 隐世之境只在归隐之地生成、归隐之地结构白名单、自定义地形检查的准确性、村庄补充的自然出现、可选模组模板结构与咖啡厅不悬空、咖啡厅不陷进地里。
+ * 隐世之境只在归隐之地生成、归隐之地结构白名单与自带地形、自定义地形检查的准确性、村庄补充的自然出现、可选模组模板结构与咖啡厅不悬空、咖啡厅不陷进地里。
  * <p>不借用场地，直接查询服务器的主世界/下界/末地/归隐之地；除悬空检查要完整生成区块外，计算只到 STRUCTURE_STARTS 或只用噪声。
  */
 public final class NaturalScenes {
@@ -205,6 +212,8 @@ public final class NaturalScenes {
         scenes.add(scene("natural.hiddenRetreat.notInOverworld", 1200, NaturalScenes::hiddenRetreatNotInOverworld));
         scenes.add(scene("natural.hiddenRetreat.locateRejectedOutsideRetreat", 20, NaturalScenes::locateRejected));
         scenes.add(scene("natural.retreat.whitelist", 1200, NaturalScenes::retreatWhitelist));
+        scenes.add(scene("natural.retreat.ownTerrain", 20, NaturalScenes::retreatOwnTerrain));
+        scenes.add(scene("natural.hiddenRetreat.needsRealGround", 20, NaturalScenes::hiddenRetreatNeedsGround));
         for (Natural natural : NATURAL) {
             scenes.add(scene("natural." + natural.path() + ".found", 2400, ctx -> found(ctx, natural)));
             switch (natural.dry()) {
@@ -367,6 +376,77 @@ public final class NaturalScenes {
             ctx.check(treeValid).as("归隐之地中满足条件的隐世樱树候选区块").isNotEmpty();
             ctx.check(treeMissing).as("满足条件却没有生成隐世樱树起点的区块").isEmpty();
         }));
+    }
+
+    /**
+     * 归隐之地用自己的一份原版地形：噪声设置是本模组的，整条密度函数引用链里没有 minecraft:overworld 开头的
+     * （改主世界地形的模组会覆盖这些，并在主世界以外把它们置零）；没装这类模组时与主世界逐点同密度，老存档不会出现断层。
+     */
+    private static void retreatOwnTerrain(SceneContext ctx) {
+        ServerLevel retreat = Worldgen.level(ctx, RETREAT);
+        ServerLevel overworld = ctx.server().overworld();
+        if (!(retreat.getChunkSource().getGenerator() instanceof NoiseBasedChunkGenerator generator)) {
+            ctx.fail("归隐之地的生成器不是噪声生成器：" + retreat.getChunkSource().getGenerator());
+            return;
+        }
+        ctx.check(generator.generatorSettings().unwrapKey().map(key -> key.location().toString()).orElse(""))
+                .as("归隐之地的噪声设置").isEqualTo(NS + "the_retreat");
+
+        RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, retreat.registryAccess());
+        Registry<DensityFunction> functions = retreat.registryAccess().registryOrThrow(Registries.DENSITY_FUNCTION);
+        Set<String> referenced = new TreeSet<>();
+        List<JsonElement> pending = new ArrayList<>();
+        pending.add(NoiseGeneratorSettings.DIRECT_CODEC.encodeStart(ops, generator.generatorSettings().value()).getOrThrow());
+        while (!pending.isEmpty()) {
+            JsonElement element = pending.removeLast();
+            if (element.isJsonObject()) {
+                element.getAsJsonObject().entrySet().forEach(entry -> pending.add(entry.getValue()));
+            } else if (element.isJsonArray()) {
+                element.getAsJsonArray().forEach(pending::add);
+            } else if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+                ResourceLocation id = ResourceLocation.tryParse(element.getAsString());
+                if (id != null && functions.containsKey(id) && referenced.add(id.toString())) {
+                    pending.add(DensityFunction.DIRECT_CODEC.encodeStart(ops, functions.get(id)).getOrThrow());
+                }
+            }
+        }
+        ctx.record("densityFunctions", referenced);
+        ctx.check(referenced.stream().filter(id -> id.startsWith("minecraft:overworld")).toList())
+                .as("归隐之地引用的主世界密度函数").isEmpty();
+
+        DensityFunction retreatDensity = retreat.getChunkSource().randomState().router().finalDensity();
+        DensityFunction overworldDensity = overworld.getChunkSource().randomState().router().finalDensity();
+        List<String> differs = new ArrayList<>();
+        for (int x = -2048; x <= 2048; x += 512) {
+            for (int z = -2048; z <= 2048; z += 512) {
+                for (int y = -48; y <= 160; y += 16) {
+                    DensityFunction.SinglePointContext point = new DensityFunction.SinglePointContext(x, y, z);
+                    double expected = overworldDensity.compute(point);
+                    double actual = retreatDensity.compute(point);
+                    if (expected != actual) {
+                        differs.add(x + "," + y + "," + z + " " + expected + "≠" + actual);
+                    }
+                }
+            }
+        }
+        ctx.check(differs).as("归隐之地与主世界最终密度不同的位置").isEmpty();
+    }
+
+    /**
+     * 隐世之境在 depth 估算的地表下方用最终密度确认有实心地面：地形被置零（处处一样平、实际全是水）时拒绝，
+     * 估算偏高几格时仍能在下方找到地面。
+     */
+    private static void hiddenRetreatNeedsGround(SceneContext ctx) {
+        Class<?>[] signature = {DensityFunction.class, int.class, int.class, int.class};
+        boolean onWater = Reflect.call(null, HiddenRetreatStructure.class, "hasGroundBelow", signature,
+                DensityFunctions.zero(), 0, 80, 0);
+        ctx.check(onWater).as("最终密度处处为零时有地面").isFalse();
+        // y=76 及以下为实心
+        DensityFunction ground = DensityFunctions.yClampedGradient(76, 77, 1, -1);
+        boolean estimateHigh = Reflect.call(null, HiddenRetreatStructure.class, "hasGroundBelow", signature, ground, 0, 80, 0);
+        ctx.check(estimateHigh).as("估算地表比实际高 3 格时有地面").isTrue();
+        boolean estimateTooHigh = Reflect.call(null, HiddenRetreatStructure.class, "hasGroundBelow", signature, ground, 0, 82, 0);
+        ctx.check(estimateTooHigh).as("估算地表比实际高 5 格时有地面").isFalse();
     }
 
     /** 固定种子世界里由近及远找到结构的真实起点（走 STRUCTURE_STARTS），检查起点在建筑高度范围内。 */
