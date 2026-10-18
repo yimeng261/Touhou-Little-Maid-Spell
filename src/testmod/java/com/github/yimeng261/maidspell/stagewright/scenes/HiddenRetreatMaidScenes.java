@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.stagewright.scenes;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.HiddenRetreatMaidRegistry;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.MaidOriginData;
+import com.github.yimeng261.maidspell.compat.touhou_little_maid.MaidOriginPresetReloadListener;
 import com.github.yimeng261.maidspell.dimension.HiddenRetreatMaidData;
 import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.github.yimeng261.maidspell.stagewright.support.Actors;
@@ -17,11 +18,14 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -52,6 +56,22 @@ public final class HiddenRetreatMaidScenes {
                 HiddenRetreatMaidScenes::filmRestoresInfiniteEffects));
         scenes.add(Checks.scene("retreatMaid.origin.originAloneGrantsNoEffectPermission", 5,
                 HiddenRetreatMaidScenes::originAloneGrantsNothing));
+        scenes.add(Checks.scene("retreatMaid.origin.presetSnapshotsOnlyInitialInfiniteEffects", 5,
+                HiddenRetreatMaidScenes::presetSnapshotsInitialEffects));
+        scenes.add(Checks.scene("retreatMaid.origin.presetFollowsPlacedTemplateData", 5,
+                HiddenRetreatMaidScenes::presetFollowsPlacedTemplate));
+        scenes.add(Checks.scene("retreatMaid.origin.unmarkedMaidAcquiresNoPreset", 5,
+                HiddenRetreatMaidScenes::unmarkedMaidAcquiresNoPreset));
+        scenes.add(Checks.scene("retreatMaid.origin.legacyMarkerMigratesFromTemplateOnce", 5,
+                HiddenRetreatMaidScenes::legacyMarkerMigratesOnce));
+        scenes.add(Checks.scene("retreatMaid.origin.transportRestoresMissingPresets", 5,
+                HiddenRetreatMaidScenes::transportRestoresPresets));
+        scenes.add(Checks.scene("retreatMaid.origin.strongerFiniteEffectFallsBackToPreset", 5,
+                HiddenRetreatMaidScenes::strongerFiniteFallsBack));
+        scenes.add(Checks.scene("retreatMaid.origin.absentEffectIsNotLoaded", 5,
+                HiddenRetreatMaidScenes::absentEffectNotLoaded));
+        scenes.add(Checks.scene("retreatMaid.origin.sharedSourceWithDifferentEffectsIsAmbiguous", 5,
+                HiddenRetreatMaidScenes::sharedSourceAmbiguous));
         scenes.add(Checks.scene("retreatMaid.claims.surviveRestartAndStayPerPlayer", 5,
                 HiddenRetreatMaidScenes::claimsSurviveRestart));
         scenes.add(Checks.scene("retreatMaid.claims.templateMaidFollowsClaim", 5,
@@ -170,6 +190,186 @@ public final class HiddenRetreatMaidScenes {
         CompoundTag invalid = persistent(true);
         invalid.getCompound(MaidOriginData.ORIGIN).putString("Source", "invalid source");
         ctx.check(MaidOriginData.preservesPermanentEffects(invalid)).as("来源不是合法注册名").isFalse();
+    }
+
+    // ---- 预设效果 ----
+
+    private static final String ELVEN_REALM = "touhou_little_maid_spell:elven_realm";
+
+    private static CompoundTag effect(String id, int duration, int amplifier) {
+        CompoundTag effect = new CompoundTag();
+        effect.putString("id", id);
+        effect.putInt("duration", duration);
+        effect.putByte("amplifier", (byte) amplifier);
+        effect.putBoolean("show_particles", false);
+        return effect;
+    }
+
+    private static CompoundTag templateMaid() {
+        CompoundTag data = new CompoundTag();
+        data.putString("id", "touhou_little_maid:maid");
+        CompoundTag persistent = new CompoundTag();
+        persistent.put(MaidOriginData.ORIGIN, MaidOriginData.createOrigin(ELVEN_REALM, true));
+        data.put("NeoForgeData", persistent);
+        return data;
+    }
+
+    private static ListTag presetOf(CompoundTag data) {
+        return MaidOriginData.getOrigin(data).getList(MaidOriginData.PRESET_EFFECTS, Tag.TAG_COMPOUND);
+    }
+
+    private static void initializeLegacyPresets(CompoundTag persistent, ListTag templatePresets) {
+        Reflect.call(null, MaidOriginData.class, "initializeLegacyPresets",
+                new Class<?>[]{CompoundTag.class, ListTag.class}, persistent, templatePresets);
+    }
+
+    private static void mergePresetEffects(CompoundTag persistent, CompoundTag data) {
+        Reflect.call(null, MaidOriginData.class, "mergePresetEffects",
+                new Class<?>[]{CompoundTag.class, CompoundTag.class}, persistent, data);
+    }
+
+    private static boolean needsPresetEffect(MobEffectInstance current, MobEffectInstance expected) {
+        return Reflect.<Boolean>call(null, MaidOriginData.class, "needsPresetEffect",
+                new Class<?>[]{MobEffectInstance.class, MobEffectInstance.class}, current, expected);
+    }
+
+    /** 模板实体生成时只快照初始的无限效果，保留效果名与等级，不留数值 id 与隐藏效果，之后改动活动效果不影响快照。 */
+    private static void presetSnapshotsInitialEffects(SceneContext ctx) {
+        CompoundTag template = templateMaid();
+        ListTag active = new ListTag();
+        CompoundTag permanent = effect("minecraft:regeneration", -1, 1);
+        permanent.put("hidden_effect", effect("minecraft:regeneration", 400, 0));
+        active.add(permanent);
+        active.add(effect("minecraft:speed", 200, 0));
+        active.add(effect("absent_mod:blessing", -1, 3));
+        template.put("active_effects", active);
+
+        MaidOriginData.captureTemplatePresetEffects(template);
+        ListTag preset = presetOf(template);
+        ctx.check(preset.size()).as("快照里的效果数").isEqualTo(2);
+        ctx.check(preset.getCompound(0).getString("id")).as("第一条").isEqualTo("minecraft:regeneration");
+        ctx.check((int) preset.getCompound(0).getByte("amplifier")).as("第一条等级").isEqualTo(1);
+        ctx.check(preset.getCompound(0).contains("hidden_effect")).as("隐藏效果不进快照").isFalse();
+        ctx.check(preset.getCompound(1).getString("id")).as("缺失模组的效果也保留名字").isEqualTo("absent_mod:blessing");
+
+        permanent.putByte("amplifier", (byte) 8);
+        active.add(effect("minecraft:strength", -1, 5));
+        CompoundTag restored = new CompoundTag();
+        restoreTransport(template, restored);
+        ctx.check(presetOf(restored).equals(preset)).as("转运恢复后快照不随活动效果变化").isTrue();
+        ctx.check(presetOf(restored).size()).as("恢复后的效果数").isEqualTo(2);
+    }
+
+    /** 放置的是数据包覆盖过的模板时，快照取自这份模板的初始效果，而不是旧模板里嵌的快照。 */
+    private static void presetFollowsPlacedTemplate(SceneContext ctx) {
+        CompoundTag template = templateMaid();
+        ListTag original = new ListTag();
+        original.add(effect("minecraft:regeneration", -1, 1));
+        template.getCompound("NeoForgeData").getCompound(MaidOriginData.ORIGIN).put(MaidOriginData.PRESET_EFFECTS, original);
+        ListTag replacement = new ListTag();
+        replacement.add(effect("minecraft:strength", -1, 2));
+        template.put("active_effects", replacement);
+        MaidOriginData.captureTemplatePresetEffects(template);
+        ctx.check(presetOf(template).equals(replacement)).as("快照取自覆盖后的模板").isTrue();
+    }
+
+    /** 没有来源标记的普通女仆模板不会被补上标记，也不会进入效果维护。 */
+    private static void unmarkedMaidAcquiresNoPreset(SceneContext ctx) {
+        CompoundTag ordinary = new CompoundTag();
+        ordinary.putString("id", "touhou_little_maid:maid");
+        ListTag active = new ListTag();
+        active.add(effect("minecraft:strength", -1, 5));
+        ordinary.put("active_effects", active);
+        CompoundTag before = ordinary.copy();
+        MaidOriginData.captureTemplatePresetEffects(ordinary);
+        ctx.check(ordinary.equals(before)).as("普通女仆模板数据不变").isTrue();
+    }
+
+    /** 没有快照的旧标记按模板预设升级一次；已有快照（含显式的空快照）不会被覆盖。 */
+    private static void legacyMarkerMigratesOnce(SceneContext ctx) {
+        CompoundTag persistent = new CompoundTag();
+        CompoundTag origin = MaidOriginData.createOrigin(ELVEN_REALM, true);
+        origin.remove(MaidOriginData.PRESET_EFFECTS);
+        persistent.put(MaidOriginData.ORIGIN, origin);
+        ListTag templateEffects = new ListTag();
+        templateEffects.add(effect("minecraft:regeneration", -1, 1));
+        initializeLegacyPresets(persistent, null);
+        ctx.check(origin.contains(MaidOriginData.PRESET_EFFECTS)).as("没有模板预设时不升级").isFalse();
+        initializeLegacyPresets(persistent, templateEffects);
+        templateEffects.add(effect("minecraft:strength", -1, 5));
+        initializeLegacyPresets(persistent, templateEffects);
+        ctx.check(origin.getList(MaidOriginData.PRESET_EFFECTS, Tag.TAG_COMPOUND).size()).as("只升级一次").isEqualTo(1);
+        origin.put(MaidOriginData.PRESET_EFFECTS, new ListTag());
+        initializeLegacyPresets(persistent, templateEffects);
+        ctx.check(origin.getList(MaidOriginData.PRESET_EFFECTS, Tag.TAG_COMPOUND).isEmpty()).as("显式空快照不被覆盖").isTrue();
+    }
+
+    /** 转运数据里的效果被清掉后，预设里的无限效果补回来；无关的效果原样保留，重复补不会叠加。 */
+    private static void transportRestoresPresets(SceneContext ctx) {
+        CompoundTag persistent = new CompoundTag();
+        ListTag preset = new ListTag();
+        preset.add(effect("minecraft:regeneration", -1, 1));
+        preset.add(effect("absent_mod:blessing", -1, 3));
+        persistent.put(MaidOriginData.ORIGIN, MaidOriginData.createOrigin(ELVEN_REALM, true, preset));
+        CompoundTag data = new CompoundTag();
+        ListTag current = new ListTag();
+        current.add(effect("minecraft:strength", 100, 5));
+        data.put("active_effects", current);
+        mergePresetEffects(persistent, data);
+        ListTag merged = data.getList("active_effects", Tag.TAG_COMPOUND);
+        ctx.check(merged.size()).as("补回后的效果数").isEqualTo(3);
+        ctx.check(merged.getCompound(0).equals(current.getCompound(0))).as("无关效果原样保留").isTrue();
+        mergePresetEffects(persistent, data);
+        ctx.check(data.getList("active_effects", Tag.TAG_COMPOUND).size()).as("重复补不叠加").isEqualTo(3);
+        ctx.check(presetOf(persistent).size()).as("预设本身不变").isEqualTo(2);
+    }
+
+    /** 更强的有限效果过期后能回落到初始的无限效果，但更强的等级不会因此变成永久。 */
+    private static void strongerFiniteFallsBack(SceneContext ctx) {
+        MobEffectInstance expected = new MobEffectInstance(MobEffects.REGENERATION, -1, 1);
+        MobEffectInstance current = new MobEffectInstance(MobEffects.REGENERATION, 200, 4);
+        ctx.check(needsPresetEffect(null, expected)).as("没有该效果").isTrue();
+        ctx.check(needsPresetEffect(current, expected)).as("只有有限时长的更强效果").isTrue();
+        current.update(expected);
+        ctx.check(current.getAmplifier()).as("合并后仍是更强等级").isEqualTo(4);
+        ctx.check(current.getDuration()).as("合并后仍是有限时长").isEqualTo(200);
+        CompoundTag saved = (CompoundTag) current.save();
+        ctx.check(saved.getCompound("hidden_effect").getInt("duration")).as("垫底的初始效果时长").isEqualTo(-1);
+        ctx.check((int) saved.getCompound("hidden_effect").getByte("amplifier")).as("垫底的初始效果等级").isEqualTo(1);
+        ctx.check(needsPresetEffect(expected, expected)).as("已有同样的无限效果").isFalse();
+        ctx.check(needsPresetEffect(new MobEffectInstance(MobEffects.REGENERATION, -1, 4), expected))
+                .as("已有更强的无限效果").isFalse();
+        ctx.check(needsPresetEffect(new MobEffectInstance(MobEffects.REGENERATION, -1, 0), expected))
+                .as("已有较弱的无限效果").isTrue();
+    }
+
+    /** 效果模组缺失时按名字查不到，不会读成别的效果。 */
+    private static void absentEffectNotLoaded(SceneContext ctx) {
+        MobEffectInstance absent = Reflect.call(null, MaidOriginData.class, "loadPresetEffect",
+                new Class<?>[]{CompoundTag.class}, effect("absent_mod:blessing", -1, 3));
+        ctx.check(absent == null).as("缺失的效果").isTrue();
+        MobEffectInstance present = Reflect.call(null, MaidOriginData.class, "loadPresetEffect",
+                new Class<?>[]{CompoundTag.class}, effect("minecraft:regeneration", -1, 1));
+        ctx.check(present != null).as("存在的效果").isTrue();
+        ctx.check(present.getAmplifier()).as("读回的等级").isEqualTo(1);
+        ctx.check(present.isInfiniteDuration()).as("读回的是无限时长").isTrue();
+    }
+
+    /** 同一来源下有多份初始效果不同的模板女仆时，旧数据迁移不采用任何一份。 */
+    private static void sharedSourceAmbiguous(SceneContext ctx) {
+        var sources = new HashMap<String, ListTag>();
+        ListTag first = new ListTag();
+        first.add(effect("minecraft:regeneration", -1, 1));
+        ListTag second = new ListTag();
+        second.add(effect("minecraft:strength", -1, 1));
+        ctx.check(mergeSource(sources, "mod:source", first)).as("第一份").isTrue();
+        ctx.check(mergeSource(sources, "mod:source", first.copy())).as("相同的一份").isTrue();
+        ctx.check(mergeSource(sources, "mod:source", second)).as("不同的一份").isFalse();
+    }
+
+    private static boolean mergeSource(HashMap<String, ListTag> sources, String source, ListTag effects) {
+        return Reflect.<Boolean>call(null, MaidOriginPresetReloadListener.class, "mergeSource",
+                new Class<?>[]{java.util.Map.class, String.class, ListTag.class}, sources, source, effects);
     }
 
     // ---- 认领与结构归属 ----

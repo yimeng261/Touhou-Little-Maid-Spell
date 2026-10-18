@@ -108,6 +108,8 @@ public class MaidSpellEventHandler {
             return;
         }
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
+            // 区块加载时这个事件可能不在服务端主线程上触发，效果补回交给主线程做。
+            maid.getServer().execute(() -> MaidOriginData.maintainPresetEffects(maid));
             MaidOriginData.upgradeStarWitchSpellBooks(maid);
 
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
@@ -364,6 +366,7 @@ public class MaidSpellEventHandler {
                     }
                 }
                 if(maid.tickCount%20 == 0){
+                    MaidOriginData.maintainPresetEffects(maid);
                     boolean isMaidSpellTask = SpellCombatMeleeTask.UID.getNamespace().equals(maid.getTask().getUid().getNamespace());
                     if(maid.isNoAi() && isMaidSpellTask){
                         maid.setNoAi(false);

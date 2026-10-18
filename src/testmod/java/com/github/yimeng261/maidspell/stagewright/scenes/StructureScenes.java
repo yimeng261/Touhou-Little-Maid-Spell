@@ -571,7 +571,7 @@ public final class StructureScenes {
             "structure/fairy_maid_cafe/fairy_maid_cafe_yh_port.nbt", "structure/fairy_maid_cafe/fairy_maid_cafe_youkaisfeasts.nbt");
 
     /**
-     * 本模组每个模板里的女仆都带来源标记；带永久效果的声明保留永久效果；
+     * 本模组每个模板里的女仆都带来源标记和预设效果快照；带永久效果的声明保留永久效果；
      * 隐世之境的等待女仆带隐世女仆标记且没有主人。
      */
     private static void templateMaidsDeclareOrigin(SceneContext ctx) {
@@ -607,6 +607,12 @@ public final class StructureScenes {
                         .anyMatch(effect -> ((CompoundTag) effect).getInt("duration") == -1);
                 if (permanent && !MaidOriginData.preservesPermanentEffects(maid)) {
                     problems.add(where + " 带永久效果却没声明保留");
+                }
+                if (!origin.contains(MaidOriginData.PRESET_EFFECTS, Tag.TAG_LIST)) {
+                    problems.add(where + " 缺预设效果快照");
+                } else if (!Reflect.<ListTag>call(null, MaidOriginData.class, "collectPresetEffects", new Class<?>[]{ListTag.class},
+                        maid.getList("active_effects", Tag.TAG_COMPOUND)).equals(origin.get(MaidOriginData.PRESET_EFFECTS))) {
+                    problems.add(where + " 预设效果快照与初始无限效果不一致");
                 }
                 if (MaidOriginData.HIDDEN_RETREAT_SOURCE.equals(source)) {
                     if (!maid.getCompound("NeoForgeData").getBoolean(MaidOriginData.HIDDEN_RETREAT_MAID)) {
