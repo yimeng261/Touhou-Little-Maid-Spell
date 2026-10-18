@@ -39,6 +39,9 @@ class MaidOriginTemplatesTest {
                     if (permanent) {
                         assertTrue(MaidOriginData.preservesPermanentEffects(maid), label);
                     }
+                    assertTrue(origin.contains(MaidOriginData.PRESET_EFFECTS, Tag.TAG_LIST), label);
+                    assertEquals(MaidOriginData.collectPresetEffects(maid.getList("ActiveEffects", Tag.TAG_COMPOUND)),
+                            origin.get(MaidOriginData.PRESET_EFFECTS), label);
                     if (MaidOriginData.HIDDEN_RETREAT_SOURCE.equals(origin.getString("Source"))) {
                         assertTrue(maid.getCompound("ForgeData").getBoolean(MaidOriginData.HIDDEN_RETREAT_MAID));
                         assertFalse(maid.contains("Owner"), "Waiting template must be unowned");

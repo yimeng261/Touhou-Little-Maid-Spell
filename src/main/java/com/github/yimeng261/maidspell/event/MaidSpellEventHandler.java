@@ -99,6 +99,8 @@ public class MaidSpellEventHandler {
             return;
         }
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
+            // Chunk loading may post this event off the server thread.
+            maid.getServer().execute(() -> MaidOriginData.maintainPresetEffects(maid));
             MaidOriginData.upgradeStarWitchSpellBooks(maid);
 
             if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
@@ -333,6 +335,9 @@ public class MaidSpellEventHandler {
     public static void onMaidTick(MaidTickEvent event) {
         EntityMaid maid = event.getMaid();
         if (!maid.level().isClientSide()) {
+            if (maid.tickCount % 20 == 0) {
+                MaidOriginData.maintainPresetEffects(maid);
+            }
             if(maid.tickCount%2==0){
                 if(BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
                     MaidHardRemovalProtection.rememberProtected(maid);

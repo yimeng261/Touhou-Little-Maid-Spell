@@ -36,6 +36,7 @@ public abstract class StructureTemplateMixin {
 
         ListTag posTag = tag.getList("Pos", 6);
         BlockPos blockPos = BlockPos.containing(posTag.getDouble(0), posTag.getDouble(1), posTag.getDouble(2));
+        MaidOriginData.captureTemplatePresetEffects(tag);
         if ("touhou_little_maid:maid".equals(tag.getString("id"))
                 && !tag.contains("Owner") && MaidOriginData.isHiddenRetreatMaid(tag)) {
             try {
