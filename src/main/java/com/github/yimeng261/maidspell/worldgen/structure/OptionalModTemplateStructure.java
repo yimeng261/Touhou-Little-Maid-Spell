@@ -174,31 +174,11 @@ public class OptionalModTemplateStructure extends Structure {
             if (!anchored) {
                 continue;
             }
+            int top = floor + surfaceOffset + height - 1;
             boolean suitable = true;
             for (NoiseColumn column : columns) {
-                boolean supported = false;
-                for (int y = floor; y >= floor - maxTerrainStep; y--) {
-                    BlockState state = column.getBlock(y);
-                    if (isNetherGround(state)) {
-                        supported = true;
-                        break;
-                    }
-                    if (!isOpenSpace(state)) {
-                        break;
-                    }
-                }
-                if (!supported) {
+                if (!columnFits(column, floor, top, maxTerrainStep)) {
                     suitable = false;
-                    break;
-                }
-                int top = floor + surfaceOffset + height - 1;
-                for (int y = floor + 1; y <= top + 1; y++) {
-                    if (!isOpenSpace(column.getBlock(y))) {
-                        suitable = false;
-                        break;
-                    }
-                }
-                if (!suitable) {
                     break;
                 }
             }
@@ -207,6 +187,33 @@ public class OptionalModTemplateStructure extends Structure {
             }
         }
         return OptionalInt.empty();
+    }
+
+    /**
+     * Whether one column fits: cave ground within maxTerrainStep blocks below the floor,
+     * and open space from above the floor up to one block over the template top.
+     */
+    private static boolean columnFits(NoiseColumn column, int floor, int top, int maxTerrainStep) {
+        boolean supported = false;
+        for (int y = floor; y >= floor - maxTerrainStep; y--) {
+            BlockState state = column.getBlock(y);
+            if (isNetherGround(state)) {
+                supported = true;
+                break;
+            }
+            if (!isOpenSpace(state)) {
+                break;
+            }
+        }
+        if (!supported) {
+            return false;
+        }
+        for (int y = floor + 1; y <= top + 1; y++) {
+            if (!isOpenSpace(column.getBlock(y))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean isDryGround(BlockState state) {
