@@ -407,17 +407,6 @@ tasks.withType(Test).configureEach {
     systemProperty 'maidspell.projectDir', projectDir.absolutePath
 }
 
-tasks.register('validateResources', Test) {
-    group = 'verification'
-    description = 'Validates MaidSpell JSON, translations, and optional-mod resource guards.'
-    dependsOn tasks.named('testClasses')
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    filter {
-        includeTestsMatching 'com.github.yimeng261.maidspell.validation.*'
-    }
-}
-
 mixin {
     add sourceSets.main, "maidspell.refmap.json"
 
