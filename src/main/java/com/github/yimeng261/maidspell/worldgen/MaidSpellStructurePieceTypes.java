@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.worldgen;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.worldgen.structure.GroundedTemplatePiece;
 import com.github.yimeng261.maidspell.worldgen.structure.SingleTemplatePiece;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
@@ -14,6 +15,11 @@ public class MaidSpellStructurePieceTypes {
     public static final RegistryObject<StructurePieceType> SINGLE_TEMPLATE_PIECE = STRUCTURE_PIECE_TYPES.register(
         "single_template_piece",
         () -> SingleTemplatePiece::new
+    );
+
+    public static final RegistryObject<StructurePieceType> GROUNDED_TEMPLATE = STRUCTURE_PIECE_TYPES.register(
+        "grounded_template",
+        () -> GroundedTemplatePiece::new
     );
 }
 

@@ -6,11 +6,11 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -21,12 +21,18 @@ import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
 /**
  * A single rigid template gated by its optional integration mod. Nether templates
  * use cave floors instead of a heightmap, which would select the bedrock roof.
+ * With {@code surface_offset} 1 the template's bottom layer sits on the ground; with 0 or less the
+ * template carries 1 - surface_offset foundation layers that are buried, and the layer above them
+ * stands on the ground. With {@code fill_foundation} false the code fills no foundation and only
+ * vanilla terrain adaptation shapes the ground.
  */
 public class OptionalModTemplateStructure extends Structure {
     public static final Codec<OptionalModTemplateStructure> CODEC = RecordCodecBuilder.create(instance ->
@@ -35,10 +41,12 @@ public class OptionalModTemplateStructure extends Structure {
                     StructureTemplatePool.CODEC.fieldOf("start_pool").forGetter(structure -> structure.startPool),
                     Codec.STRING.fieldOf("required_mod").forGetter(structure -> structure.requiredMod),
                     Codec.BOOL.optionalFieldOf("nether", false).forGetter(structure -> structure.nether),
-                    Codec.intRange(0, 1).optionalFieldOf("surface_offset", 1)
+                    Codec.intRange(-8, 1).optionalFieldOf("surface_offset", 1)
                             .forGetter(structure -> structure.surfaceOffset),
                     Codec.intRange(0, 16).optionalFieldOf("max_terrain_step", 3)
                             .forGetter(structure -> structure.maxTerrainStep),
+                    Codec.BOOL.optionalFieldOf("fill_foundation", true)
+                            .forGetter(structure -> structure.fillFoundation),
                     TemplateFallback.CODEC.optionalFieldOf("fallback").forGetter(structure -> structure.fallback)
             ).apply(instance, OptionalModTemplateStructure::new));
 
@@ -50,17 +58,19 @@ public class OptionalModTemplateStructure extends Structure {
     private final boolean nether;
     private final int surfaceOffset;
     private final int maxTerrainStep;
+    private final boolean fillFoundation;
     private final Optional<TemplateFallback> fallback;
 
     public OptionalModTemplateStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool,
                                         String requiredMod, boolean nether, int surfaceOffset, int maxTerrainStep,
-                                        Optional<TemplateFallback> fallback) {
+                                        boolean fillFoundation, Optional<TemplateFallback> fallback) {
         super(settings);
         this.startPool = startPool;
         this.requiredMod = requiredMod;
         this.nether = nether;
         this.surfaceOffset = surfaceOffset;
         this.maxTerrainStep = maxTerrainStep;
+        this.fillFoundation = fillFoundation;
         this.fallback = fallback;
     }
 
@@ -97,7 +107,8 @@ public class OptionalModTemplateStructure extends Structure {
         int[] sampleZ = sampleCoordinates(footprint.minZ(), centerZ, footprint.maxZ());
 
         OptionalInt floor = nether
-                ? findNetherFloor(context, sampleX, sampleZ, relativeBox.getYSpan())
+                ? findNetherFloor(context, baseColumns(context, element, rotation, horizontalOrigin, sampleX, sampleZ),
+                        relativeBox.getYSpan())
                 : findSurfaceFloor(context, sampleX, sampleZ);
         if (floor.isEmpty()) {
             return Optional.empty();
@@ -111,10 +122,17 @@ public class OptionalModTemplateStructure extends Structure {
             return Optional.empty();
         }
 
-        // Keep the beardifier's ground plane at the natural floor even for templates
-        // whose first layer contains flowers, furniture, and other ground decorations.
-        PoolElementStructurePiece piece = new PoolElementStructurePiece(context.structureTemplateManager(),
-                element, origin, -surfaceOffset, rotation, box);
+        // Terrain adaptation treats "lowest box y + groundLevelDelta" as the first layer above the
+        // ground: it carves from there up and fills below. That layer must be one above the natural
+        // floor (floor + 1); otherwise templates whose first layer holds flowers, furniture, or other
+        // ground decorations get the ground under them dug away. Site selection allows the ground to
+        // sit maxTerrainStep blocks below the anchor, so a code-filled foundation goes that deep.
+        int groundLevelDelta = 1 - surfaceOffset;
+        PoolElementStructurePiece piece = fillFoundation
+                ? new GroundedTemplatePiece(context.structureTemplateManager(), element, origin, groundLevelDelta,
+                        rotation, box, maxTerrainStep + surfaceOffset)
+                : new PoolElementStructurePiece(context.structureTemplateManager(), element, origin, groundLevelDelta,
+                        rotation, box);
         BlockPos center = new BlockPos(centerX, origin.getY(), centerZ);
         return Optional.of(new GenerationStub(center, builder -> builder.addPiece(piece)));
     }
@@ -129,10 +147,9 @@ public class OptionalModTemplateStructure extends Structure {
         int maxFloor = Integer.MIN_VALUE;
         for (int x : sampleX) {
             for (int z : sampleZ) {
-                int y = context.chunkGenerator().getFirstOccupiedHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG,
-                        context.heightAccessor(), context.randomState());
                 NoiseColumn column = context.chunkGenerator().getBaseColumn(x, z,
                         context.heightAccessor(), context.randomState());
+                int y = topOccupied(column, context.heightAccessor());
                 if (!isDryGround(column.getBlock(y))) {
                     return OptionalInt.empty();
                 }
@@ -146,15 +163,44 @@ public class OptionalModTemplateStructure extends Structure {
         return OptionalInt.of(maxFloor);
     }
 
-    private OptionalInt findNetherFloor(GenerationContext context, int[] sampleX, int[] sampleZ, int height) {
-        NoiseColumn[] columns = new NoiseColumn[sampleX.length * sampleZ.length];
-        int index = 0;
-        for (int x : sampleX) {
-            for (int z : sampleZ) {
-                columns[index++] = context.chunkGenerator().getBaseColumn(x, z,
-                        context.heightAccessor(), context.randomState());
+    /**
+     * Same as getFirstOccupiedHeight with WORLD_SURFACE_WG: the topmost non-air block,
+     * or one below the minimum build height when the whole column is air.
+     */
+    private static int topOccupied(NoiseColumn column, LevelHeightAccessor heightAccessor) {
+        for (int y = heightAccessor.getMaxBuildHeight() - 1; y >= heightAccessor.getMinBuildHeight(); y--) {
+            if (!column.getBlock(y).isAir()) {
+                return y;
             }
         }
+        return heightAccessor.getMinBuildHeight() - 1;
+    }
+
+    /**
+     * Columns checked by Nether site selection: one per solid block in the layer above the foundation
+     * (the first layer above the ground, template y = 1 - surface_offset). Cave floors are uneven, and a
+     * few samples would miss pits and cliff edges under the middle. Falls back to the footprint samples
+     * when the template blocks are unavailable.
+     */
+    private List<BlockPos> baseColumns(GenerationContext context, StructurePoolElement element, Rotation rotation,
+                                       BlockPos horizontalOrigin, int[] sampleX, int[] sampleZ) {
+        List<BlockPos> columns = GroundedTemplatePiece.solidLayer(context.structureTemplateManager(), element, rotation,
+                horizontalOrigin, 1 - surfaceOffset).stream().map(pos -> pos.atY(0)).distinct().toList();
+        if (!columns.isEmpty()) {
+            return columns;
+        }
+        List<BlockPos> samples = new ArrayList<>();
+        for (int x : sampleX) {
+            for (int z : sampleZ) {
+                samples.add(new BlockPos(x, 0, z));
+            }
+        }
+        return samples;
+    }
+
+    private OptionalInt findNetherFloor(GenerationContext context, List<BlockPos> positions, int height) {
+        NoiseColumn[] columns = positions.stream().map(pos -> context.chunkGenerator().getBaseColumn(pos.getX(), pos.getZ(),
+                context.heightAccessor(), context.randomState())).toArray(NoiseColumn[]::new);
         int minFloor = Math.max(context.chunkGenerator().getSeaLevel(),
                 context.heightAccessor().getMinBuildHeight() + 8);
         int maxTop = Math.min(MAX_NETHER_TEMPLATE_Y, context.heightAccessor().getMaxBuildHeight() - 2);
@@ -174,31 +220,11 @@ public class OptionalModTemplateStructure extends Structure {
             if (!anchored) {
                 continue;
             }
+            int top = floor + surfaceOffset + height - 1;
             boolean suitable = true;
             for (NoiseColumn column : columns) {
-                boolean supported = false;
-                for (int y = floor; y >= floor - maxTerrainStep; y--) {
-                    BlockState state = column.getBlock(y);
-                    if (isNetherGround(state)) {
-                        supported = true;
-                        break;
-                    }
-                    if (!isOpenSpace(state)) {
-                        break;
-                    }
-                }
-                if (!supported) {
+                if (!columnFits(column, floor, top, maxTerrainStep)) {
                     suitable = false;
-                    break;
-                }
-                int top = floor + surfaceOffset + height - 1;
-                for (int y = floor + 1; y <= top + 1; y++) {
-                    if (!isOpenSpace(column.getBlock(y))) {
-                        suitable = false;
-                        break;
-                    }
-                }
-                if (!suitable) {
                     break;
                 }
             }
@@ -207,6 +233,33 @@ public class OptionalModTemplateStructure extends Structure {
             }
         }
         return OptionalInt.empty();
+    }
+
+    /**
+     * Whether one column fits: cave ground within maxTerrainStep blocks below the floor,
+     * and open space from above the floor up to one block over the template top.
+     */
+    private static boolean columnFits(NoiseColumn column, int floor, int top, int maxTerrainStep) {
+        boolean supported = false;
+        for (int y = floor; y >= floor - maxTerrainStep; y--) {
+            BlockState state = column.getBlock(y);
+            if (isNetherGround(state)) {
+                supported = true;
+                break;
+            }
+            if (!isOpenSpace(state)) {
+                break;
+            }
+        }
+        if (!supported) {
+            return false;
+        }
+        for (int y = floor + 1; y <= top + 1; y++) {
+            if (!isOpenSpace(column.getBlock(y))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean isDryGround(BlockState state) {
