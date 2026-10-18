@@ -15,7 +15,7 @@ import net.neoforged.neoforge.common.crafting.IngredientType;
 import java.util.stream.Stream;
 
 /**
- * 可选模组材料：当指定模组未安装时返回空（不匹配任何物品），
+ * 可选模组材料：当指定模组未安装或内层材料解析不出时返回空（不匹配任何物品），
  * 配合 AltarRecipeSerializerMixin 过滤空材料，实现跨模组可选合成。
  *
  * <p>内层材料只在模组已安装时才解析：未安装时其中的物品 id、材料类型都不存在，提前解析会让整条配方加载失败。
@@ -46,7 +46,10 @@ public class OptionalModIngredient implements ICustomIngredient {
         if (!ModList.get().isLoaded(modId)) {
             return DataResult.success(new OptionalModIngredient(modId, raw, Ingredient.EMPTY, false));
         }
-        return Ingredient.CODEC.parse(raw).map(parsed -> new OptionalModIngredient(modId, raw, parsed, true));
+        // 模组装了但这一版没有该物品（如官方 1.21 版妖怪的归家没有灵梦发带）时同样当作缺席
+        return DataResult.success(Ingredient.CODEC.parse(raw).result()
+                .map(parsed -> new OptionalModIngredient(modId, raw, parsed, true))
+                .orElseGet(() -> new OptionalModIngredient(modId, raw, Ingredient.EMPTY, false)));
     }
 
     @Override

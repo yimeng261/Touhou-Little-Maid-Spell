@@ -23,6 +23,10 @@
         {
           "type": "neoforge:mod_loaded",
           "modid": "slashblade"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaishomecoming"
         }
       ]
     }
@@ -76,6 +80,13 @@
         "request": {
           "name": "slashblade:yuzukitukumo"
         }
+      }
+    },
+    {
+      "type": "touhou_little_maid_spell:optional_mod_item",
+      "modid": "youkaishomecoming",
+      "ingredient": {
+        "item": "youkaishomecoming:reimu_hairband"
       }
     }
   ]

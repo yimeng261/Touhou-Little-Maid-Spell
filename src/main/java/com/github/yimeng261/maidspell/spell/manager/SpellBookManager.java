@@ -55,6 +55,10 @@ public class SpellBookManager {
         registerProviderFactory("goety", "GoetyProvider", "com.github.yimeng261.maidspell.spell.providers.GoetyProvider");
         registerProviderFactory("usefulmagic", "UsefulMagicProvider", "com.github.yimeng261.maidspell.spell.providers.UsefulMagicProvider");
         registerProviderFactory("slashblade", "SlashBladeProvider", "com.github.yimeng261.maidspell.spell.providers.SlashBladeProvider");
+        // 妖怪的归家的弹幕与符卡只有 1.21 非官方移植版有（内嵌 danmaku_api），官方 1.21 版没有，靠 danmaku_api 区分
+        if (ModList.get().isLoaded("danmaku_api")) {
+            registerProviderFactory("youkaishomecoming", "YoukaiHomecomingProvider", "com.github.yimeng261.maidspell.spell.providers.YoukaiHomecomingProvider");
+        }
     }
 
     /**
