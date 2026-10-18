@@ -207,6 +207,18 @@ neoForge {
     // 这个文件会自动加载
     // accessTransformers.add('src/main/resources/META-INF/accesstransformer.cfg')
 
+    // 同一个模组的两种源码组合（组名只用来分组，模组 ID 取自 mods.toml）：
+    // 普通运行只装 main；StageWright 运行把 testmod 的场景并进来，testmod 引用的测试框架与 worlddriver 只在这些运行的类路径上
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+        "${mod_id}_with_testmod" {
+            sourceSet(sourceSets.main)
+            sourceSet(sourceSets.testmod)
+        }
+    }
+
     // Default run configurations.
     // These can be tweaked, removed, or duplicated as needed.
     runs {
@@ -291,6 +303,8 @@ neoForge {
 
         // applies to all the run configs above
         configureEach {
+            loadedMods = [neoForge.mods.getByName(it.name.startsWith('stagewright') ? "${mod_id}_with_testmod" : mod_id)]
+
             // Recommended logging data for a userdev environment
             // The markers can be added/remove as needed separated by commas.
             // "SCAN": For mods scan.
@@ -302,17 +316,6 @@ neoForge {
             // You can set various levels here.
             // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
             logLevel = org.slf4j.event.Level.DEBUG
-        }
-    }
-
-    mods {
-        // define mod <-> source bindings
-        // these are used to tell the game which sources are for which mod
-        // mostly optional in a single mod project
-        // but multi mod projects should define one per mod
-        "${mod_id}" {
-            sourceSet(sourceSets.main)
-            sourceSet(sourceSets.testmod)
         }
     }
 }
