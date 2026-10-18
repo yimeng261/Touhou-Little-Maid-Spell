@@ -25,6 +25,7 @@ import net.minecraft.util.Unit;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -36,6 +37,7 @@ import net.minecraft.world.entity.npc.VillagerType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MerchantMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.trading.Merchant;
@@ -90,6 +92,7 @@ public final class NpcScenes {
         scenes.add(Checks.superflat("stellar_witch.survivesKill", 40, NpcScenes::witchSurvivesKill));
         scenes.add(Checks.scene("stellar_witch.lifecycleCommandNeedsOp", 5, NpcScenes::witchCommand));
         scenes.add(Checks.superflat("stellar_witch.maxHealthIsAuthoritative", 20, NpcScenes::witchMaxHealth));
+        scenes.add(Checks.superflat("stellar_witch.spawnsAtFullHealth", 20, NpcScenes::witchSpawnHealth));
         scenes.add(Checks.superflat("stellar_witch.otherMaxHealthUnaffected", 5, NpcScenes::otherMaxHealth));
         scenes.add(Checks.superflat("star_glow_flower_cluster.behavesLikePetals", 10, NpcScenes::flowerCluster));
         scenes.add(Checks.scene("dream_crystal.altarRecipesUseNebulaCore", 5, NpcScenes::altarRecipes));
@@ -276,6 +279,42 @@ public final class NpcScenes {
                 new AttributeModifier(MAX_HEALTH_PROBE, 0.5, AttributeModifier.Operation.ADD_MULTIPLIED_BASE),
                 new AttributeModifier(MAX_HEALTH_PROBE, 100, AttributeModifier.Operation.ADD_VALUE));
         witchMaxHealthStep(ctx, witch, attribute, expected, probes, 0);
+    }
+
+    /** /summon、刷怪蛋与直接创建生成的星之魔女都是满血：当前生命等于权威最大生命。 */
+    private static void witchSpawnHealth(SceneContext ctx) {
+        Mob created = npc(ctx, WITCH);
+        String tag = "tlms_spawn_health";
+        ctx.command("summon " + WITCH + " ~3 ~ ~ {Tags:[\"" + tag + "\"]}");
+        List<Mob> summoned = ctx.level().getEntitiesOfClass(Mob.class, new AABB(ctx.rel(0, 0, 0)).inflate(8),
+                mob -> mob.getTags().contains(tag));
+        summoned.forEach(mob -> ctx.cleanup(() -> Actors.cleanupEntity(mob)));
+        if (summoned.size() != 1) {
+            ctx.fail("/summon 生成的星之魔女有 " + summoned.size() + " 只");
+            return;
+        }
+        // 与 SpawnEggItem#useOn 相同的生成调用
+        ItemStack egg = Actors.stack(NS + "stellar_witch_spawn_egg");
+        Entity hatched = ((SpawnEggItem) egg.getItem()).getType(egg).spawn(ctx.level(), egg, null, ctx.rel(-3, 0, 0),
+                MobSpawnType.SPAWN_EGG, true, false);
+        if (!(hatched instanceof Mob eggWitch)) {
+            ctx.fail("刷怪蛋没有生成星之魔女");
+            return;
+        }
+        ctx.cleanup(() -> Actors.cleanupEntity(eggWitch));
+        Checks.after(ctx, 2, () -> {
+            checkFullHealth(ctx, "summon", summoned.getFirst());
+            checkFullHealth(ctx, "spawnEgg", eggWitch);
+            checkFullHealth(ctx, "created", created);
+        });
+    }
+
+    private static void checkFullHealth(SceneContext ctx, String label, Mob witch) {
+        IAuthoritativeHealth health = (IAuthoritativeHealth) witch;
+        ctx.record(label + ".health", health.maidspell$authoritativeHealth());
+        ctx.record(label + ".maxHealth", health.maidspell$authoritativeMaxHealth());
+        ctx.check(health.maidspell$authoritativeHealth()).as(label + " 生成的当前生命")
+                .isCloseTo(health.maidspell$authoritativeMaxHealth(), 1e-3);
     }
 
     private static void witchMaxHealthStep(SceneContext ctx, Mob witch, AttributeInstance attribute, float expected,

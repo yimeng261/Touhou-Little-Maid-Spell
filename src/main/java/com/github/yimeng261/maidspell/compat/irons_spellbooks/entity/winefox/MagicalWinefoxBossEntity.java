@@ -467,9 +467,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 绝不会因为把配置调大就凭空涨血（那等于免费治疗）。已存在的实体会把上限
         // 连同生命一起写进存档，读档时以存档为准，因此调小配置不会追溯削弱老存档。
         this.maidspell$setMaxHealth((float) Config.winefoxMaxHealth);
+        // 新生成的实体满血。原版生命字段被同步保护固定为 1，不能拿来当初始生命；
+        // 读档在构造之后，会按存档改写生命。
         WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.RESET,
-            () -> WinefoxBossHealthController.write(this,
-                Math.min(super.getHealth(), this.maidspell$bossMaxHealth())));
+            () -> WinefoxBossHealthController.write(this, this.maidspell$bossMaxHealth()));
         if (!level.isClientSide) {
             this.setPersistenceRequired();
         }
