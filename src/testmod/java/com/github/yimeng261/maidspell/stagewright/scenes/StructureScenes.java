@@ -124,6 +124,7 @@ public final class StructureScenes {
             new PaintingTemplate("starfall_garden_5", Checks.NS + "starfall_garden", 3),
             new PaintingTemplate("hidden_retreat/hidden_retreat_building", Checks.NS + "hidden_retreat", 2),
             new PaintingTemplate("fairy_maid_cafe/fairy_maid_cafe", Checks.NS + "fairy_maid_cafe", 2),
+            new PaintingTemplate("fairy_maid_cafe/fairy_maid_cafe_yh_port", Checks.NS + "fairy_maid_cafe", 2),
             new PaintingTemplate("fairy_maid_cafe/fairy_maid_cafe_youkaisfeasts", Checks.NS + "fairy_maid_cafe", 2),
             new PaintingTemplate("cherry_cabin", Checks.NS + "cherry_cabin", 2),
             new PaintingTemplate("enchantress_footsteps/village/snowy_house", "minecraft:village_snowy", 2));
@@ -294,9 +295,9 @@ public final class StructureScenes {
      * 预期挂靠格是模板 blockPos 经原版变换后的位置，偏一格也算错。
      */
     private static void paintingsStayAnchored(SceneContext ctx, PaintingTemplate painting, Rotation rotation) {
-        String requiredMod = TEMPLATE_REQUIRED_MOD.get(Checks.NS + painting.path());
-        if (requiredMod != null && !ModList.get().isLoaded(requiredMod)) {
-            ctx.skip("没装 " + requiredMod + "，不会选用这个模板");
+        String unused = unusedTemplateReason(Checks.NS + painting.path());
+        if (unused != null) {
+            ctx.skip(unused);
             return;
         }
         ServerLevel level = ctx.level();
@@ -509,17 +510,34 @@ public final class StructureScenes {
                 .isEqualTo((long) positions.size());
     }
 
-    /** 只在对应联动模组在场时才会被选用的模板（两个模组互斥，不在场时它的方块本就未注册）。 */
+    /** 只在对应联动模组在场时才会被选用的模板（几个模组互斥，不在场时它的方块本就未注册）；移植版的方块只有移植版有，以它内嵌的 danmaku_api 为准。 */
     private static final Map<String, String> TEMPLATE_REQUIRED_MOD = Map.of(
             Checks.NS + "fairy_maid_cafe/fairy_maid_cafe", "youkaishomecoming",
+            Checks.NS + "fairy_maid_cafe/fairy_maid_cafe_yh_port", "danmaku_api",
             Checks.NS + "fairy_maid_cafe/fairy_maid_cafe_youkaisfeasts", "youkaisfeasts");
+
+    /** 装了对应模组时改用别的模板：装了妖怪归家移植版就不用官方版的模板（其中有移植版没有的方块）。 */
+    private static final Map<String, String> TEMPLATE_REPLACED_BY_MOD = Map.of(
+            Checks.NS + "fairy_maid_cafe/fairy_maid_cafe", "danmaku_api");
+
+    /** 当前模组组合下不会选用该模板的原因；会选用时为 null。 */
+    private static String unusedTemplateReason(String template) {
+        String requiredMod = TEMPLATE_REQUIRED_MOD.get(template);
+        if (requiredMod != null && !ModList.get().isLoaded(requiredMod)) {
+            return "没装 " + requiredMod + "，不会选用这个模板";
+        }
+        String replacedBy = TEMPLATE_REPLACED_BY_MOD.get(template);
+        if (replacedBy != null && ModList.get().isLoaded(replacedBy)) {
+            return "装了 " + replacedBy + "，改用别的模板";
+        }
+        return null;
+    }
 
     /** 模板里的方块都来自已注册的方块（没有声明依赖的模组方块会变成空气）。 */
     private static void onlyRegisteredBlocks(SceneContext ctx) {
         List<String> missing = new ArrayList<>();
         for (String template : StructureSnapshots.TEMPLATES.keySet()) {
-            String requiredMod = TEMPLATE_REQUIRED_MOD.get(template);
-            if (requiredMod != null && !ModList.get().isLoaded(requiredMod)) {
+            if (unusedTemplateReason(template) != null) {
                 continue;
             }
             ResourceLocation id = ResourceLocation.parse(template);
@@ -548,9 +566,9 @@ public final class StructureScenes {
     private static final Set<String> REQUIRED_MAID_SOURCES = Set.of(Checks.NS + "elven_realm", Checks.NS + "fairy_maid_cafe",
             Checks.NS + "fallen_sanctum", Checks.NS + "relic_sanctum", MaidOriginData.HIDDEN_RETREAT_SOURCE);
 
-    /** 两版咖啡厅模板都要带咖啡厅来源的女仆。 */
+    /** 各版咖啡厅模板都要带咖啡厅来源的女仆。 */
     private static final List<String> CAFE_TEMPLATES = List.of("structure/fairy_maid_cafe/fairy_maid_cafe.nbt",
-            "structure/fairy_maid_cafe/fairy_maid_cafe_youkaisfeasts.nbt");
+            "structure/fairy_maid_cafe/fairy_maid_cafe_yh_port.nbt", "structure/fairy_maid_cafe/fairy_maid_cafe_youkaisfeasts.nbt");
 
     /**
      * 本模组每个模板里的女仆都带来源标记；带永久效果的声明保留永久效果；
@@ -616,8 +634,7 @@ public final class StructureScenes {
         for (var file : files.entrySet()) {
             String path = file.getKey().getPath();
             String id = Checks.NS + path.substring("structure/".length(), path.length() - ".nbt".length());
-            String requiredMod = TEMPLATE_REQUIRED_MOD.get(id);
-            if (requiredMod != null && !ModList.get().isLoaded(requiredMod)) {
+            if (unusedTemplateReason(id) != null) {
                 continue;
             }
             try (var stream = file.getValue().open()) {

@@ -15,7 +15,7 @@
     }
   ],
   "type": "touhou_little_maid_spell:land_jigsaw",
-  "start_pool": "touhou_little_maid_spell:fairy_maid_cafe",
+  "start_pool": "touhou_little_maid_spell:fairy_maid_cafe_yh_port",
   "biomes": "#touhou_little_maid_spell:has_structure/fairy_maid_cafe",
   "project_start_to_heightmap": "WORLD_SURFACE_WG",
   "liquid_settings": "ignore_waterlogging",
@@ -29,8 +29,14 @@
   "size": 1,
   "terrain_adaptation": "beard_box",
   "avoid_water": true,
-  "fallback": {
-    "mod": "youkaishomecoming",
-    "start_pool": "touhou_little_maid_spell:fairy_maid_cafe_youkaisfeasts"
-  }
+  "fallback": [
+    {
+      "mod": "youkaishomecoming",
+      "start_pool": "touhou_little_maid_spell:fairy_maid_cafe_youkaisfeasts"
+    },
+    {
+      "mod": "danmaku_api",
+      "start_pool": "touhou_little_maid_spell:fairy_maid_cafe"
+    }
+  ]
 }

@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.stagewright.support;
 
+import com.github.yimeng261.maidspell.worldgen.structure.LandJigsawStructure;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
@@ -33,7 +34,6 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSetting
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
-import net.neoforged.fml.ModList;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -114,16 +114,10 @@ public final class StructureStage {
                 .getOrThrow(message -> new IllegalStateException("无法编码结构 " + structureId + ": " + message))
                 .getAsJsonObject();
         String type = json.get("type").getAsString();
-        // 与 LandJigsawStructure 一致：fallback 指定的模组缺席时改用它的起始模板池
-        String startPool = json.get("start_pool").getAsString();
-        if (json.has("fallback")) {
-            JsonObject fallback = json.getAsJsonObject("fallback");
-            if (!ModList.get().isLoaded(fallback.get("mod").getAsString())) {
-                startPool = fallback.get("start_pool").getAsString();
-            }
-        }
-        Holder<StructureTemplatePool> pool = access.registryOrThrow(Registries.TEMPLATE_POOL).getHolderOrThrow(
-                ResourceKey.create(Registries.TEMPLATE_POOL, ResourceLocation.parse(startPool)));
+        // land_jigsaw 按 fallback 选起始模板池，与生成时一致
+        Holder<StructureTemplatePool> pool = structure instanceof LandJigsawStructure land ? land.startPool()
+                : access.registryOrThrow(Registries.TEMPLATE_POOL).getHolderOrThrow(ResourceKey.create(
+                        Registries.TEMPLATE_POOL, ResourceLocation.parse(json.get("start_pool").getAsString())));
         int size = json.get("size").getAsInt();
         int firstAir = ctx.surfaceY(0, 0);
         return switch (type) {

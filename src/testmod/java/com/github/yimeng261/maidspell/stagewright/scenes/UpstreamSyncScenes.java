@@ -53,7 +53,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -237,7 +236,10 @@ public final class UpstreamSyncScenes {
                 .map(Worldgen::templateId).findFirst().orElse("");
     }
 
-    /** 咖啡厅默认起始池用妖怪归家版模板；没装妖怪归家时改用 Youkais' Feasts 版模板池。 */
+    /**
+     * 咖啡厅默认起始池用妖怪归家移植版模板；没装妖怪归家时改用 Youkais' Feasts 版，
+     * 装的是没有 danmaku_api 的官方版时改用妖怪归家版；实际选用的模板与当前模组组合一致。
+     */
     private static void cafeFallback(SceneContext ctx) {
         Structure structure = ctx.server().registryAccess().registryOrThrow(Registries.STRUCTURE)
                 .get(ResourceLocation.parse(NS + "fairy_maid_cafe"));
@@ -246,13 +248,14 @@ public final class UpstreamSyncScenes {
             return;
         }
         Holder<StructureTemplatePool> start = Reflect.field(cafe, LandJigsawStructure.class, "startPool");
-        Optional<LandJigsawStructure.PoolFallback> fallback = Reflect.field(cafe, LandJigsawStructure.class, "fallback");
-        ctx.check(templateOf(start)).as("默认起始模板").isEqualTo(NS + "fairy_maid_cafe/fairy_maid_cafe");
-        ctx.check(fallback.isPresent()).as("有回退池").isTrue();
-        fallback.ifPresent(f -> {
-            ctx.check(f.mod()).as("回退条件的模组").isEqualTo("youkaishomecoming");
-            ctx.check(templateOf(f.startPool())).as("回退起始模板").isEqualTo(NS + "fairy_maid_cafe/fairy_maid_cafe_youkaisfeasts");
-        });
+        List<LandJigsawStructure.PoolFallback> fallback = Reflect.field(cafe, LandJigsawStructure.class, "fallback");
+        ctx.check(templateOf(start)).as("默认起始模板").isEqualTo(NS + "fairy_maid_cafe/fairy_maid_cafe_yh_port");
+        ctx.check(fallback.stream().map(f -> f.mod() + " -> " + templateOf(f.startPool())).toList()).as("回退池（按顺序）")
+                .isEqualTo(List.of("youkaishomecoming -> " + NS + "fairy_maid_cafe/fairy_maid_cafe_youkaisfeasts",
+                        "danmaku_api -> " + NS + "fairy_maid_cafe/fairy_maid_cafe"));
+        String expected = !ModList.get().isLoaded("youkaishomecoming") ? "fairy_maid_cafe_youkaisfeasts"
+                : !ModList.get().isLoaded("danmaku_api") ? "fairy_maid_cafe" : "fairy_maid_cafe_yh_port";
+        ctx.check(templateOf(cafe.startPool())).as("当前模组组合选用的模板").isEqualTo(NS + "fairy_maid_cafe/" + expected);
     }
 
     /** 梦云水晶效果白名单默认放行妖怪归家和 Youkais' Feasts 的效果。 */
