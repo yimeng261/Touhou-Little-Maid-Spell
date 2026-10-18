@@ -76,7 +76,7 @@ public final class Config {
     public static int retreatRecordRetentionDays;
     public static boolean autoInstallTlmModelPack;
 
-    public static double winefoxMaidDamageShareLimit;
+    public static double winefoxNonPlayerDamageShareLimit;
     public static boolean winefoxChallengeConfigEnabled;
     public static boolean winefoxTrueDamageRestrictsReward;
     public static double winefoxMaxHealth;

@@ -156,7 +156,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     /** 常规胜利次数落 NBT；旧存档缺键时从零开始。 */
     private static final String PLAYER_WIN_COUNT_TAG = "WinefoxPlayerWinCount";
-    /** 保留旧 NBT 键名，避免丢失已有存档的零女仆伤害胜利记录。 */
+    /** 保留旧 NBT 键名，避免丢失已有存档的达标单场胜利记录。 */
     private static final String SOLO_WIN_AFTER_REQUIRED_WINS_TAG = "WinefoxSoloWinAfterThree";
     private static final EntityDataAccessor<Integer> ACTION =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.INT);
@@ -177,10 +177,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> BATTLE_MUSIC =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BOOLEAN);
-    public static final EntityDataAccessor<Float> BOSS_HEALTH =
-        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.FLOAT);
-    static final EntityDataAccessor<Float> BOSS_MAX_HEALTH =
-        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.FLOAT);
+    public static final EntityDataAccessor<String> BOSS_HEALTH =
+        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.STRING);
+    static final EntityDataAccessor<String> BOSS_MAX_HEALTH =
+        SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.STRING);
     static final EntityDataAccessor<Byte> ENCOUNTER_STATE =
         SynchedEntityData.defineId(MagicalWinefoxBossEntity.class, EntityDataSerializers.BYTE);
     static final EntityDataAccessor<Byte> REWARD_STATE =
@@ -194,8 +194,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /** 玩家挑战结束后的行礼动画时长。 */
     private static final int CURTSY_RETURN_HOME_TICKS = 6 * 20;
 
-    /** 驯服先需两场非限制胜利，之后再赢一场女仆零伤害的战斗。 */
+    /** 驯服先需两场非限制胜利，之后再赢一场女仆零伤害且玩家伤害占比超过 60% 的战斗。 */
     private static final int VOW_REQUIRED_PLAYER_WINS = 2;
+    private static final float VOW_PLAYER_DAMAGE_SHARE = 0.60F;
     private static final int VOW_DIALOGUE_INTERVAL_TICKS = 2 * 20;
 
     /** 誓约没在演（可以做别的：交易、邀战、闲谈）。 */
@@ -231,6 +232,17 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         return (float) Config.winefoxDuelSurvivalFloor;
     }
     private static final UUID MAX_HEALTH_MODIFIER_ID = UUID.fromString("f19f26fa-fc65-4e71-a3bb-b90705c37272");
+    private static final ThreadLocal<Boolean> INTERNAL_HEALTH_WRITE = ThreadLocal.withInitial(() -> false);
+
+    static void withInternalWrite(Runnable action) {
+        boolean previous = INTERNAL_HEALTH_WRITE.get();
+        INTERNAL_HEALTH_WRITE.set(true);
+        try {
+            action.run();
+        } finally {
+            INTERNAL_HEALTH_WRITE.set(previous);
+        }
+    }
 
     /** 五稿规定动画第二秒发射直线投枪。 */
     private static final int SPEAR_RELEASE_TICKS =
@@ -327,10 +339,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private final WinefoxSpellController spellController = new WinefoxSpellController(this);
     @Nullable
     private UUID lastPlayerTargetId;
-    /** 本场累计吃到的伤害，以及其中出自女仆的部分。用来算「女仆代打」的伤害占比。 */
+    /** 本场累计吃到的全部有效伤害，以及其中挑战者本人和女仆分别造成的部分。 */
     private float totalDamageTaken;
+    private float challengerDamageTaken;
     private float maidDamageTaken;
-    private boolean maidDamageOccurred;
     /** 本场有没有人对她用过真伤。「女仆代打」的另一个触发条件。 */
     private boolean trueDamageUsed;
     /** 战败演出结束后回秋千的倒计时，见 {@link #tickReturnHome}。 */
@@ -392,11 +404,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private WinefoxChallengeConfig activeChallengeConfig;
     private boolean customChallenge;
     private boolean healthReady;
-    /** Server authority; BOSS_HEALTH is only a network mirror. */
-    private float authoritativeHealth;
+    private final WinefoxHealthState healthState = new WinefoxHealthState();
     private boolean authoritativeHealthReady;
-    /** Server authority; BOSS_MAX_HEALTH is only a network mirror. */
-    private float authoritativeMaxHealth;
     private boolean authoritativeMaxHealthReady;
     /** A low-level duplicate write is expected after an external setHealth call. */
     private boolean expectedExternalHealthWrite;
@@ -455,12 +464,12 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     public MagicalWinefoxBossEntity(EntityType<? extends MagicalWinefoxBossEntity> entityType, Level level) {
         super(entityType, level);
         this.healthReady = true;
-        this.authoritativeHealth = super.getHealth();
+        this.healthState.setHealth(super.getHealth());
         this.authoritativeHealthReady = true;
         // 配置的上限只在新生成时生效，并且**只裁剪、不回填**：她只会被压到新上限，
         // 绝不会因为把配置调大就凭空涨血（那等于免费治疗）。已存在的实体会把上限
         // 连同生命一起写进存档，读档时以存档为准，因此调小配置不会追溯削弱老存档。
-        this.maidspell$setMaxHealth((float) Config.winefoxMaxHealth);
+        withInternalWrite(() -> this.maidspell$setMaxHealth((float) Config.winefoxMaxHealth));
         WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.RESET,
             () -> WinefoxBossHealthController.write(this,
                 Math.min(super.getHealth(), this.maidspell$bossMaxHealth())));
@@ -482,20 +491,21 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (!this.healthReady || !this.authoritativeHealthReady) {
             return super.getHealth();
         }
-        return this.authoritativeHealth;
+        return this.healthState.getHealth(super.getHealth());
     }
 
     /** Internal maximum-health view independent of the public attribute value. */
     @Override
     public float maidspell$authoritativeMaxHealth() {
-        return this.authoritativeMaxHealthReady ? this.authoritativeMaxHealth
-            : (float) this.getAttributeValue(Attributes.MAX_HEALTH);
+        float authoritative = this.healthState.getMaxHealth(0.0F);
+        return this.authoritativeMaxHealthReady && authoritative > 0.0F
+            ? authoritative : (float) this.getAttributeValue(Attributes.MAX_HEALTH);
     }
 
     /** Internal health view that is not rewritten by third-party getHealth transformers. */
     @Override
     public float maidspell$authoritativeHealth() {
-        return this.authoritativeHealthReady ? this.authoritativeHealth : super.getHealth();
+        return this.authoritativeHealthReady ? this.healthState.getHealth(super.getHealth()) : super.getHealth();
     }
 
     @Override
@@ -612,7 +622,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     void maidspell$resetAdaptiveDamageHistory() {
         this.adaptiveAttemptedDamage.clear();
         this.adaptiveEffectiveDamage.clear();
-        this.highDamageGuard.setPending(false);
+        this.highDamageGuard.setPending(false, this.tickCount);
     }
 
     WinefoxHighDamageGuard maidspell$highDamageGuard() {
@@ -650,11 +660,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (!this.healthReady || this.level().isClientSide || BossLifecycleAccess.canWriteData(this)) {
             return false;
         }
-        if (accessor == BOSS_HEALTH && value instanceof Float requested) {
-            WinefoxBossHealthController.handleExternalHealthWrite(this, requested);
+        if (accessor == BOSS_HEALTH && value instanceof String encoded) {
+            WinefoxBossHealthController.handleExternalHealthWrite(this, decodeSyncFloat(encoded));
             return true;
         }
-        if (accessor == BOSS_MAX_HEALTH && value instanceof Float) {
+        if (accessor == BOSS_MAX_HEALTH && value instanceof String) {
             WinefoxBossHealthController.handleExternalMaxHealthWrite(this);
             return true;
         }
@@ -687,29 +697,36 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             }
             return;
         }
-        if (accessor == BOSS_HEALTH && value instanceof Float requested) {
+        if (accessor == BOSS_HEALTH && value instanceof String encoded) {
+            float requested = decodeSyncFloat(encoded);
             if (this.level().isClientSide) {
-                float mirroredHealth = Float.isFinite(requested) ? Math.max(0.0F, requested) : 0.0F;
+                float mirroredHealth = Math.max(0.0F, requested);
                 if (this.authoritativeMaxHealthReady) {
                     mirroredHealth = Math.min(mirroredHealth, this.maidspell$bossMaxHealth());
                 }
-                this.maidspell$setAuthoritativeHealth(mirroredHealth);
+                float clampedHealth = mirroredHealth;
+                withInternalWrite(() -> this.maidspell$setAuthoritativeHealth(clampedHealth));
             } else if (this.healthReady && !BossLifecycleAccess.canWriteData(this)) {
                 WinefoxBossHealthController.handleExternalHealthWrite(this, requested);
             }
             return;
         }
-        if (accessor == BOSS_MAX_HEALTH && value instanceof Float requested) {
+        if (accessor == BOSS_MAX_HEALTH && value instanceof String encoded) {
+            float requested = decodeSyncFloat(encoded);
             if (this.level().isClientSide) {
-                this.authoritativeMaxHealth = Float.isFinite(requested) && requested > 0.0F
-                    ? requested : this.getMaxHealth();
+                this.healthState.setMaxHealth(requested > 0.0F ? requested : this.getMaxHealth());
                 this.authoritativeMaxHealthReady = true;
                 if (this.authoritativeHealthReady) {
-                    this.authoritativeHealth = Math.min(this.authoritativeHealth, this.authoritativeMaxHealth);
+                    this.healthState.setHealth(Math.min(
+                        this.healthState.getHealth(super.getHealth()),
+                        this.healthState.getMaxHealth(0.0F)));
                 }
             } else if (this.healthReady && !BossLifecycleAccess.canWriteData(this)) {
                 WinefoxBossHealthController.handleExternalMaxHealthWrite(this);
             }
+            return;
+        }
+        if (accessor == BOSS_HEALTH || accessor == BOSS_MAX_HEALTH) {
             return;
         }
         // Some health systems keep an auxiliary float modifier in synced data
@@ -731,7 +748,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     void maidspell$setAuthoritativeHealth(float health) {
-        this.authoritativeHealth = health;
+        if (!INTERNAL_HEALTH_WRITE.get()) {
+            return;
+        }
+        this.healthState.setHealth(health);
         this.authoritativeHealthReady = true;
     }
 
@@ -762,7 +782,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return;
         }
         BossLifecycleAccess.withDataWrite(this,
-            () -> this.entityData.set(BOSS_MAX_HEALTH, this.authoritativeMaxHealth));
+            () -> this.entityData.set(BOSS_MAX_HEALTH,
+                encodeSyncFloat(this.healthState.getMaxHealth(0.0F))));
     }
 
     @Override
@@ -788,23 +809,40 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     float maidspell$bossMaxHealth() {
-        if (this.authoritativeMaxHealthReady
-                && Float.isFinite(this.authoritativeMaxHealth)
-                && this.authoritativeMaxHealth > 0.0F) {
-            return this.authoritativeMaxHealth;
+        if (this.authoritativeMaxHealthReady) {
+            float authoritative = this.healthState.getMaxHealth(0.0F);
+            if (Float.isFinite(authoritative) && authoritative > 0.0F) {
+                return authoritative;
+            }
         }
-        float value = this.entityData.get(BOSS_MAX_HEALTH);
-        return Float.isFinite(value) && value > 0.0F ? value
+        float value = decodeSyncFloat(this.entityData.get(BOSS_MAX_HEALTH));
+        return value > 0.0F ? value
             : (float) this.getAttributeValue(Attributes.MAX_HEALTH);
     }
 
     void maidspell$setMaxHealth(float requested) {
+        if (!INTERNAL_HEALTH_WRITE.get()) {
+            return;
+        }
         float max = Float.isFinite(requested) && requested >= 1.0F ? requested : 600.0F;
-        this.authoritativeMaxHealth = max;
+        this.healthState.setMaxHealth(max);
         this.authoritativeMaxHealthReady = true;
         this.maidspell$reconcileMaxHealthAttribute();
         if (!this.level().isClientSide) {
-            BossLifecycleAccess.withDataWrite(this, () -> this.entityData.set(BOSS_MAX_HEALTH, max));
+            BossLifecycleAccess.withDataWrite(this, () -> this.entityData.set(BOSS_MAX_HEALTH, encodeSyncFloat(max)));
+        }
+    }
+
+    static String encodeSyncFloat(float value) {
+        return Float.isFinite(value) && value > 0.0F ? Float.toString(value) : "0";
+    }
+
+    static float decodeSyncFloat(String value) {
+        try {
+            float parsed = Float.parseFloat(value);
+            return Float.isFinite(parsed) && parsed > 0.0F ? parsed : 0.0F;
+        } catch (NumberFormatException ignored) {
+            return 0.0F;
         }
     }
 
@@ -832,7 +870,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (!Double.isFinite(multiplier) || multiplier <= 0.0D) {
             return;
         }
-        double difference = this.authoritativeMaxHealth / multiplier - base - additions;
+        double difference = this.healthState.getMaxHealth(0.0F) / multiplier - base - additions;
         if (!Double.isFinite(difference)) {
             return;
         }
@@ -1357,8 +1395,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
-        this.entityData.define(BOSS_HEALTH, -1.0F);
-        this.entityData.define(BOSS_MAX_HEALTH, -1.0F);
+        this.entityData.define(BOSS_HEALTH, "0");
+        this.entityData.define(BOSS_MAX_HEALTH, "0");
         this.entityData.define(ENCOUNTER_STATE, (byte) WinefoxEncounterState.SEATED.ordinal());
         this.entityData.define(REWARD_STATE, (byte) WinefoxRewardState.NONE.ordinal());
         this.entityData.define(ENCOUNTER_SERIAL, 0);
@@ -2385,7 +2423,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.activeChallengeConfig = WinefoxChallengeConfig.takeFromItem(invitation);
         this.applyArmor();
         challenger.getInventory().setChanged();
-        this.maidspell$setMaxHealth((float) this.activeChallengeConfig.maxHealth());
+        withInternalWrite(() -> this.maidspell$setMaxHealth((float) this.activeChallengeConfig.maxHealth()));
         WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.RESET,
                 () -> this.setHealth(this.maidspell$bossMaxHealth()));
         com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxSpellPowerBonus.apply(this);
@@ -2431,7 +2469,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             this.activeChallengeConfig = null;
             this.applyArmor();
             this.customChallenge = false;
-            this.maidspell$setMaxHealth((float) Config.winefoxMaxHealth);
+            withInternalWrite(() -> this.maidspell$setMaxHealth((float) Config.winefoxMaxHealth));
             com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxSpellPowerBonus.apply(this);
             return;
         }
@@ -2901,11 +2939,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.DAMAGE,
             () -> vanillaApplied[0] = WinefoxBossHealthController.applyDamage(this, source, amount, maidDamage));
         boolean dealt = this.maidspell$authoritativeHealth() < healthBefore;
-        if (dealt && anyMaidDamage) {
-            this.maidDamageOccurred = true;
-        }
-        if (playerDuelDamage) {
-            this.recordDamageShare(maidDamage, healthBefore - this.maidspell$authoritativeHealth());
+        if (dealt) {
+            this.recordDamageShare(source, healthBefore - this.maidspell$authoritativeHealth());
         }
         if (this.maidspell$authoritativeHealth() <= 0.0F) {
             // 脱战时的「生命归零」不是战败：她是被路过的伤害打空的，没人打赢这一场。
@@ -2946,15 +2981,18 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * <p>统计的是<b>真正扣掉的血</b>而不是入参伤害：护甲、抗性、吸收都结算过了，
      * 也不会把无敌帧里被 {@code LivingEntity.hurt} 丢掉的那些算进来 —— 那些根本没造成伤害。
      *
-     * <p>挂在 {@link #hurt} 里而不是另开一个事件监听，是因为这里本来就已经判过
-     * {@code isMaidDamage(source)} 了，多加两个累加器不需要任何新的拦截点。
+     * <p>现在统计全场所有实际扣血，包括挑战者、女仆、第三方和环境伤害；
+     * 挑战者本人伤害单独计入，供「玩家以外伤害占比」使用。
      */
-    private void recordDamageShare(boolean maidDamage, float dealt) {
+    private void recordDamageShare(DamageSource source, float dealt) {
         if (dealt <= 0.0F || this.level().isClientSide) {
             return;
         }
         this.totalDamageTaken += dealt;
-        if (maidDamage) {
+        if (this.isChallengerPlayerDamage(source)) {
+            this.challengerDamageTaken += dealt;
+        }
+        if (isMaidDamage(source)) {
             this.maidDamageTaken += dealt;
         }
     }
@@ -3038,8 +3076,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (this.isDefeated() || this.maidspell$encounterState() != WinefoxEncounterState.COMBAT) {
             return;
         }
-        boolean playerVictory = source != null && this.isPlayerDuelDamage(source);
-        if (playerVictory && this.challengerId != null) {
+        // 正式挑战的胜负已经在遭遇状态里确定；最后一击可能来自荆棘、持续伤害、
+        // 环境或某个模组转发的伤害源，不能再让它一票否决整场奖励。
+        boolean formalVictory = this.challengerId != null && this.isPlayerCombatActive();
+        if (formalVictory) {
             this.postVictoryChatPlayerId = this.challengerId;
             WinefoxChallengeProgress.markDefeated(this.level().getPlayerByUUID(this.challengerId));
         }
@@ -3061,13 +3101,16 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.dropWeaponForDefeat();
         this.setNoGravity(false);
         this.setInvulnerable(true);
-        if (playerVictory && this.maidspell$rewardState() == WinefoxRewardState.NONE) {
+        if (formalVictory && this.maidspell$rewardState() == WinefoxRewardState.NONE) {
             this.entityData.set(RESTRICTED, this.computeRestricted());
             // 这一场是不是「常规手段赢的」就在这一行定案，驯服的门槛与交易解锁共用同一个判据。
             // 记在场次判定的<b>当时</b>而不是奖励发完之后：奖励那一整段（掉战利品、说战败台词）
             // 任何一句出错都会跳到下面的 catch，而赢就是赢，不该因为发奖失败少算一场。
             if (!this.isRestricted()) {
-                if (this.playerWinCount >= VOW_REQUIRED_PLAYER_WINS && !this.maidDamageOccurred) {
+                if (this.playerWinCount >= VOW_REQUIRED_PLAYER_WINS
+                        && this.maidDamageTaken <= 0.0F
+                        && this.totalDamageTaken > 0.0F
+                        && this.challengerDamageTaken / this.totalDamageTaken > VOW_PLAYER_DAMAGE_SHARE) {
                     this.soloWinAfterRequiredWins = true;
                 }
                 this.playerWinCount++;
@@ -3097,12 +3140,19 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * 发战败奖励，包括总计 1200 点经验的经验球。
      *
      * <p><b>必须自己调 {@code dropFromLootTable}。</b>原版死亡流程已被禁用，
-     * 只有有归属的合法战败才能调用这个奖励入口。
+     * 只有正式挑战中的合法战败才能调用这个奖励入口。
      *
      * <p>星云核心不走战利品表而是直接落地；女仆代打或使用自定义配置的挑战均不掉落。
      */
-    private void dropDefeatRewards(DamageSource source) {
-        this.dropFromLootTable(source, this.lastHurtByPlayerTime > 0);
+    private void dropDefeatRewards(@Nullable DamageSource source) {
+        DamageSource rewardSource = source;
+        if (rewardSource == null) {
+            Player challenger = this.challengerId == null ? null : this.level().getPlayerByUUID(this.challengerId);
+            rewardSource = challenger != null
+                    ? this.damageSources().playerAttack(challenger)
+                    : this.damageSources().generic();
+        }
+        this.dropFromLootTable(rewardSource, this.lastHurtByPlayerTime > 0);
         if (!this.isRestricted() && !this.customChallenge) {
             this.spawnAtLocation(new ItemStack(MaidSpellItems.NEBULA_CORE.get()));
         }
@@ -3246,22 +3296,23 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     }
 
     /**
-     * 这一场算不算「女仆代打」。
+     * 这一场算不算玩家没有承担主体战斗。
      *
-     * <p>两个触发条件任一成立即判限制：用过真伤，或者女仆打出的伤害占比超过阈值。
+     * <p>两个触发条件任一成立即判限制：用过真伤，或者玩家以外的伤害占比超过阈值。
      * 前者是因为真伤本身就绕过了她全部的防御机制（见 {@link ITrueDamageRedirect}），
-     * 后者是因为这一场要求玩家自己下场，而不是站在后面看女仆刷。
+     * 后者把女仆、召唤物、第三方和环境伤害都算进去，避免只看女仆而漏掉其他代打来源。
      *
-     * <p>一滴伤害都没吃到（比如被指令直接判负）时不判限制：那不是代打，是没打。
+     * <p>一滴有效伤害都没吃到时判受限：这不是正常的战斗胜利，不能白拿星云核心和特殊交易。
      */
     private boolean computeRestricted() {
         if (this.trueDamageUsed && Config.winefoxTrueDamageRestrictsReward) {
             return true;
         }
         if (this.totalDamageTaken <= 0.0F) {
-            return false;
+            return true;
         }
-        return this.maidDamageTaken / this.totalDamageTaken > Config.winefoxMaidDamageShareLimit;
+        float nonPlayerDamage = Math.max(0.0F, this.totalDamageTaken - this.challengerDamageTaken);
+        return nonPlayerDamage / this.totalDamageTaken > Config.winefoxNonPlayerDamageShareLimit;
     }
 
     /**
@@ -3304,7 +3355,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 回满权威生命并退回一阶段，下一场挑战才从完整状态开始。
         this.activeChallengeConfig = null;
         this.applyArmor();
-        this.maidspell$setMaxHealth((float) Config.winefoxMaxHealth);
+        withInternalWrite(() -> this.maidspell$setMaxHealth((float) Config.winefoxMaxHealth));
         com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxSpellPowerBonus.apply(this);
         WinefoxBossHealthController.withCause(this, WinefoxBossHealthController.Cause.RESET,
             () -> this.setHealth(this.maidspell$bossMaxHealth()));
@@ -3753,8 +3804,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.invisibilityDialogue.clear();
         this.lastPlayerTargetId = null;
         this.totalDamageTaken = 0.0F;
+        this.challengerDamageTaken = 0.0F;
         this.maidDamageTaken = 0.0F;
-        this.maidDamageOccurred = false;
         this.trueDamageUsed = false;
         this.maidspell$resetAdaptiveDamageHistory();
     }
@@ -3843,6 +3894,27 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         return false;
     }
 
+    /**
+     * 只认挑战者本人及其直接发射的弹体，不把女仆、召唤物或第三方算成玩家伤害。
+     * 反伤源的 entity 也是被反伤者本人，因此原版荆棘会正确计入这里。
+     */
+    private boolean isChallengerPlayerDamage(DamageSource source) {
+        if (this.challengerId == null || source == null) {
+            return false;
+        }
+        for (Entity cause : new Entity[]{source.getEntity(), source.getDirectEntity()}) {
+            if (cause instanceof Player player && this.challengerId.equals(player.getUUID())) {
+                return true;
+            }
+            if (cause instanceof Projectile projectile
+                    && projectile.getOwner() instanceof Player player
+                    && this.challengerId.equals(player.getUUID())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
@@ -3869,8 +3941,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         tag.putBoolean("WinefoxRestricted", this.isRestricted());
         tag.putInt("WinefoxReturnHomeTicks", this.returnHomeTicks);
         tag.putFloat("WinefoxTotalDamageTaken", this.totalDamageTaken);
+        tag.putFloat("WinefoxChallengerDamageTaken", this.challengerDamageTaken);
         tag.putFloat("WinefoxMaidDamageTaken", this.maidDamageTaken);
-        tag.putBoolean("WinefoxMaidDamageOccurred", this.maidDamageOccurred);
         tag.putBoolean("WinefoxTrueDamageUsed", this.trueDamageUsed);
         tag.putBoolean("WinefoxSummonSwordsUsedThisPhase", this.summonSwordsUsedThisPhase);
         tag.putBoolean("WinefoxPalmBlackHoleTriggeredThisPhase", this.palmBlackHoleTriggeredThisPhase);
@@ -3934,7 +4006,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         try {
         super.readAdditionalSaveData(tag);
         this.entityData.set(PHASE_TWO, tag.getBoolean("WinefoxPhaseTwo"));
-        this.highDamageGuard.setPending(tag.getBoolean("WinefoxHighDamageGuard"));
+        this.highDamageGuard.setPending(tag.getBoolean("WinefoxHighDamageGuard"), this.tickCount);
         if (tag.contains("WinefoxHomePos")) {
             this.homePos = NbtUtils.readBlockPos(tag.getCompound("WinefoxHomePos"));
         }
@@ -3944,8 +4016,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.entityData.set(RESTRICTED, tag.getBoolean("WinefoxRestricted"));
         this.returnHomeTicks = tag.getInt("WinefoxReturnHomeTicks");
         this.totalDamageTaken = tag.getFloat("WinefoxTotalDamageTaken");
+        this.challengerDamageTaken = tag.getFloat("WinefoxChallengerDamageTaken");
         this.maidDamageTaken = tag.getFloat("WinefoxMaidDamageTaken");
-        this.maidDamageOccurred = tag.getBoolean("WinefoxMaidDamageOccurred") || this.maidDamageTaken > 0.0F;
         this.trueDamageUsed = tag.getBoolean("WinefoxTrueDamageUsed");
         this.summonSwordsUsedThisPhase = tag.getBoolean("WinefoxSummonSwordsUsedThisPhase");
         this.palmBlackHoleTriggeredThisPhase = tag.getBoolean("WinefoxPalmBlackHoleTriggeredThisPhase");
@@ -4002,7 +4074,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.customChallenge = tag.getBoolean("WinefoxCustomChallenge");
         this.challengerId = tag.hasUUID("WinefoxChallenger") ? tag.getUUID("WinefoxChallenger") : null;
         if (this.activeChallengeConfig != null && this.challengerId != null) {
-            this.maidspell$setMaxHealth((float) this.activeChallengeConfig.maxHealth());
+            withInternalWrite(() -> this.maidspell$setMaxHealth((float) this.activeChallengeConfig.maxHealth()));
             com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxSpellPowerBonus.apply(this);
         }
         this.postVictoryChatPlayerId = tag.hasUUID("WinefoxPostVictoryChatPlayer")
@@ -4092,7 +4164,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             reward = state == WinefoxEncounterState.DEFEATED
                 ? WinefoxRewardState.NOT_ELIGIBLE : WinefoxRewardState.NONE;
         }
-        this.maidspell$setMaxHealth(maximum);
+        withInternalWrite(() -> this.maidspell$setMaxHealth(maximum));
         health = WinefoxBossHealthController.sanitize(health, this.maidspell$bossMaxHealth());
         if (state == WinefoxEncounterState.SEATED || state == WinefoxEncounterState.CHALLENGE_START) {
             health = this.maidspell$bossMaxHealth();
@@ -4364,8 +4436,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
         player.connection.send(new ClientboundSetEntityDataPacket(this.getId(), List.of(
             SynchedEntityData.DataValue.create(LivingEntityHealthAccessor.maidspell$getHealthAccessor(), 1.0F),
-            SynchedEntityData.DataValue.create(BOSS_HEALTH, this.maidspell$authoritativeHealth()),
-            SynchedEntityData.DataValue.create(BOSS_MAX_HEALTH, this.maidspell$bossMaxHealth()),
+            SynchedEntityData.DataValue.create(BOSS_HEALTH, encodeSyncFloat(this.maidspell$authoritativeHealth())),
+            SynchedEntityData.DataValue.create(BOSS_MAX_HEALTH, encodeSyncFloat(this.maidspell$bossMaxHealth())),
             SynchedEntityData.DataValue.create(ENCOUNTER_STATE, this.entityData.get(ENCOUNTER_STATE)),
             SynchedEntityData.DataValue.create(REWARD_STATE, this.entityData.get(REWARD_STATE)),
             SynchedEntityData.DataValue.create(ENCOUNTER_SERIAL, this.entityData.get(ENCOUNTER_SERIAL)))));

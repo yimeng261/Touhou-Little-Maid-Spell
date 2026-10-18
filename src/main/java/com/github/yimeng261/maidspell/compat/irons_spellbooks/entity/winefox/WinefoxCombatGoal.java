@@ -926,7 +926,15 @@ final class WinefoxCombatGoal extends Goal {
         this.refreshMovementPattern();
     }
 
-    /** A nonempty custom list replaces this phase's ordinary random spell pool. */
+    /**
+     * Try the configured spell list before the ordinary random pool.
+     *
+     * <p>A configured list is a preference, not proof that a cast happened:
+     * entries may be unavailable in the installed ISS version, on cooldown,
+     * or rejected by a spell's pre-cast conditions. Returning {@code true}
+     * merely because the list was non-empty would make the goal skip its
+     * fallback pool and leave the boss circling without attacking.</p>
+     */
     private boolean tryConfiguredPool(LivingEntity target, boolean secondPhase) {
         WinefoxChallengeConfig config = this.boss.maidspell$challengeConfig();
         if (config == null) return false;
@@ -951,10 +959,10 @@ final class WinefoxCombatGoal extends Goal {
                 }
                 double scale = secondPhase ? PHASE_TWO_COOLDOWN_SCALE : PHASE_ONE_COOLDOWN_SCALE;
                 customSpellCooldowns.put(choice.id(), WinefoxBossSpells.customCooldown(choice, scale));
-                break;
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     private static boolean isSummonSwords(WinefoxSpellChoice choice) {

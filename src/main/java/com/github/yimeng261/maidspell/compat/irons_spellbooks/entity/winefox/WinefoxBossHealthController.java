@@ -15,6 +15,8 @@ import java.util.Deque;
  * 恢复、读档、管理操作与战败归零不受伤害限制。
  */
 public final class WinefoxBossHealthController {
+    static final float MINIMUM_EFFECTIVE_DAMAGE = 0.1F;
+
     public enum Cause {
         DAMAGE, HEAL, LOAD, RESET, SCRIPTED_TRANSITION, ADMIN, EXTERNAL_UNKNOWN
     }
@@ -92,7 +94,8 @@ public final class WinefoxBossHealthController {
 
     private static void syncMirrors(MagicalWinefoxBossEntity boss) {
         BossLifecycleAccess.withDataWrite(boss, () -> {
-            boss.getEntityData().set(MagicalWinefoxBossEntity.BOSS_HEALTH, boss.maidspell$authoritativeHealth());
+            boss.getEntityData().set(MagicalWinefoxBossEntity.BOSS_HEALTH,
+                MagicalWinefoxBossEntity.encodeSyncFloat(boss.maidspell$authoritativeHealth()));
             boss.getEntityData().set(LivingEntityHealthAccessor.maidspell$getHealthAccessor(), 1.0F);
         });
     }
@@ -268,7 +271,7 @@ public final class WinefoxBossHealthController {
                 health = Math.max(0.0F, previous - reducedDamage);
                 float postCapDamage = previous - health;
                 double highDamageGuardMultiplier = 1.0D;
-                float highDamageThreshold = WinefoxHighDamageGuard.threshold(Config.winefoxMaxHealth);
+                float highDamageThreshold = WinefoxHighDamageGuard.threshold(boss.maidspell$bossMaxHealth());
                 boolean highDamageGuardActive = boss.maidspell$isAdaptiveDamageActive()
                         && boss.maidspell$adaptiveDamageEnabled();
                 if (postCapDamage > 0.0F && boss.maidspell$isAdaptiveDamageActive()) {
@@ -289,13 +292,14 @@ public final class WinefoxBossHealthController {
                 }
                 if (highDamageGuardActive) {
                     WinefoxHighDamageGuard guard = boss.maidspell$highDamageGuard();
-                    highDamageGuardMultiplier = guard.multiplier();
+                    highDamageGuardMultiplier = guard.multiplier(boss.tickCount);
                     health = Math.max(0.0F, previous
                             - (float) ((previous - health) * highDamageGuardMultiplier));
                     if (health < previous) {
-                        guard.recordEffectiveHit(incomingDamage, highDamageThreshold);
+                        guard.recordEffectiveHit(incomingDamage, highDamageThreshold, boss.tickCount);
                     }
                 }
+                health = enforceMinimumDamage(previous, health, cap);
                 if (Config.winefoxDamageDebugLogging) {
                     Global.LOGGER.info("[WinefoxDamage] stage=resolved boss={} tick={} cause={} phaseTwo={} "
                                     + "adaptiveEnabled={} requestedHealth={} incoming={} attemptedDpsBefore={} "
@@ -321,6 +325,23 @@ public final class WinefoxBossHealthController {
         if (health < previous && isCappedCause(cause) && boss.maidspell$isAdaptiveDamageActive()) {
             boss.maidspell$recordAdaptiveEffectiveDamage(previous - health);
         }
+    }
+
+    static float enforceMinimumDamage(float previous, float health, float cap) {
+        if (!Float.isFinite(previous) || !Float.isFinite(health) || !Float.isFinite(cap)
+                || previous <= 0.0F || health > previous) {
+            return health;
+        }
+        float minimum = cap == IBossDamageClamp.NO_DAMAGE_CAP
+                ? MINIMUM_EFFECTIVE_DAMAGE
+                : Math.min(MINIMUM_EFFECTIVE_DAMAGE, Math.max(0.0F, cap));
+        if (minimum <= 0.0F) {
+            return health;
+        }
+        if (previous - health >= minimum) {
+            return health;
+        }
+        return Math.max(0.0F, previous - Math.min(minimum, previous));
     }
 
     /** 只有伤害类写入受上限与间隔约束；恢复类写入必须能自由写回。 */
@@ -372,12 +393,13 @@ public final class WinefoxBossHealthController {
 
     private static void restore(MagicalWinefoxBossEntity boss, float health,
                                 float previous, Cause cause) {
-        boss.maidspell$setAuthoritativeHealth(health);
+        MagicalWinefoxBossEntity.withInternalWrite(() -> boss.maidspell$setAuthoritativeHealth(health));
         if (health < previous && isCappedCause(cause)) {
             boss.maidspell$markEffectiveHit();
         }
         BossLifecycleAccess.withDataWrite(boss, () -> {
-            boss.getEntityData().set(MagicalWinefoxBossEntity.BOSS_HEALTH, health);
+            boss.getEntityData().set(MagicalWinefoxBossEntity.BOSS_HEALTH,
+                MagicalWinefoxBossEntity.encodeSyncFloat(health));
             boss.getEntityData().set(LivingEntityHealthAccessor.maidspell$getHealthAccessor(), 1.0F);
         });
         if (cause == Cause.EXTERNAL_UNKNOWN) {

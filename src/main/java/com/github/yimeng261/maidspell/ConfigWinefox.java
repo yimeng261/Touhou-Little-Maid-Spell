@@ -15,9 +15,9 @@ final class ConfigWinefox {
             .comment("是否允许使用星芒短剑的下一场挑战配置界面；关闭后不会打开界面",
                     "Whether the Starglint Dagger challenge configuration screen is available.")
             .define("winefoxChallengeConfigEnabled", true);
-    private static final ForgeConfigSpec.DoubleValue MAID_DAMAGE_SHARE_LIMIT = BUILDER
-            .comment("女仆造成的伤害占比超过此值时，不掉落星云核心或解锁特殊交易",
-                    "Maid damage share above this fraction disables the Nebula Core drop and special trades.")
+    private static final ForgeConfigSpec.DoubleValue NON_PLAYER_DAMAGE_SHARE_LIMIT = BUILDER
+            .comment("玩家以外的伤害（女仆、召唤物、第三方和环境）占比超过此值时，不掉落星云核心或解锁特殊交易；配置键保留旧名称以兼容已有存档",
+                    "Non-player damage share (maids, summons, third parties and environment) above this fraction disables the Nebula Core drop and special trades; the key name is kept for config compatibility.")
             .defineInRange("winefoxMaidDamageShareLimit", 0.6, 0.0, 1.0);
     private static final ForgeConfigSpec.BooleanValue TRUE_DAMAGE_RESTRICTS_REWARD = BUILDER
             .comment("本场使用真伤后是否限制星云核心掉落和特殊交易",
@@ -114,7 +114,7 @@ final class ConfigWinefox {
     }
 
     static void load() {
-        Config.winefoxMaidDamageShareLimit = MAID_DAMAGE_SHARE_LIMIT.get();
+        Config.winefoxNonPlayerDamageShareLimit = NON_PLAYER_DAMAGE_SHARE_LIMIT.get();
         Config.winefoxChallengeConfigEnabled = CHALLENGE_CONFIG_ENABLED.get();
         Config.winefoxTrueDamageRestrictsReward = TRUE_DAMAGE_RESTRICTS_REWARD.get();
         Config.winefoxMaxHealth = MAX_HEALTH.get();
