@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.mixin.accessor.SynchedEntityDataMixin;
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.player.Player;
@@ -235,8 +236,9 @@ public class TrueDamageUtil {
             
             boolean modified = false;
             
-            // 修改直接的Health字段
-            if (nbt.contains("Health")) {
+            // 根级 Health 同样只在数值与当前血量接近时尝试修改
+            if (nbt.contains("Health", Tag.TAG_ANY_NUMERIC)
+                    && isHealthMatch(nbt.getFloat("Health"), currentHealth)) {
                 nbt.putFloat("Health", newHealth);
                 modified = true;
                 //LOGGER.debug("[TrueDamage] Modified NBT Health: {}", newHealth);
@@ -306,13 +308,14 @@ public class TrueDamageUtil {
         // 先尝试使用缓存的ID
         List<Integer> cachedIds = healthIdMap.get(className);
         if (cachedIds != null && !cachedIds.isEmpty()) {
-            // 验证缓存的ID是否仍然有效
+            // 缓存只提供候选 ID，每次仍需验证其数值与当前血量接近
             List<Integer> validIds = new ArrayList<>();
             for (Integer id : cachedIds) {
                 try {
                     @SuppressWarnings("deprecation")
                     SynchedEntityData.DataItem<?> item = itemsById.get(id);
-                    if (item != null && item.getValue() instanceof Float) {
+                    if (item != null && item.getValue() instanceof Float floatValue
+                            && isHealthMatch(floatValue, currentHealth)) {
                         validIds.add(id);
                     }
                 } catch (Exception e) {
@@ -329,8 +332,7 @@ public class TrueDamageUtil {
         itemsById.forEach((id, dataItem) -> {
             if (dataItem.getValue() instanceof Float floatValue) {
                 // 匹配当前血量值或接近的值
-                if (isHealthMatch(floatValue, currentHealth) || 
-                    (floatValue > 0 && floatValue <= target.getMaxHealth())) {
+                if (isHealthMatch(floatValue, currentHealth)) {
                     healthIds.add(id);
                 }
             }
@@ -402,8 +404,6 @@ public class TrueDamageUtil {
                     sb.append("  ID ").append(id).append(": ").append(floatValue);
                     if (isHealthMatch(floatValue, health)) {
                         sb.append(" <- HEALTH MATCH");
-                    } else if (floatValue > 0 && floatValue <= entity.getMaxHealth()) {
-                        sb.append(" <- Possible Health");
                     }
                     sb.append("\n");
                 }
