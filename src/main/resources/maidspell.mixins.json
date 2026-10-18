@@ -8,6 +8,11 @@
   "refmap": "maidspell.refmap.json",
   "mixins": [
     "BasaltColumnsFeatureMixin",
+    "BasaltPillarFeatureMixin",
+    "DeltaFeatureMixin",
+    "NoiseBasedChunkGeneratorCarverMixin",
+    "SpringFeatureMixin",
+    "WorldCarverMixin",
     "ChunkGeneratorMixin",
     "accessor.CombatTrackerMixin",
     "BehaviorUtilsMixin",

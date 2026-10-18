@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pools.EmptyPoolElement;
@@ -28,6 +29,10 @@ import java.util.OptionalInt;
 /**
  * A single rigid template gated by its optional integration mod. Nether templates
  * use cave floors instead of a heightmap, which would select the bedrock roof.
+ * With {@code surface_offset} 1 the template's bottom layer sits on the ground; with 0 or less the
+ * template carries 1 - surface_offset foundation layers that are buried, and the layer above them
+ * stands on the ground. With {@code fill_foundation} false the code fills no foundation and only
+ * vanilla terrain adaptation shapes the ground.
  */
 public class OptionalModTemplateStructure extends Structure {
     public static final Codec<OptionalModTemplateStructure> CODEC = RecordCodecBuilder.create(instance ->
@@ -36,10 +41,12 @@ public class OptionalModTemplateStructure extends Structure {
                     StructureTemplatePool.CODEC.fieldOf("start_pool").forGetter(structure -> structure.startPool),
                     Codec.STRING.fieldOf("required_mod").forGetter(structure -> structure.requiredMod),
                     Codec.BOOL.optionalFieldOf("nether", false).forGetter(structure -> structure.nether),
-                    Codec.intRange(0, 1).optionalFieldOf("surface_offset", 1)
+                    Codec.intRange(-8, 1).optionalFieldOf("surface_offset", 1)
                             .forGetter(structure -> structure.surfaceOffset),
                     Codec.intRange(0, 16).optionalFieldOf("max_terrain_step", 3)
                             .forGetter(structure -> structure.maxTerrainStep),
+                    Codec.BOOL.optionalFieldOf("fill_foundation", true)
+                            .forGetter(structure -> structure.fillFoundation),
                     TemplateFallback.CODEC.optionalFieldOf("fallback").forGetter(structure -> structure.fallback)
             ).apply(instance, OptionalModTemplateStructure::new));
 
@@ -51,17 +58,19 @@ public class OptionalModTemplateStructure extends Structure {
     private final boolean nether;
     private final int surfaceOffset;
     private final int maxTerrainStep;
+    private final boolean fillFoundation;
     private final Optional<TemplateFallback> fallback;
 
     public OptionalModTemplateStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool,
                                         String requiredMod, boolean nether, int surfaceOffset, int maxTerrainStep,
-                                        Optional<TemplateFallback> fallback) {
+                                        boolean fillFoundation, Optional<TemplateFallback> fallback) {
         super(settings);
         this.startPool = startPool;
         this.requiredMod = requiredMod;
         this.nether = nether;
         this.surfaceOffset = surfaceOffset;
         this.maxTerrainStep = maxTerrainStep;
+        this.fillFoundation = fillFoundation;
         this.fallback = fallback;
     }
 
@@ -117,9 +126,13 @@ public class OptionalModTemplateStructure extends Structure {
         // ground: it carves from there up and fills below. That layer must be one above the natural
         // floor (floor + 1); otherwise templates whose first layer holds flowers, furniture, or other
         // ground decorations get the ground under them dug away. Site selection allows the ground to
-        // sit maxTerrainStep blocks below the anchor, so the foundation is filled that deep.
-        GroundedTemplatePiece piece = new GroundedTemplatePiece(context.structureTemplateManager(),
-                element, origin, 1 - surfaceOffset, rotation, box, maxTerrainStep + surfaceOffset);
+        // sit maxTerrainStep blocks below the anchor, so a code-filled foundation goes that deep.
+        int groundLevelDelta = 1 - surfaceOffset;
+        PoolElementStructurePiece piece = fillFoundation
+                ? new GroundedTemplatePiece(context.structureTemplateManager(), element, origin, groundLevelDelta,
+                        rotation, box, maxTerrainStep + surfaceOffset)
+                : new PoolElementStructurePiece(context.structureTemplateManager(), element, origin, groundLevelDelta,
+                        rotation, box);
         BlockPos center = new BlockPos(centerX, origin.getY(), centerZ);
         return Optional.of(new GenerationStub(center, builder -> builder.addPiece(piece)));
     }
@@ -164,14 +177,15 @@ public class OptionalModTemplateStructure extends Structure {
     }
 
     /**
-     * Columns checked by Nether site selection: one per solid block in the template's bottom layer.
-     * Cave floors are uneven, and a few samples would miss pits and cliff edges under the middle.
-     * Falls back to the footprint samples when the template blocks are unavailable.
+     * Columns checked by Nether site selection: one per solid block in the layer above the foundation
+     * (the first layer above the ground, template y = 1 - surface_offset). Cave floors are uneven, and a
+     * few samples would miss pits and cliff edges under the middle. Falls back to the footprint samples
+     * when the template blocks are unavailable.
      */
-    private static List<BlockPos> baseColumns(GenerationContext context, StructurePoolElement element, Rotation rotation,
-                                              BlockPos horizontalOrigin, int[] sampleX, int[] sampleZ) {
-        List<BlockPos> columns = GroundedTemplatePiece.solidBase(context.structureTemplateManager(), element, rotation,
-                horizontalOrigin).stream().map(pos -> pos.atY(0)).distinct().toList();
+    private List<BlockPos> baseColumns(GenerationContext context, StructurePoolElement element, Rotation rotation,
+                                       BlockPos horizontalOrigin, int[] sampleX, int[] sampleZ) {
+        List<BlockPos> columns = GroundedTemplatePiece.solidLayer(context.structureTemplateManager(), element, rotation,
+                horizontalOrigin, 1 - surfaceOffset).stream().map(pos -> pos.atY(0)).distinct().toList();
         if (!columns.isEmpty()) {
             return columns;
         }

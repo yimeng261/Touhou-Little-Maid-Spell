@@ -4,6 +4,7 @@
   "required_mod": "irons_spellbooks",
   "nether": true,
   "surface_offset": 1,
+  "fill_foundation": false,
   "max_terrain_step": 3,
   "biomes": "#touhou_little_maid_spell:has_structure/enchantress_footsteps_soulvalley_nook",
   "spawn_overrides": {},
