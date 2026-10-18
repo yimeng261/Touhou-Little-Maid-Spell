@@ -18,6 +18,7 @@ import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pools.EmptyPoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
+import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.NotNull;
 
@@ -118,7 +119,8 @@ public class OptionalModTemplateStructure extends Structure {
         // 它要落在自然地面的上一格（floor + 1），否则模板第一层是花、家具等地面装饰时会把脚下的地面挖掉。
         // 选址允许地面比锚点低 maxTerrainStep 格，地基补到那么深为止
         GroundedTemplatePiece piece = new GroundedTemplatePiece(context.structureTemplateManager(),
-                element, origin, 1 - surfaceOffset, rotation, box, maxTerrainStep + surfaceOffset);
+                element, origin, 1 - surfaceOffset, rotation, box, LiquidSettings.APPLY_WATERLOGGING,
+                maxTerrainStep + surfaceOffset);
         BlockPos center = new BlockPos(centerX, origin.getY(), centerZ);
         return Optional.of(new GenerationStub(center, builder -> builder.addPiece(piece)));
     }

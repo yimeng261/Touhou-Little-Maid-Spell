@@ -29,6 +29,7 @@
   "size": 1,
   "terrain_adaptation": "beard_box",
   "avoid_water": true,
+  "foundation_depth": 4,
   "fallback": [
     {
       "mod": "youkaishomecoming",

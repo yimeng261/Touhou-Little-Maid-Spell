@@ -22,9 +22,11 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.GenerationStep;
@@ -59,7 +61,7 @@ import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
 
 /**
  * 自然生成场景：注册与群系/维度映射快照、固定种子（5471）的真实维度按放置网格抽样、
- * 隐世之境只在归隐之地生成、归隐之地结构白名单、自定义地形检查的准确性、村庄补充的自然出现、可选模组模板结构不悬空。
+ * 隐世之境只在归隐之地生成、归隐之地结构白名单、自定义地形检查的准确性、村庄补充的自然出现、可选模组模板结构与咖啡厅不悬空、咖啡厅不陷进地里。
  * <p>不借用场地，直接查询服务器的主世界/下界/末地/归隐之地；除悬空检查要完整生成区块外，计算只到 STRUCTURE_STARTS 或只用噪声。
  */
 public final class NaturalScenes {
@@ -162,13 +164,18 @@ public final class NaturalScenes {
             new Natural("enchantress_footsteps_graveyard", OVERWORLD, Dry.NONE),
             new Natural("enchantress_footsteps_oasis", OVERWORLD, Dry.NONE));
 
-    /** 可选模组模板结构（自己找落点、自己设地形适配基准）：真实生成后检查底层有没有悬空。 */
+    /** 真实生成后检查不悬空、不陷进地里的结构。 */
     private static final List<Natural> GROUNDED = List.of(
+            // 可选模组模板结构自己找落点、自己设地形适配基准
             new Natural("cherry_cabin", OVERWORLD, Dry.NONE),
             new Natural("enchantress_footsteps_basalt_forge", NETHER, Dry.NONE),
             new Natural("enchantress_footsteps_crimson_cabin", NETHER, Dry.NONE),
             new Natural("enchantress_footsteps_soulvalley_nook", NETHER, Dry.NONE),
-            new Natural("enchantress_footsteps_warped_perch", NETHER, Dry.NONE));
+            new Natural("enchantress_footsteps_warped_perch", NETHER, Dry.NONE),
+            // 拼图起点只按中心一列投影到地表，坡地边缘地形适配补不满
+            new Natural("fairy_maid_cafe", OVERWORLD, Dry.NONE));
+    /** 本来就要被地形包住、不检查埋入的结构：玄武岩锻炉建在玄武岩柱丛里。 */
+    private static final Set<String> MEANT_TO_BE_BURIED = Set.of("enchantress_footsteps_basalt_forge");
     /** 悬空检查抽样的起点数。 */
     private static final int GROUNDED_STARTS = 16;
 
@@ -429,6 +436,7 @@ public final class NaturalScenes {
      * 抽样的起点所在区块完整生成后，模板最底层的每个实心方块正下方都是实心方块：
      * 不压在洞穴的空处、岩浆或悬崖边上，地形适配也没有把地面挖掉或漏补。
      * 也不与别的结构（如下界要塞）的拼图块重叠，否则后放置的结构会把地板和脚下的地面切开。
+     * 建筑外一圈的地形不高过地板，否则墙和门会埋进地里（MEANT_TO_BE_BURIED 里的不查）。
      */
     private static void grounded(SceneContext ctx, Natural natural) {
         ServerLevel level = Worldgen.level(ctx, natural.dimension());
@@ -447,9 +455,13 @@ public final class NaturalScenes {
                 for (StructureStart start : starts) {
                     Footing footing = footing(level, start);
                     String where = start.getChunkPos() + " " + actualPieceBox(start);
-                    summary.add(where + " 悬空=" + footing.floating().size() + " 与其他结构重叠=" + footing.overlapped().size());
+                    boolean checkBuried = !MEANT_TO_BE_BURIED.contains(natural.path());
+                    List<String> buried = checkBuried ? buried(level, start) : List.of();
+                    summary.add(where + " 悬空=" + footing.floating().size() + " 与其他结构重叠=" + footing.overlapped().size()
+                            + (checkBuried ? " 埋入=" + buried.size() : ""));
                     ctx.check(footing.floating()).as(where + " 底层下方不是实心方块的位置").isEmpty();
                     ctx.check(footing.overlapped()).as(where + " 底层下方被其他结构切开的位置").isEmpty();
+                    ctx.check(buried).as(where + " 建筑外一圈高过地板的地形").isEmpty();
                     // 起点在放置前要随区块存盘再读回
                     CompoundTag saved = start.createTag(serialization, start.getChunkPos());
                     StructureStart reloaded = StructureStart.loadStaticStart(serialization, saved, level.getSeed());
@@ -496,6 +508,45 @@ public final class NaturalScenes {
             }
         }
         return new Footing(floating, overlapped);
+    }
+
+    /**
+     * 拼图块底框外紧贴的一圈列中，地板（底框最低 y + groundLevelDelta，地面之上的第一层）再往上一层被地形占住的位置，
+     * 附那一格的方块与往上连着几格地形。树木、巨型菌、蜂巢和竹子不算地形。
+     */
+    private static List<String> buried(ServerLevel level, StructureStart start) {
+        List<String> out = new ArrayList<>();
+        for (StructurePiece piece : start.getPieces()) {
+            if (!(piece instanceof PoolElementStructurePiece pool)) {
+                continue;
+            }
+            BoundingBox box = pool.getBoundingBox();
+            int floor = box.minY() + pool.getGroundLevelDelta();
+            for (int x = box.minX() - 1; x <= box.maxX() + 1; x++) {
+                for (int z = box.minZ() - 1; z <= box.maxZ() + 1; z++) {
+                    int column = x;
+                    int row = z;
+                    if (start.getPieces().stream().anyMatch(other -> other.getBoundingBox().isInside(column, floor, row))) {
+                        continue;
+                    }
+                    BlockPos above = new BlockPos(x, floor + 1, z);
+                    int height = 0;
+                    while (floor + 1 + height <= box.maxY() && isTerrain(level.getBlockState(above.above(height)))) {
+                        height++;
+                    }
+                    if (height > 0) {
+                        out.add(above.toShortString() + " " + BuiltInRegistries.BLOCK.getKey(level.getBlockState(above).getBlock()).getPath()
+                                + "+" + height);
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    private static boolean isTerrain(BlockState state) {
+        return state.blocksMotion() && !state.is(BlockTags.LOGS) && !state.is(BlockTags.LEAVES) && !state.is(BlockTags.WART_BLOCKS)
+                && !state.is(BlockTags.BEEHIVES) && !state.is(Blocks.SHROOMLIGHT) && !state.is(Blocks.BAMBOO);
     }
 
     private static boolean inOtherStructure(ServerLevel level, StructureStart start, BlockPos pos) {

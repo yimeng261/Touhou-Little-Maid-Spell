@@ -32,7 +32,8 @@ import java.util.Map;
 
 /**
  * 放完模板后给最底层的实心方块垫地基：往下补到最近的实心地面为止，最多补 foundationDepth 格。
- * 下界开阔洞穴里地形适配的填充很弱，地面低一两格就会露出缝；洞穴雕刻器还会在地形生成之后掏空脚下的地面。两种都靠这一步补实。
+ * 地形适配的填充在下界开阔洞穴和地表陡坡的边缘都很弱，地面低一两格就会露出缝；洞穴雕刻器还会在地形生成之后掏空脚下的地面。
+ * 这些都靠这一步补实。
  */
 public class GroundedTemplatePiece extends PoolElementStructurePiece {
     private static final String FOUNDATION_DEPTH = "FoundationDepth";
@@ -41,8 +42,9 @@ public class GroundedTemplatePiece extends PoolElementStructurePiece {
     private final int foundationDepth;
 
     public GroundedTemplatePiece(StructureTemplateManager templateManager, StructurePoolElement element, BlockPos position,
-                                 int groundLevelDelta, Rotation rotation, BoundingBox boundingBox, int foundationDepth) {
-        super(templateManager, element, position, groundLevelDelta, rotation, boundingBox, LiquidSettings.APPLY_WATERLOGGING);
+                                 int groundLevelDelta, Rotation rotation, BoundingBox boundingBox, LiquidSettings liquidSettings,
+                                 int foundationDepth) {
+        super(templateManager, element, position, groundLevelDelta, rotation, boundingBox, liquidSettings);
         this.templateManager = templateManager;
         this.foundationDepth = foundationDepth;
     }
