@@ -25,6 +25,7 @@ import com.github.yimeng261.maidspell.painting.MaidSpellPaintings;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
+import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePlacements;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.MinecraftForge;
@@ -84,6 +85,7 @@ public class MaidSpellMod {
         GeckoLibCompat.init(modBus);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modBus);
+        MaidSpellStructurePlacements.STRUCTURE_PLACEMENTS.register(modBus);
         MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modBus);
 
         
