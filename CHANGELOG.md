@@ -1,6 +1,6 @@
 # Changelog / 变更日志
 
-## 1.9.2-neoforge
+## 1.9.1-neoforge
 
 ### 新增功能 / New Features
 
@@ -17,8 +17,9 @@
   Forge, Crimson Cabin, Soul Valley Nook and Warped Perch (require Iron's Spells 'n Spellbooks); without Iron's
   Spells 'n Spellbooks or Goety a template without their content is used, and missing optional-mod loot entries
   no longer break the whole loot table
-- 仙女女仆咖啡厅换用新模板，安装 Youkais' Feasts 或妖怪归家之一即可生成 /
-  The Fairy Maid Cafe uses a new template and generates with either Youkais' Feasts or Youkai's Homecoming installed
+- 妖精女仆咖啡厅换用新模板，安装妖怪们的飨宴（Youkais' Feasts）或妖怪们的归家（含 1.21 非官方移植版）之一即可生成 /
+  The Fairy Maid Cafe uses a new template and generates with either Youkais' Feasts or Youkai's Homecoming
+  (including its unofficial 1.21 port) installed
 - 隐世女仆按玩家记录归属，每名玩家只会遇到一次隐世女仆；女仆转为物品或重新放出后保留身份；管理员可用 `/maidspell_retreat_maid status|reset <玩家 UUID>` 查询或重置 /
   Hidden Retreat maids are now tracked per player, so each player meets one only once; the maid keeps her identity
   after being turned into an item and released again; operators can query or reset a player's claim with
@@ -28,6 +29,17 @@
   Compass, and FTB Quests dimension tasks targeting The Retreat also complete in any player's private Retreat
 - 星之魔女交易新增七星指引卷轴，交易卷轴固定为 1 级 /
   The Stellar Witch now also trades Seven-Star Guidance scrolls; traded scrolls are always level 1
+- 新增日文语言包，日记正文按当前分页排版；配置界面、部分结构实体与战利品名、《女仆与前文明研究记录》等内容暂以英文显示 /
+  Added a Japanese translation with journals laid out to the current pagination; the configuration screen,
+  some structure entities and loot names, Maids and the Previous Civilization: Research Records and other
+  content still fall back to English
+- 适配妖怪们的归家 1.21 非官方移植版：女仆可用弹幕、激光与各角色符卡战斗；梦云水晶联动配方在安装该模组时加入灵梦的大蝴蝶结 /
+  Added support for the unofficial 1.21 port of Youkai's Homecoming: maids can fight with danmaku, lasers and each
+  character's spell cards, and the Dreamcloud Crystal crossover recipe adds the Reimu Hairband when it is installed
+- 下界魔女足迹自带地基并坐在地面上，不与下界要塞、堡垒遗迹和堕天圣堂重叠；洞穴、玄武岩石柱林、玄武岩柱、三角洲与涌泉不会长进占地，屋内的书架和藤蔓不会被火烧掉 /
+  The Nether Enchantress' Footsteps structures carry their own foundations and sit on the ground without
+  overlapping Nether Fortresses, Bastion Remnants or the Fallen Sanctum; caves, basalt columns, basalt pillars,
+  deltas and springs no longer cut into them, and their bookshelves and vines no longer burn
 
 ### 修复 / Bug Fixes
 
@@ -85,9 +97,9 @@
 - 下界魔女旅行日记支持中英日三语并按段落分页，可以和其他旅行日记一样与星之魔女交换星陨石 /
   The Nether Enchantress's Travel Journals are now translated into Chinese, English and Japanese, paginated by
   paragraph, and can be exchanged with the Stellar Witch for a Star Meteorite like the other journals
-- Youkais' Feasts 版仙女女仆咖啡厅把需要果之乐事的柠檬红茶换成赛地茶 /
-  The Youkais' Feasts variant of the Fairy Maid Cafe replaces lemon black tea, which needs Fruits Delight, with
-  saidi tea
+- 妖怪们的飨宴版妖精女仆咖啡厅把需要果园乐事的柠檬红茶换成埃及糖茶 /
+  The Youkais' Feasts variant of the Fairy Maid Cafe replaces Lemon Black Tea, which needs Fruits Delight, with
+  Saidi Tea
 - 圣遗礼拜堂首领女仆的雷暴与坚韧效果作为永久效果保留 /
   The Relic Sanctum boss maid's thunderstorm and fortitude effects are now kept as permanent effects
 - 修复烬血之戒在生命超出上限时仍给增伤的问题，现在只按缺失生命加成 /
@@ -102,6 +114,13 @@
   restored correctly after a save is reloaded
 - 补上梦云水晶黑名单迁移版本配置项的名称翻译 /
   Added the missing translation for the Dreamcloud Crystal blacklist migration version config option
+- 修复酒狐 Boss 的最大生命值读数与实际不一致的问题 /
+  Fixed the Winefox boss reporting a maximum health that differed from its actual value
+- 修复安装 FreeTerraForged 等改写主世界地形的模组后，归隐之地变成一片水的问题；隐世之境选址时确认脚下是实心地面 /
+  Fixed The Retreat turning into open water with FreeTerraForged or other mods that rewrite overworld terrain;
+  Hidden Retreats now check for solid ground when choosing a site
+- 修复妖精女仆咖啡厅在坡地边缘悬空的问题 /
+  Fixed the Fairy Maid Cafe floating over the edge of slopes
 
 ### 优化 / Improvements
 
@@ -117,6 +136,9 @@
 - 混沌之书、破愈咒锋、梦云水晶的受伤前置效果对所有重写了受伤逻辑的模组生物生效，不再只限固定清单 /
   The pre-damage effects of Chaos Book, Wound Rime Blade and Dreamcloud Crystal now apply to every modded mob
   that overrides damage handling, instead of a fixed list
+- 星落之庭不再限制生物群系；旧存档补生成改为分多个 tick 写入，开服不再长时间卡顿，写入失败或崩服累计 3 次后不再重试 /
+  Starfall Garden is no longer restricted by biome; retroactive generation for existing worlds now writes over
+  several ticks so server startup no longer stalls, and gives up after three failed or crashed attempts
 
 ### 升级说明 / Upgrade Notes
 
@@ -130,36 +152,13 @@
   UsefulMagic 3.1.1, crashes dedicated servers on startup, which is an issue in that library
 - 如安装农夫乐事，需要 1.3.0 或更新版本 /
   If Farmer's Delight is installed, version 1.3.0 or newer is required
-- 如安装 Youkais' Feasts，需要 1.1.1 或更新版本 /
+- 如安装妖怪们的飨宴，需要 1.1.1 或更新版本 /
   If Youkais' Feasts is installed, version 1.1.1 or newer is required
-
----
-
-## 1.9.1-neoforge
-
-### 新增功能 / New Features
-
-- 新增日文语言包，日记正文按当前分页排版；配置界面、部分结构实体与战利品名、《女仆与前文明研究记录》等内容暂以英文显示 /
-  Added a Japanese translation with journals laid out to the current pagination; the configuration screen,
-  some structure entities and loot names, Maids and the Previous Civilization: Research Records and other
-  content still fall back to English
-
-### 修复 / Bug Fixes
-
-- 修复酒狐 Boss 的最大生命值读数与实际不一致的问题 /
-  Fixed the Winefox boss reporting a maximum health that differed from its actual value
-
-### 优化 / Improvements
-
-- 星落之庭不再限制生物群系；旧存档补生成改为分多个 tick 写入，开服不再长时间卡顿，写入失败或崩服累计 3 次后不再重试 /
-  Starfall Garden is no longer restricted by biome; retroactive generation for existing worlds now writes over
-  several ticks so server startup no longer stalls, and gives up after three failed or crashed attempts
-
-### 升级说明 / Upgrade Notes
-
 - 梦云水晶不再支持玩家通过 Curios 佩戴，仅女仆可用；玩家饰品栏中的梦云水晶请在升级前取下 /
   Dreamcloud Crystal can no longer be worn by players through Curios and is now maid-only; remove it from
   player curio slots before upgrading
+- 如安装妖怪们的归家的 1.21 非官方移植版，不能同时安装妖怪们的飨宴 /
+  The unofficial 1.21 port of Youkai's Homecoming cannot be installed together with Youkais' Feasts
 
 ---
 
