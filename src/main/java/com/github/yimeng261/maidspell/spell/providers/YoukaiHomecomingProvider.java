@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * 妖怪的归家弹幕物品提供者
+ * 妖怪们的归家弹幕物品提供者
  * 支持女仆使用弹幕、激光和符卡；弹幕与符卡来自 1.21 非官方移植版内嵌的 danmaku_api（官方 1.21 版没有弹幕）
  */
 public class YoukaiHomecomingProvider extends ISpellBookProvider<MaidYHSpellData, ItemStack> {

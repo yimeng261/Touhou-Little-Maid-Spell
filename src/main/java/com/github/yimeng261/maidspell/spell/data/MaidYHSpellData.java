@@ -12,7 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 妖怪的归家弹幕物品数据管理类
+ * 妖怪们的归家弹幕物品数据管理类
  * 管理女仆使用弹幕物品和符卡的状态
  */
 public class MaidYHSpellData extends IMaidSpellData {

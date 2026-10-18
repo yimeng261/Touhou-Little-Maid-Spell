@@ -237,14 +237,14 @@ public final class UpstreamSyncScenes {
     }
 
     /**
-     * 咖啡厅默认起始池用妖怪归家移植版模板；没装妖怪归家时改用 Youkais' Feasts 版，
-     * 装的是没有 danmaku_api 的官方版时改用妖怪归家版；实际选用的模板与当前模组组合一致。
+     * 咖啡厅默认起始池用妖怪们的归家移植版模板；没装妖怪们的归家时改用 Youkais' Feasts 版，
+     * 装的是没有 danmaku_api 的官方版时改用妖怪们的归家版；实际选用的模板与当前模组组合一致。
      */
     private static void cafeFallback(SceneContext ctx) {
         Structure structure = ctx.server().registryAccess().registryOrThrow(Registries.STRUCTURE)
                 .get(ResourceLocation.parse(NS + "fairy_maid_cafe"));
         if (!(structure instanceof LandJigsawStructure cafe)) {
-            ctx.fail("咖啡厅没有注册为 land_jigsaw 结构（妖怪归家或 Youkais' Feasts 在场时应注册）");
+            ctx.fail("咖啡厅没有注册为 land_jigsaw 结构（妖怪们的归家或 Youkais' Feasts 在场时应注册）");
             return;
         }
         Holder<StructureTemplatePool> start = Reflect.field(cafe, LandJigsawStructure.class, "startPool");
@@ -258,7 +258,7 @@ public final class UpstreamSyncScenes {
         ctx.check(templateOf(cafe.startPool())).as("当前模组组合选用的模板").isEqualTo(NS + "fairy_maid_cafe/" + expected);
     }
 
-    /** 梦云水晶效果白名单默认放行妖怪归家和 Youkais' Feasts 的效果。 */
+    /** 梦云水晶效果白名单默认放行妖怪们的归家和 Youkais' Feasts 的效果。 */
     private static void whitelist(SceneContext ctx) {
         Class<?> baubles;
         try {
@@ -267,7 +267,7 @@ public final class UpstreamSyncScenes {
             throw new IllegalStateException("找不到饰品配置类", e);
         }
         List<String> defaults = Reflect.field(null, baubles, "DEFAULT_WHITELIST");
-        ctx.check(defaults.contains("regex:youkaishomecoming:.*")).as("默认白名单含妖怪归家").isTrue();
+        ctx.check(defaults.contains("regex:youkaishomecoming:.*")).as("默认白名单含妖怪们的归家").isTrue();
         ctx.check(defaults.contains("regex:youkaisfeasts:.*")).as("默认白名单含 Youkais' Feasts").isTrue();
     }
 }

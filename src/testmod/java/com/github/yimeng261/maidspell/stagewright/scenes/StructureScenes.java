@@ -516,7 +516,7 @@ public final class StructureScenes {
             Checks.NS + "fairy_maid_cafe/fairy_maid_cafe_yh_port", "danmaku_api",
             Checks.NS + "fairy_maid_cafe/fairy_maid_cafe_youkaisfeasts", "youkaisfeasts");
 
-    /** 装了对应模组时改用别的模板：装了妖怪归家移植版就不用官方版的模板（其中有移植版没有的方块）。 */
+    /** 装了对应模组时改用别的模板：装了妖怪们的归家移植版就不用官方版的模板（其中有移植版没有的方块）。 */
     private static final Map<String, String> TEMPLATE_REPLACED_BY_MOD = Map.of(
             Checks.NS + "fairy_maid_cafe/fairy_maid_cafe", "danmaku_api");
 

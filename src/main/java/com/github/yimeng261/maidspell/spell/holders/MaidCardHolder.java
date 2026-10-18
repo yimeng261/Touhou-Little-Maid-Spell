@@ -21,7 +21,7 @@ import java.util.List;
 
 /**
  * 女仆符卡持有者
- * 实现 danmaku_api 的 CardHolder，使女仆能够使用妖怪的归家的符卡系统
+ * 实现 danmaku_api 的 CardHolder，使女仆能够使用妖怪们的归家的符卡系统
  */
 public class MaidCardHolder implements CardHolder {
 

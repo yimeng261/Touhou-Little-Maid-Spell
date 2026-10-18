@@ -28,7 +28,7 @@ import java.util.function.Supplier;
 
 /**
  * 符卡辅助类
- * 用于反射访问妖怪的归家 TouhouSpellCards 的私有 MAP，以及管理符卡物品到符卡的映射
+ * 用于反射访问妖怪们的归家 TouhouSpellCards 的私有 MAP，以及管理符卡物品到符卡的映射
  */
 public class SpellCardHelper {
 
@@ -113,7 +113,7 @@ public class SpellCardHelper {
         if (supplier != null) {
             return wrap(spellCardId, supplier);
         }
-        // 物品自带的法术：妖怪的归家用 mixin 给 SpellItem 加的访问器
+        // 物品自带的法术：妖怪们的归家用 mixin 给 SpellItem 加的访问器
         if (itemStack.getItem() instanceof SpellItemAccessor accessor) {
             Supplier<ItemSpell> itemSpell = accessor.getSpell();
             return wrap(itemId, () -> new ItemSpellCard(itemSpell));

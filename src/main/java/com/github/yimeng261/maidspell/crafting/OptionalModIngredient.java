@@ -46,7 +46,7 @@ public class OptionalModIngredient implements ICustomIngredient {
         if (!ModList.get().isLoaded(modId)) {
             return DataResult.success(new OptionalModIngredient(modId, raw, Ingredient.EMPTY, false));
         }
-        // 模组装了但这一版没有该物品（如官方 1.21 版妖怪的归家没有灵梦发带）时同样当作缺席
+        // 模组装了但这一版没有该物品（如官方 1.21 版妖怪们的归家没有灵梦的大蝴蝶结）时同样当作缺席
         return DataResult.success(Ingredient.CODEC.parse(raw).result()
                 .map(parsed -> new OptionalModIngredient(modId, raw, parsed, true))
                 .orElseGet(() -> new OptionalModIngredient(modId, raw, Ingredient.EMPTY, false)));

@@ -357,9 +357,9 @@ public final class MissingModScenes {
         ctx.check(actual).as("细剑的附魔").isEqualTo(new TreeMap<>(expected));
     }
 
-    /** 妖怪的归家强依赖农夫乐事，这个组合里不装；仙女女仆咖啡厅与它的箱子都不加载。 */
+    /** 妖怪们的归家强依赖农夫乐事，这个组合里不装；妖精女仆咖啡厅与它的箱子都不加载。 */
     private static void cafeAbsent(SceneContext ctx) {
-        ctx.check(has(ctx, Registries.STRUCTURE, "fairy_maid_cafe")).as("仙女女仆咖啡厅已注册").isFalse();
+        ctx.check(has(ctx, Registries.STRUCTURE, "fairy_maid_cafe")).as("妖精女仆咖啡厅已注册").isFalse();
         for (String table : List.of("asset", "dessert", "drink", "ingredient")) {
             ctx.check(ctx.loot().exists(NS + "chests/fairy_maid_cafe_" + table)).as("咖啡厅 " + table + " 箱子已加载").isFalse();
         }
