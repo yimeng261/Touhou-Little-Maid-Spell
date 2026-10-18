@@ -12,9 +12,11 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.magicterra.stagewright.scene.Scene;
 import net.magicterra.stagewright.scene.SceneContext;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceKey;
@@ -23,17 +25,25 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
+import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,14 +59,17 @@ import static com.github.yimeng261.maidspell.stagewright.support.Checks.NS;
 
 /**
  * 自然生成场景：注册与群系/维度映射快照、固定种子（5471）的真实维度按放置网格抽样、
- * 隐世之境只在归隐之地生成、归隐之地结构白名单、自定义地形检查的准确性、村庄补充的自然出现。
- * <p>不借用场地，直接查询服务器的主世界/下界/末地/归隐之地；计算只到 STRUCTURE_STARTS 或只用噪声，不生成方块。
+ * 隐世之境只在归隐之地生成、归隐之地结构白名单、自定义地形检查的准确性、村庄补充的自然出现、可选模组模板结构不悬空。
+ * <p>不借用场地，直接查询服务器的主世界/下界/末地/归隐之地；除悬空检查要完整生成区块外，计算只到 STRUCTURE_STARTS 或只用噪声。
  */
 public final class NaturalScenes {
     private static final String OVERWORLD = "minecraft:overworld";
     private static final String NETHER = "minecraft:the_nether";
     private static final String END = "minecraft:the_end";
     private static final String RETREAT = NS + "the_retreat";
+
+    /** 下界魔女足迹避开要塞与堡垒：要塞的拼图块离起点最远 7 个区块，再加上结构自身的占地。 */
+    private static final String NETHER_COMPLEXES = "minecraft:nether_complexes@8";
 
     /** 结构注册快照（来自当前数据）：类型、群系条目（# 开头为标签）、地形适配、所属结构集与随机分散放置参数。 */
     private record Reg(String path, String type, List<String> biomes, String adaptation, String set,
@@ -82,13 +95,13 @@ public final class NaturalScenes {
                             "minecraft:taiga", "#minecraft:is_mountain", "minecraft:grove"),
                     "beard_thin", "enchantress_footsteps_outpost", 36, 16, 1517026238, 0.2F, "minecraft:villages@10"),
             new Reg("enchantress_footsteps_basalt_forge", NS + "optional_mod_template", List.of("minecraft:basalt_deltas"),
-                    "beard_thin", "enchantress_footsteps_basalt_forge", 32, 12, 1735687963, 1.0F, ""),
+                    "beard_thin", "enchantress_footsteps_basalt_forge", 32, 12, 1735687963, 1.0F, NETHER_COMPLEXES),
             new Reg("enchantress_footsteps_crimson_cabin", NS + "optional_mod_template", List.of("minecraft:crimson_forest"),
-                    "beard_thin", "enchantress_footsteps_crimson_cabin", 32, 12, 1735687962, 1.0F, ""),
+                    "beard_thin", "enchantress_footsteps_crimson_cabin", 32, 12, 1735687962, 1.0F, NETHER_COMPLEXES),
             new Reg("enchantress_footsteps_soulvalley_nook", NS + "optional_mod_template", List.of("minecraft:soul_sand_valley"),
-                    "beard_thin", "enchantress_footsteps_soulvalley_nook", 32, 12, 1735687965, 1.0F, ""),
+                    "beard_thin", "enchantress_footsteps_soulvalley_nook", 32, 12, 1735687965, 1.0F, NETHER_COMPLEXES),
             new Reg("enchantress_footsteps_warped_perch", NS + "optional_mod_template", List.of("minecraft:warped_forest"),
-                    "beard_thin", "enchantress_footsteps_warped_perch", 32, 12, 1735687964, 1.0F, ""),
+                    "beard_thin", "enchantress_footsteps_warped_perch", 32, 12, 1735687964, 1.0F, NETHER_COMPLEXES),
             new Reg("fairy_maid_cafe", NS + "land_jigsaw",
                     List.of("minecraft:cherry_grove", "minecraft:bamboo_jungle", "minecraft:meadow",
                             "minecraft:sparse_jungle", "minecraft:flower_forest"),
@@ -149,6 +162,16 @@ public final class NaturalScenes {
             new Natural("enchantress_footsteps_graveyard", OVERWORLD, Dry.NONE),
             new Natural("enchantress_footsteps_oasis", OVERWORLD, Dry.NONE));
 
+    /** 可选模组模板结构（自己找落点、自己设地形适配基准）：真实生成后检查底层有没有悬空。 */
+    private static final List<Natural> GROUNDED = List.of(
+            new Natural("cherry_cabin", OVERWORLD, Dry.NONE),
+            new Natural("enchantress_footsteps_basalt_forge", NETHER, Dry.NONE),
+            new Natural("enchantress_footsteps_crimson_cabin", NETHER, Dry.NONE),
+            new Natural("enchantress_footsteps_soulvalley_nook", NETHER, Dry.NONE),
+            new Natural("enchantress_footsteps_warped_perch", NETHER, Dry.NONE));
+    /** 悬空检查抽样的起点数。 */
+    private static final int GROUNDED_STARTS = 16;
+
     /** "不在水里"检查抽样的起点数。 */
     private static final int DRY_STARTS = 4;
 
@@ -193,6 +216,9 @@ public final class NaturalScenes {
         scenes.add(scene("knownDefect.relicSanctumTerrainCheckMatchesRealTerrain", 1200,
                 ctx -> terrainCheck(ctx, OVERWORLD, "relic_sanctum", RelicSanctumStructure.class, 1, 1)).withRequired(false));
         scenes.add(scene("natural.fallen_sanctum.fitsNetherHeight", 2400, NaturalScenes::fallenFitsNether));
+        for (Natural natural : GROUNDED) {
+            scenes.add(scene("natural." + natural.path() + ".grounded", 3600, ctx -> grounded(ctx, natural)));
+        }
         scenes.add(scene("natural.village.supplementAppears", 2400, NaturalScenes::villageSupplement)
                 .withRequired(false));
         return scenes;
@@ -397,6 +423,88 @@ public final class NaturalScenes {
             }
             ctx.record("starts", summary);
         });
+    }
+
+    /**
+     * 抽样的起点所在区块完整生成后，模板最底层的每个实心方块正下方都是实心方块：
+     * 不压在洞穴的空处、岩浆或悬崖边上，地形适配也没有把地面挖掉或漏补。
+     * 也不与别的结构（如下界要塞）的拼图块重叠，否则后放置的结构会把地板和脚下的地面切开。
+     */
+    private static void grounded(SceneContext ctx, Natural natural) {
+        ServerLevel level = Worldgen.level(ctx, natural.dimension());
+        sampleStarts(ctx, level, natural.path(), GROUNDED_STARTS, starts -> {
+            Set<ChunkPos> chunks = new LinkedHashSet<>();
+            for (StructureStart start : starts) {
+                BoundingBox box = actualPieceBox(start);
+                ChunkPos.rangeClosed(new ChunkPos(box.minX() >> 4, box.minZ() >> 4), new ChunkPos(box.maxX() >> 4, box.maxZ() >> 4))
+                        .forEach(chunks::add);
+            }
+            CompletableFuture<Void> loaded = Worldgen.loadFull(ctx, level, chunks);
+            ctx.await(loaded::isDone).within(1100).then(() -> {
+                loaded.join();
+                List<String> summary = new ArrayList<>();
+                StructurePieceSerializationContext serialization = StructurePieceSerializationContext.fromLevel(level);
+                for (StructureStart start : starts) {
+                    Footing footing = footing(level, start);
+                    String where = start.getChunkPos() + " " + actualPieceBox(start);
+                    summary.add(where + " 悬空=" + footing.floating().size() + " 与其他结构重叠=" + footing.overlapped().size());
+                    ctx.check(footing.floating()).as(where + " 底层下方不是实心方块的位置").isEmpty();
+                    ctx.check(footing.overlapped()).as(where + " 底层下方被其他结构切开的位置").isEmpty();
+                    // 起点在放置前要随区块存盘再读回
+                    CompoundTag saved = start.createTag(serialization, start.getChunkPos());
+                    StructureStart reloaded = StructureStart.loadStaticStart(serialization, saved, level.getSeed());
+                    ctx.check(reloaded == null ? null : reloaded.createTag(serialization, start.getChunkPos()))
+                            .as(where + " 存盘再读回后的起点").isEqualTo(saved);
+                }
+                ctx.record("starts", summary);
+            });
+        });
+    }
+
+    /**
+     * 模板最底层的实心方块中，正下方不是实心方块的世界坐标（附下方方块与往下空了几格，超过 16 格记为 16+），
+     * 以及其中落在别的结构拼图块里的位置。
+     */
+    private record Footing(List<String> floating, List<String> overlapped) {
+    }
+
+    private static Footing footing(ServerLevel level, StructureStart start) {
+        List<String> floating = new ArrayList<>();
+        List<String> overlapped = new ArrayList<>();
+        for (StructurePiece piece : start.getPieces()) {
+            if (!(piece instanceof PoolElementStructurePiece pool) || !(pool.getElement() instanceof SinglePoolElement single)) {
+                continue;
+            }
+            StructureTemplate template = level.getStructureManager().getOrCreate(ResourceLocation.parse(Worldgen.templateId(single)));
+            List<StructureTemplate.Palette> palettes = Reflect.field(template, StructureTemplate.class, "palettes");
+            StructurePlaceSettings settings = new StructurePlaceSettings().setRotation(pool.getRotation());
+            for (StructureTemplate.StructureBlockInfo info : palettes.getFirst().blocks()) {
+                if (info.pos().getY() != 0 || !info.state().blocksMotion()) {
+                    continue;
+                }
+                BlockPos pos = StructureTemplate.calculateRelativePosition(settings, info.pos()).offset(pool.getPosition());
+                BlockState below = level.getBlockState(pos.below());
+                if (!below.blocksMotion()) {
+                    int gap = 1;
+                    while (gap <= 16 && !level.getBlockState(pos.below(gap + 1)).blocksMotion()) {
+                        gap++;
+                    }
+                    String where = pos.toShortString() + " " + BuiltInRegistries.BLOCK.getKey(below.getBlock()).getPath()
+                            + "×" + (gap > 16 ? "16+" : gap);
+                    (inOtherStructure(level, start, pos) ? overlapped : floating).add(where);
+                }
+            }
+        }
+        return new Footing(floating, overlapped);
+    }
+
+    private static boolean inOtherStructure(ServerLevel level, StructureStart start, BlockPos pos) {
+        for (BlockPos probe : List.of(pos, pos.below())) {
+            if (level.structureManager().getStructureWithPieceAt(probe, holder -> holder.value() != start.getStructure()).isValid()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static BoundingBox actualPieceBox(StructureStart start) {

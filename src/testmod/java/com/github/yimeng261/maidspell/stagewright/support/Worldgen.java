@@ -33,6 +33,7 @@ import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -44,7 +45,7 @@ import java.util.function.Predicate;
 
 /**
  * 自然生成相关的查询：按真实世界的结构放置网格列出候选区块、构造与原版相同的生成上下文、
- * 按真实流程把区块推进到 STRUCTURE_STARTS 取起点，以及只依赖噪声的高度采样（不生成区块）。
+ * 按真实流程把区块推进到 STRUCTURE_STARTS 取起点或完整生成，以及只依赖噪声的高度采样（不生成区块）。
  */
 public final class Worldgen {
     /** 测试加载区块到 STRUCTURE_STARTS 期间挂的票据。 */
@@ -159,6 +160,24 @@ public final class Worldgen {
                     });
                     return valid;
                 });
+    }
+
+    /**
+     * 把区块按真实流程完整生成（含结构放置与地形适配），票据挂到场景结束才移除；不在主线程阻塞等待。
+     */
+    public static CompletableFuture<Void> loadFull(SceneContext ctx, ServerLevel level, Collection<ChunkPos> chunks) {
+        DistanceManager tickets = Reflect.field(level.getChunkSource(), ServerChunkCache.class, "distanceManager");
+        int ticketLevel = ChunkLevel.byStatus(ChunkStatus.FULL);
+        List<CompletableFuture<?>> loading = new ArrayList<>();
+        for (ChunkPos chunk : chunks) {
+            tickets.addTicket(TICKET, chunk, ticketLevel, chunk);
+            ctx.cleanup(() -> tickets.removeTicket(TICKET, chunk, ticketLevel, chunk));
+            loading.add(CompletableFuture.supplyAsync(() -> level.getChunkSource()
+                            .getChunkFuture(chunk.x, chunk.z, ChunkStatus.FULL, true), Util.backgroundExecutor())
+                    .thenCompose(future -> future)
+                    .thenApply(result -> result.orElseThrow(() -> new IllegalStateException("区块 " + chunk + " 生成失败"))));
+        }
+        return CompletableFuture.allOf(loading.toArray(CompletableFuture[]::new));
     }
 
     public static List<String> templates(StructureStart start) {

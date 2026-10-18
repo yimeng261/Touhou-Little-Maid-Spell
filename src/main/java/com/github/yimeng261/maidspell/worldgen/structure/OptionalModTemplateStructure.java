@@ -13,16 +13,16 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
-import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pools.EmptyPoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
-import net.minecraft.world.level.levelgen.structure.templatesystem.LiquidSettings;
 import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
@@ -99,7 +99,8 @@ public class OptionalModTemplateStructure extends Structure {
         int[] sampleZ = sampleCoordinates(footprint.minZ(), centerZ, footprint.maxZ());
 
         OptionalInt floor = nether
-                ? findNetherFloor(context, sampleX, sampleZ, relativeBox.getYSpan())
+                ? findNetherFloor(context, baseColumns(context, element, rotation, horizontalOrigin, sampleX, sampleZ),
+                        relativeBox.getYSpan())
                 : findSurfaceFloor(context, sampleX, sampleZ);
         if (floor.isEmpty()) {
             return Optional.empty();
@@ -113,9 +114,11 @@ public class OptionalModTemplateStructure extends Structure {
             return Optional.empty();
         }
 
-        // 即使模板第一层是花、家具等地面装饰，地形适配的地面基准也要落在自然地面上。
-        PoolElementStructurePiece piece = new PoolElementStructurePiece(context.structureTemplateManager(),
-                element, origin, -surfaceOffset, rotation, box, LiquidSettings.APPLY_WATERLOGGING);
+        // 地形适配把「底框最低 y + groundLevelDelta」当作地面之上的第一层：这一层往上挖空，往下填实。
+        // 它要落在自然地面的上一格（floor + 1），否则模板第一层是花、家具等地面装饰时会把脚下的地面挖掉。
+        // 选址允许地面比锚点低 maxTerrainStep 格，地基补到那么深为止
+        GroundedTemplatePiece piece = new GroundedTemplatePiece(context.structureTemplateManager(),
+                element, origin, 1 - surfaceOffset, rotation, box, maxTerrainStep + surfaceOffset);
         BlockPos center = new BlockPos(centerX, origin.getY(), centerZ);
         return Optional.of(new GenerationStub(center, builder -> builder.addPiece(piece)));
     }
@@ -156,15 +159,29 @@ public class OptionalModTemplateStructure extends Structure {
         return heightAccessor.getMinBuildHeight() - 1;
     }
 
-    private OptionalInt findNetherFloor(GenerationContext context, int[] sampleX, int[] sampleZ, int height) {
-        NoiseColumn[] columns = new NoiseColumn[sampleX.length * sampleZ.length];
-        int index = 0;
+    /**
+     * 下界选址要逐列检查的位置：模板最底层每个实心方块所在的列。洞穴地面坑洼多，只抽几个点会漏掉中间的坑和崖边；
+     * 取不到模板方块时退回占地上的抽样点。
+     */
+    private static List<BlockPos> baseColumns(GenerationContext context, StructurePoolElement element, Rotation rotation,
+                                              BlockPos horizontalOrigin, int[] sampleX, int[] sampleZ) {
+        List<BlockPos> columns = GroundedTemplatePiece.solidBase(context.structureTemplateManager(), element, rotation,
+                horizontalOrigin).stream().map(pos -> pos.atY(0)).distinct().toList();
+        if (!columns.isEmpty()) {
+            return columns;
+        }
+        List<BlockPos> samples = new ArrayList<>();
         for (int x : sampleX) {
             for (int z : sampleZ) {
-                columns[index++] = context.chunkGenerator().getBaseColumn(x, z,
-                        context.heightAccessor(), context.randomState());
+                samples.add(new BlockPos(x, 0, z));
             }
         }
+        return samples;
+    }
+
+    private OptionalInt findNetherFloor(GenerationContext context, List<BlockPos> positions, int height) {
+        NoiseColumn[] columns = positions.stream().map(pos -> context.chunkGenerator().getBaseColumn(pos.getX(), pos.getZ(),
+                context.heightAccessor(), context.randomState())).toArray(NoiseColumn[]::new);
         int minFloor = Math.max(context.chunkGenerator().getSeaLevel(),
                 context.heightAccessor().getMinBuildHeight() + 8);
         int maxTop = Math.min(MAX_NETHER_TEMPLATE_Y, context.heightAccessor().getMaxBuildHeight() - 2);
