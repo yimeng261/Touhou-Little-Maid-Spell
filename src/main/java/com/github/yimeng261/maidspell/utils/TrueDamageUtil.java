@@ -7,6 +7,7 @@ import com.github.yimeng261.maidspell.mixin.LivingEntityAccessor;
 import com.github.yimeng261.maidspell.mixin.accessor.LivingEntityInvoker;
 import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -170,7 +171,9 @@ public class TrueDamageUtil {
             float currentHealth = target.getHealth();
             boolean modified = false;
 
-            if (nbt.contains("Health")) {
+            // 根级 Health 同样只在数值与当前血量接近时尝试修改
+            if (nbt.contains("Health", Tag.TAG_ANY_NUMERIC)
+                    && isHealthMatch(nbt.getFloat("Health"), currentHealth)) {
                 nbt.putFloat("Health", newHealth);
                 modified = true;
             }
