@@ -6,7 +6,10 @@ import com.github.yimeng261.maidspell.stagewright.support.Batch;
 import com.github.yimeng261.maidspell.stagewright.support.Checks;
 import com.github.yimeng261.maidspell.stagewright.support.Reflect;
 import com.github.yimeng261.maidspell.stagewright.support.Worldgen;
+import com.github.yimeng261.maidspell.worldgen.BasaltColumnGuard;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
+import com.github.yimeng261.maidspell.worldgen.structure.MultiExclusionSpreadPlacement;
+import com.github.yimeng261.maidspell.worldgen.structure.OptionalModTemplateStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.RelicSanctumStructure;
 import com.google.gson.JsonElement;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -79,6 +82,8 @@ public final class NaturalScenes {
 
     /** 下界魔女足迹避开要塞与堡垒：要塞的拼图块离起点最远 7 个区块，再加上结构自身的占地。 */
     private static final String NETHER_COMPLEXES = "minecraft:nether_complexes@8";
+    /** 绯红林屋还要避开同在绯红森林的堕天圣堂：圣堂占地离起点最远约 6 个区块，再加上林屋自身的占地。 */
+    private static final String FALLEN_SANCTUM = NS + "fallen_sanctum_set@7";
 
     /** 结构注册快照（来自当前数据）：类型、群系条目（# 开头为标签）、地形适配、所属结构集与随机分散放置参数。 */
     private record Reg(String path, String type, List<String> biomes, String adaptation, String set,
@@ -106,7 +111,8 @@ public final class NaturalScenes {
             new Reg("enchantress_footsteps_basalt_forge", NS + "optional_mod_template", List.of("minecraft:basalt_deltas"),
                     "beard_thin", "enchantress_footsteps_basalt_forge", 32, 12, 1735687963, 1.0F, NETHER_COMPLEXES),
             new Reg("enchantress_footsteps_crimson_cabin", NS + "optional_mod_template", List.of("minecraft:crimson_forest"),
-                    "beard_thin", "enchantress_footsteps_crimson_cabin", 32, 12, 1735687962, 1.0F, NETHER_COMPLEXES),
+                    "beard_thin", "enchantress_footsteps_crimson_cabin", 32, 12, 1735687962, 1.0F,
+                    NETHER_COMPLEXES + "," + FALLEN_SANCTUM),
             new Reg("enchantress_footsteps_soulvalley_nook", NS + "optional_mod_template", List.of("minecraft:soul_sand_valley"),
                     "beard_thin", "enchantress_footsteps_soulvalley_nook", 32, 12, 1735687965, 1.0F, NETHER_COMPLEXES),
             new Reg("enchantress_footsteps_warped_perch", NS + "optional_mod_template", List.of("minecraft:warped_forest"),
@@ -181,8 +187,6 @@ public final class NaturalScenes {
             new Natural("enchantress_footsteps_warped_perch", NETHER, Dry.NONE),
             // 拼图起点只按中心一列投影到地表，坡地边缘地形适配补不满
             new Natural("fairy_maid_cafe", OVERWORLD, Dry.NONE));
-    /** 本来就要被地形包住、不检查埋入的结构：玄武岩锻炉建在玄武岩柱丛里。 */
-    private static final Set<String> MEANT_TO_BE_BURIED = Set.of("enchantress_footsteps_basalt_forge");
     /** 悬空检查抽样的起点数。 */
     private static final int GROUNDED_STARTS = 16;
 
@@ -279,8 +283,12 @@ public final class NaturalScenes {
                         Reflect.call(spread, StructurePlacement.class, "exclusionZone", new Class<?>[0]);
                 ctx.check(salt).as(reg.set() + " salt").isEqualTo(reg.salt());
                 ctx.check(frequency).as(reg.set() + " frequency").isEqualTo(reg.frequency());
-                ctx.check(exclusion.map(zone -> zone.otherSet().unwrapKey().map(k -> k.location().toString()).orElse("")
-                        + "@" + zone.chunkCount()).orElse("")).as(reg.set() + " 排斥区").isEqualTo(reg.exclusion());
+                String exclusions = spread instanceof MultiExclusionSpreadPlacement multi
+                        ? String.join(",", multi.exclusionZones().stream()
+                                .map(zone -> zone.otherSet().location() + "@" + zone.chunkCount()).toList())
+                        : exclusion.map(zone -> zone.otherSet().unwrapKey().map(k -> k.location().toString()).orElse("")
+                                + "@" + zone.chunkCount()).orElse("");
+                ctx.check(exclusions).as(reg.set() + " 排斥区").isEqualTo(reg.exclusion());
             }
         }
     }
@@ -513,10 +521,11 @@ public final class NaturalScenes {
     }
 
     /**
-     * 抽样的起点所在区块完整生成后，模板最底层的每个实心方块正下方都是实心方块：
+     * 抽样的起点所在区块完整生成后，模板最底层的每个实心方块和植物正下方都是实心方块：
      * 不压在洞穴的空处、岩浆或悬崖边上，地形适配也没有把地面挖掉或漏补。
      * 也不与别的结构（如下界要塞）的拼图块重叠，否则后放置的结构会把地板和脚下的地面切开。
-     * 建筑外一圈的地形不高过地板，否则墙和门会埋进地里（MEANT_TO_BE_BURIED 里的不查）。
+     * 建筑外一圈的地形不高过地板，否则墙和门会埋进地里。
+     * 可选模组模板结构的底层有空格或植物时坐在地面上，不顶替自然地面那一层；不许玄武岩柱生长的结构占地内没有玄武岩柱。
      */
     private static void grounded(SceneContext ctx, Natural natural) {
         ServerLevel level = Worldgen.level(ctx, natural.dimension());
@@ -535,10 +544,16 @@ public final class NaturalScenes {
                 for (StructureStart start : starts) {
                     Footing footing = footing(level, start);
                     String where = start.getChunkPos() + " " + actualPieceBox(start);
-                    boolean checkBuried = !MEANT_TO_BE_BURIED.contains(natural.path());
-                    List<String> buried = checkBuried ? buried(level, start) : List.of();
+                    List<String> buried = buried(level, start);
+                    List<String> subsurface = start.getStructure() instanceof OptionalModTemplateStructure
+                            ? openBaseBelowGround(level, start) : List.of();
+                    boolean checkBasalt = level.registryAccess().registryOrThrow(Registries.STRUCTURE).wrapAsHolder(start.getStructure()).is(BasaltColumnGuard.TAG);
+                    List<String> basalt = checkBasalt ? basaltColumns(level, start) : List.of();
                     summary.add(where + " 悬空=" + footing.floating().size() + " 与其他结构重叠=" + footing.overlapped().size()
-                            + (checkBuried ? " 埋入=" + buried.size() : ""));
+                            + " 埋入=" + buried.size()
+                            + (checkBasalt ? " 玄武岩柱=" + basalt.size() : ""));
+                    ctx.check(subsurface).as(where + " 底层有空格或植物却顶替了自然地面的拼图块").isEmpty();
+                    ctx.check(basalt).as(where + " 长进占地的玄武岩柱").isEmpty();
                     ctx.check(footing.floating()).as(where + " 底层下方不是实心方块的位置").isEmpty();
                     ctx.check(footing.overlapped()).as(where + " 底层下方被其他结构切开的位置").isEmpty();
                     ctx.check(buried).as(where + " 建筑外一圈高过地板的地形").isEmpty();
@@ -564,17 +579,14 @@ public final class NaturalScenes {
         List<String> floating = new ArrayList<>();
         List<String> overlapped = new ArrayList<>();
         for (StructurePiece piece : start.getPieces()) {
-            if (!(piece instanceof PoolElementStructurePiece pool) || !(pool.getElement() instanceof SinglePoolElement single)) {
+            if (!(piece instanceof PoolElementStructurePiece pool)) {
                 continue;
             }
-            StructureTemplate template = level.getStructureManager().getOrCreate(ResourceLocation.parse(Worldgen.templateId(single)));
-            List<StructureTemplate.Palette> palettes = Reflect.field(template, StructureTemplate.class, "palettes");
-            StructurePlaceSettings settings = new StructurePlaceSettings().setRotation(pool.getRotation());
-            for (StructureTemplate.StructureBlockInfo info : palettes.getFirst().blocks()) {
-                if (info.pos().getY() != 0 || !info.state().blocksMotion()) {
+            for (StructureTemplate.StructureBlockInfo cell : baseLayer(level, pool)) {
+                if (cell.state().isAir()) {
                     continue;
                 }
-                BlockPos pos = StructureTemplate.calculateRelativePosition(settings, info.pos()).offset(pool.getPosition());
+                BlockPos pos = cell.pos();
                 BlockState below = level.getBlockState(pos.below());
                 if (!below.blocksMotion()) {
                     int gap = 1;
@@ -583,11 +595,106 @@ public final class NaturalScenes {
                     }
                     String where = pos.toShortString() + " " + BuiltInRegistries.BLOCK.getKey(below.getBlock()).getPath()
                             + "×" + (gap > 16 ? "16+" : gap);
-                    (inOtherStructure(level, start, pos) ? overlapped : floating).add(where);
+                    Optional<String> other = otherStructureAt(level, start, pos);
+                    if (other.isPresent()) {
+                        overlapped.add(where + " " + other.get());
+                    } else {
+                        floating.add(where);
+                    }
                 }
             }
         }
         return new Footing(floating, overlapped);
+    }
+
+    /** 拼图块模板最底层（模板内 y=0）的每一格，坐标换成世界坐标；不是单模板元素时为空。 */
+    private static List<StructureTemplate.StructureBlockInfo> baseLayer(ServerLevel level, PoolElementStructurePiece pool) {
+        List<StructureTemplate.StructureBlockInfo> out = new ArrayList<>();
+        if (!(pool.getElement() instanceof SinglePoolElement single)) {
+            return out;
+        }
+        StructureTemplate template = level.getStructureManager().getOrCreate(ResourceLocation.parse(Worldgen.templateId(single)));
+        List<StructureTemplate.Palette> palettes = Reflect.field(template, StructureTemplate.class, "palettes");
+        StructurePlaceSettings settings = new StructurePlaceSettings().setRotation(pool.getRotation());
+        for (StructureTemplate.StructureBlockInfo info : palettes.getFirst().blocks()) {
+            if (info.pos().getY() == 0) {
+                out.add(new StructureTemplate.StructureBlockInfo(
+                        StructureTemplate.calculateRelativePosition(settings, info.pos()).offset(pool.getPosition()), info.state(), null));
+            }
+        }
+        return out;
+    }
+
+    /**
+     * 模板最底层有空格或植物、却没有坐在地面上（groundLevelDelta 不为 0，最底层顶替了自然地面那一层）的拼图块：
+     * 空格和植物底下露出的是地表下面的方块（绯红森林里露出地狱岩）。附空格和植物的格数。
+     */
+    private static List<String> openBaseBelowGround(ServerLevel level, StructureStart start) {
+        List<String> out = new ArrayList<>();
+        for (StructurePiece piece : start.getPieces()) {
+            if (!(piece instanceof PoolElementStructurePiece pool) || pool.getGroundLevelDelta() == 0) {
+                continue;
+            }
+            long open = baseLayer(level, pool).stream().filter(cell -> !cell.state().blocksMotion()).count();
+            if (open > 0) {
+                out.add(pool.getPosition().toShortString() + " groundLevelDelta=" + pool.getGroundLevelDelta() + " 空格和植物=" + open);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * 占地水平外扩 2 格、地面之上（底框最低 y + groundLevelDelta 往上）的范围内，
+     * 既不是模板放的、也不是噪声地形本来就有的玄武岩（玄武岩柱地物长进来的）。地面以下是地形适配填的，噪声地形里没有，不查。
+     */
+    private static List<String> basaltColumns(ServerLevel level, StructureStart start) {
+        List<String> out = new ArrayList<>();
+        var generator = level.getChunkSource().getGenerator();
+        var randomState = level.getChunkSource().randomState();
+        for (StructurePiece piece : start.getPieces()) {
+            if (!(piece instanceof PoolElementStructurePiece pool) || !(pool.getElement() instanceof SinglePoolElement single)) {
+                continue;
+            }
+            BoundingBox box = pool.getBoundingBox();
+            StructureTemplate template = level.getStructureManager().getOrCreate(ResourceLocation.parse(Worldgen.templateId(single)));
+            List<StructureTemplate.Palette> palettes = Reflect.field(template, StructureTemplate.class, "palettes");
+            StructurePlaceSettings settings = new StructurePlaceSettings().setRotation(pool.getRotation());
+            Set<BlockPos> templateBasalt = new java.util.HashSet<>();
+            for (StructureTemplate.StructureBlockInfo info : palettes.getFirst().blocks()) {
+                if (info.state().is(Blocks.BASALT)) {
+                    templateBasalt.add(StructureTemplate.calculateRelativePosition(settings, info.pos()).offset(pool.getPosition()));
+                }
+            }
+            for (int x = box.minX() - 2; x <= box.maxX() + 2; x++) {
+                for (int z = box.minZ() - 2; z <= box.maxZ() + 2; z++) {
+                    net.minecraft.world.level.NoiseColumn noise = null;
+                    int count = 0;
+                    BlockPos first = null;
+                    for (int y = box.minY() + pool.getGroundLevelDelta(); y <= box.maxY() + 12; y++) {
+                        BlockPos pos = new BlockPos(x, y, z);
+                        if (!level.getBlockState(pos).is(Blocks.BASALT) || templateBasalt.contains(pos)) {
+                            continue;
+                        }
+                        if (!box.isInside(pos)) {
+                            if (noise == null) {
+                                noise = generator.getBaseColumn(x, z, level, randomState);
+                            }
+                            if (!noise.getBlock(y).isAir()) {
+                                continue;
+                            }
+                        }
+                        count++;
+                        if (first == null) {
+                            first = pos;
+                        }
+                    }
+                    if (count > 0) {
+                        out.add(first.toShortString() + "×" + count);
+                    }
+                }
+            }
+        }
+        return out;
     }
 
     /**
@@ -629,13 +736,15 @@ public final class NaturalScenes {
                 && !state.is(BlockTags.BEEHIVES) && !state.is(Blocks.SHROOMLIGHT) && !state.is(Blocks.BAMBOO);
     }
 
-    private static boolean inOtherStructure(ServerLevel level, StructureStart start, BlockPos pos) {
+    /** pos 或它正下方落在别的结构的拼图块里时，那个结构的 ID。 */
+    private static Optional<String> otherStructureAt(ServerLevel level, StructureStart start, BlockPos pos) {
         for (BlockPos probe : List.of(pos, pos.below())) {
-            if (level.structureManager().getStructureWithPieceAt(probe, holder -> holder.value() != start.getStructure()).isValid()) {
-                return true;
+            StructureStart other = level.structureManager().getStructureWithPieceAt(probe, holder -> holder.value() != start.getStructure());
+            if (other.isValid()) {
+                return Optional.of(level.registryAccess().registryOrThrow(Registries.STRUCTURE).getKey(other.getStructure()).toString());
             }
         }
-        return false;
+        return Optional.empty();
     }
 
     private static BoundingBox actualPieceBox(StructureStart start) {

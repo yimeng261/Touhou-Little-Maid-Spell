@@ -7,6 +7,7 @@
   "refmap": "maidspell.refmap.json",
   "plugin": "com.github.yimeng261.maidspell.mixin.MaidSpellMixinPlugin",
   "mixins": [
+    "BasaltColumnsFeatureMixin",
     "BehaviorUtilsMixin",
     "ChunkGeneratorMixin",
     "EntityMixin",

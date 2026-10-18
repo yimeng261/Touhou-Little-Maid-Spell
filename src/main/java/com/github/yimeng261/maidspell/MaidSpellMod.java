@@ -29,6 +29,7 @@ import com.github.yimeng261.maidspell.player.ChunkLoadingData;
 import com.github.yimeng261.maidspell.particle.MaidSpellParticles;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePieceTypes;
+import com.github.yimeng261.maidspell.worldgen.MaidSpellStructurePlacements;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.github.yimeng261.maidspell.worldgen.structure.MaidSpellPoolElementTypes;
 import net.minecraft.core.Registry;
@@ -90,6 +91,7 @@ public class MaidSpellMod {
         modEventBus.addListener(FragrantIngenuityBauble::onRegisterEffects);
         // 注册自定义结构
         MaidSpellStructures.STRUCTURE_TYPES.register(modEventBus);
+        MaidSpellStructurePlacements.STRUCTURE_PLACEMENTS.register(modEventBus);
         MaidSpellStructurePieceTypes.STRUCTURE_PIECE_TYPES.register(modEventBus);
         MaidSpellPoolElementTypes.POOL_ELEMENT_TYPES.register(modEventBus);
         MaidSpellIngredientTypes.INGREDIENT_TYPES.register(modEventBus);

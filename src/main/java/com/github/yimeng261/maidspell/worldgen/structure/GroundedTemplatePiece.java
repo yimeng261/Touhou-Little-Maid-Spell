@@ -31,7 +31,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 放完模板后给最底层的实心方块垫地基：往下补到最近的实心地面为止，最多补 foundationDepth 格。
+ * 放完模板后给最底层整个占地垫地基：每一列往下补到最近的实心地面为止，最多补 foundationDepth 格。
+ * 实心方块底下用地面里层的方块（地狱岩、泥土）；植物和空格底下露在外面，最上面一格用地表方块（菌岩、草方块），
+ * 植物才有地可长，空格也不会露出坑。
  * 地形适配的填充在下界开阔洞穴和地表陡坡的边缘都很弱，地面低一两格就会露出缝；洞穴雕刻器还会在地形生成之后掏空脚下的地面。
  * 这些都靠这一步补实。
  */
@@ -72,28 +74,39 @@ public class GroundedTemplatePiece extends PoolElementStructurePiece {
                             @NotNull ChunkPos chunkPos, @NotNull BlockPos pivot) {
         super.postProcess(level, structureManager, generator, random, chunkBox, chunkPos, pivot);
         boolean nether = level.dimensionType().ultraWarm();
-        Map<BlockState, Integer> used = new HashMap<>();
-        List<BlockPos> carved = new ArrayList<>();
-        for (BlockPos base : solidBase(templateManager, element, rotation, position)) {
-            if (!chunkBox.isInside(base)) {
+        Map<BlockState, Integer> fills = new HashMap<>();
+        Map<BlockState, Integer> surfaces = new HashMap<>();
+        List<StructureTemplate.StructureBlockInfo> carved = new ArrayList<>();
+        for (StructureTemplate.StructureBlockInfo cell : baseLayer(templateManager, element, rotation, position)) {
+            if (!chunkBox.isInside(cell.pos())) {
                 continue;
             }
-            int depth = groundDepth(level, base);
+            int depth = groundDepth(level, cell.pos());
             if (depth < 0) {
-                carved.add(base);
+                if (!cell.state().isAir()) {
+                    carved.add(cell);
+                }
                 continue;
             }
-            BlockState fill = foundationFor(level.getBlockState(base.below(depth)), nether);
-            fill(level, base, depth - 1, fill, chunkBox);
-            used.merge(fill, 1, Integer::sum);
+            BlockState ground = level.getBlockState(cell.pos().below(depth));
+            BlockState fill = foundationFor(ground, nether);
+            BlockState surface = surfaceFor(ground, nether);
+            fill(level, cell.pos(), depth - 1, cell.state().blocksMotion() ? fill : surface, fill, chunkBox);
+            fills.merge(fill, 1, Integer::sum);
+            surfaces.merge(surface, 1, Integer::sum);
         }
         // 范围内没有地面的列是地面被洞穴雕刻器掏空了（选址看的噪声地形不含雕刻）：补一块和选址允许的深度一样厚的地面，
-        // 不往下接到洞底，免得在洞穴里立起柱子
-        BlockState fallback = used.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
-                .orElse((nether ? Blocks.NETHERRACK : Blocks.DIRT).defaultBlockState());
-        for (BlockPos base : carved) {
-            fill(level, base, foundationDepth, fallback, chunkBox);
+        // 不往下接到洞底，免得在洞穴里立起柱子；空格底下不补，免得多出一圈悬着的地面
+        BlockState defaultFill = (nether ? Blocks.NETHERRACK : Blocks.DIRT).defaultBlockState();
+        BlockState fallbackFill = mostUsed(fills, defaultFill);
+        BlockState fallbackSurface = mostUsed(surfaces, fallbackFill);
+        for (StructureTemplate.StructureBlockInfo cell : carved) {
+            fill(level, cell.pos(), foundationDepth, cell.state().blocksMotion() ? fallbackFill : fallbackSurface, fallbackFill, chunkBox);
         }
+    }
+
+    private static BlockState mostUsed(Map<BlockState, Integer> counts, BlockState fallback) {
+        return counts.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(fallback);
     }
 
     /** base 下方第几格是实心地面；foundationDepth + 1 格内都没有时为 -1。 */
@@ -106,12 +119,12 @@ public class GroundedTemplatePiece extends PoolElementStructurePiece {
         return -1;
     }
 
-    /** 把 base 正下方 count 格补成 fill。 */
-    private static void fill(WorldGenLevel level, BlockPos base, int count, BlockState fill, BoundingBox chunkBox) {
+    /** 把 base 正下方 count 格补实：最上面一格用 top，其余用 fill。 */
+    private static void fill(WorldGenLevel level, BlockPos base, int count, BlockState top, BlockState fill, BoundingBox chunkBox) {
         for (int y = 1; y <= count; y++) {
             BlockPos target = base.below(y);
             if (chunkBox.isInside(target)) {
-                level.setBlock(target, fill, Block.UPDATE_CLIENTS);
+                level.setBlock(target, y == 1 ? top : fill, Block.UPDATE_CLIENTS);
             }
         }
     }
@@ -128,6 +141,36 @@ public class GroundedTemplatePiece extends PoolElementStructurePiece {
             return (nether ? Blocks.NETHERRACK : Blocks.DIRT).defaultBlockState();
         }
         return ground.getBlock().defaultBlockState();
+    }
+
+    /** 露在外面的地基顶面：沿用下方地面的表层方块（菌岩、草方块、灵魂沙等）。 */
+    private static BlockState surfaceFor(BlockState ground, boolean nether) {
+        if (ground.hasBlockEntity() || !ground.getFluidState().isEmpty()) {
+            return foundationFor(ground, nether);
+        }
+        return ground.getBlock().defaultBlockState();
+    }
+
+    /** 模板最底层（模板内 y=0）每一格，坐标换成世界坐标；不是单模板元素时为空。 */
+    private static List<StructureTemplate.StructureBlockInfo> baseLayer(StructureTemplateManager templateManager,
+                                                                         StructurePoolElement element, Rotation rotation,
+                                                                         BlockPos origin) {
+        List<StructureTemplate.StructureBlockInfo> out = new ArrayList<>();
+        if (!(element instanceof SinglePoolElement single)) {
+            return out;
+        }
+        StructureTemplate template = single.getTemplate(templateManager);
+        if (template.palettes.isEmpty()) {
+            return out;
+        }
+        StructurePlaceSettings settings = new StructurePlaceSettings().setRotation(rotation);
+        for (StructureTemplate.StructureBlockInfo info : template.palettes.getFirst().blocks()) {
+            if (info.pos().getY() == 0) {
+                out.add(new StructureTemplate.StructureBlockInfo(
+                        StructureTemplate.calculateRelativePosition(settings, info.pos()).offset(origin), info.state(), null));
+            }
+        }
+        return out;
     }
 
     /** 模板最底层（模板内 y=0）实心方块的世界坐标；不是单模板元素时为空。 */
