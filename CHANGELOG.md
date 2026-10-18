@@ -17,6 +17,9 @@
   Forge, Crimson Cabin, Soul Valley Nook and Warped Perch (require Iron's Spells 'n Spellbooks); without Iron's
   Spells 'n Spellbooks or Goety a template without their content is used, and missing optional-mod loot entries
   no longer break the whole loot table
+- 下界魔女足迹附带中英日三语的旅行日记，可以和其他旅行日记一样与星之魔女交换星陨石 /
+  The Nether Enchantress' Footsteps come with travel journals in Chinese, English and Japanese, which can be
+  exchanged with the Stellar Witch for a Star Meteorite like the other journals
 - 妖精女仆咖啡厅换用新模板，安装妖怪们的飨宴（Youkais' Feasts）或妖怪们的归家（含 1.21 非官方移植版）之一即可生成 /
   The Fairy Maid Cafe uses a new template and generates with either Youkais' Feasts or Youkai's Homecoming
   (including its unofficial 1.21 port) installed
@@ -27,8 +30,23 @@
 - 兼容 Explorer's Compass 与 FTB Quests：探险家指南针中独立归隐之地显示为可读名称；FTB Quests 中以归隐之地为目标的维度任务在任意玩家的独立归隐之地里都算完成 /
   Explorer's Compass and FTB Quests compatibility: private Retreat dimensions show a readable name in Explorer's
   Compass, and FTB Quests dimension tasks targeting The Retreat also complete in any player's private Retreat
-- 星之魔女交易新增七星指引卷轴，交易卷轴固定为 1 级 /
-  The Stellar Witch now also trades Seven-Star Guidance scrolls; traded scrolls are always level 1
+- 星之魔女新增法术「掌心黑洞」「七星引路」「三垣连星」：掌心黑洞为她的专属法术；七星引路不能合成或从战利品获得，可向星之魔女交易卷轴；三垣连星可正常获取。交易卷轴固定为 1 级 /
+  The Stellar Witch gains three new spells: Palm Black Hole, Seven-Star Guidance and Three Enclosures. Palm Black
+  Hole is exclusive to her; Seven-Star Guidance cannot be crafted or looted, but its scroll can be traded from the
+  Stellar Witch; Three Enclosures can be obtained normally. Traded scrolls are always level 1
+- 星之魔女新增动态减伤：短时间内承受的伤害越高，后续伤害削减越多，受到高伤一击后的下一击也会减轻；护甲、动态减伤与隐身目标搜索可在配置中调整，挑战配置界面新增护甲选项 /
+  The Stellar Witch gains adaptive damage reduction: the more damage she takes in a short time, the more later hits
+  are reduced, and the hit after a heavy blow is lessened; her armor, adaptive reduction and invisible-target search
+  are configurable, and the challenge configuration screen adds an armor option
+- 星之魔女挑战胜利给予经验；誓约所需的常规胜利从三次改为两次 /
+  Defeating the Stellar Witch in a challenge now awards experience; the oath now requires two regular victories
+  instead of three
+- 星锚珍珠使用时眩晕 6 格内的敌人 6 秒并打断其施法，女仆佩戴时挡下虚空伤害会眩晕 3 格内的敌人；虚空漫步延长至 35 秒 /
+  Using the Staranchor Pearl stuns enemies within 6 blocks for 6 seconds and interrupts their spellcasting, and when
+  a maid wearing it blocks void damage, enemies within 3 blocks are stunned; Void Walk now lasts 35 seconds
+- 每个世界按种子在末地四个方向之一保证生成一座星途终岸，末地荒地也可自然生成 /
+  Every world now guarantees one Stellar Endshore at one of four End locations chosen by seed, and it can also
+  generate naturally in End Barrens
 - 新增日文语言包，日记正文按当前分页排版；配置界面、部分结构实体与战利品名、《女仆与前文明研究记录》等内容暂以英文显示 /
   Added a Japanese translation with journals laid out to the current pagination; the configuration screen,
   some structure entities and loot names, Maids and the Previous Civilization: Research Records and other
@@ -36,10 +54,6 @@
 - 适配妖怪们的归家 1.21 非官方移植版：女仆可用弹幕、激光与各角色符卡战斗；梦云水晶联动配方在安装该模组时加入灵梦的大蝴蝶结 /
   Added support for the unofficial 1.21 port of Youkai's Homecoming: maids can fight with danmaku, lasers and each
   character's spell cards, and the Dreamcloud Crystal crossover recipe adds the Reimu Hairband when it is installed
-- 下界魔女足迹自带地基并坐在地面上，不与下界要塞、堡垒遗迹和堕天圣堂重叠；洞穴、玄武岩石柱林、玄武岩柱、三角洲与涌泉不会长进占地，屋内的书架和藤蔓不会被火烧掉 /
-  The Nether Enchantress' Footsteps structures carry their own foundations and sit on the ground without
-  overlapping Nether Fortresses, Bastion Remnants or the Fallen Sanctum; caves, basalt columns, basalt pillars,
-  deltas and springs no longer cut into them, and their bookshelves and vines no longer burn
 
 ### 修复 / Bug Fixes
 
@@ -85,42 +99,25 @@
 - 修复寻风之铃在搜索结果返回前再次使用会另起一次搜索的问题，现在只提示仍在搜索 /
   Fixed using the Wind Seeking Bell again before its search finished starting another search; it now only reports
   that the search is still running
-- 修复多座隐世之境同时生成时个别结构缺少女仆的问题 /
-  Fixed some Hidden Retreats missing their maid when several were generated at the same time
-- 旧存档中没有标记的隐世女仆在驯服时仍能被识别 /
-  Hidden Retreat maids from old saves without the new marker are still recognized when tamed
-- 修复落樱厨舍座位上的女仆不生成的问题，并保留模板中的女仆模型 /
-  Fixed the maid seated in the Cherry Cabin not spawning; she now keeps the model from the template
-- 落樱厨舍去掉未声明依赖的 TACZ 枪械与弹药，无铁魔法版模板去掉所有铁魔法物品 /
-  Removed TACZ guns and ammo from the Cherry Cabin, and all Iron's Spells 'n Spellbooks items from its variant
-  without Iron's Spells 'n Spellbooks
-- 下界魔女旅行日记支持中英日三语并按段落分页，可以和其他旅行日记一样与星之魔女交换星陨石 /
-  The Nether Enchantress's Travel Journals are now translated into Chinese, English and Japanese, paginated by
-  paragraph, and can be exchanged with the Stellar Witch for a Star Meteorite like the other journals
-- 妖怪们的飨宴版妖精女仆咖啡厅把需要果园乐事的柠檬红茶换成埃及糖茶 /
-  The Youkais' Feasts variant of the Fairy Maid Cafe replaces Lemon Black Tea, which needs Fruits Delight, with
-  Saidi Tea
-- 圣遗礼拜堂首领女仆的雷暴与坚韧效果作为永久效果保留 /
-  The Relic Sanctum boss maid's thunderstorm and fortitude effects are now kept as permanent effects
 - 修复烬血之戒在生命超出上限时仍给增伤的问题，现在只按缺失生命加成 /
   Fixed the Ember Blood Ring granting bonus damage while health exceeded the maximum; the bonus now scales only with
   missing health
-- 修复星落之庭补生成与其他结构重叠的问题：避让其他结构集的计划落点与已有结构，换候选位置时不再多记一次放置次数 /
-  Fixed retroactive Starfall Garden generation overlapping other structures: it now avoids planned and existing
-  structures, and no longer counts an extra placement when switching candidates
-- 掌心黑洞的爆炸粒子不再依赖特定版本的铁魔法；施法期间的深渊护罩在结束或取消时只移除本次施法添加的部分，存档重载后也能正确恢复 /
-  Palm Black Hole explosion particles no longer depend on a specific Iron's Spells 'n Spellbooks version; the
-  abyssal shield applied during the cast only removes what that cast added when it ends or is cancelled, and is
-  restored correctly after a save is reloaded
-- 补上梦云水晶黑名单迁移版本配置项的名称翻译 /
-  Added the missing translation for the Dreamcloud Crystal blacklist migration version config option
-- 修复酒狐 Boss 的最大生命值读数与实际不一致的问题 /
-  Fixed the Winefox boss reporting a maximum health that differed from its actual value
+- 修复星落之庭补生成与其他结构重叠的问题，现在会避让其他结构的计划落点与已有结构 /
+  Fixed retroactive Starfall Garden generation overlapping other structures; it now avoids planned and existing
+  structures
+- 修复星之魔女的最大生命值读数与实际不一致的问题 /
+  Fixed the Stellar Witch reporting a maximum health that differed from its actual value
+- 修复用刷怪蛋生成的星之魔女只有 1 点生命的问题 /
+  Fixed the Stellar Witch spawned from a spawn egg having only 1 health
+- 修复结构中生成的星之魔女战斗结束后归位到错误位置的问题 /
+  Fixed the Stellar Witch generated in structures returning to the wrong position after combat
 - 修复安装 FreeTerraForged 等改写主世界地形的模组后，归隐之地变成一片水的问题；隐世之境选址时确认脚下是实心地面 /
   Fixed The Retreat turning into open water with FreeTerraForged or other mods that rewrite overworld terrain;
   Hidden Retreats now check for solid ground when choosing a site
 - 修复妖精女仆咖啡厅在坡地边缘悬空的问题 /
   Fixed the Fairy Maid Cafe floating over the edge of slopes
+- 修复与 Legendary Monsters 同时安装时，其小型湮灭弹命中非生物实体导致崩溃的问题 /
+  Fixed a crash when Legendary Monsters' small annihilation projectile hit a non-living entity
 
 ### 优化 / Improvements
 
@@ -128,11 +125,17 @@
   The Stellar Witch's phase-two sword combos are smoother: mid-combo strikes chain early and only the final strike
   plays the full recovery; melee damage is dealt only when the attack animation actually starts; after each combo
   she casts a spell before starting the next one
-- 星之魔女在非战斗状态或转阶段期间，不再因其他模组直接改写血量而掉血 /
+- 星之魔女在非战斗状态或转阶段期间，不再因其他模组直接改写血量而掉血；非战斗状态下不会被其他生物当作目标 /
   The Stellar Witch no longer loses health from other mods writing her health directly while out of combat or
-  during a phase transition
-- 星影剑阵的起手动画改为铁魔法的单手横斩 /
-  Starshadow Sword Array now uses Iron's Spells 'n Spellbooks' one-handed slash as its casting animation
+  during a phase transition, and other mobs no longer target her while she is out of combat
+- 星之魔女正式挑战中不再消耗玩家护甲与副手物品的耐久 /
+  Formal Stellar Witch challenges no longer wear down the player's armor and off-hand item durability
+- 星影剑阵改由单一控制器管理，剑数多时更流畅，并加入停顿、闪现与斩击连段；起手动画改为铁魔法的单手横斩 /
+  Starshadow Sword Array is now driven by a single controller, runs more smoothly with many swords, and adds
+  pauses, blinks and slash combos; its casting animation is now Iron's Spells 'n Spellbooks' one-handed slash
+- 女仆佩戴梦云水晶攻击时不再使目标时停 1 秒，相关配置项移除；旧版本遗留的定身生物进入世界时自动恢复行动 /
+  Maids wearing the Dreamcloud Crystal no longer freeze their targets for 1 second, and the related config option
+  is removed; mobs left frozen by older versions regain their AI when they enter the world
 - 混沌之书、破愈咒锋、梦云水晶的受伤前置效果对所有重写了受伤逻辑的模组生物生效，不再只限固定清单 /
   The pre-damage effects of Chaos Book, Wound Rime Blade and Dreamcloud Crystal now apply to every modded mob
   that overrides damage handling, instead of a fixed list
@@ -159,6 +162,12 @@
   player curio slots before upgrading
 - 如安装妖怪们的归家的 1.21 非官方移植版，不能同时安装妖怪们的飨宴 /
   The unofficial 1.21 port of Youkai's Homecoming cannot be installed together with Youkais' Feasts
+- 配置文件按功能拆分到 `config/touhou_little_maid_spell/` 下的 `combat.toml`、`baubles.toml`、`retreat.toml`、`compat.toml`、`boss.toml` 与 `client/ender_pocket.toml`；旧配置会自动迁移并保留备份 /
+  Config files are split by feature into `combat.toml`, `baubles.toml`, `retreat.toml`, `compat.toml`, `boss.toml`
+  and `client/ender_pocket.toml` under `config/touhou_little_maid_spell/`; old configs are migrated automatically
+  and backed up
+- 网络协议已更新，客户端与服务端需一起升级 /
+  The network protocol has changed, so clients and servers must upgrade together
 
 ---
 
