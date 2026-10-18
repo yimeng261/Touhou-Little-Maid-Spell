@@ -1,8 +1,44 @@
 package com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox;
 
-/** 给场景测试用的同包访问口：星之魔女的承伤换算、高伤保护和剑系连段状态机都是包内可见。 */
+import net.minecraft.world.entity.LivingEntity;
+
+/** 给场景测试用的同包访问口：星之魔女的承伤换算、动态限伤、高伤保护和剑系连段状态机都是包内可见。 */
 public final class WinefoxTestAccess {
     private WinefoxTestAccess() {
+    }
+
+    public static boolean beginMobCombat(MagicalWinefoxBossEntity boss, LivingEntity attacker) {
+        return boss.beginMobCombat(attacker);
+    }
+
+    /** 以管理身份补满权威生命。 */
+    public static void fillHealth(MagicalWinefoxBossEntity boss) {
+        WinefoxBossHealthController.withCause(boss, WinefoxBossHealthController.Cause.ADMIN,
+                () -> boss.setHealth(boss.maidspell$bossMaxHealth()));
+    }
+
+    /** 以伤害身份把权威生命往下写 amount，返回实际掉的血；被受击间隔挡下时为 0。 */
+    public static float hit(MagicalWinefoxBossEntity boss, float amount) {
+        float before = boss.maidspell$authoritativeHealth();
+        WinefoxBossHealthController.withCause(boss, WinefoxBossHealthController.Cause.DAMAGE,
+                () -> boss.setHealth(before - amount));
+        return before - boss.maidspell$authoritativeHealth();
+    }
+
+    public static double adaptiveTargetDps(MagicalWinefoxBossEntity boss) {
+        return boss.maidspell$adaptiveTargetDps();
+    }
+
+    public static double adaptiveActivationRatio(MagicalWinefoxBossEntity boss) {
+        return boss.maidspell$adaptiveActivationRatio();
+    }
+
+    public static double adaptiveFinalBudgetMultiplier(MagicalWinefoxBossEntity boss) {
+        return boss.maidspell$adaptiveFinalBudgetMultiplier();
+    }
+
+    public static int adaptiveWindowTicks(MagicalWinefoxBossEntity boss) {
+        return boss.maidspell$adaptiveWindowTicks();
     }
 
     public static float damageBeforeCap(float previous, float requested) {

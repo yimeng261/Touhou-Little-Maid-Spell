@@ -467,7 +467,7 @@ public final class StellarContentScenes {
         });
     }
 
-    private static Goal combatGoal(MagicalWinefoxBossEntity boss) {
+    static Goal combatGoal(MagicalWinefoxBossEntity boss) {
         GoalSelector selector = Reflect.field(boss, Mob.class, "goalSelector");
         return selector.getAvailableGoals().stream().map(WrappedGoal::getGoal)
                 .filter(goal -> goal.getClass().getSimpleName().equals("WinefoxCombatGoal"))
@@ -480,7 +480,7 @@ public final class StellarContentScenes {
     }
 
     /** 治疗留在冷却里：回血越过二阶段线会退回一阶段。 */
-    private static void suppressSideBranches(Goal goal) {
+    static void suppressSideBranches(Goal goal) {
         Class<?> type = goal.getClass();
         for (String cooldown : List.of("spearCheckCooldown", "voidPhaseCheckCooldown",
                 "healCheckCooldown", "escapeTeleportCheckCooldown")) {
