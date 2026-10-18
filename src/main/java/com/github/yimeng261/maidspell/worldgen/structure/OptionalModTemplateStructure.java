@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pools.EmptyPoolElement;
@@ -30,6 +31,8 @@ import java.util.OptionalInt;
 /**
  * 由可选联动模组控制是否生成的单个刚性模板结构。
  * 下界模板按洞穴地面选址，不用高度图，否则会选到基岩顶。
+ * {@code surface_offset} 为 1 时模板最底层坐在地面上；为 0 或负数时模板底下自带 1 - surface_offset 层地基，
+ * 地基埋进地里，地基上面那层落在地面之上。{@code fill_foundation} 为 false 时不再由代码补地基，只靠原版地形适配补地形。
  */
 public class OptionalModTemplateStructure extends Structure {
     public static final MapCodec<OptionalModTemplateStructure> CODEC = RecordCodecBuilder.mapCodec(instance ->
@@ -38,10 +41,12 @@ public class OptionalModTemplateStructure extends Structure {
                     StructureTemplatePool.CODEC.fieldOf("start_pool").forGetter(structure -> structure.startPool),
                     Codec.STRING.fieldOf("required_mod").forGetter(structure -> structure.requiredMod),
                     Codec.BOOL.optionalFieldOf("nether", false).forGetter(structure -> structure.nether),
-                    Codec.intRange(0, 1).optionalFieldOf("surface_offset", 1)
+                    Codec.intRange(-8, 1).optionalFieldOf("surface_offset", 1)
                             .forGetter(structure -> structure.surfaceOffset),
                     Codec.intRange(0, 16).optionalFieldOf("max_terrain_step", 3)
                             .forGetter(structure -> structure.maxTerrainStep),
+                    Codec.BOOL.optionalFieldOf("fill_foundation", true)
+                            .forGetter(structure -> structure.fillFoundation),
                     TemplateFallback.CODEC.optionalFieldOf("fallback").forGetter(structure -> structure.fallback)
             ).apply(instance, OptionalModTemplateStructure::new));
 
@@ -53,17 +58,19 @@ public class OptionalModTemplateStructure extends Structure {
     private final boolean nether;
     private final int surfaceOffset;
     private final int maxTerrainStep;
+    private final boolean fillFoundation;
     private final Optional<TemplateFallback> fallback;
 
     public OptionalModTemplateStructure(StructureSettings settings, Holder<StructureTemplatePool> startPool,
                                         String requiredMod, boolean nether, int surfaceOffset, int maxTerrainStep,
-                                        Optional<TemplateFallback> fallback) {
+                                        boolean fillFoundation, Optional<TemplateFallback> fallback) {
         super(settings);
         this.startPool = startPool;
         this.requiredMod = requiredMod;
         this.nether = nether;
         this.surfaceOffset = surfaceOffset;
         this.maxTerrainStep = maxTerrainStep;
+        this.fillFoundation = fillFoundation;
         this.fallback = fallback;
     }
 
@@ -117,10 +124,13 @@ public class OptionalModTemplateStructure extends Structure {
 
         // 地形适配把「底框最低 y + groundLevelDelta」当作地面之上的第一层：这一层往上挖空，往下填实。
         // 它要落在自然地面的上一格（floor + 1），否则模板第一层是花、家具等地面装饰时会把脚下的地面挖掉。
-        // 选址允许地面比锚点低 maxTerrainStep 格，地基补到那么深为止
-        GroundedTemplatePiece piece = new GroundedTemplatePiece(context.structureTemplateManager(),
-                element, origin, 1 - surfaceOffset, rotation, box, LiquidSettings.APPLY_WATERLOGGING,
-                maxTerrainStep + surfaceOffset);
+        // 选址允许地面比锚点低 maxTerrainStep 格，代码补地基时补到那么深为止
+        int groundLevelDelta = 1 - surfaceOffset;
+        PoolElementStructurePiece piece = fillFoundation
+                ? new GroundedTemplatePiece(context.structureTemplateManager(), element, origin, groundLevelDelta, rotation,
+                        box, LiquidSettings.APPLY_WATERLOGGING, maxTerrainStep + surfaceOffset)
+                : new PoolElementStructurePiece(context.structureTemplateManager(), element, origin, groundLevelDelta,
+                        rotation, box, LiquidSettings.APPLY_WATERLOGGING);
         BlockPos center = new BlockPos(centerX, origin.getY(), centerZ);
         return Optional.of(new GenerationStub(center, builder -> builder.addPiece(piece)));
     }
@@ -162,13 +172,13 @@ public class OptionalModTemplateStructure extends Structure {
     }
 
     /**
-     * 下界选址要逐列检查的位置：模板最底层每个实心方块所在的列。洞穴地面坑洼多，只抽几个点会漏掉中间的坑和崖边；
-     * 取不到模板方块时退回占地上的抽样点。
+     * 下界选址要逐列检查的位置：地基上面那层（落在地面之上的第一层，模板内 y = 1 - surface_offset）每个实心方块所在的列。
+     * 洞穴地面坑洼多，只抽几个点会漏掉中间的坑和崖边；取不到模板方块时退回占地上的抽样点。
      */
-    private static List<BlockPos> baseColumns(GenerationContext context, StructurePoolElement element, Rotation rotation,
-                                              BlockPos horizontalOrigin, int[] sampleX, int[] sampleZ) {
-        List<BlockPos> columns = GroundedTemplatePiece.solidBase(context.structureTemplateManager(), element, rotation,
-                horizontalOrigin).stream().map(pos -> pos.atY(0)).distinct().toList();
+    private List<BlockPos> baseColumns(GenerationContext context, StructurePoolElement element, Rotation rotation,
+                                       BlockPos horizontalOrigin, int[] sampleX, int[] sampleZ) {
+        List<BlockPos> columns = GroundedTemplatePiece.solidLayer(context.structureTemplateManager(), element, rotation,
+                horizontalOrigin, 1 - surfaceOffset).stream().map(pos -> pos.atY(0)).distinct().toList();
         if (!columns.isEmpty()) {
             return columns;
         }

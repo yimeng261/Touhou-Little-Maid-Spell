@@ -612,6 +612,7 @@ public final class StructureSnapshots {
                 "irons_spellbooks:firefly_jar",
                 "irons_spellbooks:inscription_table",
                 "irons_spellbooks:pedestal",
+                "irons_spellbooks:wisewood_bookshelf",
                 "touhou_little_maid:maid_bed",
                 "touhou_little_maid_spell:suppression_stone"),
             List.of(

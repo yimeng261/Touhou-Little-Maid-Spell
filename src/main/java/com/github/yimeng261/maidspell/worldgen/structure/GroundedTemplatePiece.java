@@ -173,9 +173,9 @@ public class GroundedTemplatePiece extends PoolElementStructurePiece {
         return out;
     }
 
-    /** 模板最底层（模板内 y=0）实心方块的世界坐标；不是单模板元素时为空。 */
-    static List<BlockPos> solidBase(StructureTemplateManager templateManager, StructurePoolElement element,
-                                    Rotation rotation, BlockPos origin) {
+    /** 模板内第 layer 层实心方块的世界坐标；不是单模板元素时为空。 */
+    static List<BlockPos> solidLayer(StructureTemplateManager templateManager, StructurePoolElement element,
+                                     Rotation rotation, BlockPos origin, int layer) {
         List<BlockPos> out = new ArrayList<>();
         if (!(element instanceof SinglePoolElement single)) {
             return out;
@@ -186,7 +186,7 @@ public class GroundedTemplatePiece extends PoolElementStructurePiece {
         }
         StructurePlaceSettings settings = new StructurePlaceSettings().setRotation(rotation);
         for (StructureTemplate.StructureBlockInfo info : template.palettes.getFirst().blocks()) {
-            if (info.pos().getY() == 0 && info.state().blocksMotion()) {
+            if (info.pos().getY() == layer && info.state().blocksMotion()) {
                 out.add(StructureTemplate.calculateRelativePosition(settings, info.pos()).offset(origin));
             }
         }

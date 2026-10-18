@@ -6,7 +6,7 @@ import com.github.yimeng261.maidspell.stagewright.support.Batch;
 import com.github.yimeng261.maidspell.stagewright.support.Checks;
 import com.github.yimeng261.maidspell.stagewright.support.Reflect;
 import com.github.yimeng261.maidspell.stagewright.support.Worldgen;
-import com.github.yimeng261.maidspell.worldgen.BasaltColumnGuard;
+import com.github.yimeng261.maidspell.worldgen.TerrainFeatureGuard;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.MultiExclusionSpreadPlacement;
 import com.github.yimeng261.maidspell.worldgen.structure.OptionalModTemplateStructure;
@@ -33,6 +33,7 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.DensityFunction;
@@ -53,6 +54,7 @@ import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement
 import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+import net.minecraft.world.level.material.Fluids;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -525,7 +527,7 @@ public final class NaturalScenes {
      * 不压在洞穴的空处、岩浆或悬崖边上，地形适配也没有把地面挖掉或漏补。
      * 也不与别的结构（如下界要塞）的拼图块重叠，否则后放置的结构会把地板和脚下的地面切开。
      * 建筑外一圈的地形不高过地板，否则墙和门会埋进地里。
-     * 可选模组模板结构的底层有空格或植物时坐在地面上，不顶替自然地面那一层；不许玄武岩柱生长的结构占地内没有玄武岩柱。
+     * 可选模组模板结构的底层有空格或植物时坐在地面上，不顶替自然地面那一层；挡住地形地物的结构占地内没有玄武岩石柱林、玄武岩柱、三角洲和涌泉。
      */
     private static void grounded(SceneContext ctx, Natural natural) {
         ServerLevel level = Worldgen.level(ctx, natural.dimension());
@@ -547,14 +549,17 @@ public final class NaturalScenes {
                     List<String> buried = buried(level, start);
                     List<String> subsurface = start.getStructure() instanceof OptionalModTemplateStructure
                             ? openBaseBelowGround(level, start) : List.of();
-                    boolean checkBasalt = level.registryAccess().registryOrThrow(Registries.STRUCTURE).wrapAsHolder(start.getStructure()).is(BasaltColumnGuard.TAG);
-                    List<String> basalt = checkBasalt ? basaltColumns(level, start) : List.of();
+                    boolean checkFeatures = level.registryAccess().registryOrThrow(Registries.STRUCTURE).wrapAsHolder(start.getStructure()).is(TerrainFeatureGuard.TAG);
+                    List<String> features = checkFeatures ? terrainFeatures(level, start) : List.of();
                     summary.add(where + " 悬空=" + footing.floating().size() + " 与其他结构重叠=" + footing.overlapped().size()
                             + " 埋入=" + buried.size()
-                            + (checkBasalt ? " 玄武岩柱=" + basalt.size() : ""));
+                            + (checkFeatures ? " 玄武岩柱与熔岩=" + features.size() : ""));
                     ctx.check(subsurface).as(where + " 底层有空格或植物却顶替了自然地面的拼图块").isEmpty();
-                    ctx.check(basalt).as(where + " 长进占地的玄武岩柱").isEmpty();
-                    ctx.check(footing.floating()).as(where + " 底层下方不是实心方块的位置").isEmpty();
+                    ctx.check(features).as(where + " 长进占地的玄武岩石柱林、玄武岩柱、三角洲和涌泉").isEmpty();
+                    // 魂谷一隅和原版化石一样不带地基，底下悬空不算
+                    if (!natural.path().equals("enchantress_footsteps_soulvalley_nook")) {
+                        ctx.check(footing.floating()).as(where + " 底层下方不是实心方块的位置").isEmpty();
+                    }
                     ctx.check(footing.overlapped()).as(where + " 底层下方被其他结构切开的位置").isEmpty();
                     ctx.check(buried).as(where + " 建筑外一圈高过地板的地形").isEmpty();
                     // 起点在放置前要随区块存盘再读回
@@ -569,8 +574,8 @@ public final class NaturalScenes {
     }
 
     /**
-     * 模板最底层的实心方块中，正下方不是实心方块的世界坐标（附下方方块与往下空了几格，超过 16 格记为 16+），
-     * 以及其中落在别的结构拼图块里的位置。
+     * 模板最底层的实心方块和植物中，正下方不是实心方块的世界坐标（附下方方块与往下空了几格，超过 16 格记为 16+），
+     * 以及其中落在别的结构拼图块里的位置。下界的可选模组模板结构连最底层的空格也算：院子底下不能是空的。
      */
     private record Footing(List<String> floating, List<String> overlapped) {
     }
@@ -578,12 +583,13 @@ public final class NaturalScenes {
     private static Footing footing(ServerLevel level, StructureStart start) {
         List<String> floating = new ArrayList<>();
         List<String> overlapped = new ArrayList<>();
+        boolean everyCell = level.dimensionType().ultraWarm() && start.getStructure() instanceof OptionalModTemplateStructure;
         for (StructurePiece piece : start.getPieces()) {
             if (!(piece instanceof PoolElementStructurePiece pool)) {
                 continue;
             }
             for (StructureTemplate.StructureBlockInfo cell : baseLayer(level, pool)) {
-                if (cell.state().isAir()) {
+                if (cell.state().isAir() && !everyCell) {
                     continue;
                 }
                 BlockPos pos = cell.pos();
@@ -644,10 +650,12 @@ public final class NaturalScenes {
     }
 
     /**
-     * 占地水平外扩 2 格、地面之上（底框最低 y + groundLevelDelta 往上）的范围内，
-     * 既不是模板放的、也不是噪声地形本来就有的玄武岩（玄武岩柱地物长进来的）。地面以下是地形适配填的，噪声地形里没有，不查。
+     * 占地水平外扩 2 格的范围内，地物长进来的玄武岩、熔岩源和岩浆块，按列附第一格的位置和种类。
+     * 地面之上（底框最低 y + groundLevelDelta 往上）：既不是模板放的、也不是噪声地形本来就有的；
+     * 地板下面那一层只看占地正下方的熔岩源，那里是地基或自然地面，本来就该是实心的；岩浆块矿脉会长进这一层的下界岩，不算。
+     * 地面以下再往深处是地形适配填的，噪声地形里没有，不查。流动的岩浆是外面流进来的，不算。
      */
-    private static List<String> basaltColumns(ServerLevel level, StructureStart start) {
+    private static List<String> terrainFeatures(ServerLevel level, StructureStart start) {
         List<String> out = new ArrayList<>();
         var generator = level.getChunkSource().getGenerator();
         var randomState = level.getChunkSource().randomState();
@@ -659,23 +667,30 @@ public final class NaturalScenes {
             StructureTemplate template = level.getStructureManager().getOrCreate(ResourceLocation.parse(Worldgen.templateId(single)));
             List<StructureTemplate.Palette> palettes = Reflect.field(template, StructureTemplate.class, "palettes");
             StructurePlaceSettings settings = new StructurePlaceSettings().setRotation(pool.getRotation());
-            Set<BlockPos> templateBasalt = new java.util.HashSet<>();
+            java.util.Map<BlockPos, Block> templateBlocks = new java.util.HashMap<>();
             for (StructureTemplate.StructureBlockInfo info : palettes.getFirst().blocks()) {
-                if (info.state().is(Blocks.BASALT)) {
-                    templateBasalt.add(StructureTemplate.calculateRelativePosition(settings, info.pos()).offset(pool.getPosition()));
-                }
+                templateBlocks.put(StructureTemplate.calculateRelativePosition(settings, info.pos()).offset(pool.getPosition()),
+                        info.state().getBlock());
             }
+            int floor = box.minY() + pool.getGroundLevelDelta();
             for (int x = box.minX() - 2; x <= box.maxX() + 2; x++) {
                 for (int z = box.minZ() - 2; z <= box.maxZ() + 2; z++) {
                     net.minecraft.world.level.NoiseColumn noise = null;
+                    boolean underFootprint = x >= box.minX() && x <= box.maxX() && z >= box.minZ() && z <= box.maxZ();
                     int count = 0;
-                    BlockPos first = null;
-                    for (int y = box.minY() + pool.getGroundLevelDelta(); y <= box.maxY() + 12; y++) {
+                    String first = null;
+                    for (int y = floor - 1; y <= box.maxY() + 12; y++) {
                         BlockPos pos = new BlockPos(x, y, z);
-                        if (!level.getBlockState(pos).is(Blocks.BASALT) || templateBasalt.contains(pos)) {
+                        BlockState state = level.getBlockState(pos);
+                        boolean lava = state.is(Blocks.MAGMA_BLOCK) || state.getFluidState().is(Fluids.LAVA);
+                        if (!lava && !state.is(Blocks.BASALT) || templateBlocks.get(pos) == state.getBlock()) {
                             continue;
                         }
-                        if (!box.isInside(pos)) {
+                        if (y < floor) {
+                            if (!state.getFluidState().is(Fluids.LAVA) || !underFootprint) {
+                                continue;
+                            }
+                        } else if (!box.isInside(pos)) {
                             if (noise == null) {
                                 noise = generator.getBaseColumn(x, z, level, randomState);
                             }
@@ -685,11 +700,11 @@ public final class NaturalScenes {
                         }
                         count++;
                         if (first == null) {
-                            first = pos;
+                            first = pos.toShortString() + " " + BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
                         }
                     }
                     if (count > 0) {
-                        out.add(first.toShortString() + "×" + count);
+                        out.add(first + "×" + count);
                     }
                 }
             }
