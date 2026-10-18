@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.stagewright.scenes;
 
+import com.github.yimeng261.maidspell.api.IBossDamageClamp;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxAction;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxBossSpellAction;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.WinefoxTestAccess;
@@ -24,7 +25,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * 星之魔女战斗里的纯计算部分：承伤先减伤后封顶、高伤保护只护下一击、剑系连段的步骤顺序、
+ * 星之魔女战斗里的纯计算部分：承伤先减伤后封顶、高伤保护只被够格的命中消耗、超时失效、最低有效伤害、剑系连段的步骤顺序、
  * 眩晕动画与星锚眩晕时长、法术默认权重、近战连段的出招节奏，以及挑战配置（含护甲）的存取与网络往返。
  */
 public final class WinefoxLogicScenes {
@@ -42,9 +43,16 @@ public final class WinefoxLogicScenes {
         scenes.add(Checks.scene("winefox.damage.overkillNotClippedToRemainingHealth", 5, WinefoxLogicScenes::overkill));
         scenes.add(Checks.scene("winefox.damage.extremeWritesStayFinite", 5, WinefoxLogicScenes::extremeWrites));
         scenes.add(Checks.scene("winefox.damage.healingAndInvalidWritesAreNotDamage", 5, WinefoxLogicScenes::healingWrites));
-        scenes.add(Checks.scene("winefox.highDamageGuard.protectsOnlyNextHit", 5, WinefoxLogicScenes::guardNextHit));
+        scenes.add(Checks.scene("winefox.damage.minimumDamageClearsTinyResidual", 5, WinefoxLogicScenes::minimumClearsResidual));
+        scenes.add(Checks.scene("winefox.damage.minimumDamageAppliesAfterGuard", 5, WinefoxLogicScenes::minimumAfterGuard));
+        scenes.add(Checks.scene("winefox.damage.minimumDamageNeverExceedsHitCap", 5, WinefoxLogicScenes::minimumWithinCap));
+        scenes.add(Checks.scene("winefox.damage.minimumDamageCountsZeroedHit", 5, WinefoxLogicScenes::minimumCountsZeroedHit));
+        scenes.add(Checks.scene("winefox.damage.minimumDamageLeavesHealingAndLethalAlone", 5, WinefoxLogicScenes::minimumLeavesHealingAndLethal));
+        scenes.add(Checks.scene("winefox.damage.minimumDamageUnlimitedCapUsesDefault", 5, WinefoxLogicScenes::minimumUnlimitedCap));
+        scenes.add(Checks.scene("winefox.highDamageGuard.smallHitKeepsGuard", 5, WinefoxLogicScenes::guardSmallHit));
         scenes.add(Checks.scene("winefox.highDamageGuard.refreshesWithoutStacking", 5, WinefoxLogicScenes::guardNoStacking));
         scenes.add(Checks.scene("winefox.highDamageGuard.thresholdFivePercentInclusive", 5, WinefoxLogicScenes::guardThreshold));
+        scenes.add(Checks.scene("winefox.highDamageGuard.expiresAfterLifetime", 5, WinefoxLogicScenes::guardExpires));
         scenes.add(Checks.scene("winefox.highDamageGuard.pendingRestoredAndReset", 5, WinefoxLogicScenes::guardPending));
         scenes.add(Checks.scene("winefox.swordCombo.stepsInOrder", 5, WinefoxLogicScenes::comboOrder));
         scenes.add(Checks.scene("winefox.swordCombo.unrelatedReleasesCannotSkip", 5, WinefoxLogicScenes::comboNoSkip));
@@ -99,19 +107,54 @@ public final class WinefoxLogicScenes {
         ctx.check(WinefoxTestAccess.damageBeforeCap(300.0F, Float.NEGATIVE_INFINITY)).as("负无穷").isEqualTo(0.0F);
     }
 
+    // ---- 最低有效伤害 ----
+
+    /** 减伤和保护叠完之后只剩一点残血的写入，会被补足到最低有效伤害并清零残血。 */
+    private static void minimumClearsResidual(SceneContext ctx) {
+        ctx.check(WinefoxTestAccess.enforceMinimumDamage(0.0140709765F, 0.0135784923F, 48.0F))
+                .as("残血清零").isEqualTo(0.0F);
+    }
+
+    /** 最低有效伤害在高伤保护之后结算。 */
+    private static void minimumAfterGuard(SceneContext ctx) {
+        ctx.check(WinefoxTestAccess.enforceMinimumDamage(1.0F, 0.9995F, 48.0F)).as("补足到 0.1").isCloseTo(0.9F, 1.0E-6);
+    }
+
+    /** 最低有效伤害不超过单次封顶。 */
+    private static void minimumWithinCap(SceneContext ctx) {
+        ctx.check(WinefoxTestAccess.enforceMinimumDamage(0.2F, 0.199F, 0.05F)).as("按封顶补足").isCloseTo(0.15F, 1.0E-6);
+    }
+
+    /** 被减到零的伤害写入仍然算一次命中，且不足最低伤害的残血直接归零。 */
+    private static void minimumCountsZeroedHit(SceneContext ctx) {
+        ctx.check(WinefoxTestAccess.enforceMinimumDamage(0.2F, 0.2F, 48.0F)).as("零伤害补足").isCloseTo(0.1F, 1.0E-6);
+        ctx.check(WinefoxTestAccess.enforceMinimumDamage(0.05F, 0.05F, 48.0F)).as("残血不足最低伤害").isEqualTo(0.0F);
+    }
+
+    /** 治疗不会被当成伤害，致命一击保持为零。 */
+    private static void minimumLeavesHealingAndLethal(SceneContext ctx) {
+        ctx.check(WinefoxTestAccess.enforceMinimumDamage(0.1F, 0.2F, 48.0F)).as("治疗").isEqualTo(0.2F);
+        ctx.check(WinefoxTestAccess.enforceMinimumDamage(0.2F, 0.0F, 48.0F)).as("致命一击").isEqualTo(0.0F);
+    }
+
+    /** 不限伤的写入使用默认的最低有效伤害。 */
+    private static void minimumUnlimitedCap(SceneContext ctx) {
+        ctx.check(WinefoxTestAccess.enforceMinimumDamage(1.0F, 0.999F, IBossDamageClamp.NO_DAMAGE_CAP))
+                .as("默认最低伤害").isCloseTo(0.9F, 1.0E-6);
+    }
+
     // ---- 高伤保护 ----
 
-    /** 高伤一击之后只保护下一次有效命中。 */
-    private static void guardNextHit(SceneContext ctx) {
+    /** 高伤一击之后保护仍在，不够格的小伤害不消耗它。 */
+    private static void guardSmallHit(SceneContext ctx) {
         WinefoxTestAccess.HighDamageGuard guard = new WinefoxTestAccess.HighDamageGuard();
         float threshold = WinefoxTestAccess.highDamageThreshold(600.0D);
-        ctx.check(guard.multiplier()).as("初始倍率").isEqualTo(1.0D);
-        guard.recordEffectiveHit(100.0F, threshold);
-        ctx.check(guard.multiplier()).as("高伤后倍率").isEqualTo(0.7D);
-        ctx.check(48.0D * guard.multiplier()).as("48 封顶伤害打折后").isCloseTo(33.6D, 0.0001D);
-        guard.recordEffectiveHit(20.0F, threshold);
-        ctx.check(guard.pending()).as("下一击后仍在保护").isFalse();
-        ctx.check(guard.multiplier()).as("下一击后倍率").isEqualTo(1.0D);
+        ctx.check(guard.multiplier(0L)).as("初始倍率").isEqualTo(1.0D);
+        guard.recordEffectiveHit(100.0F, threshold, 0L);
+        ctx.check(guard.multiplier(10L)).as("高伤后倍率").isEqualTo(0.7D);
+        guard.recordEffectiveHit(3.0F, threshold, 20L);
+        ctx.check(guard.pending()).as("小伤害后仍在保护").isTrue();
+        ctx.check(48.0D * guard.multiplier(20L)).as("48 封顶伤害打折后").isCloseTo(33.6D, 0.0001D);
     }
 
     /** 连续高伤只刷新保护，不叠加。 */
@@ -119,33 +162,44 @@ public final class WinefoxLogicScenes {
         WinefoxTestAccess.HighDamageGuard guard = new WinefoxTestAccess.HighDamageGuard();
         Mismatches m = new Mismatches();
         for (int i = 0; i < 5; i++) {
-            guard.recordEffectiveHit(1_000_000_000.0F, WinefoxTestAccess.highDamageThreshold(600.0D));
-            m.equal("第 " + (i + 1) + " 次高伤后倍率", 0.7D, guard.multiplier());
+            long now = i * 10L;
+            guard.recordEffectiveHit(1_000_000_000.0F, WinefoxTestAccess.highDamageThreshold(600.0D), now);
+            m.equal("第 " + (i + 1) + " 次高伤后倍率", 0.7D, guard.multiplier(now));
         }
         m.verify(ctx, "连续高伤");
     }
 
-    /** 阈值是默认最大生命的 5%，正好等于阈值也算高伤。 */
+    /** 阈值是最大生命的 5%，正好等于阈值也算高伤，之后的小伤害不会清掉保护。 */
     private static void guardThreshold(SceneContext ctx) {
         WinefoxTestAccess.HighDamageGuard guard = new WinefoxTestAccess.HighDamageGuard();
         float threshold = WinefoxTestAccess.highDamageThreshold(600.0D);
         ctx.check(threshold).as("600 生命的阈值").isEqualTo(30.0F);
         ctx.check(WinefoxTestAccess.highDamageThreshold(1_000.0D)).as("1000 生命的阈值").isEqualTo(50.0F);
-        guard.recordEffectiveHit(29.0F, threshold);
+        guard.recordEffectiveHit(29.0F, threshold, 0L);
         ctx.check(guard.pending()).as("低于阈值").isFalse();
-        guard.recordEffectiveHit(30.0F, threshold);
+        guard.recordEffectiveHit(30.0F, threshold, 0L);
         ctx.check(guard.pending()).as("等于阈值").isTrue();
-        guard.recordEffectiveHit(20.0F, threshold);
-        ctx.check(guard.pending()).as("下一击后").isFalse();
+        guard.recordEffectiveHit(20.0F, threshold, 0L);
+        ctx.check(guard.pending()).as("之后的小伤害").isTrue();
+    }
+
+    /** 保护在时限内有效，过了时限失效。 */
+    private static void guardExpires(SceneContext ctx) {
+        WinefoxTestAccess.HighDamageGuard guard = new WinefoxTestAccess.HighDamageGuard();
+        int lifetime = WinefoxTestAccess.HIGH_DAMAGE_GUARD_LIFETIME_TICKS;
+        guard.recordEffectiveHit(100.0F, WinefoxTestAccess.highDamageThreshold(600.0D), 0L);
+        ctx.check(guard.multiplier(lifetime)).as("时限当刻").isEqualTo(0.7D);
+        ctx.check(guard.multiplier(lifetime + 1L)).as("时限后一刻").isEqualTo(1.0D);
+        ctx.check(guard.pending()).as("失效后").isFalse();
     }
 
     /** 保护状态可以从存档恢复，也可以清掉。 */
     private static void guardPending(SceneContext ctx) {
         WinefoxTestAccess.HighDamageGuard guard = new WinefoxTestAccess.HighDamageGuard();
-        guard.setPending(true);
-        ctx.check(guard.multiplier()).as("恢复保护后倍率").isEqualTo(0.7D);
-        guard.setPending(false);
-        ctx.check(guard.multiplier()).as("清掉后倍率").isEqualTo(1.0D);
+        guard.setPending(true, 0L);
+        ctx.check(guard.multiplier(0L)).as("恢复保护后倍率").isEqualTo(0.7D);
+        guard.setPending(false, 0L);
+        ctx.check(guard.multiplier(0L)).as("清掉后倍率").isEqualTo(1.0D);
     }
 
     // ---- 剑系连段 ----

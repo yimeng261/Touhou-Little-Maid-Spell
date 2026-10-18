@@ -934,7 +934,13 @@ final class WinefoxCombatGoal extends Goal {
         this.refreshMovementPattern();
     }
 
-    /** A nonempty custom list replaces this phase's ordinary random spell pool. */
+    /**
+     * 先尝试配置的法术列表，再回退普通随机池。
+     *
+     * <p>配置列表只是偏好，不代表真的施法成功：条目可能在已安装的铁魔法版本里不可用、
+     * 处于冷却，或被法术的施法前置条件拒绝。仅因列表非空就返回 {@code true}，
+     * 会让战斗 AI 跳过回退池，酒狐只绕圈而不出招。
+     */
     private boolean tryConfiguredPool(LivingEntity target, boolean secondPhase) {
         WinefoxChallengeConfig config = this.boss.maidspell$challengeConfig();
         if (config == null) return false;
@@ -959,10 +965,10 @@ final class WinefoxCombatGoal extends Goal {
                 }
                 double scale = secondPhase ? PHASE_TWO_COOLDOWN_SCALE : PHASE_ONE_COOLDOWN_SCALE;
                 customSpellCooldowns.put(choice.id(), WinefoxBossSpells.customCooldown(choice, scale));
-                break;
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     private static boolean isSummonSwords(WinefoxSpellChoice choice) {

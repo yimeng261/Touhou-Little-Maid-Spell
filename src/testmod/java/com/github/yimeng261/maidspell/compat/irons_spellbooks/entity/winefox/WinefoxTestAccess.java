@@ -49,9 +49,15 @@ public final class WinefoxTestAccess {
         return WinefoxBossHealthController.reduceAndCapDamage(damage, multiplier, cap);
     }
 
-    public static float highDamageThreshold(double defaultMaxHealth) {
-        return WinefoxHighDamageGuard.threshold(defaultMaxHealth);
+    public static float highDamageThreshold(double maxHealth) {
+        return WinefoxHighDamageGuard.threshold(maxHealth);
     }
+
+    public static float enforceMinimumDamage(float previous, float health, float cap) {
+        return WinefoxBossHealthController.enforceMinimumDamage(previous, health, cap);
+    }
+
+    public static final int HIGH_DAMAGE_GUARD_LIFETIME_TICKS = WinefoxHighDamageGuard.LIFETIME_TICKS;
 
     public static final class HighDamageGuard {
         private final WinefoxHighDamageGuard guard = new WinefoxHighDamageGuard();
@@ -60,16 +66,16 @@ public final class WinefoxTestAccess {
             return guard.pending();
         }
 
-        public void setPending(boolean pending) {
-            guard.setPending(pending);
+        public void setPending(boolean pending, long now) {
+            guard.setPending(pending, now);
         }
 
-        public double multiplier() {
-            return guard.multiplier();
+        public double multiplier(long now) {
+            return guard.multiplier(now);
         }
 
-        public void recordEffectiveHit(float incoming, float threshold) {
-            guard.recordEffectiveHit(incoming, threshold);
+        public void recordEffectiveHit(float incoming, float threshold, long now) {
+            guard.recordEffectiveHit(incoming, threshold, now);
         }
     }
 
