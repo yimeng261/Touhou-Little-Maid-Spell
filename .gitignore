@@ -74,3 +74,9 @@ model_sources
 
 # SlashBlade addon source checkouts
 slashblade-addon-sources/
+
+# locally generated relocated runtime artifacts
+gradle/relocated/
+
+# local upstream source checkouts used for compatibility research
+research/

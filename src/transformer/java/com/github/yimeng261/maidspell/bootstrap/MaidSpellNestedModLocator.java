@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.jar.JarEntry;
@@ -53,10 +52,14 @@ public final class MaidSpellNestedModLocator extends AbstractJarFileModLocator {
             return extractedMod;
         }
 
+        Path extractionDirectory = null;
+        Path destination = null;
         try {
-            Path extractionDirectory = Path.of(System.getProperty("java.io.tmpdir"), "maidspell-bootstrap");
-            Files.createDirectories(extractionDirectory);
-            Path destination = extractionDirectory.resolve("maidspell-mod-" + Files.size(bootstrapJar) + ".jar");
+            // Each JVM gets its own directory. A client and a server can therefore
+            // start from the same installation without trying to overwrite the jar
+            // held open by the other process.
+            extractionDirectory = Files.createTempDirectory("maidspell-bootstrap-");
+            destination = extractionDirectory.resolve("maidspell-mod.jar");
 
             try (JarFile jarFile = new JarFile(bootstrapJar.toFile())) {
                 JarEntry entry = jarFile.getJarEntry(NESTED_MOD);
@@ -64,14 +67,35 @@ public final class MaidSpellNestedModLocator extends AbstractJarFileModLocator {
                     throw new IllegalStateException("Missing nested MaidSpell mod: " + NESTED_MOD);
                 }
                 try (InputStream input = jarFile.getInputStream(entry)) {
-                    Files.copy(input, destination, StandardCopyOption.REPLACE_EXISTING);
+                    Files.copy(input, destination);
                 }
             }
+
+            // DeleteOnExit runs in reverse registration order, so register the
+            // directory first to make sure the jar is removed before its parent.
+            extractionDirectory.toFile().deleteOnExit();
             destination.toFile().deleteOnExit();
             extractedMod = destination;
             return destination;
         } catch (IOException exception) {
+            cleanupExtraction(extractionDirectory, destination, exception);
             throw new IllegalStateException("Unable to extract the nested MaidSpell mod", exception);
+        } catch (RuntimeException exception) {
+            cleanupExtraction(extractionDirectory, destination, exception);
+            throw exception;
+        }
+    }
+
+    private static void cleanupExtraction(Path extractionDirectory, Path destination, Throwable failure) {
+        try {
+            if (destination != null) {
+                Files.deleteIfExists(destination);
+            }
+            if (extractionDirectory != null) {
+                Files.deleteIfExists(extractionDirectory);
+            }
+        } catch (IOException cleanupFailure) {
+            failure.addSuppressed(cleanupFailure);
         }
     }
 

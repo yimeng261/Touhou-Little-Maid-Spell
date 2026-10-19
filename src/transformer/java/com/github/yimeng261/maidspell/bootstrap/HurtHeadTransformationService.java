@@ -279,7 +279,7 @@ public final class HurtHeadTransformationService implements ITransformationServi
                 if (file.getFileName().toString().endsWith(".class")) {
                     try (InputStream input = Files.newInputStream(file)) {
                         readClass(input, true);
-                    } catch (IOException exception) {
+                    } catch (IOException | RuntimeException exception) {
                         LOGGER.debug("[MaidSpell] failed to scan class {}: {}", file, exception.getMessage());
                     }
                 }
@@ -302,7 +302,7 @@ public final class HurtHeadTransformationService implements ITransformationServi
                 }
                 try (InputStream input = jarFile.getInputStream(entry)) {
                     readClass(input, true);
-                } catch (IOException exception) {
+                } catch (IOException | RuntimeException exception) {
                     LOGGER.debug("[MaidSpell] failed to scan class {} in {}: {}", name, jarPath, exception.getMessage());
                 }
             }
@@ -310,31 +310,38 @@ public final class HurtHeadTransformationService implements ITransformationServi
     }
 
     private void readClass(InputStream input, boolean collectHurtCandidate) throws IOException {
-        ClassReader reader = new ClassReader(input);
-        ClassHeader header = new ClassHeader();
-        reader.accept(new ClassVisitor(Opcodes.ASM9) {
-            @Override
-            public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-                header.name = name;
-                header.superName = superName;
-                header.isInterface = (access & Opcodes.ACC_INTERFACE) != 0;
-            }
-
-            @Override
-            public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-                if (HURT_DESC.equals(descriptor) && HURT_METHOD_NAMES.contains(name)) {
-                    header.declaresHurt = true;
+        try {
+            ClassReader reader = new ClassReader(input);
+            ClassHeader header = new ClassHeader();
+            reader.accept(new ClassVisitor(Opcodes.ASM9) {
+                @Override
+                public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+                    header.name = name;
+                    header.superName = superName;
+                    header.isInterface = (access & Opcodes.ACC_INTERFACE) != 0;
                 }
-                return null;
-            }
-        }, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
 
-        if (header.name == null) {
-            return;
-        }
-        this.superClasses.putIfAbsent(header.name, header.superName);
-        if (collectHurtCandidate && !header.isInterface && header.declaresHurt) {
-            this.hurtCandidates.add(header.name);
+                @Override
+                public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                    if (HURT_DESC.equals(descriptor) && HURT_METHOD_NAMES.contains(name)) {
+                        header.declaresHurt = true;
+                    }
+                    return null;
+                }
+            }, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+
+            if (header.name == null) {
+                return;
+            }
+            this.superClasses.putIfAbsent(header.name, header.superName);
+            if (collectHurtCandidate && !header.isInterface && header.declaresHurt) {
+                this.hurtCandidates.add(header.name);
+            }
+        } catch (RuntimeException exception) {
+            // Other mods can contain class files newer than the bundled ASM
+            // understands. They cannot be valid hurt-head targets for this
+            // JVM, so skip them instead of aborting mod loading.
+            LOGGER.debug("[MaidSpell] skipping unreadable class: {}", exception.getMessage());
         }
     }
 
