@@ -158,6 +158,13 @@ license = "${mod_license}"
     side = "BOTH"
 
 [[dependencies."${mod_id}"]]
+    modId = "callresponse"
+    type = "optional"
+    versionRange = "[2.2.1,)"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies."${mod_id}"]]
     modId = "travelerstitles"
     type = "optional"
     versionRange = "[1.21.1-NeoForge-5.1.0,)"
