@@ -58,6 +58,8 @@ public class HiddenRetreatStructure extends Structure {
     private static final double MAX_TERRAIN_VARIANCE = 16.0;
     private static final int SAMPLES_PER_CHUNK = 5;
     private static final int TERRAIN_CHECK_RANGE = 2;
+    /** 估算地表往下找实心地面的格数，覆盖 depth 二分的误差。 */
+    private static final int GROUND_CHECK_DEPTH = 4;
 
     /**
      * 线程局部标志：标记当前线程是否正在执行 generate() → super.generate() 调用链。
@@ -312,6 +314,11 @@ public class HiddenRetreatStructure extends Structure {
         int centerX = chunkPos.getMinBlockX() + 8;
         int centerZ = chunkPos.getMinBlockZ() + 8;
         int height = estimateSurfaceHeight(depthFn, centerX, centerZ, context);
+        // depth 只是估算：地形被别的模组换掉时它可能和真实地形对不上（处处同一高度、实际是一片水），
+        // 所以在中心点估算地表的下方用 finalDensity 确认真有实心地面
+        if (!hasGroundBelow(context.randomState().router().finalDensity(), centerX, height, centerZ)) {
+            return Optional.empty();
+        }
         BlockPos centerPos = new BlockPos(centerX, height, centerZ);
 
         return JigsawPlacement.addPieces(
@@ -404,6 +411,16 @@ public class HiddenRetreatStructure extends Structure {
         }
 
         return OptionalInt.of(meanHeight);
+    }
+
+    /** 估算地表 surfaceY 往下 GROUND_CHECK_DEPTH 格内是否有 finalDensity 为正（实心）的方块。 */
+    private static boolean hasGroundBelow(DensityFunction finalDensityFn, int x, int surfaceY, int z) {
+        for (int dy = 1; dy <= GROUND_CHECK_DEPTH; dy++) {
+            if (finalDensityFn.compute(new DensityFunction.SinglePointContext(x, surfaceY - dy, z)) > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
