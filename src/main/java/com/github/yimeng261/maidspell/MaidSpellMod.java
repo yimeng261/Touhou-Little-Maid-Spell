@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
 import com.github.yimeng261.maidspell.client.EnderPocketClientConfig;
 import com.github.yimeng261.maidspell.compat.curios.CuriosCompat;
+import com.github.yimeng261.maidspell.compat.goety.GoetyCompatItems;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidLegacyModelPackCleaner;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
@@ -80,6 +81,10 @@ public class MaidSpellMod {
         MaidSpellBlocks.register(modEventBus);
         MaidSpellBlockEntities.register(modEventBus);
         MaidSpellItems.register(modEventBus);
+        if (checkModLoaded("goety")) {
+            // 虚拟法杖实现了 Goety 的 IWand，没有 Goety 时不能加载它
+            GoetyCompatItems.register(modEventBus);
+        }
         MaidSpellCreativeTab.register(modEventBus);
         MaidSpellContainers.register(modEventBus);
         MaidSpellSounds.SOUNDS.register(modEventBus);

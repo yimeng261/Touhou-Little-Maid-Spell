@@ -111,6 +111,7 @@ public final class MissingModScenes {
         scenes.add(Checks.scene("minimal.ironsContentNotRegistered", 5, MissingModScenes::ironsContentAbsent));
         scenes.add(Checks.scene("minimal.ironsStructuresNotRegistered", 5, ctx -> structuresAbsent(ctx, IRONS_STRUCTURES, IRONS_STRUCTURE_SETS)));
         scenes.add(Checks.scene("minimal.goetyStructuresNotRegistered", 5, ctx -> structuresAbsent(ctx, GOETY_STRUCTURES, GOETY_STRUCTURE_SETS)));
+        scenes.add(Checks.scene("minimal.goetyVirtualWandNotRegistered", 5, MissingModScenes::goetyVirtualWandAbsent));
         scenes.add(Checks.scene("minimal.baseStructuresRegistered", 5, MissingModScenes::baseStructuresPresent));
         scenes.add(Checks.scene("minimal.retreatChestsFallBack", 20, MissingModScenes::retreatChestsFallBack));
         scenes.add(Checks.scene("minimal.optionalItemTablesSkipAbsentItems", 20,
@@ -195,6 +196,12 @@ public final class MissingModScenes {
             }
         });
         ctx.check(present).as("不装铁魔法时仍然存在的铁魔法内容").isEmpty();
+    }
+
+    /** 虚拟法杖实现了 Goety 的 IWand，不装 Goety 时它不该登记。 */
+    private static void goetyVirtualWandAbsent(SceneContext ctx) {
+        ctx.check(BuiltInRegistries.ITEM.containsKey(ResourceLocation.parse(NS + "virtual_goety_wand")))
+                .as("不装 Goety 时的虚拟法杖物品").isFalse();
     }
 
     private static void structuresAbsent(SceneContext ctx, List<String> structures, List<String> sets) {

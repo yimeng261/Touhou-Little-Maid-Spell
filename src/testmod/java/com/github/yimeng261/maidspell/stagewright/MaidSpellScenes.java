@@ -19,6 +19,7 @@ import com.github.yimeng261.maidspell.stagewright.scenes.StellarContentScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StellarStructureScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StructureEffectScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.FunctionScenes;
+import com.github.yimeng261.maidspell.stagewright.scenes.GoetyVirtualWandScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.GuardScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.HiddenRetreatMaidScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.LootScenes;
@@ -65,6 +66,7 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(BaubleRuntimeScenes.dedicatedServer());
                 scenes.addAll(DreamCrystalScenes.dedicatedServer());
                 scenes.addAll(SpellLifecycleScenes.dedicatedServer());
+                scenes.addAll(GoetyVirtualWandScenes.dedicatedServer());
                 scenes.addAll(StateMigrationScenes.dedicatedServer());
                 scenes.addAll(ConfigFileScenes.dedicatedServer());
                 scenes.addAll(EnderPocketScenes.dedicatedServer());
