@@ -25,7 +25,8 @@ import java.util.UUID;
 /**
  * 判定哪些目标不应被 ISS 雷暴选中。
  *
- * <p>只保护非战斗生物和施法者一方的主从关系，而不是所有非玩家实体，敌对生物仍然是有效目标。</p>
+ * <p>只保护非战斗生物和施法者一方的主从关系，而不是所有非玩家实体，敌对生物仍然是有效目标；
+ * 女仆只有属于施法者一方时才受保护，敌人施放的雷暴照常劈女仆。</p>
  */
 public final class ThunderstormTargetFilter {
     private static final int VEHICLE_TRACE_LIMIT = 8;
@@ -37,7 +38,7 @@ public final class ThunderstormTargetFilter {
         if (target == null) {
             return false;
         }
-        if (target == caster || target instanceof EntityMaid) {
+        if (target == caster) {
             return true;
         }
         if (target instanceof MagicalWinefoxBossEntity boss && !boss.isBattleActive()) {
@@ -53,6 +54,10 @@ public final class ThunderstormTargetFilter {
     }
 
     private static boolean isNonCombatant(LivingEntity target) {
+        // 女仆只在施法者一方时才受保护（由 areFriendly 判定），别人的女仆照常落雷
+        if (target instanceof EntityMaid) {
+            return false;
+        }
         if (target instanceof AbstractVillager
                 || target instanceof IronGolem
                 || target instanceof SnowGolem
@@ -114,7 +119,6 @@ public final class ThunderstormTargetFilter {
 
     private static boolean isProtectedDirect(@Nullable LivingEntity caster, LivingEntity target) {
         return target == caster
-                || target instanceof EntityMaid
                 || target instanceof MagicalWinefoxBossEntity boss && !boss.isBattleActive()
                 || caster != null && MaidSpellAllyResolver.areFriendly(caster, target)
                 || isNonCombatant(target);
