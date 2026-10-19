@@ -504,9 +504,14 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /** 内部最大生命视图，不受公开属性值影响 */
     @Override
     public float maidspell$authoritativeMaxHealth() {
-        float authoritative = this.healthState.getMaxHealth(0.0F);
-        return this.authoritativeMaxHealthReady && authoritative > 0.0F
-            ? authoritative : (float) this.getAttributeValue(Attributes.MAX_HEALTH);
+        // 父类构造期会调用 getMaxHealth，此时 healthState 还没初始化，必须先判就绪标记
+        if (this.authoritativeMaxHealthReady) {
+            float authoritative = this.healthState.getMaxHealth(0.0F);
+            if (authoritative > 0.0F) {
+                return authoritative;
+            }
+        }
+        return (float) this.getAttributeValue(Attributes.MAX_HEALTH);
     }
 
     /** Internal health view that is not rewritten by third-party getHealth transformers. */
