@@ -123,6 +123,7 @@ import com.github.yimeng261.maidspell.mixin.accessor.MobFlagsAccessor;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.item.common.StarglintDaggerItem;
+import com.github.yimeng261.maidspell.winefox.WinefoxAdvancements;
 import com.github.yimeng261.maidspell.winefox.WinefoxChallengeConfig;
 import com.github.yimeng261.maidspell.event.WinefoxProgressSyncEvents;
 import com.github.yimeng261.maidspell.winefox.WinefoxChallengeProgress;
@@ -349,6 +350,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /** 开场白的排队播报，见 {@link WinefoxDialogue}。 */
     private final WinefoxDialogue dialogue = new WinefoxDialogue();
     private final WinefoxDialogue invisibilityDialogue = new WinefoxDialogue();
+    private final WinefoxDialogue defeatLessonDialogue = new WinefoxDialogue();
+    private boolean defeatLessonPending;
+    private boolean defeatLessonPhaseTwo;
     private final WinefoxInvisibilityTracker invisibilityTracker = new WinefoxInvisibilityTracker();
     private final WinefoxSpellController spellController = new WinefoxSpellController(this);
     @Nullable
@@ -1379,6 +1383,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 台词播报和回秋千的倒计时放那边会永远停在第一 tick。
         // 誓约那一段同样全程坐在秋千上（誓约不改遭遇状态，见 startVowFirst），所以也挂在这儿。
         this.dialogue.tick(this);
+        this.defeatLessonDialogue.tick(this);
         if (this.isBattleActive()) this.invisibilityDialogue.tick(this);
         else this.invisibilityDialogue.clear();
         this.spellController.tick();
@@ -2189,6 +2194,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             WinefoxDialogue.sendToPlayer(player, WinefoxDialogue.tradeLine());
             return InteractionResult.CONSUME;
         }
+        if (this.defeatLessonDialogue.isSpeaking()) {
+            return InteractionResult.sidedSuccess(this.level().isClientSide);
+        }
         if (!this.level().isClientSide) {
             Component line;
             if (player.getUUID().equals(this.postVictoryChatPlayerId)) {
@@ -2199,6 +2207,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
                 // 排在 postVictoryChatPlayerId 之后 —— 那一条是"刚打完还没回过味来"的一次性话，
                 // 该先说掉；两者本来也不冲突，谁先点谁先听到。
                 line = WinefoxDialogue.tamedChatLine();
+            } else if (player instanceof ServerPlayer serverPlayer
+                    && WinefoxChallengeProgress.hasSeenVoidLesson(serverPlayer.server, serverPlayer.getUUID())
+                    && this.getRandom().nextInt(4) == 0) {
+                line = WinefoxDialogue.voidReminder();
             } else {
                 line = WinefoxDialogue.randomChatLine(this.hasNearbyOwnedMaid(player));
             }
@@ -2462,6 +2474,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (!this.maidspell$beginEncounter(WinefoxEncounterState.CHALLENGE_START)) {
             return;
         }
+        this.defeatLessonDialogue.clear();
         this.customChallenge = WinefoxChallengeConfig.hasPendingConfig(invitation);
         this.activeChallengeConfig = WinefoxChallengeConfig.takeFromItem(invitation);
         this.applyArmor();
@@ -3458,6 +3471,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (this.challengerId != null) {
             Player challenger = this.level().getPlayerByUUID(this.challengerId);
             if (challenger != null && challenger.getHealth() <= duelSurvivalFloor()) {
+                this.defeatLessonPending = true;
+                this.defeatLessonPhaseTwo = this.isPhaseTwo();
                 this.endChallengeLost();
                 return;
             }
@@ -3503,13 +3518,34 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             // playerChallenge 为 false 的静默收场刻意不放，理由写在 playCombatEndCue。
             this.playCombatEndCue();
             this.clearDuelHazards();
-            this.speakDialogue(WinefoxDialogue.playerSubdued());
+            this.sendDefeatDialogue();
         }
         // 与战败共用同一份清理（这里是"打服/收场"，她仍站着，所以不收武器、不加无敌、
         // 不动重力），差别只在演出时长与台词。
         this.maidspell$teardownCombat();
         this.entityData.set(CURTSYING, playerChallenge);
         this.returnHomeTicks = playerChallenge ? CURTSY_RETURN_HOME_TICKS : DEFEAT_RETURN_HOME_TICKS;
+    }
+
+    private void sendDefeatDialogue() {
+        Player challenger = this.maidspell$challenger();
+        boolean phaseTwoLoss = this.defeatLessonPending && this.defeatLessonPhaseTwo;
+        this.defeatLessonPending = false;
+        this.defeatLessonPhaseTwo = false;
+
+        if (phaseTwoLoss && challenger instanceof ServerPlayer player) {
+            WinefoxAdvancements.grantVoidSecret(player);
+            if (!WinefoxChallengeProgress.hasSeenVoidLesson(player.server, player.getUUID())) {
+                this.resetAmbientDialogueCooldown();
+                this.dialogue.clear();
+                this.invisibilityDialogue.clear();
+                if (this.defeatLessonDialogue.speakTo(player, WinefoxDialogue.voidLesson(), 40)) {
+                    WinefoxChallengeProgress.markVoidLessonSeen(player.server, player.getUUID());
+                    return;
+                }
+            }
+        }
+        this.speakDialogue(WinefoxDialogue.playerSubdued());
     }
 
     boolean isChallenger(Player player) {
@@ -3908,6 +3944,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.challengerDamageTaken = 0.0F;
         this.maidDamageTaken = 0.0F;
         this.trueDamageUsed = false;
+        this.defeatLessonPending = false;
+        this.defeatLessonPhaseTwo = false;
         this.maidspell$resetAdaptiveDamageHistory();
     }
 
@@ -4360,6 +4398,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     /** 管理员：把她拉回秋千，不发奖励、不重置交易。可从任意状态调用，重复调用安全。 */
     public void maidspell$returnAuthorized() {
+        this.defeatLessonDialogue.clear();
+        this.defeatLessonPending = false;
+        this.defeatLessonPhaseTwo = false;
         switch (this.maidspell$encounterState()) {
             // 战斗中的收场走与普通生物战斗同一条路径（清理 + 归位倒计时）。
             case COMBAT -> this.finishCombat(false);
@@ -4405,6 +4446,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (this.isRemoved()) {
             return;
         }
+        this.defeatLessonDialogue.clear();
+        this.defeatLessonPending = false;
+        this.defeatLessonPhaseTwo = false;
         if (this.maidspell$encounterState() != WinefoxEncounterState.RETURNING) {
             this.maidspell$forceReturningForRepair();
         }
@@ -4424,6 +4468,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
                 || this.maidspell$rewardState() == WinefoxRewardState.GRANTING || !this.ensureHomePos()) {
             return false;
         }
+        this.defeatLessonDialogue.clear();
+        this.defeatLessonPending = false;
+        this.defeatLessonPhaseTwo = false;
         if (this.isDefeated() || this.maidspell$encounterState() == WinefoxEncounterState.RETURNING) {
             this.maidspell$repairAuthorized();
             this.tickReturnHome();

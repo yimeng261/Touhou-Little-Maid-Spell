@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * 星之魔女挑战的玩家进度：已击败、挑战进行中、常规胜利次数、专属胜利。
+ * 星之魔女挑战的玩家进度：已击败、挑战进行中、常规胜利次数、专属胜利、是否听过星锚珍珠的教学。
  * 按 UUID 记在主世界存档里，挑战者离线或在别的维度时 Boss 也能记账和收尾。
  */
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
@@ -43,6 +43,8 @@ public final class WinefoxChallengeProgress extends SavedData {
     private final Map<UUID, Integer> wins = new HashMap<>();
     /** 已经完成过「女仆不造成伤害且玩家伤害占比足够」的那场专属胜利的玩家。 */
     private final Set<UUID> soloWins = new HashSet<>();
+    /** 已经听过二阶段落败后那段星锚珍珠教学的玩家。 */
+    private final Set<UUID> voidLessonSeen = new HashSet<>();
 
     private WinefoxChallengeProgress() {
     }
@@ -52,6 +54,7 @@ public final class WinefoxChallengeProgress extends SavedData {
         readUuids(tag.getList("Defeated", Tag.TAG_INT_ARRAY), data.defeated);
         readUuids(tag.getList("Active", Tag.TAG_INT_ARRAY), data.active);
         readUuids(tag.getList("SoloWins", Tag.TAG_INT_ARRAY), data.soloWins);
+        readUuids(tag.getList("VoidLessonSeen", Tag.TAG_INT_ARRAY), data.voidLessonSeen);
         for (Tag entry : tag.getList("Wins", Tag.TAG_COMPOUND)) {
             CompoundTag winEntry = (CompoundTag) entry;
             if (winEntry.contains("Id", Tag.TAG_INT_ARRAY)) {
@@ -101,6 +104,15 @@ public final class WinefoxChallengeProgress extends SavedData {
         data.update(data.soloWins, playerId, soloWin);
     }
 
+    public static boolean hasSeenVoidLesson(MinecraftServer server, UUID playerId) {
+        return get(server).voidLessonSeen.contains(playerId);
+    }
+
+    public static void markVoidLessonSeen(MinecraftServer server, UUID playerId) {
+        WinefoxChallengeProgress data = get(server);
+        data.update(data.voidLessonSeen, playerId, true);
+    }
+
     public static boolean hasActiveChallenge(ServerPlayer player) {
         // 旧版本的挑战中标记可能因为挑战者离线或换维度而残留，直接丢弃
         player.getPersistentData().remove(LEGACY_ACTIVE_TAG);
@@ -143,6 +155,7 @@ public final class WinefoxChallengeProgress extends SavedData {
         tag.put("Defeated", writeUuids(this.defeated));
         tag.put("Active", writeUuids(this.active));
         tag.put("SoloWins", writeUuids(this.soloWins));
+        tag.put("VoidLessonSeen", writeUuids(this.voidLessonSeen));
         ListTag winList = new ListTag();
         this.wins.forEach((playerId, count) -> {
             CompoundTag entry = new CompoundTag();
