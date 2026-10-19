@@ -24,6 +24,7 @@ import com.github.yimeng261.maidspell.api.IPersistentEncounterEntity;
 import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.api.IBossSyncedDataGuard;
 import com.github.yimeng261.maidspell.utils.BossLifecycleAccess;
+import com.github.yimeng261.maidspell.utils.FriendlyDamageHealthGuard;
 import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
@@ -39,6 +40,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -49,6 +51,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
@@ -115,8 +118,10 @@ import com.github.yimeng261.maidspell.mixin.accessor.MobFlagsAccessor;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import com.github.yimeng261.maidspell.item.common.StarglintDaggerItem;
+import com.github.yimeng261.maidspell.event.WinefoxProgressSyncEvents;
 import com.github.yimeng261.maidspell.winefox.WinefoxChallengeConfig;
 import com.github.yimeng261.maidspell.winefox.WinefoxChallengeProgress;
+import com.github.yimeng261.maidspell.winefox.WinefoxVowProgress;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
@@ -136,6 +141,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     static final String RETIRED_MAID_BOSS_TAG = "MaidSpellWinefoxRetiredBoss";
     /** {@code Mob.DATA_MOB_FLAGS_ID} 里"关闭 AI"那一位，{@code Mob#setNoAi} 写的就是它。 */
     private static final byte NO_AI_FLAG_BIT = 1;
+    private static final StackWalker CAPTURE_CALL_WALKER =
+        StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
     private static final String RETIRED_MAID_INVULNERABLE_TAG = "MaidSpellWinefoxRetiredInvulnerable";
     private static final String RETIRED_MAID_VANILLA_INVULNERABLE_TAG = "MaidSpellWinefoxRetiredVanillaInvulnerable";
     private static final String RETIRED_MAID_NO_GRAVITY_TAG = "MaidSpellWinefoxRetiredNoGravity";
@@ -153,6 +160,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private static final String VOW_SEALED_TAG = "WinefoxVowSealed";
     private static final String VOW_CHARM_TAG = "WinefoxVowCharmGiven";
     private static final String VOW_PLAYER_TAG = "WinefoxVowPlayer";
+    private static final String VOW_PER_PLAYER_TAG = "WinefoxVowPerPlayer";
 
     /** 常规胜利次数落 NBT；旧存档缺键时从零开始。 */
     private static final String PLAYER_WIN_COUNT_TAG = "WinefoxPlayerWinCount";
@@ -195,7 +203,6 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private static final int CURTSY_RETURN_HOME_TICKS = 6 * 20;
 
     /** 驯服先需两场非限制胜利，之后再赢一场女仆零伤害且玩家伤害占比超过 60% 的战斗。 */
-    private static final int VOW_REQUIRED_PLAYER_WINS = 2;
     private static final float VOW_PLAYER_DAMAGE_SHARE = 0.60F;
     private static final int VOW_DIALOGUE_INTERVAL_TICKS = 2 * 20;
 
@@ -369,16 +376,14 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /** 她输过至少一次，交易就此开放。落 NBT，不随重新挑战撤销。 */
     private boolean tradingUnlocked;
     /**
-     * 玩家以常规手段战胜她的次数，攒够 {@link #VOW_REQUIRED_PLAYER_WINS} 场才谈得上驯服。
-     *
-     * <p>与 {@link #tradingUnlocked} 同一条件、同一处记账：只有 <b>这一场不是女仆代打</b> 才算数。
-     * 分开记而不是拿交易解锁当依据，是因为那个是一位布尔，说不清「赢过几场」。
+     * 魔女实体上的旧版胜利计数，用于迁移和调试。
      */
     private int playerWinCount;
     /** 达到常规胜利次数要求之后，是否又赢过一场女仆没有造成伤害的战斗。 */
     private boolean soloWinAfterRequiredWins;
     /** 「归星」驯服的进度，取值见 {@code VOW_STAGE_*}。 */
     private int vowStage;
+    private boolean vowPerPlayer;
     /**
      * 当前这一段誓约还剩多少 tick。
      *
@@ -497,7 +502,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /** Internal maximum-health view independent of the public attribute value. */
     @Override
     public float maidspell$authoritativeMaxHealth() {
-        float authoritative = this.healthState.getMaxHealth(0.0F);
+        WinefoxHealthState state = this.healthState;
+        if (state == null) {
+            return (float) this.getAttributeValue(Attributes.MAX_HEALTH);
+        }
+        float authoritative = state.getMaxHealth(0.0F);
         return this.authoritativeMaxHealthReady && authoritative > 0.0F
             ? authoritative : (float) this.getAttributeValue(Attributes.MAX_HEALTH);
     }
@@ -2188,8 +2197,15 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             this.hint(player, "entity.touhou_little_maid_spell.stellar_witch.vow_already_bound");
             return;
         }
-        if (this.playerWinCount < VOW_REQUIRED_PLAYER_WINS || !this.soloWinAfterRequiredWins) {
-            this.hint(player, "entity.touhou_little_maid_spell.stellar_witch.vow_conditions_unmet");
+        this.migrateLegacyVowProgress(player);
+        if (player instanceof ServerPlayer serverPlayer) {
+            WinefoxProgressSyncEvents.sync(serverPlayer);
+        }
+        if (!WinefoxVowProgress.isReady(player)) {
+            this.hint(player, WinefoxVowProgress.actionBar(
+                WinefoxChallengeProgress.getWins(player),
+                WinefoxChallengeProgress.hasSoloWin(player),
+                true));
             return;
         }
         if (this.vowStage == VOW_STAGE_IDLE) {
@@ -2205,6 +2221,19 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /** 一句落到屏幕中下方的提示，见 {@link #handleReturningStar}。 */
     private void hint(Player player, String key) {
         player.displayClientMessage(Component.translatable(key).withStyle(ChatFormatting.YELLOW), true);
+    }
+
+    private void hint(Player player, MutableComponent message) {
+        player.displayClientMessage(message.withStyle(ChatFormatting.YELLOW), true);
+    }
+
+    private void migrateLegacyVowProgress(Player player) {
+        if (this.vowPerPlayer || player == null) {
+            return;
+        }
+        WinefoxVowProgress.migrateLegacy(
+            player, this.playerWinCount, this.soloWinAfterRequiredWins);
+        this.vowPerPlayer = true;
     }
 
     /** 第一问保持坐姿并启动 vow_1；计时由 aiStep 推进。 */
@@ -2813,9 +2842,34 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             || this.isTransitioning() || super.isInvulnerableTo(source);
     }
 
+    /**
+     * 捕获类模组通常把“是否可以捕获”建立在 {@link Entity#isSpectator()} 上。
+     * 只在调用栈明确来自捕获流程时临时报告旁观状态，让捕获在写入 occupant、
+     * 传送位置或扣除物品之前失败；平时仍保持正常的可选中、可战斗状态。
+     */
+    @Override
+    public boolean isSpectator() {
+        return super.isSpectator() || (!this.level().isClientSide && maidspell$isCaptureCall());
+    }
+
     @Override
     public boolean isAlive() {
         return !this.isRemoved();
+    }
+
+    private static boolean maidspell$isCaptureCall() {
+        return CAPTURE_CALL_WALKER.walk(frames -> frames
+            .limit(20)
+            .filter(frame -> frame.getDeclaringClass() != MagicalWinefoxBossEntity.class)
+            .map(StackWalker.StackFrame::getMethodName)
+            .map(name -> name.toLowerCase(Locale.ROOT))
+            .anyMatch(name -> maidspell$isCaptureMethod(name)));
+    }
+
+    private static boolean maidspell$isCaptureMethod(String methodName) {
+        return methodName.contains("capture")
+            || methodName.contains("imprison")
+            || methodName.contains("confine");
     }
 
     @Override
@@ -2876,6 +2930,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     @Override
     public void die(DamageSource source) {
+        if (FriendlyDamageHealthGuard.shouldBlockDeath(this, source)) {
+            FriendlyDamageHealthGuard.restoreIfNeeded(this);
+            return;
+        }
         if (!this.level().isClientSide) {
             this.maidspell$returnAuthorized();
         }
@@ -2900,6 +2958,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     /** 正常伤害走原版结算，再用权威 Boss 生命的归零结果提交自定义战败。 */
     @Override
     public boolean hurt(DamageSource source, float amount) {
+        FriendlyDamageHealthGuard.onDamageAttempt(this, source);
         if (this.level().isClientSide || !Float.isFinite(amount) || amount <= 0.0F) {
             return false;
         }
@@ -3079,9 +3138,11 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 正式挑战的胜负已经在遭遇状态里确定；最后一击可能来自荆棘、持续伤害、
         // 环境或某个模组转发的伤害源，不能再让它一票否决整场奖励。
         boolean formalVictory = this.challengerId != null && this.isPlayerCombatActive();
+        Player challenger = this.maidspell$challenger();
         if (formalVictory) {
             this.postVictoryChatPlayerId = this.challengerId;
-            WinefoxChallengeProgress.markDefeated(this.level().getPlayerByUUID(this.challengerId));
+            WinefoxChallengeProgress.markDefeated(challenger);
+            this.migrateLegacyVowProgress(challenger);
         }
         this.maidspell$setEncounterState(WinefoxEncounterState.DEFEATED);
         // 她打输了 —— 与「玩家打输」那一路各放一次提示音，见 playCombatEndCue。
@@ -3103,17 +3164,31 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.setInvulnerable(true);
         if (formalVictory && this.maidspell$rewardState() == WinefoxRewardState.NONE) {
             this.entityData.set(RESTRICTED, this.computeRestricted());
+            boolean counted = false;
             // 这一场是不是「常规手段赢的」就在这一行定案，驯服的门槛与交易解锁共用同一个判据。
             // 记在场次判定的<b>当时</b>而不是奖励发完之后：奖励那一整段（掉战利品、说战败台词）
             // 任何一句出错都会跳到下面的 catch，而赢就是赢，不该因为发奖失败少算一场。
             if (!this.isRestricted()) {
-                if (this.playerWinCount >= VOW_REQUIRED_PLAYER_WINS
+                if (challenger != null) {
+                    int priorWins = WinefoxChallengeProgress.getWins(challenger);
+                    boolean soloConditionMet = priorWins >= WinefoxVowProgress.REQUIRED_WINS
                         && this.maidDamageTaken <= 0.0F
                         && this.totalDamageTaken > 0.0F
-                        && this.challengerDamageTaken / this.totalDamageTaken > VOW_PLAYER_DAMAGE_SHARE) {
-                    this.soloWinAfterRequiredWins = true;
+                        && this.challengerDamageTaken / this.totalDamageTaken > VOW_PLAYER_DAMAGE_SHARE;
+                    WinefoxVowProgress.recordVictory(challenger, soloConditionMet);
+                    this.soloWinAfterRequiredWins |= soloConditionMet;
+                    this.playerWinCount = Math.max(
+                        this.playerWinCount + 1, WinefoxChallengeProgress.getWins(challenger));
+                } else {
+                    if (this.playerWinCount >= WinefoxVowProgress.REQUIRED_WINS
+                            && this.maidDamageTaken <= 0.0F
+                            && this.totalDamageTaken > 0.0F
+                            && this.challengerDamageTaken / this.totalDamageTaken > VOW_PLAYER_DAMAGE_SHARE) {
+                        this.soloWinAfterRequiredWins = true;
+                    }
+                    this.playerWinCount++;
                 }
-                this.playerWinCount++;
+                counted = true;
             }
             this.rewardTransaction = UUID.randomUUID();
             this.maidspell$setRewardState(WinefoxRewardState.GRANTING);
@@ -3126,6 +3201,15 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             } catch (RuntimeException exception) {
                 com.github.yimeng261.maidspell.Global.LOGGER.error(
                     "Winefox reward {} needs administrator review", this.rewardTransaction, exception);
+            }
+            if (challenger != null) {
+                if (challenger instanceof ServerPlayer serverPlayer) {
+                    WinefoxProgressSyncEvents.sync(serverPlayer);
+                }
+                challenger.displayClientMessage(WinefoxVowProgress.actionBar(
+                    WinefoxChallengeProgress.getWins(challenger),
+                    WinefoxChallengeProgress.hasSoloWin(challenger),
+                    counted).withStyle(ChatFormatting.YELLOW), true);
             }
         } else if (this.maidspell$rewardState() == WinefoxRewardState.NONE) {
             this.maidspell$setRewardState(WinefoxRewardState.NOT_ELIGIBLE);
@@ -3969,6 +4053,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         }
         tag.putInt(PLAYER_WIN_COUNT_TAG, this.playerWinCount);
         tag.putBoolean(SOLO_WIN_AFTER_REQUIRED_WINS_TAG, this.soloWinAfterRequiredWins);
+        tag.putBoolean(VOW_PER_PLAYER_TAG, this.vowPerPlayer);
         tag.putInt(VOW_STAGE_TAG, this.vowStage);
         tag.putInt(VOW_TICKS_TAG, this.vowTicks);
         tag.putBoolean(VOW_SEALED_TAG, this.vowSealed);
@@ -4054,6 +4139,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 两个默认值都是保守的那一侧 —— 缺键绝不会让一只没被驯服过的她凭空带上誓约。
         this.playerWinCount = tag.getInt(PLAYER_WIN_COUNT_TAG);
         this.soloWinAfterRequiredWins = tag.getBoolean(SOLO_WIN_AFTER_REQUIRED_WINS_TAG);
+        this.vowPerPlayer = tag.getBoolean(VOW_PER_PLAYER_TAG);
         this.vowSealed = tag.getBoolean(VOW_SEALED_TAG);
         this.vowCharmGiven = tag.getBoolean(VOW_CHARM_TAG);
         this.vowPlayerId = tag.hasUUID(VOW_PLAYER_TAG) ? tag.getUUID(VOW_PLAYER_TAG) : null;
@@ -4392,7 +4478,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             + " home=" + (this.homePos == null ? "unset" : this.homePos.toShortString())
             // 驯服那几项也报出来：胜利进度是攒在实体上的暗账，出了"为什么点她没反应"的疑问时，
             // 这一行是唯一能一眼看出是场次不够、还是誓约早就成了的地方。
-            + " wins=" + this.playerWinCount + "/" + VOW_REQUIRED_PLAYER_WINS
+            + " wins=" + this.playerWinCount + "/" + WinefoxVowProgress.REQUIRED_WINS
             + " soloWin=" + this.soloWinAfterRequiredWins
             + " vow=" + this.vowStage + (this.vowSealed ? "(sealed)" : "")
             + " vowTicks=" + this.vowTicks);

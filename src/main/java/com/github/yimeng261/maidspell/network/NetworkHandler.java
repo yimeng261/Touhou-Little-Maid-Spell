@@ -10,6 +10,7 @@ import com.github.yimeng261.maidspell.network.message.MaidEntityRestoreMessage;
 import com.github.yimeng261.maidspell.network.message.TransmogNecklaceMessage;
 import com.github.yimeng261.maidspell.network.message.TravelerTitlesStructureMessage;
 import com.github.yimeng261.maidspell.network.message.WinefoxChallengeConfigMessage;
+import com.github.yimeng261.maidspell.network.message.WinefoxProgressMessage;
 import com.github.yimeng261.maidspell.network.message.WinefoxStructureMusicMessage;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
@@ -22,7 +23,7 @@ import java.util.Optional;
  * 网络消息处理器
  */
 public class NetworkHandler {
-    private static final String PROTOCOL_VERSION = "10";
+    private static final String PROTOCOL_VERSION = "11";
     
     @SuppressWarnings("removal")
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
@@ -122,6 +123,15 @@ public class NetworkHandler {
                 TravelerTitlesStructureMessage::encode,
                 TravelerTitlesStructureMessage::decode,
                 TravelerTitlesStructureMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                WinefoxProgressMessage.class,
+                WinefoxProgressMessage::encode,
+                WinefoxProgressMessage::decode,
+                WinefoxProgressMessage::handle,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
