@@ -30,6 +30,7 @@ public final class Config {
     public static int meleeAttackInterval;
     public static int farAttackInterval;
     public static List<String> ironsSpellBlacklist;
+    public static boolean powerfulFriendlyFireProtection = false;
 
     public static double silverCercisTrueDamageMultiplier;
     public static double springRingMaxDamageBonus;
