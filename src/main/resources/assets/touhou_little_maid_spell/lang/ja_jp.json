@@ -295,7 +295,7 @@
   "item.touhou_little_maid_spell.astro_mancer_spawn_egg": "星術師のスポーンエッグ",
   "item.touhou_little_maid_spell.staranchor_pearl": "星の錨の真珠",
   "item.touhou_little_maid_spell.staranchor_pearl.desc1": "虚空の探査と、歪んだ空間で身を守るために作られた旧文明の遺物。",
-  "item.touhou_little_maid_spell.staranchor_pearl.desc2": "右クリック：耐久値を%s消費して%s秒間虚空歩行を得る。虚空ダメージを防ぎ、6ブロック以内の敵を6秒間気絶させる。 クールダウン：%s秒。",
+  "item.touhou_little_maid_spell.staranchor_pearl.desc2": "右クリック：耐久値を%s消費して%s秒間虚空歩行を得る。受ける虚空ダメージが95%%減少し、6ブロック以内の敵を6秒間気絶させる。 クールダウン：%s秒。",
   "item.touhou_little_maid_spell.staranchor_pearl.desc3": "メイドが装備すると、耐久値を%s消費して虚空ダメージを防ぎ、3ブロック以内の敵を6秒間気絶させる。",
   "item.touhou_little_maid_spell.staranchor_pearl.desc4": "修理不可。耐久値が尽きると砕け散る。",
   "item.touhou_little_maid_spell.stellar_witch_spawn_egg": "星の魔女のスポーンエッグ",

@@ -19,7 +19,7 @@ public final class MaidSpellEffects {
     public static final DeferredRegister<MobEffect> MOB_EFFECTS =
             DeferredRegister.create(Registries.MOB_EFFECT, MaidSpellMod.MOD_ID);
 
-    /** 虚空漫步：星锚珍珠给的状态，期间免疫虚空伤害。 */
+    /** 虚空漫步：星锚珍珠给的状态，期间减免 95% 虚空伤害。 */
     public static final DeferredHolder<MobEffect, MobEffect> VOID_WALK =
             MOB_EFFECTS.register("void_walk", VoidWalkEffect::new);
     /** 星锚珍珠的眩晕：期间无法移动、攻击、交互和施法。 */

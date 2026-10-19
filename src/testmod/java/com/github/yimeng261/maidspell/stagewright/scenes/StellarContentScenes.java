@@ -249,7 +249,7 @@ public final class StellarContentScenes {
         ctx.check(result).as("四个秘银锭围着星陨石合成的结果").isEqualTo(NS + "returning_star");
     }
 
-    /** 玩家右键：耗 8 点耐久、获得 35 秒虚空漫步并进入 30 秒冷却，期间虚空伤害无效；耐久见底时碎掉；不可修复。 */
+    /** 玩家右键：耗 8 点耐久、获得 35 秒虚空漫步并进入 30 秒冷却，期间虚空伤害减免 95%；耐久见底时碎掉；不可修复。 */
     private static void pearlPlayer(SceneContext ctx) {
         ServerPlayer player = Owners.visitor(ctx, "TlmsPearlUser", 0, 0, 0);
         ItemStack pearl = Actors.stack(NS + "staranchor_pearl");
@@ -262,7 +262,7 @@ public final class StellarContentScenes {
         float before = player.getHealth();
         player.invulnerableTime = 0;
         player.hurt(player.damageSources().fellOutOfWorld(), 4);
-        ctx.check(player.getHealth()).as("虚空漫步期间受虚空伤害后的生命").isCloseTo(before, 1e-3f);
+        ctx.check(player.getHealth()).as("虚空漫步期间受虚空伤害后的生命").isCloseTo(before - 4 * 0.05f, 1e-3f);
         ctx.check(pearl.isRepairable()).as("星锚珍珠可修复").isFalse();
         int damage = pearl.getDamageValue();
         pearl.getItem().use(ctx.level(), player, InteractionHand.MAIN_HAND);
