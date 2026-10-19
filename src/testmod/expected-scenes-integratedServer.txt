@@ -38,6 +38,23 @@ touhou_little_maid_spell.spell.lifecycle.usefulmagic.unloadLong
 touhou_little_maid_spell.spell.lifecycle.usefulmagic.dimensionChange
 touhou_little_maid_spell.spell.lifecycle.usefulmagic.death
 touhou_little_maid_spell.spell.lifecycle.usefulmagic.revived
+# UsefulMagic 全部法术球各施放一遍
+touhou_little_maid_spell.spell.usefulmagic.allSpellsListed
+touhou_little_maid_spell.spell.usefulmagic.cast.anti_entity_domain_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.barrage_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.bloom_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.digging_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.explosion_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.golden_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.health_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.laser_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.light_beam_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.lightning_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.meteorite_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.push_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.starry_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.sword_formation_magic
+touhou_little_maid_spell.spell.usefulmagic.cast.sword_qi_magic
 # 魂之书主人保护
 touhou_little_maid_spell.bauble.soul_book.ownerProtectionOnOff
 touhou_little_maid_spell.bauble.soul_book.ownerProtectionAfterCycles
