@@ -22,6 +22,8 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private static final String GOETY_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.goety.";
     private static final String ENIGMATIC_ADDONS_MOD_ID = "enigmaticaddons";
     private static final String ENIGMATIC_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.enigmatic.";
+    private static final String CALLRESPONSE_MOD_ID = "callresponse";
+    private static final String CALLRESPONSE_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.callresponse.";
     private static final String PSI_MOD_ID = "psi";
     private static final String PSI_MIXIN_PACKAGE = "com.github.yimeng261.maidspell.mixin.psi.";
     private static final String ARS_MOD_ID = "ars_nouveau";
@@ -39,6 +41,7 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
     private boolean isTlmMagicAnimationSupported = false;
     private boolean isGoetyLoaded = false;
     private boolean isEnigmaticAddonsLoaded = false;
+    private boolean isCallResponseLoaded = false;
     private boolean isPsiLoaded = false;
     private boolean isArsNouveauLoaded = false;
     private boolean isMnaLoaded = false;
@@ -59,6 +62,7 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
         // 检查 Goety 模组是否已加载
         isGoetyLoaded = LoadingModList.get().getModFileById(GOETY_MOD_ID) != null;
         isEnigmaticAddonsLoaded = LoadingModList.get().getModFileById(ENIGMATIC_ADDONS_MOD_ID) != null;
+        isCallResponseLoaded = LoadingModList.get().getModFileById(CALLRESPONSE_MOD_ID) != null;
         isPsiLoaded = LoadingModList.get().getModFileById(PSI_MOD_ID) != null;
         isArsNouveauLoaded = LoadingModList.get().getModFileById(ARS_MOD_ID) != null;
         isMnaLoaded = LoadingModList.get().getModFileById(MNA_MOD_ID) != null;
@@ -86,6 +90,10 @@ public class MaidSpellMixinPlugin implements IMixinConfigPlugin {
 
         if (mixinClassName.startsWith(ENIGMATIC_MIXIN_PACKAGE)) {
             return isEnigmaticAddonsLoaded;
+        }
+
+        if (mixinClassName.startsWith(CALLRESPONSE_MIXIN_PACKAGE)) {
+            return isCallResponseLoaded;
         }
 
         if (mixinClassName.startsWith(PSI_MIXIN_PACKAGE)) {

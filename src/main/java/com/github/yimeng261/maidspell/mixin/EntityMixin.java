@@ -8,6 +8,7 @@ import com.github.yimeng261.maidspell.api.IPersistentEncounterEntity;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
 import com.github.yimeng261.maidspell.utils.AnchorCoreProtection;
+import com.github.yimeng261.maidspell.utils.FriendlyDamageHealthGuard;
 import com.github.yimeng261.maidspell.utils.PersistentEntityLifecycleGuard;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -27,6 +28,10 @@ public class EntityMixin {
     private void maidspell$blockAnchoredMaidHardRemoval(Entity.RemovalReason reason, CallbackInfo ci) {
         try {
             Entity entity = (Entity) (Object) this;
+            if (FriendlyDamageHealthGuard.shouldBlockRemoval(entity, reason)) {
+                ci.cancel();
+                return;
+            }
             if (PersistentEntityLifecycleGuard.shouldBlockRemoval(entity, reason)) {
                 ci.cancel();
                 if (entity instanceof IPersistentEncounterEntity encounter) {

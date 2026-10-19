@@ -47,6 +47,10 @@ final class ConfigCombat {
             .defineListAllowEmpty(java.util.List.of("spellBlacklist"),
                     () -> java.util.List.of("irons_spellbooks:spectral_hammer"),
                     obj -> obj instanceof String);
+    private static final ForgeConfigSpec.BooleanValue POWERFUL_FRIENDLY_FIRE_PROTECTION = BUILDER
+            .comment("强力防友伤：阻止绕过普通伤害事件的友方伤害，包括强制写入生命值 (默认: 关闭)",
+                    "Powerful friendly-fire protection, including damage that bypasses normal damage events.")
+            .define("powerfulFriendlyFireProtection", false);
 
     static {
         BUILDER.pop();
@@ -66,5 +70,6 @@ final class ConfigCombat {
         Config.meleeAttackInterval = MELEE_ATTACK_INTERVAL.get();
         Config.farAttackInterval = FAR_ATTACK_INTERVAL.get();
         Config.ironsSpellBlacklist = new ArrayList<>(IRONS_SPELL_BLACKLIST.get());
+        Config.powerfulFriendlyFireProtection = POWERFUL_FRIENDLY_FIRE_PROTECTION.get();
     }
 }

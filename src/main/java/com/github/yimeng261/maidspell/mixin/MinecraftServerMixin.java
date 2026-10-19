@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.utils.FriendlyDamageHealthGuard;
 import com.github.yimeng261.maidspell.dimension.PlayerRetreatManager;
 import com.github.yimeng261.maidspell.dimension.RetreatLevelData;
 import com.github.yimeng261.maidspell.dimension.RetreatLevelStateData;
@@ -40,6 +41,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.function.BooleanSupplier;
 
 /**
  * Mixin到MinecraftServer，添加动态创建和删除维度的功能
@@ -73,6 +75,11 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<R
     @Inject(method = "loadLevel", at = @At("TAIL"))
     private void maidspell$preloadRetreatDimensionsBeforeLogin(CallbackInfo ci) {
         PlayerRetreatManager.preloadPersistedRetreatState((MinecraftServer) (Object) this);
+    }
+
+    @Inject(method = "tickServer", at = @At("RETURN"))
+    private void maidspell$settleFriendlyDamage(BooleanSupplier hasTime, CallbackInfo ci) {
+        FriendlyDamageHealthGuard.onServerTickEnd((MinecraftServer) (Object) this);
     }
     
     @Override

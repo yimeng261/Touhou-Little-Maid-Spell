@@ -95,6 +95,13 @@ ordering = "NONE"
 side = "BOTH"
 
 [[dependencies."${mod_id}"]]
+modId = "callresponse"
+mandatory = false
+versionRange = "[2.2.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
 modId = "travelerstitles"
 mandatory = false
 # The title-renderer API is already present in the first 1.20 Forge release.
