@@ -114,11 +114,11 @@ public final class EnderPocketClientScenes {
     private static void configTranslated(SceneContext ctx, ServerPlayer player) {
         List<String> keys = new ArrayList<>();
         for (ModConfigSpec spec : List.of(Config.COMBAT_SPEC, Config.BAUBLES_SPEC, Config.RETREAT_SPEC,
-                Config.COMPAT_SPEC, Config.WINEFOX_SPEC)) {
+                Config.COMPAT_SPEC, Config.WINEFOX_SPEC, Config.WORLDGEN_SPEC)) {
             collectKeys(spec.getSpec(), keys);
         }
         collectKeys(EnderPocketClientConfig.SPEC.getSpec(), keys);
-        for (String file : List.of("combat", "baubles", "retreat", "compat", "boss", "client.ender.pocket")) {
+        for (String file : List.of("combat", "baubles", "retreat", "compat", "boss", "worldgen", "client.ender.pocket")) {
             String section = NS.replace(':', '.') + "configuration.section.touhou.little.maid.spell." + file + ".toml";
             keys.add(section);
             keys.add(section + ".title");

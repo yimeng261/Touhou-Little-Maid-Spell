@@ -41,6 +41,7 @@ public final class ConfigFileScenes {
         scenes.add(io("config.existingSplitFileWinsOverLegacy", 5, ConfigFileScenes::legacyCommonExistingWins));
         scenes.add(io("config.legacyClientMoves", 5, ConfigFileScenes::legacyClient));
         scenes.add(io("config.baublesOldGroupsMoveToUtilityAndSpecial", 5, ConfigFileScenes::baublesLayout));
+        scenes.add(Checks.scene("config.starfallGardenSwitchDefaultsOnAndKeepsFalse", 5, ConfigFileScenes::starfallGardenSwitch));
         scenes.add(Checks.scene("config.everyEntryBilingualAfterCorrect", 5, ConfigFileScenes::bilingualComments));
         return scenes;
     }
@@ -245,11 +246,22 @@ public final class ConfigFileScenes {
         return config;
     }
 
+    /** 星落之庭生成开关缺省为开启，显式写成关闭时补全后仍保持关闭。 */
+    private static void starfallGardenSwitch(SceneContext ctx) {
+        CommentedConfig config = TomlFormat.instance().createConfig();
+        Config.WORLDGEN_SPEC.correct(config);
+        ctx.check(config.<Boolean>get("worldgen.enableStarfallGarden")).as("缺省 enableStarfallGarden").isTrue();
+
+        config.set("worldgen.enableStarfallGarden", false);
+        Config.WORLDGEN_SPEC.correct(config);
+        ctx.check(config.<Boolean>get("worldgen.enableStarfallGarden")).as("显式关闭后 enableStarfallGarden").isFalse();
+    }
+
     /** 空配置和清掉注释的配置补全后，每一项都带中文和英文注释，已填的值不被覆盖。 */
     private static void bilingualComments(SceneContext ctx) {
         List<String> problems = new ArrayList<>();
         for (ModConfigSpec spec : List.of(Config.COMBAT_SPEC, Config.BAUBLES_SPEC, Config.RETREAT_SPEC,
-                Config.COMPAT_SPEC, Config.WINEFOX_SPEC, EnderPocketClientConfig.SPEC)) {
+                Config.COMPAT_SPEC, Config.WINEFOX_SPEC, Config.WORLDGEN_SPEC, EnderPocketClientConfig.SPEC)) {
             CommentedConfig config = TomlFormat.instance().createConfig();
             spec.correct(config);
             verifyComments(config, "", problems);
