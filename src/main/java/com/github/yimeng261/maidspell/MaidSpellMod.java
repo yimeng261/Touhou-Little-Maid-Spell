@@ -4,6 +4,7 @@ import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
 import com.github.yimeng261.maidspell.client.EnderPocketClientConfig;
 import com.github.yimeng261.maidspell.block.entity.MaidSpellBlockEntities;
 import com.github.yimeng261.maidspell.compat.geckolib.GeckoLibCompat;
+import com.github.yimeng261.maidspell.compat.goety.GoetyCompatItems;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidLegacyModelPackCleaner;
 import com.github.yimeng261.maidspell.compat.touhou_little_maid.TouhouLittleMaidModelPackInstaller;
@@ -73,6 +74,11 @@ public class MaidSpellMod {
         MaidSpellBlocks.register(modBus);
         MaidSpellBlockEntities.register(modBus);
         MaidSpellItems.register(modBus);
+        if (net.minecraftforge.fml.ModList.get().isLoaded("goety")) {
+            // The virtual wand item implements Goety's IWand and must not be
+            // loaded when Goety is absent.
+            GoetyCompatItems.register(modBus);
+        }
         MaidSpellCreativeTab.register(modBus);
         MaidSpellContainers.register(modBus);
         MaidSpellSounds.SOUNDS.register(modBus);

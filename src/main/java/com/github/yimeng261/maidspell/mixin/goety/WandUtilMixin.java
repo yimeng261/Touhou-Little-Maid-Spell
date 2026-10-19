@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.mixin.goety;
 
+import com.Polarice3.Goety.api.items.magic.IWand;
 import com.Polarice3.Goety.utils.WandUtil;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.spell.data.MaidGoetySpellData;
@@ -26,7 +27,8 @@ public class WandUtilMixin {
         if (livingEntity instanceof EntityMaid maid) {
             MaidGoetySpellData spellData = MaidGoetySpellData.getOrCreate(maid);
             ItemStack currentStaff = spellData.getCurrentStaff();
-            if (currentStaff != null && !currentStaff.isEmpty()) {
+            if (currentStaff != null && !currentStaff.isEmpty()
+                    && currentStaff.getItem() instanceof IWand) {
                 cir.setReturnValue(currentStaff);
             }
         }

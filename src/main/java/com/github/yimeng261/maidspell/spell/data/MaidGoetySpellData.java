@@ -5,6 +5,8 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,6 +27,8 @@ public class MaidGoetySpellData extends IMaidSpellData {
     private ISpell currentSpell = null;
     private ItemStack currentFocus = null;
     private ItemStack currentStaff = null;
+    private UUID virtualWandId = null;
+    private final List<FocusSource> focusSources = new ArrayList<>();
     
     // === 蓄力法术状态 ===
     private int coolCounter = 0;
@@ -147,6 +151,8 @@ public class MaidGoetySpellData extends IMaidSpellData {
         // 清理旧聚晶，避免异常中断后下一次 stopSpell 拿到过期 focus。
         this.currentFocus = null;
         this.currentStaff = null;
+        this.virtualWandId = null;
+        this.focusSources.clear();
     }
     
     /**
@@ -184,5 +190,33 @@ public class MaidGoetySpellData extends IMaidSpellData {
 
     public void setCurrentStaff(ItemStack currentStaff) {
         this.currentStaff = currentStaff;
+    }
+
+    public UUID getVirtualWandId() {
+        return virtualWandId;
+    }
+
+    public void setVirtualWandId(UUID virtualWandId) {
+        this.virtualWandId = virtualWandId;
+    }
+
+    public void beginFocusCollection() {
+        this.focusSources.clear();
+    }
+
+    public void addFocusSource(ItemStack bag, int slot, ItemStack focus) {
+        this.focusSources.add(new FocusSource(bag, slot, focus));
+    }
+
+    public FocusSource getFocusSource(int index) {
+        return index >= 0 && index < this.focusSources.size() ? this.focusSources.get(index) : null;
+    }
+
+    public void clearFocusSources() {
+        this.focusSources.clear();
+    }
+
+    /** A selected focus and the exact FocusBag slot it came from. */
+    public record FocusSource(ItemStack bag, int slot, ItemStack focus) {
     }
 }
