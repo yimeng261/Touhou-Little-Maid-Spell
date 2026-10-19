@@ -239,8 +239,9 @@ public class DreamCatCrystalBauble implements IMaidBauble {
     @Override
     public void onPutOn(EntityMaid maid, ItemStack baubleItem) {
         if (maid.level().isClientSide()) return;
-        // 装备时立即增加 curios 槽位
-        applyCuriosSlots(maid);
+        // curios 额外槽位不在这里加：装备发生在容器点击的包处理里，Curios 要到女仆本 tick 末尾才把槽位变化同步给客户端，
+        // 这之前打开 Curios 菜单会让服务端按新槽数、客户端按旧槽数建菜单，内容包越界断线。交给每秒一次的 tick 维持，
+        // 在 tick 里改槽位，同一 tick 末尾就会同步。
         // 触发"万法皆通"进度
         grantAdvancement(maid);
     }
