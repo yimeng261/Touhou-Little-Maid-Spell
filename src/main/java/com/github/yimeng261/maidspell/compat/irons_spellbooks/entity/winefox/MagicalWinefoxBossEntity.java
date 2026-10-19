@@ -3530,8 +3530,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private void sendDefeatDialogue() {
         Player challenger = this.maidspell$challenger();
         boolean phaseTwoLoss = this.defeatLessonPending && this.defeatLessonPhaseTwo;
-        this.defeatLessonPending = false;
-        this.defeatLessonPhaseTwo = false;
+        this.resetDefeatLessonFlags();
 
         if (phaseTwoLoss && challenger instanceof ServerPlayer player) {
             WinefoxAdvancements.grantVoidSecret(player);
@@ -3546,6 +3545,18 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             }
         }
         this.speakDialogue(WinefoxDialogue.playerSubdued());
+    }
+
+    /** 复位二阶段落败教学的待播标记。 */
+    private void resetDefeatLessonFlags() {
+        this.defeatLessonPending = false;
+        this.defeatLessonPhaseTwo = false;
+    }
+
+    /** 中断正在播的教学台词，并复位待播标记。 */
+    private void clearDefeatLesson() {
+        this.defeatLessonDialogue.clear();
+        this.resetDefeatLessonFlags();
     }
 
     boolean isChallenger(Player player) {
@@ -3944,8 +3955,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.challengerDamageTaken = 0.0F;
         this.maidDamageTaken = 0.0F;
         this.trueDamageUsed = false;
-        this.defeatLessonPending = false;
-        this.defeatLessonPhaseTwo = false;
+        this.resetDefeatLessonFlags();
         this.maidspell$resetAdaptiveDamageHistory();
     }
 
@@ -4398,9 +4408,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
 
     /** 管理员：把她拉回秋千，不发奖励、不重置交易。可从任意状态调用，重复调用安全。 */
     public void maidspell$returnAuthorized() {
-        this.defeatLessonDialogue.clear();
-        this.defeatLessonPending = false;
-        this.defeatLessonPhaseTwo = false;
+        this.clearDefeatLesson();
         switch (this.maidspell$encounterState()) {
             // 战斗中的收场走与普通生物战斗同一条路径（清理 + 归位倒计时）。
             case COMBAT -> this.finishCombat(false);
@@ -4446,9 +4454,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         if (this.isRemoved()) {
             return;
         }
-        this.defeatLessonDialogue.clear();
-        this.defeatLessonPending = false;
-        this.defeatLessonPhaseTwo = false;
+        this.clearDefeatLesson();
         if (this.maidspell$encounterState() != WinefoxEncounterState.RETURNING) {
             this.maidspell$forceReturningForRepair();
         }
@@ -4468,9 +4474,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
                 || this.maidspell$rewardState() == WinefoxRewardState.GRANTING || !this.ensureHomePos()) {
             return false;
         }
-        this.defeatLessonDialogue.clear();
-        this.defeatLessonPending = false;
-        this.defeatLessonPhaseTwo = false;
+        this.clearDefeatLesson();
         if (this.isDefeated() || this.maidspell$encounterState() == WinefoxEncounterState.RETURNING) {
             this.maidspell$repairAuthorized();
             this.tickReturnHome();
