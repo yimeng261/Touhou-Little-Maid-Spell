@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.network;
 
+import com.github.yimeng261.maidspell.client.winefox.WinefoxProgressClientCache;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.WinefoxSeatedAmbienceController;
 import com.github.yimeng261.maidspell.compat.travelerstitles.client.TravelerTitlesStructureClient;
 import com.github.yimeng261.maidspell.network.message.C2SEnderPocketHudRequest;
@@ -17,6 +18,7 @@ import com.github.yimeng261.maidspell.network.message.S2CEnderPocketPushUpdate;
 import com.github.yimeng261.maidspell.network.message.TransmogNecklaceMessage;
 import com.github.yimeng261.maidspell.network.message.TravelerTitlesStructureMessage;
 import com.github.yimeng261.maidspell.network.message.WinefoxChallengeConfigMessage;
+import com.github.yimeng261.maidspell.network.message.WinefoxProgressMessage;
 import com.github.yimeng261.maidspell.network.message.WinefoxStructureMusicMessage;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,7 +33,7 @@ import java.util.function.BiConsumer;
  * 网络消息处理器
  */
 public class NetworkHandler {
-    private static final String PROTOCOL_VERSION = "8";
+    private static final String PROTOCOL_VERSION = "9";
 
     public static void registerMessages(final RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);
@@ -51,6 +53,7 @@ public class NetworkHandler {
         registrar.playToClient(MaidEntityRestoreMessage.TYPE, MaidEntityRestoreMessage.STREAM_CODEC, NetworkHandler::handleMaidEntityRestore);
         registrar.playToClient(WinefoxStructureMusicMessage.TYPE, WinefoxStructureMusicMessage.STREAM_CODEC, NetworkHandler::handleWinefoxStructureMusic);
         registrar.playToClient(TravelerTitlesStructureMessage.TYPE, TravelerTitlesStructureMessage.STREAM_CODEC, NetworkHandler::handleTravelerTitlesStructure);
+        registrar.playToClient(WinefoxProgressMessage.TYPE, WinefoxProgressMessage.STREAM_CODEC, NetworkHandler::handleWinefoxProgress);
     }
 
     /** 只处理服务端玩家发来的包。 */
@@ -96,5 +99,9 @@ public class NetworkHandler {
 
     public static void handleTravelerTitlesStructure(TravelerTitlesStructureMessage packet, IPayloadContext context) {
         TravelerTitlesStructureClient.setStructure(packet.structureId());
+    }
+
+    public static void handleWinefoxProgress(WinefoxProgressMessage packet, IPayloadContext context) {
+        WinefoxProgressClientCache.update(packet.wins(), packet.soloWin());
     }
 }

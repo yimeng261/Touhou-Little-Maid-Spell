@@ -6,6 +6,7 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,12 +19,14 @@ import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * 星之魔女挑战的玩家进度：已击败、挑战进行中。
+ * 星之魔女挑战的玩家进度：已击败、挑战进行中、常规胜利次数、专属胜利。
  * 按 UUID 记在主世界存档里，挑战者离线或在别的维度时 Boss 也能记账和收尾。
  */
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
@@ -36,6 +39,10 @@ public final class WinefoxChallengeProgress extends SavedData {
 
     private final Set<UUID> defeated = new HashSet<>();
     private final Set<UUID> active = new HashSet<>();
+    /** 玩家以常规手段战胜她的次数。 */
+    private final Map<UUID, Integer> wins = new HashMap<>();
+    /** 已经完成过「女仆不造成伤害且玩家伤害占比足够」的那场专属胜利的玩家。 */
+    private final Set<UUID> soloWins = new HashSet<>();
 
     private WinefoxChallengeProgress() {
     }
@@ -44,6 +51,13 @@ public final class WinefoxChallengeProgress extends SavedData {
         WinefoxChallengeProgress data = new WinefoxChallengeProgress();
         readUuids(tag.getList("Defeated", Tag.TAG_INT_ARRAY), data.defeated);
         readUuids(tag.getList("Active", Tag.TAG_INT_ARRAY), data.active);
+        readUuids(tag.getList("SoloWins", Tag.TAG_INT_ARRAY), data.soloWins);
+        for (Tag entry : tag.getList("Wins", Tag.TAG_COMPOUND)) {
+            CompoundTag winEntry = (CompoundTag) entry;
+            if (winEntry.contains("Id", Tag.TAG_INT_ARRAY)) {
+                data.wins.put(NbtUtils.loadUUID(winEntry.get("Id")), Math.max(0, winEntry.getInt("Count")));
+            }
+        }
         return data;
     }
 
@@ -68,6 +82,23 @@ public final class WinefoxChallengeProgress extends SavedData {
     public static void markDefeated(MinecraftServer server, UUID playerId) {
         WinefoxChallengeProgress data = get(server);
         data.update(data.defeated, playerId, true);
+    }
+
+    public static int getWins(MinecraftServer server, UUID playerId) {
+        return get(server).wins.getOrDefault(playerId, 0);
+    }
+
+    public static boolean hasSoloWin(MinecraftServer server, UUID playerId) {
+        return get(server).soloWins.contains(playerId);
+    }
+
+    public static void setProgress(MinecraftServer server, UUID playerId, int wins, boolean soloWin) {
+        WinefoxChallengeProgress data = get(server);
+        int clamped = Math.max(0, wins);
+        if (!Integer.valueOf(clamped).equals(data.wins.put(playerId, clamped))) {
+            data.setDirty();
+        }
+        data.update(data.soloWins, playerId, soloWin);
     }
 
     public static boolean hasActiveChallenge(ServerPlayer player) {
@@ -111,6 +142,15 @@ public final class WinefoxChallengeProgress extends SavedData {
     public @NotNull CompoundTag save(@NotNull CompoundTag tag, @NotNull HolderLookup.Provider registries) {
         tag.put("Defeated", writeUuids(this.defeated));
         tag.put("Active", writeUuids(this.active));
+        tag.put("SoloWins", writeUuids(this.soloWins));
+        ListTag winList = new ListTag();
+        this.wins.forEach((playerId, count) -> {
+            CompoundTag entry = new CompoundTag();
+            entry.put("Id", NbtUtils.createUUID(playerId));
+            entry.putInt("Count", count);
+            winList.add(entry);
+        });
+        tag.put("Wins", winList);
         return tag;
     }
 
