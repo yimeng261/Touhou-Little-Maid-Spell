@@ -59,7 +59,8 @@ public final class VirtualWandManager {
             return null;
         }
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        if (data == null) {
+        // 先按键名判断，别的物品栈不必为此深拷贝 NBT
+        if (data == null || !data.contains(CONTEXT_TAG)) {
             return null;
         }
         CompoundTag tag = data.copyTag();

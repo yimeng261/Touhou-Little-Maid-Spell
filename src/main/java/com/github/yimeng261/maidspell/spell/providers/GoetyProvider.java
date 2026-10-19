@@ -132,8 +132,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
             ISpell spell = data.getCurrentSpell();
             ItemStack focus = getCurrentFocus(data);
             ItemStack staff = getCurrentStaff(data);
-            if (!isUsableStaff(staff)) {
-                resetCastingState(maid, data);
+            if (!requireStaff(maid, data, staff)) {
                 return;
             }
             // Goety 的 stopSpell 需要已施法时间，而不是剩余时间。
@@ -210,9 +209,8 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
     private void startSpellCasting(EntityMaid maid, ISpell spell) {
         MaidGoetySpellData data = getData(maid);
         ItemStack staff = getCurrentStaff(data);
-        if (!isUsableStaff(staff)) {
-            // 施法开始前再确认一次法杖仍然存在，避免把空栈传给 Goety 的法术实现。
-            resetCastingState(maid, data);
+        // 施法开始前再确认一次法杖仍然存在，避免把空栈传给 Goety 的法术实现。
+        if (!requireStaff(maid, data, staff)) {
             return;
         }
 
@@ -279,8 +277,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
     private void startSpellExecution(EntityMaid maid, ISpell spell) {
         if (maid.level() instanceof ServerLevel serverLevel) {
             ItemStack staff = getCurrentStaff(getData(maid));
-            if (!isUsableStaff(staff)) {
-                resetCastingState(maid, getData(maid));
+            if (!requireStaff(maid, getData(maid), staff)) {
                 return;
             }
             spell.startSpell(serverLevel, maid, staff, getSpellStats(maid, spell));
@@ -308,9 +305,8 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
         if (spell == null) return;
 
         ItemStack staff = getCurrentStaff(data);
-        if (!isUsableStaff(staff)) {
-            // 施法中途法杖可能被卸下，Goety 的法术回调默认手里是真实 IWand。
-            resetCastingState(maid, data);
+        // 施法中途法杖可能被卸下，Goety 的法术回调默认手里是真实 IWand。
+        if (!requireStaff(maid, data, staff)) {
             return;
         }
 
@@ -339,8 +335,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
         if (data == null) return;
 
         ItemStack staff = getCurrentStaff(data);
-        if (!isUsableStaff(staff)) {
-            resetCastingState(maid, data);
+        if (!requireStaff(maid, data, staff)) {
             return;
         }
         int castUp = chargingSpell.castUp(maid, staff);
@@ -368,8 +363,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
 
         LOGGER.debug("执行蓄力法术射击: {}, 女仆: {}", chargingSpell.getClass().getSimpleName(), maid.getName().getString());
         ItemStack staff = getCurrentStaff(data);
-        if (!isUsableStaff(staff)) {
-            resetCastingState(maid, data);
+        if (!requireStaff(maid, data, staff)) {
             return;
         }
         // 与 DarkWand.increaseShots 保持一致，多段法术需要递增后才能按 shotsNumber 收束。
@@ -394,8 +388,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
             ISpell spell = data.getCurrentSpell();
             ItemStack focus = getCurrentFocus(data);
             ItemStack staff = getCurrentStaff(data);
-            if (!isUsableStaff(staff)) {
-                resetCastingState(maid, data);
+            if (!requireStaff(maid, data, staff)) {
                 return;
             }
             // castTime 对齐 DarkWand.releaseUsing 的语义：从开始施法到停止时已经经过的 tick。
@@ -526,6 +519,15 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
 
     private boolean isRealWand(ItemStack stack) {
         return isUsableStaff(stack) && !(stack.getItem() instanceof VirtualGoetyWandItem);
+    }
+
+    /** 法杖不可用时中止本次施法并返回 false。 */
+    private boolean requireStaff(EntityMaid maid, MaidGoetySpellData data, ItemStack staff) {
+        if (isUsableStaff(staff)) {
+            return true;
+        }
+        resetCastingState(maid, data);
+        return false;
     }
 
     private boolean isUsableStaff(ItemStack stack) {
