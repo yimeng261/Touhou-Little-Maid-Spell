@@ -141,7 +141,19 @@ public final class WinefoxDialogue {
      * 玩家被打服了：她收手回秋千。
      */
     public static List<Component> playerSubdued() {
-        return List.of(randomTranslation("dialogue.touhou_little_maid_spell.winefox.challenge_lost_", 3));
+        return List.of(randomTranslation("dialogue.touhou_little_maid_spell.winefox.challenge_lost_", 10));
+    }
+
+    public static List<Component> voidLesson() {
+        return List.of(
+            Component.translatable("dialogue.touhou_little_maid_spell.winefox.void_lesson_1"),
+            Component.translatable("dialogue.touhou_little_maid_spell.winefox.void_lesson_2"),
+            Component.translatable("dialogue.touhou_little_maid_spell.winefox.void_lesson_3"),
+            Component.translatable("dialogue.touhou_little_maid_spell.winefox.void_lesson_4"));
+    }
+
+    public static Component voidReminder() {
+        return Component.translatable("dialogue.touhou_little_maid_spell.winefox.void_reminder");
     }
 
     /**
@@ -158,7 +170,7 @@ public final class WinefoxDialogue {
             ? Component.translatable("dialogue.touhou_little_maid_spell.winefox.victory_true_damage")
             : restricted
                 ? randomTranslation("dialogue.touhou_little_maid_spell.winefox.victory_maids_", 3)
-                : randomTranslation("dialogue.touhou_little_maid_spell.winefox.victory_normal_", 3));
+                : randomTranslation("dialogue.touhou_little_maid_spell.winefox.victory_normal_", 8));
     }
 
     /** 初次靠近时发送三句开场白，句间间隔三秒。 */
@@ -216,7 +228,7 @@ public final class WinefoxDialogue {
      * 不是 {@code vow_1..vow_4} 那种一次说完的仪式台词。
      */
     public static Component tamedChatLine() {
-        return randomTranslation("dialogue.touhou_little_maid_spell.winefox.tamed_chat_", 3);
+        return randomTranslation("dialogue.touhou_little_maid_spell.winefox.tamed_chat_", 15);
     }
 
     public static Component tradeLine() {
@@ -224,7 +236,7 @@ public final class WinefoxDialogue {
     }
 
     public static List<Component> phaseTransition() {
-        return List.of(randomTranslation("dialogue.touhou_little_maid_spell.winefox.phase_transition_", 4));
+        return List.of(randomTranslation("dialogue.touhou_little_maid_spell.winefox.phase_transition_", 14));
     }
 
     public static List<Component> maidDefeated() {

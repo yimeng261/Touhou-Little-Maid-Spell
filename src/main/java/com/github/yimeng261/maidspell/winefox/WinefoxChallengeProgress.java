@@ -9,6 +9,7 @@ public final class WinefoxChallengeProgress {
     public static final String ACTIVE_TAG = "MaidSpellWinefoxChallengeActive";
     public static final String WINS_TAG = "MaidSpellWinefoxWins";
     public static final String SOLO_TAG = "MaidSpellWinefoxSoloWin";
+    public static final String VOID_LESSON_TAG = "MaidSpellWinefoxVoidLessonSeen";
 
     private WinefoxChallengeProgress() {
     }
@@ -40,6 +41,16 @@ public final class WinefoxChallengeProgress {
         data.putBoolean(SOLO_TAG, soloWin);
     }
 
+    public static boolean hasSeenVoidLesson(Player player) {
+        return player != null && player.getPersistentData().getBoolean(VOID_LESSON_TAG);
+    }
+
+    public static void markVoidLessonSeen(Player player) {
+        if (player != null) {
+            player.getPersistentData().putBoolean(VOID_LESSON_TAG, true);
+        }
+    }
+
     public static void copy(Player from, Player to) {
         if (from == null || to == null) {
             return;
@@ -54,6 +65,9 @@ public final class WinefoxChallengeProgress {
         }
         if (source.getBoolean(DEFEATED_TAG)) {
             target.putBoolean(DEFEATED_TAG, true);
+        }
+        if (source.getBoolean(VOID_LESSON_TAG)) {
+            target.putBoolean(VOID_LESSON_TAG, true);
         }
     }
 
