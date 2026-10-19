@@ -4,7 +4,6 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.Set;
-import net.bytebuddy.agent.ByteBuddyAgent;
 import net.minecraft.world.entity.LivingEntity;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -37,7 +36,7 @@ public final class AuthoritativeHealthReturnTransformer implements ClassFileTran
         }
         Instrumentation instrumentation;
         try {
-            instrumentation = ByteBuddyAgent.install();
+            instrumentation = ByteBuddyAgentInstaller.install();
         } catch (Throwable exception) {
             LOGGER.warn("Could not install the authoritative health return guard", exception);
             return;
