@@ -12,9 +12,12 @@ import net.minecraft.world.entity.LivingEntity;
 
 /**
  * 星锚珍珠的虚空漫步状态及粒子表现。
- * 虚空伤害免疫由 StaranchorPearlEvents 在攻击事件中处理。
+ * 虚空伤害减免由 StaranchorPearlEvents 在伤害事件中处理。
  */
 public class VoidWalkEffect extends MobEffect {
+    /** 虚空漫步期间减免的虚空伤害比例。 */
+    public static final float VOID_DAMAGE_REDUCTION = 0.95F;
+
     /** 图标底色。取星锚珍珠贴图的主色，和 {@code textures/mob_effect/void_walk.png} 对得上。 */
     private static final int COLOR = 0x7B3FD4;
 
@@ -36,7 +39,7 @@ public class VoidWalkEffect extends MobEffect {
      * 模组里本来就把这一类当成虚空伤害在用：星影刃光追加的那一发是
      * {@code damageSources().fellOutOfWorld()}（见 {@code StarShadowStrikeSpell}），
      * 虚空相变的额外伤害也是同一个（见 {@code VoidPhaseDamageHandler}）。
-     * 所以「免疫虚空伤害」= 免疫这一类，不另开一套自定义伤害类型。
+     * 所以「虚空伤害」= 这一类，不另开一套自定义伤害类型。
      */
     public static boolean isVoidDamage(DamageSource source) {
         return source.is(DamageTypes.FELL_OUT_OF_WORLD);

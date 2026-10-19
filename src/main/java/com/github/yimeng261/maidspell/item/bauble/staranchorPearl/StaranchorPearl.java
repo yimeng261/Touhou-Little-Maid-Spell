@@ -23,7 +23,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-/** 玩家右键获得限时虚空免疫，女仆佩戴时按受击次数消耗耐久。 */
+/** 玩家右键获得限时虚空伤害减免，女仆佩戴时按受击次数消耗耐久。 */
 public class StaranchorPearl extends Item {
     /** 虚空漫步时长：35 秒。 */
     public static final int VOID_WALK_TICKS = 35 * 20;

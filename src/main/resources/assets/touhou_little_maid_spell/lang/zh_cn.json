@@ -505,7 +505,7 @@
   "effect.touhou_little_maid_spell.staranchor_stun": "星锚眩晕",
   "item.touhou_little_maid_spell.staranchor_pearl": "星锚珍珠",
   "item.touhou_little_maid_spell.staranchor_pearl.desc1": "前文明用以探索虚空的道具，可在扭曲的空间中保全自我。",
-  "item.touhou_little_maid_spell.staranchor_pearl.desc2": "右键：消耗 %s 点耐久，获得 %s 秒「虚空漫步」，期间免疫虚空伤害，并使 6 格内的敌人眩晕 6 秒。 冷却：%s 秒。",
+  "item.touhou_little_maid_spell.staranchor_pearl.desc2": "右键：消耗 %s 点耐久，获得 %s 秒「虚空漫步」，期间受到的虚空伤害减少 95%%，并使 6 格内的敌人眩晕 6 秒。 冷却：%s 秒。",
   "item.touhou_little_maid_spell.staranchor_pearl.desc3": "女仆佩戴：替她挡下虚空伤害，每次消耗 %s 点耐久，并使 3 格内的敌人眩晕 6 秒。",
   "item.touhou_little_maid_spell.staranchor_pearl.desc4": "无法修复，耐久耗尽即碎。",
   "painting.touhou_little_maid_spell.astronomical_object.author": "StarseaJ",
