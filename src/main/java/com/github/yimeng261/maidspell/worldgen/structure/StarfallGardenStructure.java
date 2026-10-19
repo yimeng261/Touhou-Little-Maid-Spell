@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.worldgen.structure;
 
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.github.yimeng261.maidspell.worldgen.StarfallGardenData;
 import com.github.yimeng261.maidspell.worldgen.StarfallGardenPlacementGuard;
@@ -141,6 +142,9 @@ public class StarfallGardenStructure extends Structure {
 
     @Override
     protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
+        if (!Config.enableStarfallGarden) {
+            return Optional.empty();
+        }
         // 「一存档一座」的第一道闸门：只读内存里的标记。这里跑在 worldgen worker 线程上、每个候选区块都要问一次，
         // 所以不能碰 SavedData（会读盘，而且 DimensionDataStorage 不是线程安全的）；标记什么时候写见 generate()。
         if (StarfallGardenData.isPlaced()) {
@@ -232,6 +236,9 @@ public class StarfallGardenStructure extends Structure {
                                            StructureTemplateManager templateManager, long seed, ChunkPos chunkPos,
                                            int references, LevelHeightAccessor heightAccessor,
                                            Predicate<Holder<Biome>> validBiome) {
+        if (!Config.enableStarfallGarden) {
+            return StructureStart.INVALID_START;
+        }
         // 星落之庭不限制具体生物群系；结构的生物群系标签只用来让结构集进入主世界生成状态。
         StructureStart start = computeStart(registryAccess, chunkGenerator, biomeSource, randomState,
                 templateManager, seed, chunkPos, references, heightAccessor, holder -> true);

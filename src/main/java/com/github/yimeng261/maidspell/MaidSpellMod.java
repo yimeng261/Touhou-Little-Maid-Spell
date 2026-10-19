@@ -114,6 +114,7 @@ public class MaidSpellMod {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.RETREAT_SPEC, MOD_ID + "/retreat.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.COMPAT_SPEC, MOD_ID + "/compat.toml");
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.WINEFOX_SPEC, MOD_ID + "/boss.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, Config.WORLDGEN_SPEC, MOD_ID + "/worldgen.toml");
         modContainer.registerConfig(ModConfig.Type.CLIENT, EnderPocketClientConfig.SPEC,
                 MOD_ID + "/client/ender_pocket.toml");
         if (dist.isClient()) {
