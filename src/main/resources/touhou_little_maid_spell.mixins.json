@@ -87,6 +87,7 @@
     "tlm.RemoteMaidPackageMixin",
     "tlm.RequestEffectPackageMixin",
     "tlm.SetAttackListPackageMixin",
+    "usefulmagic.ExplosionMagicMixin",
     "usefulmagic.FriendFilterHelperMixin",
     "usefulmagic.HealthMagicMixin"
   ],
