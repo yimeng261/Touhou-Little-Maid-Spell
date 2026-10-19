@@ -58,7 +58,7 @@ final class ConfigWinefox {
     private static final ModConfigSpec.DoubleValue PHASE_TWO_DAMAGE_MULTIPLIER = BUILDER
             .comment("酒狐二阶段承伤倍率，与其它承伤倍率叠乘",
                     "Winefox damage taken in phase two, multiplied with other damage modifiers.")
-            .defineInRange("winefoxPhaseTwoDamageMultiplier", 0.5, 0.0, 1.0);
+            .defineInRange("winefoxPhaseTwoDamageMultiplier", 0.8, 0.0, 1.0);
     private static final ModConfigSpec.BooleanValue DAMAGE_DEBUG_LOGGING = BUILDER
             .comment("开启后逐次记录酒狐受伤、减伤与拦截结果到日志；排查结束后建议关闭",
                     "Log Winefox incoming damage, reductions and blocked hits at INFO level for diagnostics.")
