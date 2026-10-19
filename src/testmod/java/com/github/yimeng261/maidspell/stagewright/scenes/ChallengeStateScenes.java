@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.stagewright.support.Checks;
 import com.github.yimeng261.maidspell.stagewright.support.Owners;
 import net.minecraft.server.level.ServerPlayer;
 import com.github.yimeng261.maidspell.winefox.WinefoxChallengeProgress;
+import com.github.yimeng261.maidspell.winefox.WinefoxVowProgress;
 import com.mojang.authlib.GameProfile;
 import net.magicterra.stagewright.scene.Scene;
 import net.magicterra.stagewright.scene.SceneContext;
@@ -38,6 +39,7 @@ public final class ChallengeStateScenes {
         scenes.add(Checks.scene("challenge.legacyDefeatedMigrates", 5, ChallengeStateScenes::legacyDefeated));
         scenes.add(Checks.scene("challenge.legacyActiveCleared", 5, ChallengeStateScenes::legacyActive));
         scenes.add(Checks.scene("challenge.deathClearsActive", 5, ChallengeStateScenes::deathClears));
+        scenes.add(Checks.scene("challenge.vowProgressPerPlayer", 5, ChallengeStateScenes::vowProgress));
         scenes.add(Checks.scene("challenge.daggerConfigNeedsDefeat", 5, ChallengeStateScenes::daggerConfig));
         return scenes;
     }
@@ -70,6 +72,24 @@ public final class ChallengeStateScenes {
         ctx.check(WinefoxChallengeProgress.hasActiveChallenge(player)).as("标记后挑战进行中").isTrue();
         CommonHooks.onLivingDeath(player, player.damageSources().generic());
         ctx.check(WinefoxChallengeProgress.hasActiveChallenge(player)).as("死亡后挑战进行中").isFalse();
+    }
+
+    /** 誓约进度按玩家 UUID 累计：两场常规胜利后专属胜利才生效，旧版实体计数只在玩家无进度时迁入。 */
+    private static void vowProgress(SceneContext ctx) {
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        WinefoxVowProgress.recordVictory(ctx.server(), first, true);
+        ctx.check(WinefoxVowProgress.isReady(ctx.server(), first)).as("只赢一场时专属胜利不生效").isFalse();
+        WinefoxVowProgress.recordVictory(ctx.server(), first, false);
+        WinefoxVowProgress.recordVictory(ctx.server(), first, true);
+        ctx.check(WinefoxChallengeProgress.getWins(ctx.server(), first)).as("累计胜利").isEqualTo(3);
+        ctx.check(WinefoxVowProgress.isReady(ctx.server(), first)).as("两场之后的专属胜利").isTrue();
+        ctx.check(WinefoxChallengeProgress.getWins(ctx.server(), second)).as("别的玩家不受影响").isEqualTo(0);
+        WinefoxVowProgress.migrateLegacy(ctx.server(), second, 2, true);
+        ctx.check(WinefoxVowProgress.isReady(ctx.server(), second)).as("旧版计数迁入").isTrue();
+        WinefoxVowProgress.migrateLegacy(ctx.server(), first, 0, false);
+        WinefoxVowProgress.migrateLegacy(ctx.server(), second, 9, false);
+        ctx.check(WinefoxChallengeProgress.getWins(ctx.server(), second)).as("已有进度时不被旧计数覆盖").isEqualTo(2);
     }
 
     /** 没击败过时打不开；击败后能打开；挑战进行中打不开。 */
