@@ -47,7 +47,6 @@ public final class StructureSnapshots {
                 "farmersdelight:wooden_basket",
                 "irons_spellbooks:book_stack",
                 "irons_spellbooks:firefly_jar",
-                "irons_spellbooks:inscription_table",
                 "irons_spellbooks:wisewood_bookshelf",
                 "touhou_little_maid:garage_kit",
                 "touhou_little_maid:maid_beacon",
@@ -110,18 +109,14 @@ public final class StructureSnapshots {
                 "minecraft:item_frame",
                 "minecraft:item_frame|item=minecraft:dark_oak_slab",
                 "minecraft:item_frame|item=minecraft:dark_oak_slab",
-                "minecraft:painting|variant=minecraft:wanderer",
                 "touhou_little_maid:chair",
                 "touhou_little_maid:chair",
                 "touhou_little_maid:chair",
                 "touhou_little_maid:chair",
                 "touhou_little_maid:chair",
-                "touhou_little_maid:chair",
-                "touhou_little_maid:chair",
-                "touhou_little_maid:maid|gear=minecraft:glow_berries",
-                "touhou_little_maid:sit"),
+                "touhou_little_maid:maid|gear=minecraft:glow_berries"),
             List.of(
-                Map.ofEntries(Map.entry("model_id", "geckolib:rice_cake_fox"), Map.entry("favorability", "94"), Map.entry("sitting", "0"), Map.entry("task", "touhou_little_maid:board_games"), Map.entry("structureSpawn", "0"), Map.entry("backpack", "touhou_little_maid:small_backpack"), Map.entry("scheduleMode", "DAY"), Map.entry("hand", "minecraft:glow_berries,"), Map.entry("armor", ",,,"), Map.entry("inventory", "0:irons_spellbooks:gold_spell_book,6:farmersdelight:iron_knife,8:minecraft:sweet_berries"), Map.entry("baubles", "2:touhou_little_maid_spell:blue_note"), Map.entry("blueNoteSpells", ""), Map.entry("effects", "")))));
+                Map.ofEntries(Map.entry("model_id", "geckolib:rice_cake_fox"), Map.entry("favorability", "102"), Map.entry("sitting", "1"), Map.entry("task", "touhou_little_maid:idle"), Map.entry("structureSpawn", "0"), Map.entry("backpack", "touhou_little_maid:small_backpack"), Map.entry("scheduleMode", "DAY"), Map.entry("hand", "minecraft:glow_berries,"), Map.entry("armor", ",,,"), Map.entry("inventory", "0:irons_spellbooks:gold_spell_book,1:irons_spellbooks:artificer_cane,2:minecraft:sweet_berries,6:farmersdelight:iron_knife"), Map.entry("baubles", "2:touhou_little_maid_spell:blue_note"), Map.entry("blueNoteSpells", ""), Map.entry("effects", "")))));
         TEMPLATES.put("touhou_little_maid_spell:cherry_cabin_without_iss", new Template(
             List.of(
                 "farmersdelight:apple_pie",
@@ -211,18 +206,14 @@ public final class StructureSnapshots {
                 "minecraft:item_frame",
                 "minecraft:item_frame|item=minecraft:dark_oak_slab",
                 "minecraft:item_frame|item=minecraft:dark_oak_slab",
-                "minecraft:painting|variant=minecraft:wanderer",
                 "touhou_little_maid:chair",
                 "touhou_little_maid:chair",
                 "touhou_little_maid:chair",
                 "touhou_little_maid:chair",
                 "touhou_little_maid:chair",
-                "touhou_little_maid:chair",
-                "touhou_little_maid:chair",
-                "touhou_little_maid:maid|gear=minecraft:glow_berries",
-                "touhou_little_maid:sit"),
+                "touhou_little_maid:maid|gear=minecraft:glow_berries"),
             List.of(
-                Map.ofEntries(Map.entry("model_id", "geckolib:rice_cake_fox"), Map.entry("favorability", "94"), Map.entry("sitting", "0"), Map.entry("task", "touhou_little_maid:board_games"), Map.entry("structureSpawn", "0"), Map.entry("backpack", "touhou_little_maid:small_backpack"), Map.entry("scheduleMode", "DAY"), Map.entry("hand", "minecraft:glow_berries,"), Map.entry("armor", ",,,"), Map.entry("inventory", "6:farmersdelight:iron_knife,8:minecraft:sweet_berries"), Map.entry("baubles", "2:touhou_little_maid_spell:blue_note"), Map.entry("blueNoteSpells", ""), Map.entry("effects", "")))));
+                Map.ofEntries(Map.entry("model_id", "geckolib:rice_cake_fox"), Map.entry("favorability", "102"), Map.entry("sitting", "1"), Map.entry("task", "touhou_little_maid:idle"), Map.entry("structureSpawn", "0"), Map.entry("backpack", "touhou_little_maid:small_backpack"), Map.entry("scheduleMode", "DAY"), Map.entry("hand", "minecraft:glow_berries,"), Map.entry("armor", ",,,"), Map.entry("inventory", "2:minecraft:sweet_berries,6:farmersdelight:iron_knife"), Map.entry("baubles", "2:touhou_little_maid_spell:blue_note"), Map.entry("blueNoteSpells", ""), Map.entry("effects", "")))));
         TEMPLATES.put("touhou_little_maid_spell:elven_realm/elven_realm_1", new Template(
             List.of(
                 "irons_spellbooks:alchemist_cauldron",
