@@ -20,6 +20,7 @@ public final class Config {
     public static final ForgeConfigSpec RETREAT_SPEC = ConfigRetreat.SPEC;
     public static final ForgeConfigSpec COMPAT_SPEC = ConfigCompat.SPEC;
     public static final ForgeConfigSpec WINEFOX_SPEC = ConfigWinefox.SPEC;
+    public static final ForgeConfigSpec WORLDGEN_SPEC = ConfigWorldgen.SPEC;
 
     public static double maxSpellRange;
     public static double meleeRange;
@@ -76,6 +77,7 @@ public final class Config {
     public static boolean allowHostileMobSpawnsInRetreat;
     public static int retreatRecordRetentionDays;
     public static boolean autoInstallTlmModelPack;
+    public static boolean enableStarfallGarden = true;
 
     public static double winefoxNonPlayerDamageShareLimit;
     public static boolean winefoxChallengeConfigEnabled;
@@ -106,6 +108,7 @@ public final class Config {
     private static boolean retreatLoaded;
     private static boolean compatLoaded;
     private static boolean winefoxLoaded;
+    private static boolean worldgenLoaded;
 
     private Config() {
     }
@@ -128,11 +131,14 @@ public final class Config {
         } else if (spec == WINEFOX_SPEC) {
             ConfigWinefox.load();
             winefoxLoaded = true;
+        } else if (spec == WORLDGEN_SPEC) {
+            ConfigWorldgen.load();
+            worldgenLoaded = true;
         } else {
             return;
         }
 
-        if (combatLoaded && baublesLoaded && retreatLoaded && compatLoaded && winefoxLoaded) {
+        if (combatLoaded && baublesLoaded && retreatLoaded && compatLoaded && winefoxLoaded && worldgenLoaded) {
             applyRuntimeValues();
         }
     }

@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.worldgen.structure;
 
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.github.yimeng261.maidspell.worldgen.StarfallGardenData;
 import com.github.yimeng261.maidspell.worldgen.StarfallGardenPlacementGuard;
@@ -150,6 +151,9 @@ public class StarfallGardenStructure extends Structure {
 
     @Override
     protected @NotNull Optional<GenerationStub> findGenerationPoint(@NotNull GenerationContext context) {
+        if (!Config.enableStarfallGarden) {
+            return Optional.empty();
+        }
         // StructureCheck 会缓存这里的结果；已被其它线程占用或已经生成后，探测必须立即返回空。
         // 真正的 generate() 已经通过 CAS 抢到名额，并由 INSIDE_GENERATE 放行。
         if (StarfallGardenData.isPlaced() && !INSIDE_GENERATE.get()) {
@@ -236,6 +240,9 @@ public class StarfallGardenStructure extends Structure {
                                            StructureTemplateManager templateManager, long seed, ChunkPos chunkPos,
                                            int references, LevelHeightAccessor heightAccessor,
                                            Predicate<Holder<Biome>> validBiome) {
+        if (!Config.enableStarfallGarden) {
+            return StructureStart.INVALID_START;
+        }
         if (!StarfallGardenData.tryBeginGeneration()) {
             return StructureStart.INVALID_START;
         }

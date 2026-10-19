@@ -107,6 +107,8 @@ public class MaidSpellMod {
                 MOD_ID + "/compat.toml");
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.WINEFOX_SPEC,
                 MOD_ID + "/boss.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.WORLDGEN_SPEC,
+                MOD_ID + "/worldgen.toml");
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, EnderPocketClientConfig.SPEC,
                 MOD_ID + "/client/ender_pocket.toml");
         

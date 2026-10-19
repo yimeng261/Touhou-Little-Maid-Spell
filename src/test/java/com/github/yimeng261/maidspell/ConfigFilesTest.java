@@ -50,7 +50,8 @@ class ConfigFilesTest {
     @Test
     void correctingExistingTomlRestoresBilingualCommentsAndPreservesValues() {
         for (ForgeConfigSpec spec : List.of(ConfigCombat.SPEC, ConfigBaubles.SPEC,
-                ConfigRetreat.SPEC, ConfigCompat.SPEC, ConfigWinefox.SPEC, EnderPocketClientConfig.SPEC)) {
+                ConfigRetreat.SPEC, ConfigCompat.SPEC, ConfigWinefox.SPEC, ConfigWorldgen.SPEC,
+                EnderPocketClientConfig.SPEC)) {
             CommentedConfig config = TomlFormat.instance().createConfig();
             spec.correct(config);
             verifyComments(config);
@@ -68,6 +69,17 @@ class ConfigFilesTest {
         bossConfig.set("winefox.winefoxArmor", 24.0);
         ConfigWinefox.SPEC.correct(bossConfig);
         assertEquals(24.0, bossConfig.<Double>get("winefox.winefoxArmor"));
+    }
+
+    @Test
+    void starfallGardenGenerationDefaultsToEnabledAndKeepsExplicitFalse() {
+        CommentedConfig config = TomlFormat.instance().createConfig();
+        ConfigWorldgen.SPEC.correct(config);
+        assertEquals(true, config.<Boolean>get("worldgen.enableStarfallGarden"));
+
+        config.set("worldgen.enableStarfallGarden", false);
+        ConfigWorldgen.SPEC.correct(config);
+        assertEquals(false, config.<Boolean>get("worldgen.enableStarfallGarden"));
     }
 
     private static void verifyComments(CommentedConfig config) {

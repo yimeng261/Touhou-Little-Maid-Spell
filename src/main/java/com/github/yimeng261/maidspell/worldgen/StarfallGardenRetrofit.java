@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.worldgen;
 
+import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.worldgen.structure.StarfallGardenStructure;
 import net.minecraft.core.BlockPos;
@@ -121,6 +122,10 @@ public final class StarfallGardenRetrofit {
         }
         if (!server.getWorldData().worldGenOptions().generateStructures()) {
             // 关掉结构生成的世界不该被我们偷偷塞一座进去。
+            return;
+        }
+        if (!Config.enableStarfallGarden) {
+            // 配置关闭时不补生成，也不写「已尝试」标记；之后重新打开仍可为旧存档补一座。
             return;
         }
         if (StarfallGardenData.isPlaced()) {
