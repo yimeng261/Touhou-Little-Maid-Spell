@@ -90,8 +90,8 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
     }
 
     @Override
-    protected BehaviorControl<EntityMaid> createSpellCastingBehavior(boolean sitting) {
-        return new FarSpellCombatBehavior(sitting);
+    protected BehaviorControl<EntityMaid> createSpellCastingBehavior(boolean rideActivity) {
+        return new FarSpellCombatBehavior(rideActivity);
     }
 
     /**
@@ -109,8 +109,8 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
             this(false);
         }
 
-        private FarSpellCombatBehavior(boolean sitting) {
-            super(sitting);
+        private FarSpellCombatBehavior(boolean rideActivity) {
+            super(rideActivity);
         }
 
         @Override

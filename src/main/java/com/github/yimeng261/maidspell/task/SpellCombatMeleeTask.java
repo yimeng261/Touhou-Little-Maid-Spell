@@ -114,15 +114,15 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
     }
 
     /**
-     * Sitting maids normally use Touhou Little Maid's ride-work activity, which
-     * does not include the regular work behaviors. Add a stationary combat set
-     * for the range table while keeping movement disabled.
+     * Sitting or riding maids normally use Touhou Little Maid's ride-work
+     * activity, which does not include the regular work behaviors. Add a
+     * stationary combat set for the range table while keeping movement disabled.
      */
     @Override
     public @NotNull List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(@NotNull EntityMaid maid) {
-        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::canCastWhileSitting, this::findValidAttackTarget);
+        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::canCastWhileRiding, this::findValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target ->
-                !isSittingSpellcastingEnabled(maid)
+                !isRideSpellcastingEnabled(maid)
                     || farAway(target, maid)
                     || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target));
         BehaviorControl<EntityMaid> spellCastingTask = createSpellCastingBehavior(true);
@@ -136,17 +136,17 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
         );
     }
 
-    protected BehaviorControl<EntityMaid> createSpellCastingBehavior(boolean sitting) {
-        return new SpellCombatBehavior(sitting);
+    protected BehaviorControl<EntityMaid> createSpellCastingBehavior(boolean rideActivity) {
+        return new SpellCombatBehavior(rideActivity);
     }
 
-    protected static boolean isSittingSpellcastingEnabled(EntityMaid maid) {
-        return maid.isMaidInSittingPose()
+    protected static boolean isRideSpellcastingEnabled(EntityMaid maid) {
+        return (maid.isMaidInSittingPose() || maid.isPassenger())
             && BaubleStateManager.hasBauble(maid, MaidSpellItems.SPELL_RANGE_TABLE);
     }
 
-    private boolean canCastWhileSitting(EntityMaid maid) {
-        return isSittingSpellcastingEnabled(maid) && hasSpellBook(maid);
+    private boolean canCastWhileRiding(EntityMaid maid) {
+        return isRideSpellcastingEnabled(maid) && hasSpellBook(maid);
     }
     
     /**
@@ -252,23 +252,23 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
      */
     static class SpellCombatBehavior extends Behavior<EntityMaid> {
         private SimplifiedSpellCaster currentSpellCaster;
-        private final boolean sitting;
+        private final boolean rideActivity;
 
         public SpellCombatBehavior() {
             this(false);
         }
 
-        protected SpellCombatBehavior(boolean sitting) {
+        protected SpellCombatBehavior(boolean rideActivity) {
             super(Map.of(
                 MemoryModuleType.ATTACK_TARGET, MemoryStatus.VALUE_PRESENT,
                 MemoryModuleType.LOOK_TARGET, MemoryStatus.REGISTERED
             ));
-            this.sitting = sitting;
+            this.rideActivity = rideActivity;
         }
 
         @Override
         protected boolean checkExtraStartConditions(@NotNull ServerLevel level, EntityMaid maid) {
-            if (sitting && !isSittingSpellcastingEnabled(maid)) {
+            if (rideActivity && !isRideSpellcastingEnabled(maid)) {
                 return false;
             }
 
@@ -332,23 +332,23 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
      * 特殊情况：当女仆释放标记的铁魔法法术时，允许看向主人
      */
     static class CombatLookControlTask extends Behavior<EntityMaid> {
-        private final boolean sitting;
+        private final boolean rideActivity;
 
         CombatLookControlTask() {
             this(false);
         }
 
-        CombatLookControlTask(boolean sitting) {
+        CombatLookControlTask(boolean rideActivity) {
             super(Map.of(
                 MemoryModuleType.ATTACK_TARGET, MemoryStatus.VALUE_PRESENT,
                 MemoryModuleType.LOOK_TARGET, MemoryStatus.REGISTERED
             ));
-            this.sitting = sitting;
+            this.rideActivity = rideActivity;
         }
 
         @Override
         protected boolean checkExtraStartConditions(@NotNull ServerLevel level, EntityMaid maid) {
-            if (sitting && !isSittingSpellcastingEnabled(maid)) {
+            if (rideActivity && !isRideSpellcastingEnabled(maid)) {
                 return false;
             }
 
@@ -368,7 +368,7 @@ public class SpellCombatMeleeTask implements IRangedAttackTask {
 
         @Override
         protected void tick(@NotNull ServerLevel level, EntityMaid maid, long gameTime) {
-            if (sitting && !isSittingSpellcastingEnabled(maid)) {
+            if (rideActivity && !isRideSpellcastingEnabled(maid)) {
                 return;
             }
 
