@@ -2980,6 +2980,15 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     @Override
     public boolean hurt(DamageSource source, float amount) {
         FriendlyDamageHealthGuard.onDamageAttempt(this, source);
+        try {
+            return this.hurtGuarded(source, amount);
+        } finally {
+            // 早退路径不进 super.hurt，LivingEntity.hurt 的 RETURN 钩子不会清掉这一帧
+            FriendlyDamageHealthGuard.leaveDamageAttempt(this, source);
+        }
+    }
+
+    private boolean hurtGuarded(DamageSource source, float amount) {
         if (this.level().isClientSide || !Float.isFinite(amount) || amount <= 0.0F) {
             return false;
         }
@@ -3486,6 +3495,9 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return;
         }
         if (this.challengerId != null) {
+            // 30 秒无目标判负与残血打服一样算被打败，二阶段落败同样授予成就并播教学
+            this.defeatLessonPending = true;
+            this.defeatLessonPhaseTwo = this.isPhaseTwo();
             this.endChallengeLost();
         } else {
             this.endCombatQuietly();
