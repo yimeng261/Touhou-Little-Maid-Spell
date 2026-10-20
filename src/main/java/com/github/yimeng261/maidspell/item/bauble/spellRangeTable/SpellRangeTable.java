@@ -12,7 +12,7 @@ import javax.annotation.Nonnull;
 import java.util.List;
 
 /**
- * 法术射表：让女仆在坐下状态也能继续施放法术。
+ * 法术射表：让女仆在坐下或乘坐状态也能继续施放法术。
  */
 public class SpellRangeTable extends Item {
     public SpellRangeTable() {

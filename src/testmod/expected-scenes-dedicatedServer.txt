@@ -288,7 +288,7 @@ touhou_little_maid_spell.spell.task.noAiRestoredForSpellTasks
 # Goety 虚拟法杖
 touhou_little_maid_spell.spell.goety.virtualWand.castsWithFocusBagOnly
 touhou_little_maid_spell.spell.goety.virtualWand.proxiesBagSlot
-touhou_little_maid_spell.spell.goety.virtualWand.prefersMatchingRealWand
+touhou_little_maid_spell.spell.goety.virtualWand.handWandKeepsBagFocus
 touhou_little_maid_spell.spell.goety.virtualWand.prefersMainHandWand
 touhou_little_maid_spell.spell.goety.virtualWand.prefersOffHandWand
 touhou_little_maid_spell.spell.goety.virtualWand.ignoresBackpackWand

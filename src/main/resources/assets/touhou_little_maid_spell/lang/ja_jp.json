@@ -405,7 +405,6 @@
   "entity.touhou_little_maid_spell.stellar_witch.bossbar.title": "星の魔女・酒狐",
   "entity.touhou_little_maid_spell.stellar_witch.say": "＜星の魔女＞ %s",
   "entity.touhou_little_maid_spell.stellar_witch.challenge_lost": "敗北しました。星の魔女は攻撃を止め、ブランコへ戻った。",
-  "entity.touhou_little_maid_spell.stellar_witch.vow_conditions_unmet": "正々堂々と二度勝利し、さらにメイドがダメージを与えず、プレイヤーのダメージ割合が60%を超える戦いにもう一度勝利する必要があります",
   "entity.touhou_little_maid_spell.stellar_witch.vow_already_bound": "星の魔女はすでに誓いを交わしています",
   "entity.touhou_little_maid_spell.stellar_witch.vow_gift_missing": "誓いの証に問題が発生しました。代わりにこの空のお守りを受け取ってください。",
   "dialogue.touhou_little_maid_spell.winefox.greeting_1": "ああ、ようやくお会いできましたね！　嬉しいです。私のことは星の魔女と呼んでください。",

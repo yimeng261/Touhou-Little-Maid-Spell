@@ -43,7 +43,7 @@ public final class GoetyVirtualWandScenes {
         return List.of(
                 Checks.superflat("spell.goety.virtualWand.castsWithFocusBagOnly", 20, GoetyVirtualWandScenes::castsWithFocusBagOnly),
                 Checks.superflat("spell.goety.virtualWand.proxiesBagSlot", 20, GoetyVirtualWandScenes::proxiesBagSlot),
-                Checks.superflat("spell.goety.virtualWand.prefersMatchingRealWand", 20, GoetyVirtualWandScenes::prefersMatchingRealWand),
+                Checks.superflat("spell.goety.virtualWand.handWandKeepsBagFocus", 20, GoetyVirtualWandScenes::handWandKeepsBagFocus),
                 Checks.superflat("spell.goety.virtualWand.prefersMainHandWand", 20,
                         ctx -> castWithHandWand(ctx, InteractionHand.MAIN_HAND)),
                 Checks.superflat("spell.goety.virtualWand.prefersOffHandWand", 20,
@@ -136,7 +136,7 @@ public final class GoetyVirtualWandScenes {
     }
 
     /** 手上的真实法杖镶着与聚晶包相同的聚晶：用真实法杖，不建虚拟法杖，聚晶包里的聚晶不被消耗。 */
-    private static void prefersMatchingRealWand(SceneContext ctx) {
+    private static void handWandKeepsBagFocus(SceneContext ctx) {
         Rig rig = rig(ctx, MAGIC_BOLT_FOCUS);
         if (rig == null) {
             return;

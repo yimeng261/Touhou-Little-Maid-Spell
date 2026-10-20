@@ -553,7 +553,6 @@
   "entity.touhou_little_maid_spell.stellar_witch.say": "<Stellar Witch> %s",
   "item.touhou_little_maid_spell.stellar_witch_spawn_egg": "Stellar Witch Spawn Egg",
   "entity.touhou_little_maid_spell.stellar_witch.challenge_lost": "You are beaten. The Stellar Witch stays her hand and returns to her swing.",
-  "entity.touhou_little_maid_spell.stellar_witch.vow_conditions_unmet": "Win two fair fights, then one more in which the maid deals no damage and the player deals more than 60% of the damage",
   "entity.touhou_little_maid_spell.stellar_witch.vow_already_bound": "The Stellar Witch has already sworn her vow",
   "entity.touhou_little_maid_spell.stellar_witch.vow_gift_missing": "Something went wrong with the token of the vow. Take this empty charm instead.",
   "item.touhou_little_maid_spell.returning_star": "Returning Star",
