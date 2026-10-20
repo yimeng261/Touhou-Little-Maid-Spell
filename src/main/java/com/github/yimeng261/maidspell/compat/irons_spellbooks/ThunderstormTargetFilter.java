@@ -25,8 +25,8 @@ import java.util.UUID;
 /**
  * 判定哪些目标不应被 ISS 雷暴选中。
  *
- * <p>只保护非战斗生物和施法者一方的主从关系，而不是所有非玩家实体，敌对生物仍然是有效目标；
- * 女仆只有属于施法者一方时才受保护，敌人施放的雷暴照常劈女仆。</p>
+ * <p>只保护无主的中立生物和施法者一方，而不是所有非玩家实体，敌对生物仍然是有效目标；
+ * 女仆、宠物和召唤物只有属于施法者一方时才受保护，敌人施放的雷暴照常劈它们。</p>
  */
 public final class ThunderstormTargetFilter {
     private static final int VEHICLE_TRACE_LIMIT = 8;
@@ -38,33 +38,37 @@ public final class ThunderstormTargetFilter {
         if (target == null) {
             return false;
         }
-        if (target == caster) {
-            return true;
-        }
-        if (target instanceof MagicalWinefoxBossEntity boss && !boss.isBattleActive()) {
-            return true;
-        }
-        if (caster != null && MaidSpellAllyResolver.areFriendly(caster, target)) {
-            return true;
-        }
-        if (isNonCombatant(target)) {
-            return true;
-        }
-        return isProtectedThroughVehicle(caster, target, new HashSet<>(), 0);
+        return isCasterSide(caster, target)
+                || isNonCombatant(target)
+                || isProtectedThroughVehicle(caster, target, new HashSet<>(), 0);
     }
 
+    /** 施法者自己、未开战的星之魔女，以及与施法者同一阵营（主人链、队伍）的实体。 */
+    private static boolean isCasterSide(@Nullable LivingEntity caster, LivingEntity target) {
+        return target == caster
+                || target instanceof MagicalWinefoxBossEntity boss && !boss.isBattleActive()
+                || caster != null && MaidSpellAllyResolver.areFriendly(caster, target);
+    }
+
+    /**
+     * 无主的中立生物（村民、傀儡、动物等）一律不劈。有主人的生物（女仆、宠物、召唤物）不在此列，
+     * 是否受保护取决于主人是不是施法者一方，由 {@link #isCasterSide} 判定，敌方的狼和召唤物照常落雷。
+     */
     private static boolean isNonCombatant(LivingEntity target) {
-        // 女仆只在施法者一方时才受保护（由 areFriendly 判定），别人的女仆照常落雷
-        if (target instanceof EntityMaid) {
+        if (isOwned(target)) {
             return false;
         }
-        if (target instanceof AbstractVillager
+        return target instanceof AbstractVillager
                 || target instanceof IronGolem
                 || target instanceof SnowGolem
                 || target instanceof Allay
                 || target instanceof Animal && !(target instanceof Enemy)
                 || target instanceof WaterAnimal
-                || target instanceof AmbientCreature) {
+                || target instanceof AmbientCreature;
+    }
+
+    private static boolean isOwned(LivingEntity target) {
+        if (target instanceof EntityMaid) {
             return true;
         }
         if (target instanceof TamableAnimal tamable && tamable.isTame()) {
@@ -84,8 +88,8 @@ public final class ThunderstormTargetFilter {
     }
 
     /**
-     * 载具（扫帚、船类坐骑等）载着受保护的乘客时同样受保护；
-     * 反过来，骑在受保护载具上的乘客也受保护。载具链有环或异常时按深度上限截断。
+     * 载具载着施法者一方的乘客时同样受保护；反过来，骑在施法者一方载具上的乘客也受保护。
+     * 中立生物只保护它自己，敌对骑手骑在中立载具上（鸡骑士等）照常落雷。载具链有环或异常时按深度上限截断。
      */
     private static boolean isProtectedThroughVehicle(@Nullable LivingEntity caster, LivingEntity target,
                                                      Set<UUID> visited, int depth) {
@@ -95,32 +99,25 @@ public final class ThunderstormTargetFilter {
 
         Entity vehicle = target.getVehicle();
         if (vehicle instanceof LivingEntity living
-                && (isProtectedDirect(caster, living)
+                && (isCasterSide(caster, living)
                 || isProtectedThroughVehicle(caster, living, visited, depth + 1))) {
             return true;
         }
 
         Entity rootVehicle = target.getRootVehicle();
         if (rootVehicle != target && rootVehicle instanceof LivingEntity living
-                && (isProtectedDirect(caster, living)
+                && (isCasterSide(caster, living)
                 || isProtectedThroughVehicle(caster, living, visited, depth + 1))) {
             return true;
         }
 
         for (Entity passenger : target.getPassengers()) {
             if (passenger instanceof LivingEntity living
-                    && (isProtectedDirect(caster, living)
+                    && (isCasterSide(caster, living)
                     || isProtectedThroughVehicle(caster, living, visited, depth + 1))) {
                 return true;
             }
         }
         return false;
-    }
-
-    private static boolean isProtectedDirect(@Nullable LivingEntity caster, LivingEntity target) {
-        return target == caster
-                || target instanceof MagicalWinefoxBossEntity boss && !boss.isBattleActive()
-                || caster != null && MaidSpellAllyResolver.areFriendly(caster, target)
-                || isNonCombatant(target);
     }
 }
