@@ -85,6 +85,11 @@ public final class VirtualWandManager {
         return context;
     }
 
+    /** 物品栈是仍有效的虚拟法杖。 */
+    public static boolean isActive(@Nullable ItemStack stack) {
+        return get(stack) != null;
+    }
+
     public static void release(@Nullable UUID id) {
         if (id == null) {
             return;

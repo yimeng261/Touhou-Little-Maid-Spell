@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.spell.data;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
+import com.github.yimeng261.maidspell.compat.goety.VirtualWandManager;
 import net.minecraft.world.item.ItemStack;
 import com.Polarice3.Goety.api.magic.ISpell;
 
@@ -148,6 +149,8 @@ public class MaidGoetySpellData extends IMaidSpellData {
         // 清理旧聚晶，避免异常中断后下一次 stopSpell 拿到过期 focus。
         this.currentFocus = null;
         this.currentStaff = null;
+        // 绕过 Provider 直接复位数据时，上下文也不能泄漏
+        VirtualWandManager.release(this.virtualWandId);
         this.virtualWandId = null;
         this.focusSources.clear();
     }

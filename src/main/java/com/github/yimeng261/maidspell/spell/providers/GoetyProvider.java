@@ -132,7 +132,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
             ISpell spell = data.getCurrentSpell();
             ItemStack focus = getCurrentFocus(data);
             ItemStack staff = getCurrentStaff(data);
-            if (!requireStaff(maid, data, staff)) {
+            if (!requireStaffOrCooldown(maid, data, staff)) {
                 return;
             }
             // Goety 的 stopSpell 需要已施法时间，而不是剩余时间。
@@ -388,7 +388,7 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
             ISpell spell = data.getCurrentSpell();
             ItemStack focus = getCurrentFocus(data);
             ItemStack staff = getCurrentStaff(data);
-            if (!requireStaff(maid, data, staff)) {
+            if (!requireStaffOrCooldown(maid, data, staff)) {
                 return;
             }
             // castTime 对齐 DarkWand.releaseUsing 的语义：从开始施法到停止时已经经过的 tick。
@@ -414,8 +414,6 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
 
     private void resetCastingState(EntityMaid maid, MaidGoetySpellData data) {
         if (data != null) {
-            VirtualWandManager.release(data.getVirtualWandId());
-            data.setVirtualWandId(null);
             data.resetCastingState();
         }
         maid.stopUsingItem();
@@ -470,11 +468,15 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
 
     @Override
     protected void releaseProviderRuntimeReferences(EntityMaid maid, MaidGoetySpellData data) {
-        if (data != null) {
-            VirtualWandManager.release(data.getVirtualWandId());
-            data.setVirtualWandId(null);
+        // super 里会走 stopCasting，要先让它面对完整的虚拟法杖，再释放上下文
+        try {
+            super.releaseProviderRuntimeReferences(maid, data);
+        } finally {
+            if (data != null) {
+                VirtualWandManager.release(data.getVirtualWandId());
+                data.setVirtualWandId(null);
+            }
         }
-        super.releaseProviderRuntimeReferences(maid, data);
     }
 
 
@@ -530,7 +532,21 @@ public class GoetyProvider extends ISpellBookProvider<MaidGoetySpellData, ItemSt
         return false;
     }
 
+    /** 停止或完成施法时法杖已失效：施法其实已经发生过，仍按已发射段数补上冷却再复位。 */
+    private boolean requireStaffOrCooldown(EntityMaid maid, MaidGoetySpellData data, ItemStack staff) {
+        if (isUsableStaff(staff)) {
+            return true;
+        }
+        setCooldown(maid, data.getCurrentSpell());
+        resetCastingState(maid, data);
+        return false;
+    }
+
+    /** 虚拟法杖的上下文失效（女仆死亡、被移除、已释放）后不再算可用法杖。 */
     private boolean isUsableStaff(ItemStack stack) {
-        return stack != null && !stack.isEmpty() && stack.getItem() instanceof IWand;
+        if (stack == null || stack.isEmpty() || !(stack.getItem() instanceof IWand)) {
+            return false;
+        }
+        return !(stack.getItem() instanceof VirtualGoetyWandItem) || VirtualWandManager.isActive(stack);
     }
 }
