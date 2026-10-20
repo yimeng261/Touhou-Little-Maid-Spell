@@ -148,7 +148,8 @@ public final class MissingModScenes {
     /** 可选依赖 → 版本范围。低于下限的版本因范围不满足无法启动（由 NeoForge 负责，这里只核对声明）。 */
     private static final Map<String, String> OPTIONAL_DEPENDENCIES = Map.of("goety", "[3.0.0,)",
             "youkaishomecoming", "[3.0.0,)", "youkaisfeasts", "[1.1.1,)", "psi", "[1.21.1-110,2.0.0),(2.0.0,)", "slashblade", "[2.0.0,)", "usefulmagic", "[3.1.0,)",
-            "enigmaticaddons", "[0,)", "travelerstitles", "[1.21.1-NeoForge-5.1.0,)", "farmersdelight", "[1.3.0,)");
+            "enigmaticaddons", "[0,)", "travelerstitles", "[1.21.1-NeoForge-5.1.0,)", "farmersdelight", "[1.3.0,)",
+            "callresponse", "[2.2.1,)");
 
     private static void optionalDependencies(SceneContext ctx) {
         IModInfo info = ModList.get().getModContainerById(MaidSpellMod.MOD_ID).orElseThrow().getModInfo();

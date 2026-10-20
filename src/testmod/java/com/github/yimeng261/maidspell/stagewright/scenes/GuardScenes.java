@@ -54,6 +54,8 @@ public final class GuardScenes {
         scenes.add(Checks.superflat("thunderstorm.ownerSparesOwnMaid", 20, ctx -> thunderstorm(ctx, true)));
         scenes.add(Checks.superflat("thunderstorm.enemyHitsMaid", 20, ctx -> thunderstorm(ctx, false)));
         scenes.add(Checks.superflat("thunderstorm.enemyPetAndRiderHit", 20, GuardScenes::thunderstormEnemySide));
+        scenes.add(Checks.superflat("thunderstorm.neutralsSparedByEnemyCaster", 20, GuardScenes::thunderstormNeutrals));
+        scenes.add(Checks.superflat("thunderstorm.ownerSideVehicleCarriesPassenger", 20, GuardScenes::thunderstormOwnerSideVehicle));
         scenes.add(Checks.scene("config.explosiveInEffectBlacklists", 5, GuardScenes::explosiveBlacklisted));
         scenes.add(Checks.scene("config.effectBlacklistMigrationCoversBoth", 5, GuardScenes::blacklistMigration));
         return scenes;
@@ -179,6 +181,58 @@ public final class GuardScenes {
         ctx.check(strikes.stream().anyMatch(strike -> strike.distanceTo(rider) < 0.5)).as("敌人的雷暴在鸡骑士的敌对骑手脚下落雷").isTrue();
         ctx.check(strikes.stream().anyMatch(strike -> strike.distanceTo(bear) < 0.5)).as("盯着玩家的北极熊照常落雷").isTrue();
         ctx.check(strikes.stream().anyMatch(strike -> strike.distanceTo(cow) < 0.5)).as("无主奶牛不被雷劈").isFalse();
+    }
+
+    /** 让 caster 身上的雷暴结算一次，返回范围内每道落雷的位置所对应的实体是否被劈。 */
+    private static List<Entity> strikeOnce(SceneContext ctx, LivingEntity caster, MobEffect effect) {
+        effect.applyEffectTick(caster, 7);
+        List<Entity> strikes = ctx.level().getEntities((Entity) null, new AABB(ctx.rel(0, 0, 0)).inflate(24),
+                entity -> BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString().equals(LIGHTNING));
+        strikes.forEach(Entity::discard);
+        return strikes;
+    }
+
+    private static boolean struck(List<Entity> strikes, Entity target) {
+        return strikes.stream().anyMatch(strike -> strike.distanceTo(target) < 0.5);
+    }
+
+    /** 敌人施放的雷暴照样放过无主的中立生物：村民、铁傀儡、奶牛、没有盯着谁的北极熊；僵尸作为落雷对照。 */
+    private static void thunderstormNeutrals(SceneContext ctx) {
+        Optional<Holder.Reference<MobEffect>> effect = BuiltInRegistries.MOB_EFFECT.getHolder(ResourceLocation.parse("irons_spellbooks:thunderstorm"));
+        if (effect.isEmpty()) {
+            ctx.fail("irons_spellbooks:thunderstorm 未注册");
+            return;
+        }
+        LivingEntity caster = Actors.spawn(ctx, "minecraft:zombie", 0, 0, -2, true);
+        LivingEntity villager = Actors.spawn(ctx, "minecraft:villager", 5, 0, 0, true);
+        LivingEntity golem = Actors.spawn(ctx, "minecraft:iron_golem", -5, 0, 0, true);
+        LivingEntity cow = Actors.spawn(ctx, "minecraft:cow", 0, 0, 5, true);
+        LivingEntity calmBear = Actors.spawn(ctx, "minecraft:polar_bear", 0, 0, 8, true);
+        LivingEntity skeleton = Actors.spawn(ctx, "minecraft:skeleton", 8, 0, 0, true);
+        List<Entity> strikes = strikeOnce(ctx, caster, effect.get().value());
+        ctx.check(struck(strikes, villager)).as("村民被劈").isFalse();
+        ctx.check(struck(strikes, golem)).as("铁傀儡被劈").isFalse();
+        ctx.check(struck(strikes, cow)).as("奶牛被劈").isFalse();
+        ctx.check(struck(strikes, calmBear)).as("没有盯着谁的北极熊被劈").isFalse();
+        ctx.check(struck(strikes, skeleton)).as("骷髅被劈").isTrue();
+    }
+
+    /** 主人施放时，主人驯服的宠物载着敌对乘客：整条乘客链不被劈；无关的敌对生物仍被劈。 */
+    private static void thunderstormOwnerSideVehicle(SceneContext ctx) {
+        Optional<Holder.Reference<MobEffect>> effect = BuiltInRegistries.MOB_EFFECT.getHolder(ResourceLocation.parse("irons_spellbooks:thunderstorm"));
+        if (effect.isEmpty()) {
+            ctx.fail("irons_spellbooks:thunderstorm 未注册");
+            return;
+        }
+        ServerPlayer owner = Owners.visitor(ctx, "TlmsStormOwner", 0, 0, 0);
+        LivingEntity wolf = Owners.pet(ctx, "minecraft:wolf", owner, 5, 0, 0);
+        LivingEntity rider = Actors.spawn(ctx, "minecraft:husk", 5, 0, 0, true);
+        rider.startRiding(wolf, true);
+        LivingEntity bystander = Actors.spawn(ctx, "minecraft:husk", -5, 0, 0, true);
+        List<Entity> strikes = strikeOnce(ctx, owner, effect.get().value());
+        ctx.check(struck(strikes, wolf)).as("主人的宠物被劈").isFalse();
+        ctx.check(struck(strikes, rider)).as("骑在主人宠物上的敌对乘客被劈").isFalse();
+        ctx.check(struck(strikes, bystander)).as("无关的敌对生物被劈").isTrue();
     }
 
     /** 新生成的配置里，梦云水晶与馥郁巧思的随机增益黑名单都含 goety:explosive，候选效果里也就没有它。 */

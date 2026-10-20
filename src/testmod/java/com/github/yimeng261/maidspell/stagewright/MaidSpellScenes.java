@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.stagewright;
 
 import com.github.yimeng261.maidspell.stagewright.client.BookClientScenes;
+import com.github.yimeng261.maidspell.stagewright.client.WinefoxProgressClientScenes;
 import com.github.yimeng261.maidspell.stagewright.client.EnderPocketClientScenes;
 import com.github.yimeng261.maidspell.stagewright.client.ModelPackClientScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.AllyScenes;
@@ -20,6 +21,7 @@ import com.github.yimeng261.maidspell.stagewright.scenes.StellarStructureScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StructureEffectScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.FunctionScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.GoetyVirtualWandScenes;
+import com.github.yimeng261.maidspell.stagewright.scenes.FriendlyGuardScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.GuardScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.HiddenRetreatMaidScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.LootScenes;
@@ -37,6 +39,7 @@ import com.github.yimeng261.maidspell.stagewright.scenes.TemplateScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.SpellLogicScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.WinefoxAdaptiveDamageScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.WinefoxLogicScenes;
+import com.github.yimeng261.maidspell.stagewright.scenes.WinefoxProgressScenes;
 import com.github.yimeng261.maidspell.stagewright.client.PalmBlackHoleClientScenes;
 import com.github.yimeng261.maidspell.stagewright.client.SpellRendererClientScenes;
 import com.github.yimeng261.maidspell.stagewright.client.WinefoxConfigScreenClientScenes;
@@ -73,6 +76,7 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(MissingModScenes.dedicatedServer());
                 scenes.addAll(ModelPackScenes.dedicatedServer());
                 scenes.addAll(GuardScenes.dedicatedServer());
+                scenes.addAll(FriendlyGuardScenes.dedicatedServer());
                 scenes.addAll(AnchorScenes.dedicatedServer());
                 scenes.addAll(SpellEntityScenes.dedicatedServer());
                 scenes.addAll(BookScenes.dedicatedServer());
@@ -82,6 +86,7 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(StellarStructureScenes.dedicatedServer());
                 scenes.addAll(TemplateScenes.dedicatedServer());
                 scenes.addAll(ChallengeStateScenes.dedicatedServer());
+                scenes.addAll(WinefoxProgressScenes.dedicatedServer());
                 scenes.addAll(HiddenRetreatMaidScenes.dedicatedServer());
                 scenes.addAll(SpellLogicScenes.dedicatedServer());
                 scenes.addAll(WinefoxLogicScenes.dedicatedServer());
@@ -101,6 +106,7 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(EnderPocketClientScenes.integratedServer());
                 scenes.addAll(ModelPackClientScenes.integratedServer());
                 scenes.addAll(BookClientScenes.integratedServer());
+                scenes.addAll(WinefoxProgressClientScenes.integratedServer());
                 scenes.addAll(PalmBlackHoleClientScenes.integratedServer());
                 scenes.addAll(SpellRendererClientScenes.integratedServer());
                 scenes.addAll(WinefoxConfigScreenClientScenes.integratedServer());

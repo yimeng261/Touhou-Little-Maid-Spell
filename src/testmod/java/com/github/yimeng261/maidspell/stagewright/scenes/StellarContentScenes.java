@@ -89,6 +89,8 @@ public final class StellarContentScenes {
         scenes.add(Checks.scene("stellar.returningStarRecipe", 5, StellarContentScenes::returningStarRecipe));
         scenes.add(Checks.superflat("stellar.staranchor_pearl.playerUse", 20, StellarContentScenes::pearlPlayer));
         scenes.add(Checks.superflat("stellar.staranchor_pearl.maidBlocksVoid", 20, StellarContentScenes::pearlMaid));
+        scenes.add(Checks.superflat("stellar.staranchor_pearl.voidWalkOnlyCutsVoidDamage", 20, StellarContentScenes::pearlVoidOnly));
+        scenes.add(Checks.scene("stellar.staranchor_pearl.tooltipSays95", 5, StellarContentScenes::pearlTooltip));
         scenes.add(Checks.superflat("stellar.spear.throwSurvivalAndCreative", 20, StellarContentScenes::spearThrow));
         scenes.add(Checks.scene("stellar.winefox.meleeComboTimeline", 5, StellarContentScenes::winefoxComboTimeline));
         scenes.add(Checks.scene("stellar.winefox.followUpOnlySwordActions", 5, StellarContentScenes::winefoxFollowUpScope));
@@ -276,6 +278,48 @@ public final class StellarContentScenes {
         pearl.getItem().use(ctx.level(), player, InteractionHand.MAIN_HAND);
         ctx.check(player.getMainHandItem().isEmpty()).as("耐久耗尽后珍珠碎掉").isTrue();
         player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+    }
+
+    /**
+     * 虚空漫步只减虚空伤害：摔落、生物攻击照常全额；在吸收之前结算，减免后的伤害再被吸收扣除；效果结束后虚空伤害恢复全额。
+     */
+    private static void pearlVoidOnly(SceneContext ctx) {
+        ServerPlayer player = Owners.visitor(ctx, "TlmsPearlVoid", 0, 0, 0);
+        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(MaidSpellEffects.VOID_WALK, 200, 0));
+
+        float before = player.getHealth();
+        player.invulnerableTime = 0;
+        player.hurt(player.damageSources().fall(), 3);
+        ctx.check(player.getHealth()).as("虚空漫步期间的摔落伤害").isCloseTo(before - 3, 1e-3f);
+
+        player.setHealth(before);
+        player.setAbsorptionAmount(2.0F);
+        player.invulnerableTime = 0;
+        player.hurt(player.damageSources().fellOutOfWorld(), 4);
+        ctx.check(player.getHealth()).as("吸收足够时虚空伤害不扣生命").isCloseTo(before, 1e-3f);
+        ctx.check(player.getAbsorptionAmount()).as("减免后的 0.2 点被吸收扣除").isCloseTo(1.8f, 1e-3f);
+
+        player.setAbsorptionAmount(0.0F);
+        player.removeEffect(MaidSpellEffects.VOID_WALK);
+        player.invulnerableTime = 0;
+        player.hurt(player.damageSources().fellOutOfWorld(), 4);
+        ctx.check(player.getHealth()).as("效果结束后的虚空伤害").isCloseTo(before - 4, 1e-3f);
+        player.setHealth(before);
+    }
+
+    /** 三种语言的 desc2 都写着减伤 95%，且格式化占位符个数与参数个数（耐久、秒数、冷却秒数）一致，百分号已转义。 */
+    private static void pearlTooltip(SceneContext ctx) {
+        String key = "item.touhou_little_maid_spell.staranchor_pearl.desc2";
+        for (String code : List.of("zh_cn", "en_us", "ja_jp")) {
+            String text = Lang.read(code).get(key);
+            ctx.check(text != null).as(code + " 有 desc2").isTrue();
+            if (text == null) {
+                continue;
+            }
+            ctx.check(text.contains("95%%")).as(code + " 百分号已转义为 95%%").isTrue();
+            ctx.check(text.replace("%%", "").split("%s", -1).length - 1).as(code + " 的 %s 个数").isEqualTo(3);
+            ctx.check(String.format(text, 8, 35, 30).contains("95%")).as(code + " 格式化后含 95%").isTrue();
+        }
     }
 
     private static void pearlMaid(SceneContext ctx) {

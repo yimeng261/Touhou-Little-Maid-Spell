@@ -1,9 +1,13 @@
 package com.github.yimeng261.maidspell.stagewright.scenes;
 
+import com.github.yimeng261.maidspell.Config;
+import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.stagewright.support.Checks;
 import com.github.yimeng261.maidspell.stagewright.support.Reflect;
 import com.github.yimeng261.maidspell.stagewright.support.Worldgen;
+import com.github.yimeng261.maidspell.worldgen.StarfallGardenData;
 import com.github.yimeng261.maidspell.worldgen.StarfallGardenPlacementGuard;
+import com.github.yimeng261.maidspell.worldgen.StarfallGardenRetrofit;
 import com.github.yimeng261.maidspell.worldgen.WorldgenTestAccess;
 import com.github.yimeng261.maidspell.worldgen.structure.OptionalModTemplateStructure;
 import net.magicterra.stagewright.scene.Scene;
@@ -13,6 +17,8 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -78,7 +84,36 @@ public final class OptionalWorldgenScenes {
                 Checks.scene("starfallGarden.guard.respectsFrequencyAndExclusion", 5, OptionalWorldgenScenes::guardFrequency),
                 Checks.scene("starfallGarden.guard.ignoresSetsUnavailableInDimension", 5, OptionalWorldgenScenes::guardDimension),
                 Checks.scene("starfallGarden.guard.savedValidStartsBlockRetrofit", 5, OptionalWorldgenScenes::savedStarts),
-                Checks.scene("starfallGarden.guard.savedReferencesBlockRetrofit", 5, OptionalWorldgenScenes::savedReferences));
+                Checks.scene("starfallGarden.guard.savedReferencesBlockRetrofit", 5, OptionalWorldgenScenes::savedReferences),
+                Checks.scene("starfallGarden.switchOffClosesGates", 20, OptionalWorldgenScenes::switchOff));
+    }
+
+    /**
+     * 总开关关闭时三道闸门都不放行：找不到生成点、手动 generate（/place structure 走的路径）得到无效起点、
+     * 旧存档补生成直接返回且不写「已尝试」标记；场景结束后还原开关。
+     */
+    private static void switchOff(SceneContext ctx) {
+        boolean previous = Config.enableStarfallGarden;
+        Config.enableStarfallGarden = false;
+        ctx.cleanup(() -> Config.enableStarfallGarden = previous);
+        ServerLevel level = ctx.server().overworld();
+        Structure structure = level.registryAccess().registryOrThrow(Registries.STRUCTURE)
+                .get(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "starfall_garden"));
+        ctx.check(structure != null).as("星落之庭结构已注册").isTrue();
+        if (structure == null) {
+            return;
+        }
+        ChunkPos chunk = new ChunkPos(level.getSharedSpawnPos());
+        Structure.GenerationContext generation = Worldgen.context(level, chunk, holder -> true);
+        ctx.check(structure.findValidGenerationPoint(generation).isPresent()).as("关闭时能找到生成点").isFalse();
+        StructureStart start = structure.generate(generation.registryAccess(), generation.chunkGenerator(), generation.biomeSource(),
+                generation.randomState(), generation.structureTemplateManager(), generation.seed(), chunk, 0,
+                generation.heightAccessor(), generation.validBiome());
+        ctx.check(start.isValid()).as("关闭时手动 generate 得到有效起点").isFalse();
+
+        boolean attemptedBefore = StarfallGardenData.isRetrofitAttempted(ctx.server());
+        Reflect.call(null, StarfallGardenRetrofit.class, "runRetrofit", new Class<?>[]{MinecraftServer.class}, ctx.server());
+        ctx.check(StarfallGardenData.isRetrofitAttempted(ctx.server())).as("关闭时补生成不写已尝试标记").isEqualTo(attemptedBefore);
     }
 
     private static void netherFloorSelection(SceneContext ctx) {

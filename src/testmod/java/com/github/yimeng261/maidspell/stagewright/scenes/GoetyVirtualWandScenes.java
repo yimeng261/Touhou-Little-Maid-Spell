@@ -1,5 +1,6 @@
 package com.github.yimeng261.maidspell.stagewright.scenes;
 
+import com.Polarice3.Goety.api.items.magic.IFocus;
 import com.Polarice3.Goety.api.items.magic.IWand;
 import com.Polarice3.Goety.api.magic.SpellType;
 import com.Polarice3.Goety.common.entities.projectiles.MagicBolt;
@@ -49,7 +50,10 @@ public final class GoetyVirtualWandScenes {
                 Checks.superflat("spell.goety.virtualWand.prefersOffHandWand", 20,
                         ctx -> castWithHandWand(ctx, InteractionHand.OFF_HAND)),
                 Checks.superflat("spell.goety.virtualWand.ignoresBackpackWand", 20, GoetyVirtualWandScenes::ignoresBackpackWand),
-                Checks.superflat("spell.goety.virtualWand.handStaffGrantsSchoolBonus", 20, GoetyVirtualWandScenes::handStaffGrantsSchoolBonus));
+                Checks.superflat("spell.goety.virtualWand.handStaffGrantsSchoolBonus", 20, GoetyVirtualWandScenes::handStaffGrantsSchoolBonus),
+                Checks.superflat("spell.goety.virtualWand.staleContextStopStillSetsCooldown", 20, GoetyVirtualWandScenes::staleContextStop),
+                Checks.superflat("spell.goety.virtualWand.dataResetReleasesContext", 20, GoetyVirtualWandScenes::dataResetReleases),
+                Checks.superflat("spell.goety.virtualWand.invalidContextIsNotUsable", 20, GoetyVirtualWandScenes::invalidContextNotUsable));
     }
 
     /** 本场景里的女仆、目标与聚晶包。 */
@@ -133,6 +137,74 @@ public final class GoetyVirtualWandScenes {
         VirtualWandManager.release(handle.id());
         ctx.check(IWand.getFocus(wand).isEmpty()).as("释放后虚拟法杖不再有聚晶").isTrue();
         ctx.check(GoetyTestAccess.activeVirtualWandContexts()).as("释放后存活的上下文").isEqualTo(0);
+    }
+
+    /**
+     * 施法中虚拟法杖的上下文失效（被释放）后停止施法：不对空聚晶的法杖继续回调，
+     * 仍按已发射段数补上冷却，施法数据复位，没有残留上下文。
+     */
+    private static void staleContextStop(SceneContext ctx) {
+        Rig rig = rig(ctx, MAGIC_BOLT_FOCUS);
+        if (rig == null) {
+            return;
+        }
+        ItemStack focus = bagFocus(rig.bag()).copy();
+        VirtualWandManager.Handle handle = VirtualWandManager.create(rig.maid(), rig.bag(), 0, focus);
+        ctx.check(handle).as("创建虚拟法杖").isNotNull();
+        if (handle == null || !(focus.getItem() instanceof IFocus iFocus)) {
+            return;
+        }
+        rig.data().setCurrentFocus(focus);
+        rig.data().setCurrentStaff(handle.stack());
+        rig.data().setVirtualWandId(handle.id());
+        rig.data().initiateCastingState(iFocus.getSpell(), 40);
+        ctx.check(rig.data().isCasting()).as("模拟施法中").isTrue();
+
+        VirtualWandManager.release(handle.id());
+        rig.provider().stopCasting(rig.maid());
+
+        ctx.check(rig.data().isCasting()).as("停止后仍在施法").isFalse();
+        ctx.check(rig.data().getVirtualWandId()).as("停止后的上下文编号").isNull();
+        ctx.check(rig.data().getSpellCooldown(MAGIC_BOLT_SPELL)).as("法杖失效时仍补上冷却").isGreaterThan(0);
+        ctx.check(GoetyTestAccess.activeVirtualWandContexts()).as("存活的上下文").isEqualTo(0);
+    }
+
+    /** 绕过 Provider 直接复位施法数据时，上下文也一并释放，不泄漏到 removeData 或 clearAll。 */
+    private static void dataResetReleases(SceneContext ctx) {
+        Rig rig = rig(ctx, MAGIC_BOLT_FOCUS);
+        if (rig == null) {
+            return;
+        }
+        VirtualWandManager.Handle handle = VirtualWandManager.create(rig.maid(), rig.bag(), 0, bagFocus(rig.bag()));
+        ctx.check(handle).as("创建虚拟法杖").isNotNull();
+        if (handle == null) {
+            return;
+        }
+        rig.data().setVirtualWandId(handle.id());
+        ctx.check(GoetyTestAccess.activeVirtualWandContexts()).as("复位前存活的上下文").isEqualTo(1);
+        rig.data().resetCastingState();
+        ctx.check(rig.data().getVirtualWandId()).as("复位后的上下文编号").isNull();
+        ctx.check(GoetyTestAccess.activeVirtualWandContexts()).as("复位后存活的上下文").isEqualTo(0);
+    }
+
+    /** 虚拟法杖的上下文有效时是可用法杖；被释放、女仆被移除后都不再有效。 */
+    private static void invalidContextNotUsable(SceneContext ctx) {
+        Rig rig = rig(ctx, MAGIC_BOLT_FOCUS);
+        if (rig == null) {
+            return;
+        }
+        VirtualWandManager.Handle released = VirtualWandManager.create(rig.maid(), rig.bag(), 0, bagFocus(rig.bag()));
+        VirtualWandManager.Handle removed = VirtualWandManager.create(rig.maid(), rig.bag(), 0, bagFocus(rig.bag()));
+        if (released == null || removed == null) {
+            ctx.fail("创建虚拟法杖失败");
+            return;
+        }
+        ctx.check(VirtualWandManager.isActive(released.stack())).as("刚创建的虚拟法杖").isTrue();
+        VirtualWandManager.release(released.id());
+        ctx.check(VirtualWandManager.isActive(released.stack())).as("释放后的虚拟法杖").isFalse();
+        rig.maid().discard();
+        ctx.check(VirtualWandManager.isActive(removed.stack())).as("女仆被移除后的虚拟法杖").isFalse();
+        ctx.check(VirtualWandManager.isActive(ItemStack.EMPTY)).as("空物品栈").isFalse();
     }
 
     /** 手上的真实法杖镶着与聚晶包相同的聚晶：用真实法杖，不建虚拟法杖，聚晶包里的聚晶不被消耗。 */
