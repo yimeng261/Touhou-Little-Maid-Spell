@@ -163,11 +163,12 @@ public final class FriendlyDamageHealthGuard {
             RESTORE_DEPTH.remove();
             return;
         }
-        long now = server.overworld().getGameTime();
         for (Map.Entry<UUID, GuardEntry> mapEntry : new ArrayList<>(ACTIVE.entrySet())) {
             GuardEntry entry = mapEntry.getValue();
             ServerLevel level = server.getLevel(entry.dimension);
             Entity entity = level == null ? null : level.getEntity(entry.targetId);
+            // 条目按目标所在维度的时钟盖戳，过期也要按同一个时钟判断，归隐之地的时钟与主世界独立
+            long now = level == null ? server.overworld().getGameTime() : level.getGameTime();
 
             if (entity instanceof LivingEntity target) {
                 restoreIfNeeded(target);
