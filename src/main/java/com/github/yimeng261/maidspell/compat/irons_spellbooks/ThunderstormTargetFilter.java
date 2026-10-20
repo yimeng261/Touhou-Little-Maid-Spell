@@ -5,6 +5,8 @@ import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.entity.winefox.MagicalWinefoxBossEntity;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ambient.AmbientCreature;
@@ -51,11 +53,11 @@ public final class ThunderstormTargetFilter {
     }
 
     /**
-     * 无主的中立生物（村民、傀儡、动物等）一律不劈。有主人的生物（女仆、宠物、召唤物）不在此列，
+     * 无主的中立生物（村民、傀儡、动物等）一律不劈，但正盯着玩家或女仆的、愤怒中的除外。有主人的生物（女仆、宠物、召唤物）不在此列，
      * 是否受保护取决于主人是不是施法者一方，由 {@link #isCasterSide} 判定，敌方的狼和召唤物照常落雷。
      */
     private static boolean isNonCombatant(LivingEntity target) {
-        if (isOwned(target)) {
+        if (isOwned(target) || isAggressive(target)) {
             return false;
         }
         return target instanceof AbstractVillager
@@ -65,6 +67,14 @@ public final class ThunderstormTargetFilter {
                 || target instanceof Animal && !(target instanceof Enemy)
                 || target instanceof WaterAnimal
                 || target instanceof AmbientCreature;
+    }
+
+    /** 正盯着玩家或女仆的生物，以及处于愤怒状态的中立生物（北极熊等），虽然不是 Enemy 也照常落雷。 */
+    private static boolean isAggressive(LivingEntity target) {
+        if (target instanceof NeutralMob neutral && neutral.isAngry()) {
+            return true;
+        }
+        return target instanceof Mob mob && (mob.getTarget() instanceof Player || mob.getTarget() instanceof EntityMaid);
     }
 
     private static boolean isOwned(LivingEntity target) {

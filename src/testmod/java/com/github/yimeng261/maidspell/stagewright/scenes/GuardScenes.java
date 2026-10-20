@@ -154,7 +154,7 @@ public final class GuardScenes {
     }
 
     /**
-     * 敌人施放雷暴时，其他玩家的宠物和敌对骑手（鸡骑士）照常落雷，无主的奶牛仍被放过。
+     * 敌人施放雷暴时，其他玩家的宠物、敌对骑手（鸡骑士）和盯着玩家的北极熊照常落雷，无主的奶牛仍被放过。
      */
     private static void thunderstormEnemySide(SceneContext ctx) {
         Optional<Holder.Reference<MobEffect>> effect = BuiltInRegistries.MOB_EFFECT.getHolder(ResourceLocation.parse("irons_spellbooks:thunderstorm"));
@@ -169,12 +169,15 @@ public final class GuardScenes {
         LivingEntity rider = Actors.spawn(ctx, "minecraft:husk", -5, 0, 0, true);
         rider.startRiding(chicken, true);
         LivingEntity cow = Actors.spawn(ctx, "minecraft:cow", 0, 0, 5, true);
+        net.minecraft.world.entity.Mob bear = Actors.spawn(ctx, "minecraft:polar_bear", 0, 0, 8, true);
+        bear.setTarget(owner);
         effect.get().value().applyEffectTick(caster, 7);
         List<Entity> strikes = ctx.level().getEntities((Entity) null, new AABB(ctx.rel(0, 0, 0)).inflate(24),
                 entity -> BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString().equals(LIGHTNING));
         strikes.forEach(Entity::discard);
         ctx.check(strikes.stream().anyMatch(strike -> strike.distanceTo(wolf) < 0.5)).as("敌人的雷暴在其他玩家的宠物脚下落雷").isTrue();
         ctx.check(strikes.stream().anyMatch(strike -> strike.distanceTo(rider) < 0.5)).as("敌人的雷暴在鸡骑士的敌对骑手脚下落雷").isTrue();
+        ctx.check(strikes.stream().anyMatch(strike -> strike.distanceTo(bear) < 0.5)).as("盯着玩家的北极熊照常落雷").isTrue();
         ctx.check(strikes.stream().anyMatch(strike -> strike.distanceTo(cow) < 0.5)).as("无主奶牛不被雷劈").isFalse();
     }
 
