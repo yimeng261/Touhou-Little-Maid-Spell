@@ -236,9 +236,6 @@ public class StarfallGardenStructure extends Structure {
                                            StructureTemplateManager templateManager, long seed, ChunkPos chunkPos,
                                            int references, LevelHeightAccessor heightAccessor,
                                            Predicate<Holder<Biome>> validBiome) {
-        if (!Config.enableStarfallGarden) {
-            return StructureStart.INVALID_START;
-        }
         // 星落之庭不限制具体生物群系；结构的生物群系标签只用来让结构集进入主世界生成状态。
         StructureStart start = computeStart(registryAccess, chunkGenerator, biomeSource, randomState,
                 templateManager, seed, chunkPos, references, heightAccessor, holder -> true);

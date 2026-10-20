@@ -31,7 +31,7 @@ public final class Config {
     public static int meleeAttackInterval;
     public static int farAttackInterval;
     public static List<String> ironsSpellBlacklist;
-    public static boolean powerfulFriendlyFireProtection = false;
+    public static volatile boolean powerfulFriendlyFireProtection = false;
 
     public static double silverCercisTrueDamageMultiplier;
     public static double springRingMaxDamageBonus;
@@ -81,7 +81,7 @@ public final class Config {
     public static boolean allowHostileMobSpawnsInRetreat;
     public static int retreatRecordRetentionDays;
     public static boolean autoInstallTlmModelPack;
-    public static boolean enableStarfallGarden = true;
+    public static volatile boolean enableStarfallGarden = true;
 
     public static double winefoxNonPlayerDamageShareLimit;
     public static boolean winefoxChallengeConfigEnabled;
