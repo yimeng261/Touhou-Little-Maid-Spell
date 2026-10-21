@@ -14,6 +14,10 @@ final class ConfigCompat {
             .comment("启动时安装内置 TLM 模型包并覆盖同名文件；自行维护 tlm_custom_pack 时请关闭",
                     "Installs the bundled TLM model pack on launch, overwriting matching files; disable if managed manually.")
             .define("autoInstallTlmModelPack", true);
+    private static final ModConfigSpec.BooleanValue USEFUL_MAGIC_MAID_TERRAIN_PROTECTION = BUILDER
+            .comment("女仆使用实用魔法时禁止破坏地形；关闭后遵循实用魔法原有规则，不影响玩家施法",
+                    "Prevents terrain destruction by maids using UsefulMagic; disabling follows its original rules and does not affect players.")
+            .define("usefulMagicMaidTerrainProtection", true);
 
     static {
         BUILDER.pop();
@@ -26,5 +30,6 @@ final class ConfigCompat {
 
     static void load() {
         Config.autoInstallTlmModelPack = AUTO_INSTALL_TLM_MODEL_PACK.get();
+        Config.usefulMagicMaidTerrainProtection = USEFUL_MAGIC_MAID_TERRAIN_PROTECTION.get();
     }
 }

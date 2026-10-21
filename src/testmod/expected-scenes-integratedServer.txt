@@ -55,6 +55,18 @@ touhou_little_maid_spell.spell.usefulmagic.cast.push_magic
 touhou_little_maid_spell.spell.usefulmagic.cast.starry_magic
 touhou_little_maid_spell.spell.usefulmagic.cast.sword_formation_magic
 touhou_little_maid_spell.spell.usefulmagic.cast.sword_qi_magic
+# 女仆地形保护与实用魔法游戏规则组合、延迟队列及主人链
+touhou_little_maid_spell.spell.usefulmagic.terrain.maid.protectiontrue.ruletrue
+touhou_little_maid_spell.spell.usefulmagic.terrain.player.protectiontrue.ruletrue
+touhou_little_maid_spell.spell.usefulmagic.terrain.maid.protectiontrue.rulefalse
+touhou_little_maid_spell.spell.usefulmagic.terrain.player.protectiontrue.rulefalse
+touhou_little_maid_spell.spell.usefulmagic.terrain.maid.protectionfalse.ruletrue
+touhou_little_maid_spell.spell.usefulmagic.terrain.player.protectionfalse.ruletrue
+touhou_little_maid_spell.spell.usefulmagic.terrain.maid.protectionfalse.rulefalse
+touhou_little_maid_spell.spell.usefulmagic.terrain.player.protectionfalse.rulefalse
+touhou_little_maid_spell.spell.usefulmagic.terrain.pendingQueueUsesCurrentSetting
+touhou_little_maid_spell.spell.usefulmagic.terrain.maidOwnerChain
+touhou_little_maid_spell.spell.usefulmagic.terrain.diggingAndGiantSword
 # 魂之书主人保护
 touhou_little_maid_spell.bauble.soul_book.ownerProtectionOnOff
 touhou_little_maid_spell.bauble.soul_book.ownerProtectionAfterCycles

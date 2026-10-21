@@ -42,6 +42,7 @@ public final class ConfigFileScenes {
         scenes.add(io("config.legacyClientMoves", 5, ConfigFileScenes::legacyClient));
         scenes.add(io("config.baublesOldGroupsMoveToUtilityAndSpecial", 5, ConfigFileScenes::baublesLayout));
         scenes.add(Checks.scene("config.starfallGardenSwitchDefaultsOnAndKeepsFalse", 5, ConfigFileScenes::starfallGardenSwitch));
+        scenes.add(Checks.scene("config.usefulMagicTerrainProtectionDefaultsOnAndKeepsFalse", 5, ConfigFileScenes::usefulMagicTerrainProtection));
         scenes.add(Checks.scene("config.everyEntryBilingualAfterCorrect", 5, ConfigFileScenes::bilingualComments));
         return scenes;
     }
@@ -255,6 +256,15 @@ public final class ConfigFileScenes {
         config.set("worldgen.enableStarfallGarden", false);
         Config.WORLDGEN_SPEC.correct(config);
         ctx.check(config.<Boolean>get("worldgen.enableStarfallGarden")).as("显式关闭后 enableStarfallGarden").isFalse();
+    }
+
+    private static void usefulMagicTerrainProtection(SceneContext ctx) {
+        CommentedConfig config = TomlFormat.instance().createConfig();
+        Config.COMPAT_SPEC.correct(config);
+        ctx.check(config.<Boolean>get("compat.usefulMagicMaidTerrainProtection")).as("默认开启女仆地形保护").isTrue();
+        config.set("compat.usefulMagicMaidTerrainProtection", false);
+        Config.COMPAT_SPEC.correct(config);
+        ctx.check(config.<Boolean>get("compat.usefulMagicMaidTerrainProtection")).as("保留显式关闭的配置").isFalse();
     }
 
     /** 空配置和清掉注释的配置补全后，每一项都带中文和英文注释，已填的值不被覆盖。 */

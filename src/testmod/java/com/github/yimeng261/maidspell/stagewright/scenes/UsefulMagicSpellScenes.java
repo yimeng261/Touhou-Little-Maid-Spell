@@ -72,6 +72,7 @@ public final class UsefulMagicSpellScenes {
             scenes.add(Checks.superflat("spell.usefulmagic.cast." + spell, START_WITHIN + FINISH_WITHIN + SETTLE + 60,
                     ctx -> cast(ctx, spell)));
         }
+        scenes.addAll(UsefulMagicTerrainScenes.integratedServer());
         return scenes;
     }
 

@@ -81,6 +81,7 @@ public final class Config {
     public static boolean allowHostileMobSpawnsInRetreat;
     public static int retreatRecordRetentionDays;
     public static boolean autoInstallTlmModelPack;
+    public static volatile boolean usefulMagicMaidTerrainProtection = true;
     public static volatile boolean enableStarfallGarden = true;
 
     public static double winefoxNonPlayerDamageShareLimit;

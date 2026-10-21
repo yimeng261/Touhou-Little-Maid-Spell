@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.mixin.usefulmagic;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.compat.usefulmagic.UsefulMagicTerrainProtection;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -62,7 +63,9 @@ public abstract class ExplosionMagicMixin {
         Vec3 target = MagicHelper.INSTANCE.findClipTarget(serverLevel, maid, 200.0, false, false);
         double damage = MagicHelper.INSTANCE.getMagicDamage(wandStack);
         handleExplodeParticle(serverLevel, maid, target);
-        processMeteoriteStyleExplosion(serverLevel, maid, target, Math.max(1, (int) Math.round(MAIDSPELL$EXPLOSION_RADIUS)));
+        if (!UsefulMagicTerrainProtection.blocksTerrainDamage(maid)) {
+            processMeteoriteStyleExplosion(serverLevel, maid, target, Math.max(1, (int) Math.round(MAIDSPELL$EXPLOSION_RADIUS)));
+        }
 
         DamageSource source = serverLevel.damageSources().mobAttack(maid);
         double box = MAIDSPELL$ENTITY_DAMAGE_RADIUS * 2.0;

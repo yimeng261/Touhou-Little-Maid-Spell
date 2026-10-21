@@ -91,6 +91,11 @@
     "tlm.RequestEffectPackageMixin",
     "tlm.SetAttackListPackageMixin",
     "usefulmagic.ExplosionMagicMixin",
+    "usefulmagic.ExplosionUtilMixin",
+    "usefulmagic.MeteoriteImpactHelperMixin",
+    "usefulmagic.StarrySubBarrageMixin",
+    "usefulmagic.DiggingMagicMixin",
+    "usefulmagic.GiantSwordLightBarrageMagicMixin",
     "usefulmagic.FriendFilterHelperMixin",
     "usefulmagic.HealthMagicMixin"
   ],
