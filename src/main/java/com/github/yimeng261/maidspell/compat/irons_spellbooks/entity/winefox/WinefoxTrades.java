@@ -46,6 +46,7 @@ public final class WinefoxTrades {
     private static final int EPIC_INK_PRICE = 40;
     private static final int SNACK_PRICE = 2;
     private static final int STAR_GLOW_PRICE = 1;
+    private static final int STELLAR_ENDSHORE_DISC_PRICE = 10;
 
     /**
      * 每日限购次数，按《NPC交易栏》那一列抄：三件装备各 1 件，星锚珍珠与传说墨水各 3 件。
@@ -100,6 +101,8 @@ public final class WinefoxTrades {
                 new ItemStack(MaidSpellItems.JINGXU_YOULAN.get())));
         offers.add(offer(emeralds(STAR_GLOW_PRICE),
                 new ItemStack(MaidSpellItems.STAR_GLOW_FLOWER_CLUSTER.get(), 4)));
+        offers.add(offer(emeralds(STELLAR_ENDSHORE_DISC_PRICE),
+                new ItemStack(MaidSpellItems.MUSIC_DISC_STELLAR_ENDSHORE.get())));
         offers.add(offer(emeralds(half(5, discounted)), enchantedBook(Enchantments.MENDING, 1)));
         offers.add(offer(emeralds(half(4, discounted)), enchantedBook(Enchantments.ALL_DAMAGE_PROTECTION, 4)));
     }

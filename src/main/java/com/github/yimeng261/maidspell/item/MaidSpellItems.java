@@ -40,9 +40,12 @@ import com.github.yimeng261.maidspell.item.common.StarglintMaterialItem;
 import com.github.yimeng261.maidspell.item.common.StarwatchCompassItem;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
+import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 import net.minecraft.Util;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Rarity;
+import net.minecraft.world.item.RecordItem;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.DeferredRegister;
@@ -100,6 +103,16 @@ public class MaidSpellItems {
     // 观星罗盘：守塔人的战利品，在末地指向星途终岸
     public static final RegistryObject<Item> STARWATCH_COMPASS = ITEMS.register("starwatch_compass", StarwatchCompassItem::new);
 
+    // 星途终岸与星之魔女战斗曲的原版格式唱片。
+    public static final RegistryObject<Item> MUSIC_DISC_STELLAR_ENDSHORE =
+        ITEMS.register("music_disc_stellar_endshore",
+            () -> new RecordItem(15, MaidSpellSounds.WINEFOX_STARFALL_ENDSHORE_BGM,
+                musicDiscProperties(), 3703));
+    public static final RegistryObject<Item> MUSIC_DISC_CONCERTO_NO_10_B_MINOR =
+        ITEMS.register("music_disc_concerto_no_10_b_minor",
+            () -> new RecordItem(15, MaidSpellSounds.WINEFOX_BGM,
+                musicDiscProperties(), 4227));
+
     // 星云核心仅由合格的魔女挑战发放。
     public static final RegistryObject<Item> NEBULA_CORE = ITEMS.register("nebula_core", NebulaCoreItem::new);
     public static final RegistryObject<Item> STAR_METEORITE = ITEMS.register("star_meteorite",
@@ -139,6 +152,10 @@ public class MaidSpellItems {
 
     public static String itemDesc(RegistryObject<Item> item) {
         return Util.makeDescriptionId("item", item.getId());
+    }
+
+    private static Item.Properties musicDiscProperties() {
+        return new Item.Properties().stacksTo(1).rarity(Rarity.RARE);
     }
 
     /**

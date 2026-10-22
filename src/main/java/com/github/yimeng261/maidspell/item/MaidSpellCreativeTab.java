@@ -106,6 +106,10 @@ public class MaidSpellCreativeTab {
                     output.accept(MaidSpellItems.STARWATCH_COMPASS.get());
                 }
 
+                // 音乐唱片
+                output.accept(MaidSpellItems.MUSIC_DISC_STELLAR_ENDSHORE.get());
+                output.accept(MaidSpellItems.MUSIC_DISC_CONCERTO_NO_10_B_MINOR.get());
+
                 // 装饰方块
                 output.accept(MaidSpellItems.SCARLET_ZHUHUA.get());
                 output.accept(MaidSpellItems.YUE_LINGLAN.get());

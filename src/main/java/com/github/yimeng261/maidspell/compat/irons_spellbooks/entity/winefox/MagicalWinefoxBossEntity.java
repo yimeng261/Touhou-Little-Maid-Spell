@@ -329,6 +329,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private int challengeStartTicks;
     @Nullable
     private UUID challengerId;
+    /** 防止目标变更事件在 beginMobCombat 内同步重入并形成无限 setTarget 递归。 */
+    private boolean beginningMobCombat;
     @Nullable
     private UUID postVictoryChatPlayerId;
     private final java.util.Set<UUID> greetedPlayers = new java.util.HashSet<>();
@@ -1631,6 +1633,18 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * @return 这一击能否生效
      */
     boolean beginMobCombat(LivingEntity attacker) {
+        if (this.beginningMobCombat) {
+            return false;
+        }
+        this.beginningMobCombat = true;
+        try {
+            return this.beginMobCombatInternal(attacker);
+        } finally {
+            this.beginningMobCombat = false;
+        }
+    }
+
+    private boolean beginMobCombatInternal(LivingEntity attacker) {
         // 另一个星之魔女必须挡在这儿：她自己的 setTarget 也会再发一次
         // LivingChangeTargetEvent，两个个体互相把对方设成目标就成了无限的
         // setTarget 递归 —— beginMobCombat → setTarget → 事件 → beginMobCombat，
@@ -3238,7 +3252,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
      * <p><b>必须自己调 {@code dropFromLootTable}。</b>原版死亡流程已被禁用，
      * 只有正式挑战中的合法战败才能调用这个奖励入口。
      *
-     * <p>星云核心不走战利品表而是直接落地；女仆代打或使用自定义配置的挑战均不掉落。
+     * <p>星云核心与星之魔女战斗曲唱片不走战利品表而是直接落地；
+     * 女仆代打或使用自定义配置的挑战均不掉落。
      */
     private void dropDefeatRewards(@Nullable DamageSource source) {
         DamageSource rewardSource = source;
@@ -3251,6 +3266,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.dropFromLootTable(rewardSource, this.lastHurtByPlayerTime > 0);
         if (!this.isRestricted() && !this.customChallenge) {
             this.spawnAtLocation(new ItemStack(MaidSpellItems.NEBULA_CORE.get()));
+            this.spawnAtLocation(new ItemStack(MaidSpellItems.MUSIC_DISC_CONCERTO_NO_10_B_MINOR.get()));
         }
         if (this.level() instanceof ServerLevel serverLevel) {
             ExperienceOrb.award(serverLevel, this.position(), 1200);

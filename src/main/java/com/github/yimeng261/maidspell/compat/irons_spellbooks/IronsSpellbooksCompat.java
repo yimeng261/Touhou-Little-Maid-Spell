@@ -10,6 +10,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.VoidPhaseDam
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.StaranchorStunSpellInterrupt;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.PalmBlackHoleScrollVisibility;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxBossSleepGuard;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxCounterspellGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxKnockbackGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxSpellPowerBonus;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEffects;
@@ -49,6 +50,7 @@ public final class IronsSpellbooksCompat {
         MinecraftForge.EVENT_BUS.register(StaranchorStunSpellInterrupt.class);
         MinecraftForge.EVENT_BUS.register(WinefoxBossSleepGuard.class);
         MinecraftForge.EVENT_BUS.register(WinefoxNonLethalGuard.class);
+        MinecraftForge.EVENT_BUS.register(WinefoxCounterspellGuard.class);
         // 抗推力也挂在这儿而不是用 @Mod.EventBusSubscriber：那个类引用酒狐实体，
         // 而酒狐的父类来自铁魔法，没装铁魔法时类加载就炸。
         MinecraftForge.EVENT_BUS.register(WinefoxKnockbackGuard.class);
