@@ -1,0 +1,8 @@
+{
+  "comparator_output": 15,
+  "description": {
+    "translate": "jukebox_song.touhou_little_maid_spell.stellar_endshore"
+  },
+  "length_in_seconds": 185.15,
+  "sound_event": "touhou_little_maid_spell:music.starfall_endshore"
+}

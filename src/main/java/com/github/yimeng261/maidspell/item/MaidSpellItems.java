@@ -42,9 +42,12 @@ import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import net.minecraft.Util;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Rarity;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -104,6 +107,12 @@ public class MaidSpellItems {
     // 观星罗盘：观星术士的战利品，在末地指向星途终岸
     public static final DeferredItem<Item> STARWATCH_COMPASS = ITEMS.register("starwatch_compass", StarwatchCompassItem::new);
 
+    // 星途终岸与星之魔女战斗曲的音乐唱片，曲目由 jukebox_song 数据定义。
+    public static final DeferredItem<Item> MUSIC_DISC_STELLAR_ENDSHORE =
+        ITEMS.register("music_disc_stellar_endshore", () -> new Item(musicDiscProperties("stellar_endshore")));
+    public static final DeferredItem<Item> MUSIC_DISC_CONCERTO_NO_10_B_MINOR =
+        ITEMS.register("music_disc_concerto_no_10_b_minor", () -> new Item(musicDiscProperties("concerto_no_10_b_minor")));
+
     public static final DeferredItem<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
         () -> new ScarletZhuhuaItem(MaidSpellBlocks.SCARLET_ZHUHUA.get()));
     public static final DeferredItem<Item> YUE_LINGLAN = ITEMS.register("yue_linglan",
@@ -129,6 +138,12 @@ public class MaidSpellItems {
      */
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
+    }
+
+    private static Item.Properties musicDiscProperties(String song) {
+        return new Item.Properties().stacksTo(1).rarity(Rarity.RARE)
+            .jukeboxPlayable(ResourceKey.create(Registries.JUKEBOX_SONG,
+                ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, song)));
     }
 
     public static String itemDesc(DeferredItem<Item> item) {

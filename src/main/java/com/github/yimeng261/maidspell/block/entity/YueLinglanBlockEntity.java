@@ -33,7 +33,11 @@ public class YueLinglanBlockEntity extends BlockEntity {
     private static final ResourceLocation ELVEN_REALM_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "elven_realm");
     private static final TagKey<Structure> ELVEN_REALM_TAG =
         TagKey.create(Registries.STRUCTURE, ELVEN_REALM_ID);
-    private static final int STRUCTURE_SEARCH_RADIUS = 2560;
+    private static final int STRUCTURE_SEARCH_RADIUS_BLOCKS = 5120;
+    private static final int ELVEN_REALM_PLACEMENT_SPACING_CHUNKS = 32;
+    // findNearestMapStructure 的半径单位是按间距划分的搜索圈数，而不是方块数。
+    private static final int STRUCTURE_SEARCH_RADIUS = STRUCTURE_SEARCH_RADIUS_BLOCKS
+        / (ELVEN_REALM_PLACEMENT_SPACING_CHUNKS * 16);
     private static final double MIN_PARTICLE_DISTANCE_TO_STRUCTURE = 48.0;
     private static final double MIN_PARTICLE_DISTANCE_TO_STRUCTURE_SQR =
         MIN_PARTICLE_DISTANCE_TO_STRUCTURE * MIN_PARTICLE_DISTANCE_TO_STRUCTURE;

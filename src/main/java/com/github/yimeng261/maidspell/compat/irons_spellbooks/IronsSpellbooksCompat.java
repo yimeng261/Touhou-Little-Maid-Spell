@@ -7,6 +7,7 @@ import com.github.yimeng261.maidspell.compat.irons_spellbooks.client.IronsSpellb
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.PalmBlackHoleScrollVisibility;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.StaranchorStunSpellInterrupt;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.VoidPhaseDamageHandler;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.event.WinefoxCounterspellGuard;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowLongswordItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarShadowStaffItem;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.item.StarWitchArmorMaterial;
@@ -49,6 +50,7 @@ public final class IronsSpellbooksCompat {
         NeoForge.EVENT_BUS.register(WinefoxNonLethalGuard.class);
         // 以下监听器都引用酒狐实体，其父类来自铁魔法，所以只在这里按需注册。
         NeoForge.EVENT_BUS.register(WinefoxKnockbackGuard.class);
+        NeoForge.EVENT_BUS.register(WinefoxCounterspellGuard.class);
         NeoForge.EVENT_BUS.register(WinefoxSpellPowerBonus.class);
     }
 
