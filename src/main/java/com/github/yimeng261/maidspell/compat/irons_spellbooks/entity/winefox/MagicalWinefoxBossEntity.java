@@ -336,7 +336,12 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private int challengeStartTicks;
     @Nullable
     private UUID challengerId;
-    /** 防止目标变更事件在 beginMobCombat 内同步重入并形成无限 setTarget 递归。 */
+    /**
+     * 防止目标变更事件在 beginMobCombat 内同步重入并形成无限 setTarget 递归。
+     *
+     * <p>现有唯一的重入路径（攻击者也是星之魔女）已在 beginMobCombatInternal 开头挡掉，
+     * 这里是第二道。一旦触发，嵌套调用返回 false，hurt() 的坐姿分支会因此取消这次伤害。
+     */
     private boolean beginningMobCombat;
     @Nullable
     private UUID postVictoryChatPlayerId;

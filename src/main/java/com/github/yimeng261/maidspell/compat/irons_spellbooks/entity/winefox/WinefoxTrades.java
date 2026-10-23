@@ -87,7 +87,7 @@ public final class WinefoxTrades {
         return offers;
     }
 
-    /** 补给：战胜前全价，战胜后一律半价。 */
+    /** 补给：战胜前全价，战胜后半价；星荧花簇与「星海」唱片不打折。 */
     private static void addSupplies(MerchantOffers offers, boolean discounted) {
         offers.add(offer(emeralds(half(COMMON_INK_PRICE, discounted)),
                 new ItemStack(ItemRegistry.INK_COMMON.get())));
