@@ -1,8 +1,17 @@
 {
   "neoforge:conditions": [
     {
-      "type": "neoforge:mod_loaded",
-      "modid": "youkaishomecoming"
+      "type": "neoforge:or",
+      "values": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaishomecoming"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaisfeasts"
+        }
+      ]
     }
   ],
   "pools": [
@@ -150,9 +159,19 @@
       "rolls": 5,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:raw_lamprey",
-          "weight": 30
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:raw_lamprey",
+              "weight": 30
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:raw_lamprey",
+              "weight": 30
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -164,9 +183,19 @@
       "rolls": 5,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:raw_lamprey",
-          "weight": 30
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:raw_lamprey",
+              "weight": 30
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:raw_lamprey",
+              "weight": 30
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -178,9 +207,19 @@
       "rolls": 5,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:imitation_bear_paw",
-          "weight": 30
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:imitation_bear_paw",
+              "weight": 30
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:imitation_bear_paw",
+              "weight": 30
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -220,9 +259,19 @@
       "rolls": 5,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:redbean",
-          "weight": 30
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:redbean",
+              "weight": 30
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:redbean",
+              "weight": 30
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -232,4 +281,3 @@
     }
   ]
 }
-

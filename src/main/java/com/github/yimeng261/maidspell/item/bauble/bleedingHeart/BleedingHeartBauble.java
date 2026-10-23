@@ -9,7 +9,7 @@ import net.minecraft.world.entity.player.Player;
 public class BleedingHeartBauble implements IMaidBauble {
     static {
         Global.baubleDamageHandlers.put(MaidSpellItems.BLEEDING_HEART.get(), (event, maid) -> {
-            float amount = event.getOriginalDamage();
+            float amount = event.getNewDamage();
             Player owner = (Player) maid.getOwner();
             if (owner != null) {
                 owner.heal(amount*(float)Config.bleedingHeartHealRatio);

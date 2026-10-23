@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "touhou_little_maid_spell:starwatch_tower",
+      "required": false
+    }
+  ]
+}

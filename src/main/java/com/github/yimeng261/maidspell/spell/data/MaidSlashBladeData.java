@@ -46,6 +46,10 @@ public class MaidSlashBladeData extends IMaidSpellData {
         return DATA_MAP.computeIfAbsent(maidUUID, MaidSlashBladeData::new);
     }
 
+    public static MaidSlashBladeData get(UUID maidUUID) {
+        return DATA_MAP.get(maidUUID);
+    }
+
     public static void remove(UUID maidUUID) {
         DATA_MAP.remove(maidUUID);
     }
@@ -99,7 +103,7 @@ public class MaidSlashBladeData extends IMaidSpellData {
     }
     @Override
     public void resetCastingState() {
-        this.isCasting = false;
+        super.resetCastingState();
         this.saExecutionStartTime = 0;
         this.targetUseTime = 0;
         this.lastComboState = null;
@@ -127,7 +131,6 @@ public class MaidSlashBladeData extends IMaidSpellData {
             ItemStack oldSpellBook = iterator.next();
             if(ItemStack.isSameItem(oldSpellBook, spellBook)){
                 iterator.remove();
-                rebuildSpellBookKinds();
                 return;
             }
         }

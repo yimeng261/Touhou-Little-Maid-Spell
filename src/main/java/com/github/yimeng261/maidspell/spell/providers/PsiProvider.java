@@ -15,13 +15,14 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import org.slf4j.Logger;
-import vazkii.psi.api.PsiAPI;
+import vazkii.psi.api.capability.PsiCapabilities;
 import vazkii.psi.api.cad.ICAD;
 import vazkii.psi.api.cad.ISocketable;
 import vazkii.psi.api.spell.EnumSpellStat;
 import vazkii.psi.api.spell.ISpellAcceptor;
 import vazkii.psi.api.spell.Spell;
 import vazkii.psi.api.spell.SpellContext;
+import vazkii.psi.common.core.handler.PlayerData;
 import vazkii.psi.common.core.handler.PlayerDataHandler;
 import vazkii.psi.common.item.ItemCAD;
 
@@ -66,7 +67,22 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
      * 构造函数，绑定 MaidPsiSpellData 数据类型和 Spell 法术类型
      */
     public PsiProvider() {
-        super(MaidPsiSpellData::getOrCreate, Spell.class);
+        super(MaidPsiSpellData::getOrCreate, MaidPsiSpellData::get,
+                MaidPsiSpellData::remove, MaidPsiSpellData::clearAll, Spell.class);
+    }
+
+    @Override
+    protected void releaseProviderRuntimeReferences(EntityMaid maid, MaidPsiSpellData data) {
+        clearLoopcastContext(maid.getUUID(), "maid_release");
+    }
+
+    @Override
+    public void clearAllData() {
+        try {
+            clearAllLoopcastContexts();
+        } finally {
+            super.clearAllData();
+        }
     }
 
     /**
@@ -83,7 +99,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
         }
 
         // 获取CAD的可插拔组件
-        ISocketable sockets = spellBook.getCapability(PsiAPI.SOCKETABLE_CAPABILITY);
+        ISocketable sockets = PsiCapabilities.socketable(spellBook);
         if (sockets == null) {
             return spells;
         }
@@ -134,7 +150,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
         }
 
         // 获取CAD的可插拔组件
-        ISocketable sockets = cad.getCapability(PsiAPI.SOCKETABLE_CAPABILITY);
+        ISocketable sockets = PsiCapabilities.socketable(cad);
         if (sockets == null) {
             LOGGER.warn("{} abort stage=socket maid={} reason=no_socket_cap cad={}", PSI_LOG_PREFIX, maid.getUUID(), describeStack(cad));
             return;
@@ -343,7 +359,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
     private void setupVirtualPlayerData(Player fakePlayer) {
         try {
             // 获取或创建虚拟 PlayerData
-            PlayerDataHandler.PlayerData playerData = PlayerDataHandler.get(fakePlayer);
+            PlayerData playerData = PlayerDataHandler.get(fakePlayer);
 
             // 设置无限 PSI
             playerData.availablePsi = Integer.MAX_VALUE;
@@ -407,9 +423,12 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
     }
 
     private void replaceLoopcastContext(EntityMaid maid, CopiedCadContext newContext) {
-        CopiedCadContext oldContext = ACTIVE_LOOPCAST_CONTEXTS.put(maid.getUUID(), newContext);
+        CopiedCadContext oldContext;
+        synchronized (ACTIVE_LOOPCAST_CONTEXTS) {
+            oldContext = ACTIVE_LOOPCAST_CONTEXTS.put(maid.getUUID(), newContext);
+        }
         if (oldContext != null && oldContext != newContext) {
-            oldContext.close();
+            closeLoopcastContext(maid.getUUID(), oldContext, "context_replaced");
         }
     }
 
@@ -422,31 +441,37 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
     }
 
     private static void clearLoopcastContext(UUID maidUuid, String reason) {
-        CopiedCadContext context = ACTIVE_LOOPCAST_CONTEXTS.remove(maidUuid);
+        CopiedCadContext context;
+        synchronized (ACTIVE_LOOPCAST_CONTEXTS) {
+            context = ACTIVE_LOOPCAST_CONTEXTS.remove(maidUuid);
+        }
+        closeLoopcastContext(maidUuid, context, reason);
+    }
+
+    public static void clearAllLoopcastContexts() {
+        List<Map.Entry<UUID, CopiedCadContext>> contexts;
+        synchronized (ACTIVE_LOOPCAST_CONTEXTS) {
+            contexts = new ArrayList<>(ACTIVE_LOOPCAST_CONTEXTS.entrySet());
+            ACTIVE_LOOPCAST_CONTEXTS.clear();
+        }
+        contexts.forEach(entry -> closeLoopcastContext(entry.getKey(), entry.getValue(), "runtime_clear"));
+    }
+
+    private static void closeLoopcastContext(UUID maidUuid, CopiedCadContext context, String reason) {
         if (context == null) {
             return;
         }
         try {
-            PlayerDataHandler.PlayerData playerData = PlayerDataHandler.get(context.caster());
+            PlayerData playerData = PlayerDataHandler.get(context.caster());
             playerData.stopLoopcast();
         } catch (Exception e) {
             LOGGER.warn("{} abort stage=loopcast_stop maid={} reason={}", PSI_LOG_PREFIX, maidUuid, reason, e);
         } finally {
-            context.close();
-        }
-    }
-
-    public static void clearAllLoopcastContexts() {
-        try {
-            for (UUID maidUuid : new ArrayList<>(ACTIVE_LOOPCAST_CONTEXTS.keySet())) {
-                try {
-                    clearLoopcastContext(maidUuid, "runtime_clear");
-                } catch (RuntimeException | LinkageError e) {
-                    LOGGER.warn("{} abort stage=loopcast_clear maid={}", PSI_LOG_PREFIX, maidUuid, e);
-                }
+            try {
+                context.close();
+            } catch (Exception e) {
+                LOGGER.warn("{} abort stage=loopcast_close maid={} reason={}", PSI_LOG_PREFIX, maidUuid, reason, e);
             }
-        } finally {
-            ACTIVE_LOOPCAST_CONTEXTS.clear();
         }
     }
 
@@ -467,7 +492,7 @@ public class PsiProvider extends ISpellBookProvider<MaidPsiSpellData, Spell> {
                 caster.setPos(maid.getX(), maid.getY(), maid.getZ());
                 caster.setYRot(maid.getYRot());
                 caster.setXRot(maid.getXRot());
-                PlayerDataHandler.PlayerData playerData = PlayerDataHandler.get(caster);
+                PlayerData playerData = PlayerDataHandler.get(caster);
                 playerData.availablePsi = Integer.MAX_VALUE;
                 playerData.overflowed = false;
                 playerData.tick();

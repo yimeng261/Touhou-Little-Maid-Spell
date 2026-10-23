@@ -4,7 +4,11 @@ import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.worldgen.structure.FallenSanctumStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.HiddenRetreatStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.LandJigsawStructure;
+import com.github.yimeng261.maidspell.worldgen.structure.OptionalModTemplateStructure;
 import com.github.yimeng261.maidspell.worldgen.structure.RelicSanctumStructure;
+import com.github.yimeng261.maidspell.worldgen.structure.StarfallGardenStructure;
+import com.github.yimeng261.maidspell.worldgen.structure.StarwatchTowerStructure;
+import com.github.yimeng261.maidspell.worldgen.structure.StellarEndshoreStructure;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -13,6 +17,10 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public class MaidSpellStructures {
     public static final DeferredRegister<StructureType<?>> STRUCTURE_TYPES
             = DeferredRegister.create(Registries.STRUCTURE_TYPE, MaidSpellMod.MOD_ID);
+
+    // 按联动模组开关生成的单模板结构（支持主世界地表与下界洞穴地面、缺模组时的模板回退）
+    public static final DeferredHolder<StructureType<?>, StructureType<OptionalModTemplateStructure>> OPTIONAL_MOD_TEMPLATE
+            = STRUCTURE_TYPES.register("optional_mod_template", () -> () -> OptionalModTemplateStructure.CODEC);
 
     // 隐世之境结构（基于拼图系统，带特殊逻辑：去重、队列、配额）
     public static final DeferredHolder<StructureType<?>, StructureType<HiddenRetreatStructure>> HIDDEN_RETREAT
@@ -29,4 +37,16 @@ public class MaidSpellStructures {
     // 堕天圣堂结构（基于拼图系统，下界绯红森林地表生成）
     public static final DeferredHolder<StructureType<?>, StructureType<FallenSanctumStructure>> FALLEN_SANCTUM
             = STRUCTURE_TYPES.register("fallen_sanctum", () -> () -> FallenSanctumStructure.CODEC);
+
+    // 星途终岸结构（基于拼图系统，悬在末地外岛上空的固定高度）
+    public static final DeferredHolder<StructureType<?>, StructureType<StellarEndshoreStructure>> STELLAR_ENDSHORE
+            = STRUCTURE_TYPES.register("stellar_endshore", () -> () -> StellarEndshoreStructure.CODEC);
+
+    // 观星塔结构（基于拼图系统，末地外岛地表，落点判定同末地城）
+    public static final DeferredHolder<StructureType<?>, StructureType<StarwatchTowerStructure>> STARWATCH_TOWER
+            = STRUCTURE_TYPES.register("starwatch_tower", () -> () -> StarwatchTowerStructure.CODEC);
+
+    // 星落之庭结构（基于拼图系统，主世界地表，出生点 200~500 格环形范围内）
+    public static final DeferredHolder<StructureType<?>, StructureType<StarfallGardenStructure>> STARFALL_GARDEN
+            = STRUCTURE_TYPES.register("starfall_garden", () -> () -> StarfallGardenStructure.CODEC);
 }

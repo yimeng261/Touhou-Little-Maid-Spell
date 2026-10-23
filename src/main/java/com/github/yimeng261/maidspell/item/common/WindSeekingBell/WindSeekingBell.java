@@ -25,7 +25,9 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -36,6 +38,17 @@ import java.util.concurrent.CompletableFuture;
  * 3. Shift+右键：从归隐之地返回主世界
  */
 public class WindSeekingBell extends Item {
+    /**
+     * 已发起搜索、结果回调还没在主线程处理完的玩家（只在主线程读写）。
+     * 搜索完成到回调执行之间再次使用会另起一次搜索并绑定另一座结构，之后扣配额失败，那座结构就没人能领；
+     * 同一搜索的重复回调也会再扣一次配额。期间再用铃只提示仍在搜索。
+     */
+    private static final Set<UUID> AWAITING_RESULT = new HashSet<>();
+
+    /** 停服时回调可能再也不会执行，清掉等待标记，免得同一进程里下次进存档用不了铃。 */
+    public static void clearAwaitingResults() {
+        AWAITING_RESULT.clear();
+    }
 
     private static final Component NO_STRUCTURE_MESSAGE = Component.translatable(
         "item.touhou_little_maid_spell.wind_seeking_bell.no_structure"
@@ -155,7 +168,8 @@ public class WindSeekingBell extends Item {
         RetreatDimensionData.DimensionInfo info = data.getDimensionInfo(player.getUUID());
 
         // 首次使用时注册并分配配额
-        if (info == null) {
+        boolean firstEntry = info == null;
+        if (firstEntry) {
             data.registerDimension(player.getUUID());
             info = data.getDimensionInfo(player.getUUID());
             // 配额限制开启时给予1个配额；关闭时不限制（配额不会被检查）
@@ -163,25 +177,40 @@ public class WindSeekingBell extends Item {
                 info.structureQuota = 1;
             }
             data.updateAccessTime(player.getUUID());
-
-            player.displayClientMessage(
-                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared")
-                            .withStyle(ChatFormatting.LIGHT_PURPLE), true);
         }
 
         TheRetreatDimension.teleportToRetreat(player, sharedRetreat);
         player.displayClientMessage(
-                Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
+                Component.translatable(firstEntry
+                        ? "item.touhou_little_maid_spell.wind_seeking_bell.first_entry_shared"
+                        : "item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
                         .withStyle(ChatFormatting.LIGHT_PURPLE), true);
+        if (firstEntry) {
+            RetreatDimensionData.DimensionInfo entryInfo = info;
+            com.github.yimeng261.maidspell.compat.irons_spellbooks.DelayedServerTasks.scheduleForCaster(
+                    sharedRetreat, player, 60, () -> {
+                        if (data.getDimensionInfo(player.getUUID()) == entryInfo) {
+                            player.displayClientMessage(
+                                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.entered_retreat")
+                                            .withStyle(ChatFormatting.LIGHT_PURPLE), true);
+                        }
+                    });
+        }
     }
 
     /**
      * 搜索隐世之境结构。
-     * 搜索成功后消耗物品；共享模式下，已找到过的结构免费重复查看。
+     * 搜索成功后消耗物品；共享模式复用已找到的坐标。
      */
     private void findHiddenRetreat(ServerLevel serverLevel, BlockPos playerPos, Player player, ItemStack itemStack) {
         // 冷却中：防止连续右键重复触发
         if (player.getCooldowns().isOnCooldown(this)) {
+            return;
+        }
+        if (AWAITING_RESULT.contains(player.getUUID())) {
+            player.displayClientMessage(
+                    Component.translatable("item.touhou_little_maid_spell.wind_seeking_bell.waiting_for_structure")
+                            .withStyle(ChatFormatting.YELLOW), true);
             return;
         }
 
@@ -219,7 +248,7 @@ public class WindSeekingBell extends Item {
         }
 
         // 2. 检查内存缓存
-        RetreatManager.CacheResult cacheResult = RetreatManager.checkCache(player.getUUID());
+        RetreatManager.CacheResult cacheResult = RetreatManager.checkCache(serverLevel, player.getUUID());
         if (cacheResult.hasCache && !cacheResult.isNegative) {
             ItemStack displayItem = itemStack.copy();
             displayItem.setCount(1);
@@ -246,13 +275,16 @@ public class WindSeekingBell extends Item {
                         .withStyle(ChatFormatting.YELLOW), true);
 
         // 5. 发起搜索
+        UUID playerId = player.getUUID();
+        AWAITING_RESULT.add(playerId);
         CompletableFuture<BlockPos> future = RetreatManager.searchStructure(
-                serverLevel, player.getUUID(), playerPos);
+                serverLevel, playerId, playerPos);
 
         // 6. 处理结果
         future.thenAccept(result -> {
             long searchTime = System.currentTimeMillis() - searchStartTime;
             serverLevel.getServer().execute(() -> {
+                AWAITING_RESULT.remove(playerId);
                 if (result != null) {
                     // 共享模式 + 配额限制：消耗配额，失败则中止
                     if (!Config.enablePrivateDimensions && Config.enableSharedQuotaLimit) {
@@ -265,7 +297,14 @@ public class WindSeekingBell extends Item {
                         RetreatDimensionData data = RetreatDimensionData.get(player.getServer());
                         data.setFoundStructurePos(player.getUUID(), result);
                     }
-                    RetreatManager.updateCache(player.getUUID(), result);
+                    if (Config.enablePrivateDimensions) {
+                        // 私人维度记在主人名下，缺位置时补写，之后以它为搜索中心
+                        UUID owner = PlayerRetreatManager.getPrivateDimensionOwner(serverLevel.dimension());
+                        if (owner != null) {
+                            RetreatDimensionData.get(player.getServer()).markStructureGenerated(owner, result);
+                        }
+                    }
+                    RetreatManager.updateCache(serverLevel, player.getUUID(), result);
 
                     // 检查玩家手上是否仍持有寻风之铃（异步搜索期间可能已切换物品）
                     boolean holdingBell = player.getMainHandItem().getItem() instanceof WindSeekingBell
@@ -285,11 +324,12 @@ public class WindSeekingBell extends Item {
                     ).withStyle(ChatFormatting.LIGHT_PURPLE));
                 } else {
                     // 搜索失败：不消耗物品，设置负缓存
-                    RetreatManager.updateCache(player.getUUID(), null);
+                    RetreatManager.updateCache(serverLevel, player.getUUID(), null);
                     handleSearchResult(serverLevel, playerPos, player, null, searchTime, false, ItemStack.EMPTY);
                 }
             });
         }).exceptionally(throwable -> {
+            serverLevel.getServer().execute(() -> AWAITING_RESULT.remove(playerId));
             Throwable cause = throwable instanceof java.util.concurrent.CompletionException
                     ? throwable.getCause() : throwable;
             if (!(cause instanceof java.util.concurrent.CancellationException)) {

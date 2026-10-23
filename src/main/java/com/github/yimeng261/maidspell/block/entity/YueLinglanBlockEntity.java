@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.block.custom.YueLinglanBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
@@ -15,13 +16,19 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.level.LevelEvent;
 import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@EventBusSubscriber(modid = MaidSpellMod.MOD_ID)
 public class YueLinglanBlockEntity extends BlockEntity {
     private static final int TICK_INTERVAL = 40;
     private static final int PARTICLE_INTERVAL = 8;
@@ -29,7 +36,11 @@ public class YueLinglanBlockEntity extends BlockEntity {
     private static final ResourceLocation ELVEN_REALM_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "elven_realm");
     private static final TagKey<Structure> ELVEN_REALM_TAG =
         TagKey.create(Registries.STRUCTURE, ELVEN_REALM_ID);
-    private static final int STRUCTURE_SEARCH_RADIUS = 2560;
+    private static final ResourceKey<StructureSet> ELVEN_REALM_SET =
+        ResourceKey.create(Registries.STRUCTURE_SET, ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "elven_realm_set"));
+    private static final int STRUCTURE_SEARCH_RADIUS_BLOCKS = 5120;
+    /** 结构集读不到或不是随机分布时的回退值，与 elven_realm_set.json 的 spacing 一致。 */
+    private static final int DEFAULT_PLACEMENT_SPACING_CHUNKS = 32;
     private static final double MIN_PARTICLE_DISTANCE_TO_STRUCTURE = 48.0;
     private static final double MIN_PARTICLE_DISTANCE_TO_STRUCTURE_SQR =
         MIN_PARTICLE_DISTANCE_TO_STRUCTURE * MIN_PARTICLE_DISTANCE_TO_STRUCTURE;
@@ -167,9 +178,23 @@ public class YueLinglanBlockEntity extends BlockEntity {
             return cached.structurePos();
         }
 
-        BlockPos structurePos = level.findNearestMapStructure(ELVEN_REALM_TAG, origin, STRUCTURE_SEARCH_RADIUS, false);
+        BlockPos structurePos = level.findNearestMapStructure(ELVEN_REALM_TAG, origin, structureSearchRadius(level), false);
         STRUCTURE_SEARCH_CACHE.put(key, new StructureSearchCacheEntry(structurePos));
         return structurePos;
+    }
+
+    /**
+     * findNearestMapStructure 的半径单位是按结构集间距划分的搜索圈数，而不是方块数。
+     * 间距从结构集注册表读取，数据包改了 spacing 时搜索范围仍保持约 5120 格。
+     */
+    private static int structureSearchRadius(ServerLevel level) {
+        int spacingChunks = level.registryAccess().registryOrThrow(Registries.STRUCTURE_SET)
+            .getOptional(ELVEN_REALM_SET)
+            .map(StructureSet::placement)
+            .filter(RandomSpreadStructurePlacement.class::isInstance)
+            .map(placement -> ((RandomSpreadStructurePlacement) placement).spacing())
+            .orElse(DEFAULT_PLACEMENT_SPACING_CHUNKS);
+        return Math.max(1, STRUCTURE_SEARCH_RADIUS_BLOCKS / (spacingChunks * 16));
     }
 
     @Nullable
@@ -206,8 +231,19 @@ public class YueLinglanBlockEntity extends BlockEntity {
             && pos.getZ() <= cachedStructureBoundingBox.maxZ() + padding;
     }
 
-    public static void clearStructureSearchCache() {
+    public static void clearStructureSearchCache(ServerLevel level) {
+        STRUCTURE_SEARCH_CACHE.keySet().removeIf(key -> key.level() == level);
+    }
+
+    public static void clearAllStructureSearchCaches() {
         STRUCTURE_SEARCH_CACHE.clear();
+    }
+
+    @SubscribeEvent
+    public static void onLevelUnload(LevelEvent.Unload event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            clearStructureSearchCache(level);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -217,15 +253,30 @@ public class YueLinglanBlockEntity extends BlockEntity {
             : null;
     }
 
-    private record StructureSearchCacheKey(ResourceLocation dimension, int regionX, int regionZ) {
+    private record StructureSearchCacheKey(ServerLevel level, int regionX, int regionZ) {
         private static StructureSearchCacheKey create(ServerLevel level, BlockPos pos) {
             int chunkX = pos.getX() >> 4;
             int chunkZ = pos.getZ() >> 4;
             return new StructureSearchCacheKey(
-                level.dimension().location(),
+                level,
                 Math.floorDiv(chunkX, STRUCTURE_SEARCH_CACHE_REGION_CHUNKS),
                 Math.floorDiv(chunkZ, STRUCTURE_SEARCH_CACHE_REGION_CHUNKS)
             );
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj || obj instanceof StructureSearchCacheKey other
+                && level == other.level
+                && regionX == other.regionX
+                && regionZ == other.regionZ;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = System.identityHashCode(level);
+            result = 31 * result + regionX;
+            return 31 * result + regionZ;
         }
     }
 

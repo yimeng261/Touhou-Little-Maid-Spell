@@ -4,6 +4,7 @@ import com.github.tartaricacid.touhoulittlemaid.client.gui.entity.maid.backpack.
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegration;
 import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen;
+import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
@@ -14,7 +15,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,11 +24,15 @@ import java.util.List;
  * @since 2025-10-25 20:30
  */
 public record S2CEnderPocketMaidList(List<EnderPocketService.EnderPocketMaidInfo> maidInfos, boolean fromMaidBackpack) implements CustomPacketPayload {
+    public S2CEnderPocketMaidList {
+        maidInfos = EnderPocketService.EnderPocketMaidInfo.copyLimited(maidInfos);
+    }
+
     public static final Type<S2CEnderPocketMaidList> TYPE
             = new Type<>(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "ender_pocket_response_maid_list"));
 
     public static final StreamCodec<ByteBuf, S2CEnderPocketMaidList> STREAM_CODEC = StreamCodec.composite(
-            EnderPocketService.EnderPocketMaidInfo.STREAM_CODEC.apply(ByteBufCodecs.collection(ArrayList::new)),
+            EnderPocketService.EnderPocketMaidInfo.LIST_STREAM_CODEC,
             S2CEnderPocketMaidList::maidInfos,
             ByteBufCodecs.BOOL,
             S2CEnderPocketMaidList::fromMaidBackpack,
@@ -45,6 +49,7 @@ public record S2CEnderPocketMaidList(List<EnderPocketService.EnderPocketMaidInfo
         Minecraft mc = Minecraft.getInstance();
         // 更新女仆背包集成的数据
         MaidBackpackEnderPocketIntegration.updateEnderPocketData(maidInfos());
+        EnderPocketHudOverlay.update(maidInfos());
 
         // 根据请求来源和当前界面决定显示方式
         if (fromMaidBackpack()) {

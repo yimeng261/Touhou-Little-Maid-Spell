@@ -1,7 +1,6 @@
 package com.github.yimeng261.maidspell;
 
 import com.github.yimeng261.maidspell.item.bauble.dreamCatCrystal.DreamCatCrystalBauble;
-import com.github.yimeng261.maidspell.item.bauble.fragrantIngenuity.FragrantIngenuityBauble;
 import com.github.yimeng261.maidspell.spell.SimplifiedSpellCaster;
 import com.github.yimeng261.maidspell.task.SpellCombatFarTask;
 import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
@@ -11,663 +10,19 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * 女仆法术战斗系统配置类
- * 管理所有可配置的参数和设置
- */
+/** 按功能拆分后的通用配置门面：各配置文件加载后把值写入这里的静态字段，供其余代码读取。 */
 @EventBusSubscriber(modid = MaidSpellMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
-public class Config {
+public final class Config {
+    public static final ModConfigSpec COMBAT_SPEC = ConfigCombat.SPEC;
+    public static final ModConfigSpec BAUBLES_SPEC = ConfigBaubles.SPEC;
+    public static final ModConfigSpec RETREAT_SPEC = ConfigRetreat.SPEC;
+    public static final ModConfigSpec COMPAT_SPEC = ConfigCompat.SPEC;
+    public static final ModConfigSpec WINEFOX_SPEC = ConfigWinefox.SPEC;
+    public static final ModConfigSpec WORLDGEN_SPEC = ConfigWorldgen.SPEC;
 
-    private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
-    private static final List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_WHITELIST = List.of(
-            "regex:minecraft:.*",
-            "regex:goety:.*",
-            "regex:irons_spellbooks:.*",
-            "regex:ars_nouveau:.*"
-    );
-    private static final List<String> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST = List.of(
-            "irons_spellbooks:ascension",
-            "irons_spellbooks:burning_dash",
-            "irons_spellbooks:antigravity",
-            "irons_spellbooks:volt_strike",
-            "traveloptics:aqua_missiles_hover",
-            "traveloptics:meteor_storm",
-            "traveloptics:aerial_collapse",
-            "traveloptics:aerial_collapse_helper",
-            "soulsweapons:chungus_tonic_effect",
-            "goety:fire_trail",
-            "goety:charged",
-            "goety:rampage",
-            "goety:shadow_walk",
-            "goety:fiery_aura",
-            "goety:frosty_aura",
-            "minecraft:invisibility",
-            "irons_spellbooks:true_invisibility"
-    );
-
-    // ========== 战斗系统配置 ==========
-    static {
-        BUILDER.comment("战斗系统相关配置")
-               .comment("Combat system configurations")
-               .push("combat");
-    }
-
-    private static final ModConfigSpec.DoubleValue MAX_SPELL_RANGE = BUILDER
-        .comment("最大法术攻击范围 (默认: 24.0)")
-        .comment("Maximum spell attack range")
-        .defineInRange("maxSpellRange", 24.0, 8.0, 64.0);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue MELEE_RANGE = BUILDER
-        .comment("近战攻击范围 (默认: 2.5)")
-        .comment("Melee attack range")
-        .defineInRange("meleeRange", 2.5, 1.0, 5.0);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue FAR_RANGE = BUILDER
-            .comment("远程攻击范围 (默认: 8.5)")
-            .comment("Far attack range")
-            .defineInRange("farRange", 8.5, 1.0, 20.0);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue SPELL_DAMAGE_MULTIPLIER = BUILDER
-        .comment("女仆伤害倍率 (默认: 1.0，仅在法术战斗任务下生效)")
-        .comment("Maid damage multiplier(default:1.0,only effective on spellCombatTask)")
-        .defineInRange("maidDamageMultiplier", 1.0, 0, 50.0);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue COOLDOWN_MULITIPLIER = BUILDER
-            .comment("女仆法术冷却倍率 (默认: 1.0，仅在法术战斗任务下生效)")
-            .comment("Maid cooldown multiplier(default:1.0,only effective on spellCombatTask)")
-            .defineInRange("maidCooldownMultiplier", 1.0, 0, 50.0);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.IntValue MELEE_ATTACK_INTERVAL = BUILDER
-            .comment("近战法术任务攻击间隔（单位：tick，默认: 8）")
-            .comment("Melee spell task attack interval (in ticks, default: 8)")
-            .defineInRange("meleeAttackInterval", 8, 1, 100);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.IntValue FAR_ATTACK_INTERVAL = BUILDER
-            .comment("远程法术任务攻击间隔（单位：tick，默认: 5）")
-            .comment("Far spell task attack interval (in ticks, default: 5)")
-            .defineInRange("farAttackInterval", 5, 1, 100);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> SPELL_BLACKLIST = BUILDER
-            .comment("法术黑名单，女仆不会施放这些法术")
-            .comment("Spell blacklist, maids will not cast these spells")
-            .comment("示例: [\"irons_spellbooks:spectral_hammer\", \"irons_spellbooks:firecracker\"]")
-            .comment("Example: [\"irons_spellbooks:spectral_hammer\", \"irons_spellbooks:firecracker\"]")
-            .defineListAllowEmpty(
-                List.of("spellBlacklist"),
-                () -> List.of("irons_spellbooks:spectral_hammer"),
-                obj -> obj instanceof String
-            );
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.BooleanValue AUTO_ALLIANCE_ENABLED = BUILDER
-            .comment("是否自动设置女仆与玩家结盟 (默认: true)")
-            .comment("Whether to automatically set alliance between maids and players")
-            .comment("结盟后，女仆与玩家将被加入同一队伍，禁止友军伤害")
-            .comment("When allied, maids and players will be in the same team with friendly fire disabled")
-            .define("autoAllianceEnabled", true);
-
-    static {
-        BUILDER.pop();
-    }
-
-
-    // ========== 饰品系统配置 ==========
-    static {
-        BUILDER.comment("饰品系统相关配置")
-               .comment("Bauble system configurations")
-               .push("baubles");
-    }
-
-    // 伤害类饰品
-    static {
-        BUILDER.comment("伤害相关饰品配置")
-               .comment("Damage-related bauble configurations")
-               .push("damage");
-    }
-
-    private static final ModConfigSpec.DoubleValue SILVER_CERCIS_TRUE_DAMAGE_MULTIPLIER = BUILDER
-            .comment("紫荆银冠反伤倍率 (默认: 0.8)")
-            .comment("Silver Cercis true damage multiplier")
-            .defineInRange("silverCercisTrueDamageMultiplier", 0.8, 0.1, 2.0);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue SPRING_RING_MAX_DAMAGE_BONUS = BUILDER
-            .comment("烬血之戒最大伤害加成比例 (默认: 0.5)")
-            .comment("Spring Ring maximum damage bonus ratio")
-            .defineInRange("springRingMaxDamageBonus", 0.5, 0.1, 1.0);
-
-    static {
-        BUILDER.pop(); // damage
-    }
-
-    // 治疗类饰品
-    static {
-        BUILDER.comment("治疗相关饰品配置")
-               .comment("Healing-related bauble configurations")
-               .push("healing");
-    }
-
-    private static final ModConfigSpec.DoubleValue FLOW_CORE_HEALTH_REGEN_RATE = BUILDER
-            .comment("流转核心每级好感生命恢复百分比 (默认: 0.025)")
-            .comment("Flow Core health regeneration rate")
-            .defineInRange("flowCoreHealthRegenRate", 0.025, 0.001, 0.3);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue BLEEDING_HEART_HEAL_RATIO = BUILDER
-            .comment("喋血之心治疗比例 (默认: 0.1)")
-            .comment("Bleeding Heart heal ratio")
-            .defineInRange("bleedingHeartHealRatio", 0.1, 0.01, 1);
-
-    static {
-        BUILDER.pop(); // healing
-    }
-
-    // 防御类饰品
-    static {
-        BUILDER.comment("防御相关饰品配置")
-               .comment("Defense-related bauble configurations")
-               .push("defense");
-    }
-
-    private static final ModConfigSpec.DoubleValue FLOW_CORE_DAMAGE_REDUCTION = BUILDER
-            .comment("流转核心每级好感伤害减免比例 (默认: 0.15)")
-            .comment("Flow Core damage reduction ratio")
-            .defineInRange("flowCoreDamageReduction", 0.15, 0.05, 0.5);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue DOUBLE_HEART_CHAIN_SHARE_RATIO = BUILDER
-            .comment("双心链伤害分摊比例 (默认: 0.5)")
-            .comment("主人和女仆各受到原伤害*比例的伤害")
-            .comment("Double Heart Chain damage share ratio")
-            .defineInRange("doubleHeartChainShareRatio", 0.5, 0.1, 0.9);
-
-    private static final ModConfigSpec.DoubleValue DOUBLE_HEART_CHAIN_MAX_DISTANCE = BUILDER
-            .comment("双心链生效距离 (默认: 32.0)")
-            .comment("女仆与主人距离超过此值(方块)时，伤害不再分摊给主人")
-            .comment("Double Heart Chain effective distance (blocks)")
-            .defineInRange("doubleHeartChainMaxDistance", 32.0, 4.0, 128.0);
-
-    static {
-        BUILDER.pop(); // defense
-    }
-
-    // 功能类饰品
-    static {
-        BUILDER.comment("功能相关饰品配置")
-               .comment("Utility-related bauble configurations")
-               .push("utility");
-    }
-
-    private static final ModConfigSpec.DoubleValue QUICK_CHANT_RING_COOLDOWN_REDUCTION = BUILDER
-            .comment("时痕之戒每级好感冷却减少比例 (默认: 0.25)")
-            .comment("Quick Chant Ring cooldown reduction ratio")
-            .defineInRange("quickChantRingCooldownReduction", 0.25, 0.1, 0.8);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.IntValue ROCK_CRYSTAL_KNOCKBACK_RESISTANCE = BUILDER
-            .comment("磐石魔晶击退抗性加成 (默认: 8)")
-            .comment("Rock Crystal knockback resistance bonus")
-            .defineInRange("rockCrystalKnockbackResistance", 8, 1, 20);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.IntValue FLOW_CORE_TICK_INTERVAL = BUILDER
-            .comment("流转核心效果触发间隔 (tick) (默认: 10)")
-            .comment("Flow Core effect trigger interval in ticks")
-            .defineInRange("flowCoreTickInterval", 10, 1, 100);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue HAIRPIN_BENEFICIAL_EFFECT_EXTENSION = BUILDER
-            .comment("发簪有益效果延长倍率 (默认: 1.15)")
-            .comment("Hairpin beneficial effect extension multiplier")
-            .defineInRange("hairpinBeneficialEffectExtension", 1.15, 1.0, 10.0);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.IntValue HAIRPIN_MIN_EXTENSION_TICKS = BUILDER
-            .comment("发簪有益效果最小延长时间 (tick) (默认: 300)")
-            .comment("Hairpin minimum extension ticks for beneficial effects")
-            .defineInRange("hairpinMinExtensionTicks", 300, 0, 10000);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.IntValue FRAGRANT_INGENUITY_FAVORABILITY_GAIN = BUILDER
-            .comment("馥郁巧思进食好感度增长 (默认: 2)")
-            .comment("Fragrant Ingenuity favorability gain when eating")
-            .defineInRange("fragrantIngenuityFavorabilityGain", 2, 1, 10);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.IntValue FRAGRANT_INGENUITY_BUFF_DURATION = BUILDER
-            .comment("馥郁巧思喂食buff持续时间 (tick)")
-            .comment("Fragrant Ingenuity buff duration when maid feeds owner")
-            .defineInRange("fragrantIngenuityBuffDuration", 2400, 200, 120000);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> FRAGRANT_INGENUITY_EFFECT_BLACKLIST = BUILDER
-            .comment("馥郁巧思随机正面效果黑名单，黑名单内的效果不会被随机赋予")
-            .comment("Fragrant Ingenuity random beneficial effect blacklist")
-            .comment("默认值与梦云水晶黑名单相同")
-            .defineListAllowEmpty(
-                    List.of("fragrantIngenuityEffectBlacklist"),
-                    () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST,
-                    obj -> obj instanceof String
-            );
-
-    static {
-        BUILDER.pop(); // utility
-    }
-
-    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_MAX_STACKS = BUILDER
-            .comment("回春返照最大层数 (默认: 3)")
-            .comment("Spring Bloom Return max stacks")
-            .defineInRange("springBloomReturnMaxStacks", 3, 1, 8);
-
-    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_STACK_DURATION_TICKS = BUILDER
-            .comment("回春返照层数持续时间 (tick) (默认: 400)")
-            .comment("Spring Bloom Return stack duration in ticks")
-            .defineInRange("springBloomReturnStackDurationTicks", 400, 20, 72000);
-
-    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_GAIN_COOLDOWN_TICKS = BUILDER
-            .comment("回春返照获取层数冷却 (tick) (默认: 20)")
-            .comment("Spring Bloom Return stack gain cooldown in ticks")
-            .defineInRange("springBloomReturnGainCooldownTicks", 20, 0, 1200);
-
-    private static final ModConfigSpec.IntValue SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_TICKS = BUILDER
-            .comment("回春返照触发冷却 (tick) (默认: 200)")
-            .comment("Spring Bloom Return trigger cooldown in ticks")
-            .defineInRange("springBloomReturnTriggerCooldownTicks", 200, 0, 72000);
-
-    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD = BUILDER
-            .comment("回春返照固定伤害阈值 (默认: 4.0)")
-            .comment("Spring Bloom Return flat damage threshold")
-            .defineInRange("springBloomReturnDamageThreshold", 4.0, 0.0, 100.0);
-
-    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD_RATIO = BUILDER
-            .comment("回春返照百分比伤害阈值 (默认: 0.10)")
-            .comment("Spring Bloom Return percent damage threshold")
-            .defineInRange("springBloomReturnDamageThresholdRatio", 0.10, 0.0, 1.0);
-
-    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_HEAL_RATIO = BUILDER
-            .comment("回春返照治疗比例 (默认: 0.05)")
-            .comment("Spring Bloom Return heal ratio")
-            .defineInRange("springBloomReturnHealRatio", 0.05, 0.0, 1.0);
-
-    private static final ModConfigSpec.DoubleValue SPRING_BLOOM_RETURN_COOLDOWN_REFUND_RATIO = BUILDER
-            .comment("回春返照冷却返还比例 (默认: 0.20)")
-            .comment("Spring Bloom Return cooldown refund ratio")
-            .defineInRange("springBloomReturnCooldownRefundRatio", 0.20, 0.0, 1.0);
-
-    // 触发机制类饰品
-    static {
-        BUILDER.comment("触发机制相关饰品配置")
-               .comment("Trigger mechanism bauble configurations")
-               .push("triggers");
-    }
-
-    private static final ModConfigSpec.IntValue SILVER_CERCIS_TRIGGER_COUNT = BUILDER
-            .comment("紫荆银冠触发所需攻击次数 (默认: 3)")
-            .comment("Silver Cercis required attack count to trigger")
-            .defineInRange("silverCercisTriggerCount", 3, 1, 10);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.IntValue SILVER_CERCIS_COOLDOWN_TICKS = BUILDER
-            .comment("紫荆银冠触发后冷却时间 (tick) (默认: 5)")
-            .comment("Silver Cercis cooldown ticks after trigger")
-            .defineInRange("silverCercisCooldownTicks", 5, 1, 100);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.IntValue WOUND_RIME_BLADE_RECORD_DURATION = BUILDER
-            .comment("破愈咒锋每次攻击增加禁疗次数 (默认: 15)")
-            .comment("Wound Rime Blade record duration")
-            .defineInRange("woundRimeBladeRecordDuration", 15, 5, 100);
-
-    static {
-        BUILDER.pop(); // triggers
-    }
-
-    // 特殊饰品
-    static {
-        BUILDER.comment("特殊饰品配置")
-               .comment("Special bauble configurations")
-               .push("special");
-    }
-
-    private static final ModConfigSpec.DoubleValue CHAOS_BOOK_TRUE_DAMAGE_MIN = BUILDER
-            .comment("混沌之书真实伤害最小值 (默认: 5.0)")
-            .comment("Chaos Book minimum true damage")
-            .defineInRange("chaosBookTrueDamageMin", 5.0, 1.0, 50.0);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue CHAOS_BOOK_TRUE_DAMAGE_PERCENT = BUILDER
-            .comment("混沌之书真实伤害百分比 (默认: 0.01)")
-            .comment("Chaos Book true damage percentage of max health")
-            .defineInRange("chaosBookTrueDamagePercent", 0.01, 0.001, 0.1);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.IntValue CHAOS_BOOK_DAMAGE_SPLIT_COUNT = BUILDER
-            .comment("混沌之书伤害分割次数 (默认: 5)")
-            .comment("Chaos Book damage split count")
-            .defineInRange("chaosBookDamageSplitCount", 5, 1, 20);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue CHAOS_BOOK_MIN_SPLIT_DAMAGE = BUILDER
-            .comment("混沌之书每次分割伤害最小值 (默认: 3.0)")
-            .comment("Chaos Book minimum damage per split")
-            .defineInRange("chaosBookMinSplitDamage", 3.0, 0.1, 100.0);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue SOUL_BOOK_DAMAGE_THRESHOLD_PERCENT = BUILDER
-            .comment("魂之书伤害阈值百分比 (默认: 0.2)")
-            .comment("Soul Book damage threshold percentage of max health")
-            .defineInRange("soulBookDamageThresholdPercent", 0.2, 0.05, 1.0);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.IntValue SOUL_BOOK_DAMAGE_INTERVAL_THRESHOLD = BUILDER
-            .comment("魂之书伤害间隔阈值 (tick) (默认: 10)")
-            .comment("Soul Book damage interval threshold in ticks")
-            .defineInRange("soulBookDamageIntervalThreshold", 10, 1, 100);
-
-    static {
-        BUILDER.pop(); // special
-    }
-
-    // 梦云水晶
-    static {
-        BUILDER.comment("梦云水晶相关配置")
-                .comment("Dream Crystal configurations")
-                .push("dream_crystal");
-    }
-
-    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DREAM_CRYSTAL_EFFECT_BLACKLIST = BUILDER
-            .comment("梦云水晶随机正面效果黑名单，黑名单内的效果不会被随机赋予")
-            .comment("Dream Crystal random beneficial effect blacklist")
-            .comment("支持精确匹配和 regex: 前缀正则匹配")
-            .comment("示例: [\"minecraft:bad_omen\", \"regex:irons_spellbooks:.*\"]")
-            .defineListAllowEmpty(
-                    List.of("dreamCrystalEffectBlacklist"),
-                    () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_BLACKLIST,
-                    obj -> obj instanceof String
-            );
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.BooleanValue DREAM_CRYSTAL_USE_EFFECT_WHITELIST = BUILDER
-            .comment("是否启用梦云水晶随机正面效果白名单 (默认: true)")
-            .comment("Whether to enable Dream Crystal random beneficial effect whitelist")
-            .define("dreamCrystalUseEffectWhitelist", true);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DREAM_CRYSTAL_EFFECT_WHITELIST = BUILDER
-            .comment("梦云水晶随机正面效果白名单，启用后只会从该列表中随机")
-            .comment("Dream Crystal random beneficial effect whitelist")
-            .comment("支持精确匹配和 regex: 前缀正则匹配")
-            .comment("示例: [\"minecraft:speed\", \"regex:minecraft:.*\"]")
-            .defineListAllowEmpty(
-                    List.of("dreamCrystalEffectWhitelist"),
-                    () -> DEFAULT_RANDOM_BENEFICIAL_EFFECT_WHITELIST,
-                    obj -> obj instanceof String
-            );
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.BooleanValue DREAM_CRYSTAL_EXTRA_TRUE_DAMAGE_ENABLED = BUILDER
-            .comment("是否启用梦云水晶额外真实伤害 (默认: true)")
-            .comment("Whether to enable Dream Crystal extra true damage")
-            .define("dreamCrystalExtraTrueDamageEnabled", true);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.BooleanValue DREAM_CRYSTAL_SET_NO_AI_ENABLED = BUILDER
-            .comment("是否启用梦云水晶冻结时设置无AI (默认: true)")
-            .comment("Whether to enable setNoAi during Dream Crystal freeze")
-            .define("dreamCrystalSetNoAiEnabled", true);
-
-
-    static {
-        BUILDER.pop(); // dream_crystal
-    }
-
-    // 移动类饰品
-    static {
-        BUILDER.comment("移动相关饰品配置")
-               .comment("Movement-related bauble configurations")
-               .push("movement");
-    }
-
-    private static final ModConfigSpec.DoubleValue FLOATING_FOX_LEAF_OWNER_RANGE = BUILDER
-            .comment("浮波狐叶主人水面行走有效范围（格） (默认: 16.0)")
-            .comment("Floating Fox Leaf owner water walking range (blocks)")
-            .defineInRange("floatingFoxLeafOwnerRange", 16.0, 4.0, 64.0);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.DoubleValue MOLTEN_FOX_LEAF_OWNER_RANGE = BUILDER
-            .comment("熔岩狐叶主人岩浆行走有效范围（格） (默认: 16.0)")
-            .comment("Molten Fox Leaf owner lava walking range (blocks)")
-            .defineInRange("moltenFoxLeafOwnerRange", 16.0, 4.0, 64.0);
-
-    static {
-        BUILDER.pop(); // movement
-        BUILDER.pop(); // baubles
-    }
-
-    // ========== 归隐之地维度配置 ==========
-    static {
-        BUILDER.comment("归隐之地维度相关配置")
-                .comment("Retreat dimension configurations")
-                .push("retreat_dimension");
-    }
-
-    private static final ModConfigSpec.BooleanValue ENABLE_PRIVATE_DIMENSIONS = BUILDER
-            .comment("是否启用私人维度模式 (默认: true)")
-            .comment("true: 每个玩家拥有独立的归隐之地维度")
-            .comment("false: 所有玩家共享一个归隐之地维度，每个玩家拥有一个隐世之境结构")
-            .comment("Whether to enable private dimension mode (default: true)")
-            .comment("true: Each player has their own retreat dimension")
-            .comment("false: All players share one retreat dimension, each with one structure")
-            .define("enablePrivateDimensions", true);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.BooleanValue ENABLE_SHARED_QUOTA_LIMIT = BUILDER
-            .comment("共享模式下是否启用配额限制 (默认: true)")
-            .comment("true: 每个玩家在共享归隐之地中最多搜索一次隐世之境")
-            .comment("false: 共享模式下不限制搜索次数，玩家可以无限搜索新的结构")
-            .comment("Whether to enable quota limit in shared mode (default: true)")
-            .comment("true: Each player can only search for one hidden retreat in the shared dimension")
-            .comment("false: No search limit in shared mode, players can find unlimited structures")
-            .define("enableSharedQuotaLimit", true);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.BooleanValue DISABLE_HOSTILE_MOB_SPAWNING = BUILDER
-            .comment("是否禁止归隐之地生成敌对生物 (默认: false)")
-            .comment("true: 归隐之地不会自然生成敌对生物")
-            .comment("false: 归隐之地正常生成敌对生物")
-            .comment("Whether to disable hostile mob spawning in retreat dimensions (default: false)")
-            .comment("true: No hostile mobs will naturally spawn in retreat dimensions")
-            .comment("false: Hostile mobs spawn normally in retreat dimensions")
-            .define("disableHostileMobSpawning", false);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.BooleanValue ALLOW_ALL_STRUCTURES = BUILDER
-            .comment("是否允许所有结构在归隐之地生成 (默认: false)")
-            .comment("true: 放行所有结构，忽略白名单")
-            .comment("false: 仅允许白名单中的结构生成")
-            .comment("Whether to allow all structures to generate in retreat dimensions (default: false)")
-            .comment("true: Allow all structures, ignore whitelist")
-            .comment("false: Only allow structures in the whitelist")
-            .define("allowAllStructures", false);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.ConfigValue<List<? extends String>> ALLOWED_STRUCTURES = BUILDER
-            .comment("允许在归隐之地生成的结构白名单")
-            .comment("仅在 allowAllStructures 为 false 时生效")
-            .comment("格式: [\"modid:structure_name\", ...]")
-            .comment("Whitelist of structures allowed to generate in retreat dimensions")
-            .comment("Only effective when allowAllStructures is false")
-            .comment("Format: [\"modid:structure_name\", ...]")
-            .defineListAllowEmpty(
-                    List.of("allowedStructures"),
-                    () -> List.of(
-                            MaidSpellMod.MOD_ID + ":hidden_retreat",
-                            MaidSpellMod.MOD_ID + ":hidden_cherry_tree"
-                    ),
-                    obj -> obj instanceof String
-            );
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.BooleanValue ALLOW_MOB_SPAWNS_IN_RETREAT = BUILDER
-            .comment("是否允许生物在隐世之境生成 (默认: true)")
-            .comment("false 时会阻止隐世之境中的环境/结构/刷怪笼等自动生成")
-            .comment("Whether to allow mobs to spawn in The Retreat (default: true)")
-            .define("allowMobSpawnsInRetreat", true);
-
-    static {
-        BUILDER.comment("");
-    }
-
-    private static final ModConfigSpec.BooleanValue ALLOW_HOSTILE_MOB_SPAWNS_IN_RETREAT = BUILDER
-            .comment("是否允许敌对生物在隐世之境生成 (默认: false)")
-            .comment("仅在 allowMobSpawnsInRetreat=true 时生效")
-            .comment("Whether to allow hostile mob spawns in The Retreat (default: false)")
-            .define("allowHostileMobSpawnsInRetreat", false);
-
-    static {
-        BUILDER.pop(); // retreat_dimension
-    }
-
-    // ========== 兼容性配置 ==========
-    static {
-        BUILDER.comment("兼容性相关配置")
-               .comment("Compatibility configurations")
-               .push("compat");
-    }
-
-    private static final ModConfigSpec.BooleanValue AUTO_INSTALL_TLM_MODEL_PACK = BUILDER
-            .comment("是否在启动时自动安装/更新内置的车万女仆兼容模型包 (默认: true)")
-            .comment("true: 每次启动都会把 jar 内置的 tlm_custom_pack 模型包写入游戏目录（覆盖同名文件），以确保模型/动画为最新修复版本")
-            .comment("false: 不自动安装，整合包作者或玩家可自行管理 tlm_custom_pack 目录下的模型包")
-            .comment("Whether to auto-install/update the bundled Touhou Little Maid compatibility model pack on startup (default: true)")
-            .comment("true: The bundled pack is written into the game directory on every launch (overwriting same-named files), keeping models/animations up to date")
-            .comment("false: No auto-install; pack authors or players manage the tlm_custom_pack directory themselves")
-            .define("autoInstallTlmModelPack", true);
-
-    static {
-        BUILDER.pop(); // compat
-    }
-
-    public static final ModConfigSpec SPEC = BUILDER.build();
-
-    // 缓存的配置值
     public static double maxSpellRange;
     public static double meleeRange;
     public static double farRange;
@@ -675,38 +30,22 @@ public class Config {
     public static double coolDownMultiplier;
     public static int meleeAttackInterval;
     public static int farAttackInterval;
-    public static List<String> spellBlacklist;
-    public static boolean autoAllianceEnabled;
+    public static List<String> ironsSpellBlacklist;
+    public static volatile boolean powerfulFriendlyFireProtection = false;
 
-    // 饰品配置缓存值
-    // 伤害相关
     public static double silverCercisTrueDamageMultiplier;
     public static double springRingMaxDamageBonus;
-
-    // 治疗相关
     public static double flowCoreHealthRegenRate;
     public static double bleedingHeartHealRatio;
-
-    // 防御相关
     public static double flowCoreDamageReduction;
     public static double doubleHeartChainShareRatio;
     public static double doubleHeartChainMaxDistance;
-
-    // 冷却相关
     public static double quickChantRingCooldownReduction;
-
-    // 属性相关
     public static int rockCrystalKnockbackResistance;
-
-    // 时间间隔相关
     public static int flowCoreTickInterval;
-
-    // 触发条件相关
     public static int silverCercisTriggerCount;
     public static int silverCercisCooldownTicks;
     public static int woundRimeBladeRecordTimes;
-
-    // 好感度相关
     public static double hairpinBeneficialEffectExtension;
     public static int hairpinMinExtensionTicks;
     public static int fragrantIngenuityFavorabilityGain;
@@ -720,27 +59,19 @@ public class Config {
     public static double springBloomReturnDamageThresholdRatio;
     public static double springBloomReturnHealRatio;
     public static double springBloomReturnCooldownRefundRatio;
-
-    // 特殊饰品相关
     public static double chaosBookTrueDamageMin;
     public static double chaosBookTrueDamagePercent;
     public static int chaosBookDamageSplitCount;
     public static double chaosBookMinSplitDamage;
     public static double soulBookDamageThresholdPercent;
     public static int soulBookDamageIntervalThreshold;
-
-    // 移动类饰品
     public static double floatingFoxLeafOwnerRange;
     public static double moltenFoxLeafOwnerRange;
-
-    // 梦云水晶
     public static List<String> dreamCrystalEffectBlacklist;
     public static boolean dreamCrystalUseEffectWhitelist;
     public static List<String> dreamCrystalEffectWhitelist;
     public static boolean dreamCrystalExtraTrueDamageEnabled;
-    public static boolean dreamCrystalSetNoAiEnabled;
 
-    // 归隐之地维度相关
     public static boolean enablePrivateDimensions;
     public static boolean enableSharedQuotaLimit;
     public static boolean disableHostileMobSpawning;
@@ -748,129 +79,91 @@ public class Config {
     public static Set<ResourceLocation> allowedStructures;
     public static boolean allowMobSpawnsInRetreat;
     public static boolean allowHostileMobSpawnsInRetreat;
-
-    // 兼容性相关
+    public static int retreatRecordRetentionDays;
     public static boolean autoInstallTlmModelPack;
+    public static volatile boolean usefulMagicMaidTerrainProtection = true;
+    public static volatile boolean enableStarfallGarden = true;
 
+    public static double winefoxNonPlayerDamageShareLimit;
+    public static boolean winefoxChallengeConfigEnabled;
+    public static boolean winefoxTrueDamageRestrictsReward;
+    public static double winefoxMaxHealth;
+    public static double winefoxArmor = 12.0D;
+    public static double winefoxDamageMultiplier;
+    public static double winefoxSpellPowerMultiplier;
+    public static double winefoxHitDamageCapRatio;
+    public static int winefoxHitIntervalTicks;
+    public static double winefoxMaidDamageMultiplier;
+    public static double winefoxDamageToMaidMultiplier;
+    public static double winefoxPhaseTwoDamageMultiplier;
+    public static boolean winefoxAdaptiveDamageEnabled;
+    public static boolean winefoxDamageDebugLogging;
+    public static double winefoxAdaptiveTargetDpsRatio;
+    public static int winefoxAdaptiveWindowTicks;
+    public static double winefoxAdaptiveActivationRatio;
+    public static double winefoxAdaptiveStartMultiplier;
+    public static double winefoxAdaptiveMinMultiplier;
+    public static double winefoxAdaptiveSaturationRatio;
+    public static double winefoxAdaptiveFinalBudgetMultiplier;
+    public static double winefoxDuelSurvivalFloor;
+    public static int winefoxInvisibilitySearchTicks = 200;
+
+    private static boolean combatLoaded;
+    private static boolean baublesLoaded;
+    private static boolean retreatLoaded;
+    private static boolean compatLoaded;
+    private static boolean winefoxLoaded;
+    private static boolean worldgenLoaded;
+
+    private Config() {
+    }
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent.Loading event) {
-        refreshConfig();
+        onConfigEvent(event);
     }
 
     @SubscribeEvent
     static void onReload(final ModConfigEvent.Reloading event) {
-        refreshConfig();
+        onConfigEvent(event);
     }
 
-    /**
-     * 刷新配置缓存值，在配置加载和重载时调用
-     * Refresh cached config values, called on both config load and reload
-     */
-    public static void refreshConfig() {
-        // 加载配置值到缓存变量
-        maxSpellRange = MAX_SPELL_RANGE.get();
-        meleeRange = MELEE_RANGE.get();
-        spellDamageMultiplier = SPELL_DAMAGE_MULTIPLIER.get();
-        coolDownMultiplier = COOLDOWN_MULITIPLIER.get();
-        farRange = FAR_RANGE.get();
-        meleeAttackInterval = MELEE_ATTACK_INTERVAL.get();
-        farAttackInterval = FAR_ATTACK_INTERVAL.get();
-        spellBlacklist = new ArrayList<>(SPELL_BLACKLIST.get());
-        autoAllianceEnabled = AUTO_ALLIANCE_ENABLED.get();
-
-        // 加载饰品配置值
-        // 伤害相关
-        silverCercisTrueDamageMultiplier = SILVER_CERCIS_TRUE_DAMAGE_MULTIPLIER.get();
-        springRingMaxDamageBonus = SPRING_RING_MAX_DAMAGE_BONUS.get();
-
-        // 治疗相关
-        flowCoreHealthRegenRate = FLOW_CORE_HEALTH_REGEN_RATE.get();
-        bleedingHeartHealRatio = BLEEDING_HEART_HEAL_RATIO.get();
-
-        // 防御相关
-        flowCoreDamageReduction = FLOW_CORE_DAMAGE_REDUCTION.get();
-        doubleHeartChainShareRatio = DOUBLE_HEART_CHAIN_SHARE_RATIO.get();
-        doubleHeartChainMaxDistance = DOUBLE_HEART_CHAIN_MAX_DISTANCE.get();
-
-        // 冷却相关
-        quickChantRingCooldownReduction = QUICK_CHANT_RING_COOLDOWN_REDUCTION.get();
-
-        // 属性相关
-        rockCrystalKnockbackResistance = ROCK_CRYSTAL_KNOCKBACK_RESISTANCE.get();
-
-        // 时间间隔相关
-        flowCoreTickInterval = FLOW_CORE_TICK_INTERVAL.get();
-
-        // 触发条件相关
-        silverCercisTriggerCount = SILVER_CERCIS_TRIGGER_COUNT.get();
-        silverCercisCooldownTicks = SILVER_CERCIS_COOLDOWN_TICKS.get();
-        woundRimeBladeRecordTimes = WOUND_RIME_BLADE_RECORD_DURATION.get();
-
-        // 好感度相关
-        hairpinBeneficialEffectExtension = HAIRPIN_BENEFICIAL_EFFECT_EXTENSION.get();
-        hairpinMinExtensionTicks = HAIRPIN_MIN_EXTENSION_TICKS.get();
-        fragrantIngenuityFavorabilityGain = FRAGRANT_INGENUITY_FAVORABILITY_GAIN.get();
-        fragrantIngenuityBuffDuration = FRAGRANT_INGENUITY_BUFF_DURATION.get();
-        fragrantIngenuityEffectBlacklist = new ArrayList<>(FRAGRANT_INGENUITY_EFFECT_BLACKLIST.get());
-        springBloomReturnMaxStacks = SPRING_BLOOM_RETURN_MAX_STACKS.get();
-        springBloomReturnStackDurationTicks = SPRING_BLOOM_RETURN_STACK_DURATION_TICKS.get();
-        springBloomReturnGainCooldownTicks = SPRING_BLOOM_RETURN_GAIN_COOLDOWN_TICKS.get();
-        springBloomReturnTriggerCooldownTicks = SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_TICKS.get();
-        springBloomReturnDamageThreshold = SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD.get();
-        springBloomReturnDamageThresholdRatio = SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD_RATIO.get();
-        springBloomReturnHealRatio = SPRING_BLOOM_RETURN_HEAL_RATIO.get();
-        springBloomReturnCooldownRefundRatio = SPRING_BLOOM_RETURN_COOLDOWN_REFUND_RATIO.get();
-        FragrantIngenuityBauble.refreshEffectsList();
-
-        // 特殊饰品相关
-        chaosBookTrueDamageMin = CHAOS_BOOK_TRUE_DAMAGE_MIN.get();
-        chaosBookTrueDamagePercent = CHAOS_BOOK_TRUE_DAMAGE_PERCENT.get();
-        chaosBookDamageSplitCount = CHAOS_BOOK_DAMAGE_SPLIT_COUNT.get();
-        chaosBookMinSplitDamage = CHAOS_BOOK_MIN_SPLIT_DAMAGE.get();
-        soulBookDamageThresholdPercent = SOUL_BOOK_DAMAGE_THRESHOLD_PERCENT.get();
-        soulBookDamageIntervalThreshold = SOUL_BOOK_DAMAGE_INTERVAL_THRESHOLD.get();
-
-        // 移动类饰品
-        floatingFoxLeafOwnerRange = FLOATING_FOX_LEAF_OWNER_RANGE.get();
-        moltenFoxLeafOwnerRange = MOLTEN_FOX_LEAF_OWNER_RANGE.get();
-
-        // 梦云水晶
-        dreamCrystalEffectBlacklist = new ArrayList<>(DREAM_CRYSTAL_EFFECT_BLACKLIST.get());
-        dreamCrystalUseEffectWhitelist = DREAM_CRYSTAL_USE_EFFECT_WHITELIST.get();
-        dreamCrystalEffectWhitelist = new ArrayList<>(DREAM_CRYSTAL_EFFECT_WHITELIST.get());
-        dreamCrystalExtraTrueDamageEnabled = DREAM_CRYSTAL_EXTRA_TRUE_DAMAGE_ENABLED.get();
-        dreamCrystalSetNoAiEnabled = DREAM_CRYSTAL_SET_NO_AI_ENABLED.get();
-        DreamCatCrystalBauble.invalidateBeneficialEffectsCache();
-
-        // 归隐之地维度相关
-        enablePrivateDimensions = ENABLE_PRIVATE_DIMENSIONS.get();
-        enableSharedQuotaLimit = ENABLE_SHARED_QUOTA_LIMIT.get();
-        disableHostileMobSpawning = DISABLE_HOSTILE_MOB_SPAWNING.get();
-        allowAllStructures = ALLOW_ALL_STRUCTURES.get();
-        Set<ResourceLocation> structureSet = new HashSet<>();
-        for (String s : ALLOWED_STRUCTURES.get()) {
-            ResourceLocation loc = ResourceLocation.tryParse(s);
-            if (loc != null) {
-                structureSet.add(loc);
-            }
+    private static void onConfigEvent(ModConfigEvent event) {
+        Object spec = event.getConfig().getSpec();
+        if (spec == COMBAT_SPEC) {
+            ConfigCombat.load();
+            combatLoaded = true;
+        } else if (spec == BAUBLES_SPEC) {
+            ConfigBaubles.load();
+            baublesLoaded = true;
+        } else if (spec == RETREAT_SPEC) {
+            ConfigRetreat.load();
+            retreatLoaded = true;
+        } else if (spec == COMPAT_SPEC) {
+            ConfigCompat.load();
+            compatLoaded = true;
+        } else if (spec == WINEFOX_SPEC) {
+            ConfigWinefox.load();
+            winefoxLoaded = true;
+        } else if (spec == WORLDGEN_SPEC) {
+            ConfigWorldgen.load();
+            worldgenLoaded = true;
+        } else {
+            return;
         }
-        allowedStructures = structureSet;
-        allowMobSpawnsInRetreat = ALLOW_MOB_SPAWNS_IN_RETREAT.get();
-        allowHostileMobSpawnsInRetreat = ALLOW_HOSTILE_MOB_SPAWNS_IN_RETREAT.get();
 
-        // 兼容性相关
-        autoInstallTlmModelPack = AUTO_INSTALL_TLM_MODEL_PACK.get();
+        if (combatLoaded && baublesLoaded && retreatLoaded && compatLoaded && winefoxLoaded && worldgenLoaded) {
+            applyRuntimeValues();
+        }
+    }
 
+    private static void applyRuntimeValues() {
         SpellCombatMeleeTask.setSpellRange((float) maxSpellRange);
         SpellCombatFarTask.setSpellRange((float) maxSpellRange);
-        SimplifiedSpellCaster.MELEE_RANGE= (float) meleeRange;
-        SimplifiedSpellCaster.FAR_RANGE= (float) farRange;
-
+        SimplifiedSpellCaster.MELEE_RANGE = (float) meleeRange;
+        SimplifiedSpellCaster.FAR_RANGE = (float) farRange;
         Global.resetCommonDamageCalc();
         Global.resetCommonCoolDownCalc();
         DreamCatCrystalBauble.registerCommonCallbacks();
     }
-
-
 }

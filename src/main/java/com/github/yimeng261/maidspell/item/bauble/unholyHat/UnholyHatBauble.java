@@ -13,9 +13,12 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
-import za.co.infernos.goety.common.effects.GoetyEffects;
-import za.co.infernos.goety.utils.ModDamageSource;
+import com.Polarice3.Goety.common.effects.GoetyEffects;
+import com.Polarice3.Goety.utils.ModDamageSource;
+
+import java.util.function.BiFunction;
 
 /**
  * 不洁圣冠饰品逻辑
@@ -41,8 +44,9 @@ public class UnholyHatBauble implements IMaidBauble {
         if (initialized) return;
 
         Item unholyHat = MaidSpellItems.getUnholyHat();
+        Item unholyHatHalo = MaidSpellItems.getUnholyHatHalo();
 
-        if (unholyHat == null) {
+        if (unholyHat == null && unholyHatHalo == null) {
             Global.LOGGER.warn("Goety 未加载，无法初始化不洁圣冠女仆效果");
             return;
         }
@@ -50,8 +54,8 @@ public class UnholyHatBauble implements IMaidBauble {
         initialized = true;
         Global.LOGGER.info("正在初始化不洁圣冠女仆效果...");
 
-        // 伤害处理器
-        Global.baubleHurtHandlers.put(unholyHat, (event, maid) -> {
+        // 伤害处理器，圣冠和光环版共用
+        BiFunction<LivingIncomingDamageEvent, EntityMaid, Void> hurtHandler = (event, maid) -> {
             DamageSource source = event.getSource();
             float amount = event.getAmount();
 
@@ -72,14 +76,27 @@ public class UnholyHatBauble implements IMaidBauble {
 
             event.setAmount(amount);
             return null;
-        });
+        };
+        if (unholyHat != null) {
+            Global.baubleHurtHandlers.put(unholyHat, hurtHandler);
+        }
+        if (unholyHatHalo != null) {
+            Global.baubleHurtHandlers.put(unholyHatHalo, hurtHandler);
+        }
 
         Global.LOGGER.info("不洁圣冠女仆效果初始化完成");
     }
 
-    private static boolean hasUnholyHat(EntityMaid maid) {
-        var unholyHat = MaidSpellItems.getUnholyHat();
-        return unholyHat != null && BaubleStateManager.hasBauble(maid, unholyHat);
+    /**
+     * 女仆是否装备了不洁圣冠（含光环版）
+     */
+    public static boolean hasUnholyHat(EntityMaid maid) {
+        Item unholyHat = MaidSpellItems.getUnholyHat();
+        if (unholyHat != null && BaubleStateManager.hasBauble(maid, unholyHat)) {
+            return true;
+        }
+        Item unholyHatHalo = MaidSpellItems.getUnholyHatHalo();
+        return unholyHatHalo != null && BaubleStateManager.hasBauble(maid, unholyHatHalo);
     }
 
     /**

@@ -1,4 +1,5 @@
 {
+  "neoforge:conditions": [{ "type": "neoforge:mod_loaded", "modid": "irons_spellbooks" }],
   "type": "touhou_little_maid:altar_recipe_serializers",
   "category": "misc",
   "entity": "minecraft:item",
@@ -25,7 +26,7 @@
       "item": "touhou_little_maid:ultramarine_orb_elixir"
     },
     {
-      "item": "touhou_little_maid:magic_protect_bauble"
+      "item": "touhou_little_maid_spell:nebula_core"
     }
   ]
 }

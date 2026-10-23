@@ -2,7 +2,9 @@ package com.github.yimeng261.maidspell.item;
 
 import com.github.tartaricacid.touhoulittlemaid.api.ILittleMaid;
 import com.github.tartaricacid.touhoulittlemaid.api.LittleMaidExtension;
+import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
+import com.github.yimeng261.maidspell.item.bauble.staranchorPearl.StaranchorPearlBauble;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCoreBauble;
 import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCrossBauble;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeartBauble;
@@ -22,12 +24,14 @@ import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercisBaubl
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBookBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementBauble;
 import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCoreBauble;
+import com.github.yimeng261.maidspell.item.bauble.spellRangeTable.SpellRangeTableBauble;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturnBauble;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringBauble;
 import com.github.yimeng261.maidspell.item.bauble.transmogNecklace.TransmogNecklaceBauble;
 import com.github.yimeng261.maidspell.item.bauble.unholyHat.UnholyHatBauble;
 import com.github.yimeng261.maidspell.item.bauble.woundRimeBlade.WoundRimeBladeBauble;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.IronsSpellbooksCompat;
+import net.minecraft.world.item.Item;
 import net.neoforged.fml.ModList;
 
 /**
@@ -36,6 +40,47 @@ import net.neoforged.fml.ModList;
  */
 @LittleMaidExtension
 public class MaidBaubleRegistry implements ILittleMaid {
+
+    // Goety 的帽子、冠冕、长袍以空饰品绑定，女仆饰品栏才能装上；套装效果由 CuriosFinderMixin 让 Goety 认到
+    private static final IMaidBauble GOETY_CURIO_BAUBLE = new IMaidBauble() {
+    };
+    private static final String[] GOETY_CURIO_ITEM_IDS = {
+            "dark_hat",
+            "frost_crown",
+            "wind_crown",
+            "storm_crown",
+            "wild_crown",
+            "abyss_crown",
+            "void_crown",
+            "nether_crown",
+            "necro_crown",
+            "nameless_crown",
+            "witch_hat",
+            "witch_hat_hedge",
+            "crone_hat",
+            "dark_robe",
+            "dark_robe_fancy",
+            "grand_robe",
+            "necro_cape",
+            "nameless_cape",
+            "illusion_robe",
+            "illusion_robe_mirror",
+            "geo_robe",
+            "frost_robe",
+            "frost_robe_cryo",
+            "wind_robe",
+            "storm_robe",
+            "wild_robe",
+            "abyss_robe",
+            "void_robe",
+            "witch_robe",
+            "witch_robe_hedge",
+            "warlock_robe",
+            "warlock_robe_dark",
+            "nether_robe",
+            "nether_robe_warped",
+            "unholy_robe"
+    };
 
     @Override
     public void bindMaidBauble(BaubleManager manager) {
@@ -120,6 +165,10 @@ public class MaidBaubleRegistry implements ILittleMaid {
             manager.bind(MaidSpellItems.SPELL_OVERLIMIT_CORE, new SpellOverlimitCoreBauble());
         }
 
+        if(MaidSpellItems.SPELL_RANGE_TABLE != null){
+            manager.bind(MaidSpellItems.SPELL_RANGE_TABLE, new SpellRangeTableBauble());
+        }
+
         if(MaidSpellItems.SPRING_BLOOM_RETURN != null){
             manager.bind(MaidSpellItems.SPRING_BLOOM_RETURN, new SpringBloomReturnBauble());
         }
@@ -133,12 +182,32 @@ public class MaidBaubleRegistry implements ILittleMaid {
             manager.bind(MaidSpellItems.DREAM_CAT_CRYSTAL, new DreamCatCrystalBauble());
         }
 
-        // 不洁圣冠（使用原版 Goety 的物品）
+        if (MaidSpellItems.STARANCHOR_PEARL != null) {
+            manager.bind(MaidSpellItems.STARANCHOR_PEARL, new StaranchorPearlBauble());
+        }
+
         if (ModList.get().isLoaded("goety")) {
+            bindGoetyCurios(manager);
+
+            // 不洁圣冠及其光环版（使用原版 Goety 的物品），效果相同
             UnholyHatBauble.init();
-            var unholyHat = MaidSpellItems.getUnholyHat();
+            UnholyHatBauble unholyHatBauble = new UnholyHatBauble();
+            Item unholyHat = MaidSpellItems.getUnholyHat();
             if (unholyHat != null) {
-                manager.bind(unholyHat, new UnholyHatBauble());
+                manager.bind(unholyHat, unholyHatBauble);
+            }
+            Item unholyHatHalo = MaidSpellItems.getUnholyHatHalo();
+            if (unholyHatHalo != null) {
+                manager.bind(unholyHatHalo, unholyHatBauble);
+            }
+        }
+    }
+
+    private static void bindGoetyCurios(BaubleManager manager) {
+        for (String itemId : GOETY_CURIO_ITEM_IDS) {
+            Item item = MaidSpellItems.getGoetyItem(itemId);
+            if (item != null) {
+                manager.bind(item, GOETY_CURIO_BAUBLE);
             }
         }
     }

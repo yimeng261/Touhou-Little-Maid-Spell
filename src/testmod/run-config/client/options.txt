@@ -1,0 +1,4 @@
+onboardAccessibility:false
+pauseOnLostFocus:false
+narrator:0
+soundCategory_master:0.0

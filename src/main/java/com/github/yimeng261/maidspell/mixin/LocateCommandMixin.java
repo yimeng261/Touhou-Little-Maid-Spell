@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.mixin;
 
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.dimension.TheRetreatDimension;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import net.minecraft.commands.CommandSourceStack;
@@ -39,9 +40,7 @@ public class LocateCommandMixin {
             ResourceLocation structureId = key.get().location();
             if (HIDDEN_RETREAT_ID.equals(structureId)) {
                 ResourceLocation dimId = source.getLevel().dimension().location();
-                boolean inRetreat = dimId.getNamespace().equals(MaidSpellMod.MOD_ID)
-                        && dimId.getPath().startsWith("the_retreat");
-                if (!inRetreat) {
+                if (!TheRetreatDimension.isRetreatDimension(dimId)) {
                     throw ERROR_STRUCTURE_INVALID.create(structureId.toString());
                 }
                 // 共享模式+配额限制下，/locate 无法获取搜索许可，阻止无意义的区块生成

@@ -70,7 +70,7 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
         BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
         BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid) || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target));
         BehaviorControl<EntityMaid> moveToTargetTask = MaidRangedWalkToTarget.create(0.6f);
-        BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
+        BehaviorControl<EntityMaid> spellCastingTask = createSpellCastingBehavior(false);
         BehaviorControl<EntityMaid> strafingTask = new SpellStrafingTask();
         // 添加高优先级的视线控制任务，阻止女仆看向玩家
         BehaviorControl<EntityMaid> lookControlTask = new CombatLookControlTask();
@@ -86,26 +86,15 @@ public class SpellCombatFarTask extends SpellCombatMeleeTask {
     }
 
     @Override
-    public List<Pair<Integer, BehaviorControl<? super EntityMaid>>> createRideBrainTasks(EntityMaid maid) {
-        BehaviorControl<EntityMaid> supplementedTask = StartAttacking.create(this::hasSpellBook, this::findValidAttackTarget);
-        BehaviorControl<EntityMaid> findTargetTask = StopAttackingIfTargetInvalid.create(target -> farAway(target, maid) || !SpellCombatMeleeTask.isValidSpellCombatTarget(maid, target));
-        BehaviorControl<EntityMaid> spellCastingTask = new FarSpellCombatBehavior();
-        // 添加高优先级的视线控制任务，阻止女仆看向玩家
-        BehaviorControl<EntityMaid> lookControlTask = new CombatLookControlTask();
-
-        return Lists.newArrayList(
-                Pair.of(1, lookControlTask),      // 最高优先级，控制视线
-                Pair.of(2, supplementedTask),     // 提高战斗行为优先级
-                Pair.of(2, findTargetTask),
-                Pair.of(2, spellCastingTask)
-        );
+    protected BehaviorControl<EntityMaid> createSpellCastingBehavior(boolean ridePose) {
+        return new FarSpellCombatBehavior(ridePose);
     }
 
     private static class FarSpellCombatBehavior extends SpellCombatBehavior {
         private SimplifiedSpellCaster currentSpellCaster;
 
-        private FarSpellCombatBehavior() {
-            super();
+        private FarSpellCombatBehavior(boolean ridePose) {
+            super(ridePose);
         }
 
         @Override
