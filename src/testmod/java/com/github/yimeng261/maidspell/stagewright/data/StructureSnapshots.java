@@ -20,6 +20,7 @@ public final class StructureSnapshots {
         TEMPLATES.put("touhou_little_maid_spell:cherry_cabin", new Template(
             List.of(
                 "farmersdelight:apple_pie",
+                "farmersdelight:beetroot_crate",
                 "farmersdelight:birch_cabinet",
                 "farmersdelight:cabbage_crate",
                 "farmersdelight:canvas_rug",
@@ -44,6 +45,7 @@ public final class StructureSnapshots {
                 "farmersdelight:straw_bale",
                 "farmersdelight:stuffed_pumpkin_block",
                 "farmersdelight:sweet_berry_cheesecake",
+                "farmersdelight:wild_onions",
                 "farmersdelight:wooden_basket",
                 "irons_spellbooks:book_stack",
                 "irons_spellbooks:firefly_jar",
@@ -106,6 +108,7 @@ public final class StructureSnapshots {
                 "touhou_little_maid:snack_cabinet|loot=touhou_little_maid_spell:chests/cherry_cabin_food_2",
                 "touhou_little_maid:snack_cabinet|loot=touhou_little_maid_spell:chests/cherry_cabin_food_2"),
             List.of(
+                "minecraft:armor_stand|gear=minecraft:leather_chestplate,minecraft:leather_helmet",
                 "minecraft:item_frame",
                 "minecraft:item_frame|item=minecraft:dark_oak_slab",
                 "minecraft:item_frame|item=minecraft:dark_oak_slab",
