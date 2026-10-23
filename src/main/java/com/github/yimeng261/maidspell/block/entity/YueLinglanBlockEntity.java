@@ -5,6 +5,7 @@ import com.github.yimeng261.maidspell.block.custom.YueLinglanBlock;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
@@ -15,7 +16,9 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -33,11 +36,11 @@ public class YueLinglanBlockEntity extends BlockEntity {
     private static final ResourceLocation ELVEN_REALM_ID = ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "elven_realm");
     private static final TagKey<Structure> ELVEN_REALM_TAG =
         TagKey.create(Registries.STRUCTURE, ELVEN_REALM_ID);
+    private static final ResourceKey<StructureSet> ELVEN_REALM_SET =
+        ResourceKey.create(Registries.STRUCTURE_SET, ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "elven_realm_set"));
     private static final int STRUCTURE_SEARCH_RADIUS_BLOCKS = 5120;
-    private static final int ELVEN_REALM_PLACEMENT_SPACING_CHUNKS = 32;
-    // findNearestMapStructure 的半径单位是按间距划分的搜索圈数，而不是方块数。
-    private static final int STRUCTURE_SEARCH_RADIUS = STRUCTURE_SEARCH_RADIUS_BLOCKS
-        / (ELVEN_REALM_PLACEMENT_SPACING_CHUNKS * 16);
+    /** 结构集读不到或不是随机分布时的回退值，与 elven_realm_set.json 的 spacing 一致。 */
+    private static final int DEFAULT_PLACEMENT_SPACING_CHUNKS = 32;
     private static final double MIN_PARTICLE_DISTANCE_TO_STRUCTURE = 48.0;
     private static final double MIN_PARTICLE_DISTANCE_TO_STRUCTURE_SQR =
         MIN_PARTICLE_DISTANCE_TO_STRUCTURE * MIN_PARTICLE_DISTANCE_TO_STRUCTURE;
@@ -175,9 +178,23 @@ public class YueLinglanBlockEntity extends BlockEntity {
             return cached.structurePos();
         }
 
-        BlockPos structurePos = level.findNearestMapStructure(ELVEN_REALM_TAG, origin, STRUCTURE_SEARCH_RADIUS, false);
+        BlockPos structurePos = level.findNearestMapStructure(ELVEN_REALM_TAG, origin, structureSearchRadius(level), false);
         STRUCTURE_SEARCH_CACHE.put(key, new StructureSearchCacheEntry(structurePos));
         return structurePos;
+    }
+
+    /**
+     * findNearestMapStructure 的半径单位是按结构集间距划分的搜索圈数，而不是方块数。
+     * 间距从结构集注册表读取，数据包改了 spacing 时搜索范围仍保持约 5120 格。
+     */
+    private static int structureSearchRadius(ServerLevel level) {
+        int spacingChunks = level.registryAccess().registryOrThrow(Registries.STRUCTURE_SET)
+            .getOptional(ELVEN_REALM_SET)
+            .map(StructureSet::placement)
+            .filter(RandomSpreadStructurePlacement.class::isInstance)
+            .map(placement -> ((RandomSpreadStructurePlacement) placement).spacing())
+            .orElse(DEFAULT_PLACEMENT_SPACING_CHUNKS);
+        return Math.max(1, STRUCTURE_SEARCH_RADIUS_BLOCKS / (spacingChunks * 16));
     }
 
     @Nullable
