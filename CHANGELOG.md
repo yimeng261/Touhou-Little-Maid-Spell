@@ -1,5 +1,38 @@
 # Changelog / 变更日志
 
+## 1.9.2-neoforge
+
+### 新增功能 / New Features
+
+- 新增两张音乐唱片：「星海 - Stellar Endshore」可在星之魔女的补给交易中以 10 绿宝石购买，不打折、不限购；「Vivaldi - Concerto No.10 in B Minor」在正式挑战中战胜星之魔女时掉落，女仆代打、被判限制或使用自定义配置的挑战不掉落 /
+  Added two music discs: "星海 - Stellar Endshore" can be bought from the Stellar Witch's supply trades for 10
+  emeralds, with no discount or purchase limit; "Vivaldi - Concerto No.10 in B Minor" drops when the Stellar Witch
+  is defeated in a formal challenge, but not when maids fight in the player's place, rewards are restricted, or a
+  custom challenge configuration is used
+
+### 修复 / Bug Fixes
+
+- 修复星之魔女吟唱掌心黑洞时会被铁魔法的法术反制打断的问题 /
+  Fixed Iron's Spells 'n Spellbooks' Counterspell interrupting the Stellar Witch's Palm Black Hole incantation
+- 修复月铃兰搜索精灵秘境的范围换算错误，实际范围远超预期的问题；现约为 5120 格，并按精灵秘境结构集的实际间距换算，数据包修改间距后仍然有效 /
+  Fixed Yue Linglan's Elven Realm search range being converted incorrectly and far exceeding the intended range;
+  it is now about 5120 blocks and follows the Elven Realm structure set's actual spacing, so it stays correct when
+  a data pack changes the spacing
+
+### 优化 / Improvements
+
+- 落樱厨舍内部陈设更新，加入干草块、帆布地毯、野洋葱、甜菜箱、营火、炼药锅等布置与一个穿皮革装的盔甲架；未安装铁魔法时使用的模板同步更新 /
+  Updated the Cherry Cabin interior with hay bales, canvas rugs, wild onions, beetroot crates, campfires,
+  cauldrons and an armor stand in leather gear; the template used without Iron's Spells 'n Spellbooks is updated
+  to match
+
+### 升级说明 / Upgrade Notes
+
+- 已生成的落樱厨舍不会更新陈设，只影响新生成的结构 /
+  Cherry Cabins that have already generated keep their old interior; only newly generated ones are affected
+
+---
+
 ## 1.9.1-neoforge
 
 ### 新增功能 / New Features
