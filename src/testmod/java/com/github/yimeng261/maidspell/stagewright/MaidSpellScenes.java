@@ -17,6 +17,7 @@ import com.github.yimeng261.maidspell.stagewright.scenes.UsefulMagicSpellScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.ConfigFileScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StateMigrationScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StellarContentScenes;
+import com.github.yimeng261.maidspell.stagewright.scenes.StellarDiscGuardScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StellarStructureScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StructureEffectScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.FunctionScenes;
@@ -27,6 +28,7 @@ import com.github.yimeng261.maidspell.stagewright.scenes.HiddenRetreatMaidScenes
 import com.github.yimeng261.maidspell.stagewright.scenes.LootScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.MissingModScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.ModelPackScenes;
+import com.github.yimeng261.maidspell.stagewright.scenes.MusicDiscScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.NaturalScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.NpcScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.OptionalWorldgenScenes;
@@ -92,6 +94,8 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(WinefoxLogicScenes.dedicatedServer());
                 scenes.addAll(WinefoxAdaptiveDamageScenes.dedicatedServer());
                 scenes.addAll(UpstreamSyncScenes.dedicatedServer());
+                scenes.addAll(MusicDiscScenes.dedicatedServer());
+                scenes.addAll(StellarDiscGuardScenes.dedicatedServer());
             }
             case INTEGRATED_SERVER -> {
                 scenes.addAll(OwnerScenes.integratedServer());
@@ -113,7 +117,10 @@ public final class MaidSpellScenes implements SceneProvider {
             }
             case INTEGRATED_SERVER_SHARED -> scenes.addAll(SharedRetreatScenes.integratedServerShared());
             case DEDICATED_SERVER_WITH_CLIENT -> scenes.addAll(EnderPocketScenes.dedicatedServerWithClient());
-            case DEDICATED_SERVER_MINIMAL -> scenes.addAll(MissingModScenes.minimal());
+            case DEDICATED_SERVER_MINIMAL -> {
+                scenes.addAll(MissingModScenes.minimal());
+                scenes.addAll(MusicDiscScenes.minimal());
+            }
             case DEDICATED_SERVER_NO_FARMERS_DELIGHT -> scenes.addAll(MissingModScenes.noFarmersDelight());
         }
         return scenes;

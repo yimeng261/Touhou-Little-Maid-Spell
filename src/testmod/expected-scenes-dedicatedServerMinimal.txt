@@ -10,3 +10,7 @@ touhou_little_maid_spell.minimal.retreatChestsFallBack
 touhou_little_maid_spell.minimal.optionalItemTablesSkipAbsentItems
 touhou_little_maid_spell.minimal.maidSpawnsAndTames
 touhou_little_maid_spell.minimal.dreamCrystalWithoutCurios
+# 音乐唱片（不依赖铁魔法）
+touhou_little_maid_spell.minimal.musicDisc.itemsAndSongs
+touhou_little_maid_spell.minimal.musicDisc.songLengthMatchesAudio
+touhou_little_maid_spell.minimal.musicDisc.jukeboxPlaysWithFullComparator
