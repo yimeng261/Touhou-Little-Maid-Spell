@@ -2,6 +2,7 @@ package com.github.yimeng261.maidspell.network.message;
 
 import io.netty.handler.codec.DecoderException;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.utils.AnchorCoreProtection;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -48,7 +49,8 @@ public class MaidEntityRestoreMessage {
 
     public static MaidEntityRestoreMessage remoteSnapshot(EntityMaid maid) {
         CompoundTag entityTag = new CompoundTag();
-        maid.saveWithoutId(entityTag);
+        // 可能经由第三方调用栈构造，序列化需走内部豁免。
+        AnchorCoreProtection.runWithInternalSerialization(maid, () -> maid.saveWithoutId(entityTag));
         entityTag.remove("MaidHistoryChat");
         entityTag.remove("MaidHistorySummary");
 

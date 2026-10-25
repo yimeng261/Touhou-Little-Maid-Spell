@@ -179,25 +179,32 @@ public final class MaidHardRemovalProtection {
     }
 
     public static void runAllowingHardRemoval(Runnable action) {
+        boolean previous = ALLOW_HARD_REMOVAL.get();
         ALLOW_HARD_REMOVAL.set(true);
         try {
             action.run();
         } finally {
-            ALLOW_HARD_REMOVAL.remove();
+            ALLOW_HARD_REMOVAL.set(previous);
         }
     }
 
     public static void runAsUntrustedHardRemoval(Runnable action) {
+        boolean previous = FORCE_PROTECTION_CHECK.get();
         FORCE_PROTECTION_CHECK.set(true);
         try {
             action.run();
         } finally {
-            FORCE_PROTECTION_CHECK.remove();
+            FORCE_PROTECTION_CHECK.set(previous);
         }
     }
 
     public static boolean isForcingProtectionCheck() {
         return FORCE_PROTECTION_CHECK.get();
+    }
+
+    /** 当前线程是否处于“本模组主动回收女仆”的白名单移除流程中。 */
+    static boolean isAllowingHardRemoval() {
+        return ALLOW_HARD_REMOVAL.get();
     }
 
     public static void allowClientRemoval(EntityMaid maid) {
@@ -231,7 +238,7 @@ public final class MaidHardRemovalProtection {
         }
     }
 
-    private static boolean isHardRemovalReason(Entity.RemovalReason reason) {
+    static boolean isHardRemovalReason(Entity.RemovalReason reason) {
         return reason == Entity.RemovalReason.KILLED || reason == Entity.RemovalReason.DISCARDED;
     }
 
@@ -277,7 +284,9 @@ public final class MaidHardRemovalProtection {
     private static MaidEntityRestoreMessage createRestoreMessage(EntityMaid maid) {
         CompoundTag entityTag = new CompoundTag();
         try {
-            maid.saveWithoutId(entityTag);
+            // 此处在非法调用栈内构造，需走内部序列化豁免，否则 tag 会被序列化守卫清空。
+            CompoundTag target = entityTag;
+            AnchorCoreProtection.runWithInternalSerialization(maid, () -> maid.saveWithoutId(target));
         } catch (Exception e) {
             Global.LOGGER.warn("[MaidSpell] Failed to serialize maid {} for client restore packet", maid.getUUID(), e);
             entityTag = new CompoundTag();
@@ -397,7 +406,8 @@ public final class MaidHardRemovalProtection {
 
     private static ItemStack createSoulSpell(EntityMaid maid) {
         ItemStack soulSpell = InitItems.SMART_SLAB_HAS_MAID.get().getDefaultInstance();
-        ItemSmartSlab.storeMaidData(soulSpell, maid);
+        // storeMaidData 内部会 saveWithoutId，统一走内部豁免。
+        AnchorCoreProtection.runWithInternalSerialization(maid, () -> ItemSmartSlab.storeMaidData(soulSpell, maid));
         return soulSpell;
     }
 
