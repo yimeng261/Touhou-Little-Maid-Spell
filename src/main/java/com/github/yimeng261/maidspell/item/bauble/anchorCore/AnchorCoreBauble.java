@@ -5,6 +5,7 @@ import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
 import com.github.yimeng261.maidspell.Global;
 import com.github.yimeng261.maidspell.MaidSpellMod;
+import com.github.yimeng261.maidspell.api.AnchorCoreWhitelist;
 import com.github.yimeng261.maidspell.api.entity.AnchoredEntityMaid;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.player.ChunkLoadingData;
@@ -272,24 +273,9 @@ public class AnchorCoreBauble implements IMaidBauble {
         ChunkLoadingData.clearSessionCache();
     }
 
+    /** 判断类名是否为可信调用者（内置白名单 + {@link AnchorCoreWhitelist} 注册项）。 */
     public static boolean isCallerAllowed(String className) {
-        return className.startsWith("net.minecraft") ||
-                className.startsWith("net.neoforged") ||
-                className.startsWith("java") ||
-                className.startsWith("jdk.") ||
-                className.startsWith("sun.reflect") ||
-                className.startsWith("it.unimi.dsi") ||
-                className.startsWith("com.github.tartaricacid") ||
-                className.startsWith("com.github.yimeng261") ||
-                className.startsWith("com.google") ||
-                className.startsWith("com.mojang") ||
-                className.startsWith("io.redspace.ironsspellbooks") ||
-                className.startsWith("whocraft.tardis_refined") ||
-                className.startsWith("top.theillusivec4.curios") ||
-                className.startsWith("tschipp.carryon") ||
-                className.contains("backup") ||
-                className.contains("maid") ||
-                className.contains("c2me");
+        return AnchorCoreWhitelist.isCallerAllowed(className);
     }
 
     public static void clearCompound(CompoundTag compound) {
