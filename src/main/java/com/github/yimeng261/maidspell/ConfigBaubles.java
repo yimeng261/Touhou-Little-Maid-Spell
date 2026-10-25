@@ -70,11 +70,11 @@ final class ConfigBaubles {
         BUILDER.comment("伤害相关饰品配置",
                         "Damage-related bauble configurations").push("damage");
         SILVER_CERCIS_TRUE_DAMAGE_MULTIPLIER = BUILDER
-                .comment("紫荆银冠攒够次数后反出去的真伤，按这一击伤害的多少倍算 (默认: 0.8)",
+                .comment("紫荆银冠反伤倍率 (默认: 0.8)",
                         "Silver Cercis deals the recorded hit back as true damage, scaled by this.")
                 .defineInRange("silverCercisTrueDamageMultiplier", 0.8, 0.1, 2.0);
         SPRING_RING_MAX_DAMAGE_BONUS = BUILDER
-                .comment("烬血之戒看女仆自己掉了多少血来决定加成，越残血打得越痛，最多额外加这么多 (默认: 0.5，即残血时 +50%)",
+                .comment("烬血之戒增幅上限 (默认: 0.5)",
                         "Spring Ring adds a bonus based on how hurt the maid is, capped at this ratio.")
                 .defineInRange("springRingMaxDamageBonus", 0.5, 0.1, 1.0);
         BUILDER.pop();
@@ -86,7 +86,7 @@ final class ConfigBaubles {
                         "Flow Core healing per favour level and trigger, as a fraction of max health.")
                 .defineInRange("flowCoreHealthRegenRate", 0.025, 0.001, 0.3);
         BLEEDING_HEART_HEAL_RATIO = BUILDER
-                .comment("女仆打出的伤害会按这个比例同时回给她自己和主人，是吸血不是反伤 (默认: 0.1)",
+                .comment("喋血之心女仆吸血倍率 (默认: 0.1)",
                         "Bleeding Heart heals the maid and her owner for this fraction of the damage she deals.")
                 .defineInRange("bleedingHeartHealRatio", 0.1, 0.01, 1.0);
         BUILDER.pop();
@@ -94,15 +94,15 @@ final class ConfigBaubles {
         BUILDER.comment("防御相关饰品配置",
                         "Defense-related bauble configurations").push("defense");
         FLOW_CORE_DAMAGE_REDUCTION = BUILDER
-                .comment("流转核心按好感等级减伤，每级减掉这么多受击伤害，好感越高越硬 (默认: 0.15)",
+                .comment("流转核心每级好感等级减伤比例 (默认: 0.15)",
                         "Flow Core reduces incoming damage by this fraction per favour level.")
                 .defineInRange("flowCoreDamageReduction", 0.15, 0.05, 0.5);
         DOUBLE_HEART_CHAIN_SHARE_RATIO = BUILDER
-                .comment("双心链：女仆和主人各承受原伤害乘此比例",
+                .comment("双心链：女仆和主人各承受原伤害比例",
                         "Double Heart Chain: maid and owner each take this fraction of the original hit.")
                 .defineInRange("doubleHeartChainShareRatio", 0.5, 0.1, 0.9);
         DOUBLE_HEART_CHAIN_MAX_DISTANCE = BUILDER
-                .comment("主人离女仆超过这个距离就不再分摊，那一击由女仆自己吃全额 (默认: 32.0 格)",
+                .comment("主人离女仆超过这个距离就不再分摊 (默认: 32.0 格)",
                         "Above this distance the chain stops sharing and the maid takes the hit alone.")
                 .defineInRange("doubleHeartChainMaxDistance", 32.0, 4.0, 128.0);
         BUILDER.pop();
@@ -110,7 +110,7 @@ final class ConfigBaubles {
         BUILDER.comment("功能相关饰品配置",
                         "Utility-related bauble configurations").push("utility");
         QUICK_CHANT_RING_COOLDOWN_REDUCTION = BUILDER
-                .comment("时痕之戒按好感等级缩短法术冷却，每级少这么多 (默认: 0.25，即每级 -25%)",
+                .comment("时痕之戒每好感等级法术冷却缩减比例 (默认: 0.25，即每级 -25%)",
                         "Quick Chant Ring cuts spell cooldowns by this fraction per favour level.")
                 .defineInRange("quickChantRingCooldownReduction", 0.25, 0.1, 0.8);
         ROCK_CRYSTAL_KNOCKBACK_RESISTANCE = BUILDER
@@ -118,7 +118,7 @@ final class ConfigBaubles {
                         "Knockback resistance from Rock Crystal; the vanilla attribute caps at 1.0.")
                 .defineInRange("rockCrystalKnockbackResistance", 8, 1, 20);
         FLOW_CORE_TICK_INTERVAL = BUILDER
-                .comment("流转核心每隔这么多 tick 回一次血，调小回得更碎更勤 (默认: 10 tick，即 0.5 秒)",
+                .comment("流转核心回血间隔 (默认: 10 tick，即 0.5 秒)",
                         "How often Flow Core heals, in ticks (default 10 ticks = 0.5 seconds).")
                 .defineInRange("flowCoreTickInterval", 10, 1, 100);
         HAIRPIN_BENEFICIAL_EFFECT_EXTENSION = BUILDER
@@ -130,27 +130,27 @@ final class ConfigBaubles {
                         "Minimum ticks added to a beneficial effect by Hairpin.")
                 .defineInRange("hairpinMinExtensionTicks", 300, 0, 10000);
         FRAGRANT_INGENUITY_FAVORABILITY_GAIN = BUILDER
-                .comment("女仆喂主人吃点东西时，女仆自己涨多少好感 (默认: 2)",
+                .comment("女仆喂主人吃东西时增加好感度 (默认: 2)",
                         "Fragrant Ingenuity favour the maid gains when she feeds her owner.")
                 .defineInRange("fragrantIngenuityFavorabilityGain", 2, 1, 10);
         SPRING_BLOOM_RETURN_MAX_STACKS = BUILDER
-                .comment("春花-返最多能存几层，层数就是她替主人挨刀的次数 (默认: 3)",
+                .comment("春花-返最高层数 (默认: 3)",
                         "Spring Bloom Return: maximum number of stored stacks.")
                 .defineInRange("springBloomReturnMaxStacks", 3, 1, 8);
         SPRING_BLOOM_RETURN_STACK_DURATION_TICKS = BUILDER
-                .comment("每层能存多久，存太久会自己过期掉 (默认: 400 tick，即 20 秒)",
+                .comment("层数储存时间 (默认: 400 tick，即 20 秒)",
                         "How long one Spring Bloom Return stack lives before expiring (default 400 ticks = 20s).")
                 .defineInRange("springBloomReturnStackDurationTicks", 400, 20, 72000);
         SPRING_BLOOM_RETURN_GAIN_COOLDOWN_TICKS = BUILDER
-                .comment("两层之间至少要隔这么久，免得一秒钟叠满 (默认: 20 tick，即 1 秒)",
+                .comment("叠层间隔 (默认: 20 tick，即 1 秒)",
                         "Minimum delay between gaining two stacks (default 20 ticks = 1 second).")
                 .defineInRange("springBloomReturnGainCooldownTicks", 20, 0, 1200);
         SPRING_BLOOM_RETURN_TRIGGER_COOLDOWN_TICKS = BUILDER
-                .comment("替主人挡一次之后要等这么久才能再挡 (默认: 200 tick，即 10 秒)",
+                .comment("伤害抵挡冷却时间 (默认: 200 tick，即 10 秒)",
                         "Cooldown after one Spring Bloom Return trigger (default 200 ticks = 10 seconds).")
                 .defineInRange("springBloomReturnTriggerCooldownTicks", 200, 0, 72000);
         SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD = BUILDER
-                .comment("单次伤害到这个固定值就算「够重」，值得替主人挡一下 (默认: 4.0)",
+                .comment("伤害抵挡阈值 (默认: 4.0)",
                         "A single hit at or above this flat amount counts as heavy enough to trigger it.")
                 .defineInRange("springBloomReturnDamageThreshold", 4.0, 0.0, 100.0);
         SPRING_BLOOM_RETURN_DAMAGE_THRESHOLD_RATIO = BUILDER
