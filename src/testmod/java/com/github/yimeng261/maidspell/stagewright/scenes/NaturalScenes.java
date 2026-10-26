@@ -132,7 +132,7 @@ public final class NaturalScenes {
             new Reg("relic_sanctum", NS + "relic_sanctum", List.of("minecraft:windswept_forest"), "beard_box",
                     "relic_sanctum_set", 28, 14, 1735687904, 1.0F, ""),
             new Reg("starfall_garden", NS + "starfall_garden",
-                    List.of("#minecraft:is_overworld"), "none", "starfall_garden_set", 24, 12, 20130426, 1.0F, ""),
+                    List.of("#minecraft:is_overworld"), "none", "starfall_garden_set", 12, 6, 20130426, 1.0F, ""),
             new Reg("starwatch_tower", NS + "starwatch_tower", List.of("minecraft:end_highlands"), "beard_thin",
                     "starwatch_tower_set", 23, 12, 1472905386, 1.0F, ""),
             new Reg("stellar_endshore", NS + "stellar_endshore", List.of("minecraft:end_barrens", "minecraft:small_end_islands"), "none",
