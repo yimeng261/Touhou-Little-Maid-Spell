@@ -492,7 +492,8 @@ public class MaidSpellEventHandler {
     }
 
     private static boolean isMaidPsiFakeCaster(Entity entity) {
-        if (!(entity instanceof FakePlayer fakePlayer)) {
+        // 未装 Psi 时绝不能触碰 PsiProvider：该类整体引用 Psi API，类加载阶段（ModLauncher 栈帧计算）就会失败。
+        if (!PSI_LOADED || !(entity instanceof FakePlayer fakePlayer)) {
             return false;
         }
         return PsiProvider.getMaidUuidFromCaster(fakePlayer) != null;
