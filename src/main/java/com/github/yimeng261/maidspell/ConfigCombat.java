@@ -18,7 +18,7 @@ final class ConfigCombat {
                     "How far a maid will pick targets and cast during a spell-combat task, in blocks.")
             .defineInRange("maxSpellRange", 24.0, 8.0, 64.0);
     private static final ModConfigSpec.DoubleValue MELEE_RANGE = BUILDER
-            .comment("近战任务范围(默认: 2.5 格)",
+            .comment("近战任务范围 (默认: 2.5 格)",
                     "Melee reach used by the melee task, in blocks.")
             .defineInRange("meleeRange", 2.5, 1.0, 5.0);
     private static final ModConfigSpec.DoubleValue FAR_RANGE = BUILDER
@@ -38,7 +38,7 @@ final class ConfigCombat {
                     "Minimum ticks between two attacks in a melee task (default 8 ticks = 0.4 seconds).")
             .defineInRange("meleeAttackInterval", 8, 1, 100);
     private static final ModConfigSpec.IntValue FAR_ATTACK_INTERVAL = BUILDER
-            .comment("远程任务攻击间隔，同样按 tick 算 (默认: 5 tick，即 0.25 秒)",
+            .comment("远程任务攻击间隔 (默认: 5 tick，即 0.25 秒)",
                     "Minimum ticks between two attacks in a far task (default 5 ticks = 0.25 seconds).")
             .defineInRange("farAttackInterval", 5, 1, 100);
     private static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> IRONS_SPELL_BLACKLIST = BUILDER
