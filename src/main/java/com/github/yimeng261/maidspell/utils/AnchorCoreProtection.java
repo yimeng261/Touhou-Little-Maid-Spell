@@ -54,7 +54,8 @@ public final class AnchorCoreProtection {
     }
 
     public static boolean shouldBlockMaidRemove(EntityMaid maid, Entity.RemovalReason reason, String path) {
-        if (maid == null) {
+        // 客户端实体只是服务端的镜像，拦下也无从恢复；且客户端主线程栈底有启动器帧，严格扫栈必然判为不可信。
+        if (maid == null || maid.level().isClientSide()) {
             return false;
         }
         if (MaidHardRemovalProtection.isAllowingHardRemoval()) {

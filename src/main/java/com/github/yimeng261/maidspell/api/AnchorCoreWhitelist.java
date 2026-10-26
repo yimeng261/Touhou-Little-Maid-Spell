@@ -10,7 +10,7 @@ import java.util.function.Predicate;
 /**
  * 锚定核心调用者白名单扩展 API。
  *
- * <p>锚定核心在存档/移除/转换/捕捉拦截时会检查调用栈类名；其他模组可在此注册自己的
+ * <p>锚定核心在拦截女仆的序列化与移除时会检查调用栈类名，栈上每一帧都须可信；其他模组可在此注册自己的
  * 处理类，避免正常机制被误判。注册为进程级、线程安全、实时生效；请只注册本模组的类，
  * 过宽前缀（如 {@code "com."}）会削弱防护。</p>
  *
@@ -20,7 +20,7 @@ import java.util.function.Predicate;
  * }</pre>
  */
 public final class AnchorCoreWhitelist {
-    /** 第三方注册的精确类名。 */
+    /** 第三方注册的类名，连同其嵌套类一起放行。 */
     private static final Set<String> EXTRA_CLASSES = ConcurrentHashMap.newKeySet();
 
     /** 第三方注册的包/类名前缀。 */
@@ -32,14 +32,14 @@ public final class AnchorCoreWhitelist {
     private AnchorCoreWhitelist() {
     }
 
-    /** 注册受信任的调用者类。 */
+    /** 注册受信任的调用者类，其内部类、匿名类（{@code MyHandler$1} 等）一并放行。 */
     public static void addAllowedClass(Class<?> callerClass) {
         Objects.requireNonNull(callerClass, "callerClass");
         addAllowedClass(callerClass.getName());
     }
 
     /**
-     * 按完整类名注册（精确匹配）。
+     * 按完整类名注册，匹配该类本身及其嵌套类（{@code 类名$...}）。
      *
      * @throws NullPointerException     当 {@code className} 为 {@code null}
      * @throws IllegalArgumentException 当 {@code className} 为空白字符串
@@ -74,7 +74,7 @@ public final class AnchorCoreWhitelist {
             return true;
         }
 
-        if (EXTRA_CLASSES.contains(className)) {
+        if (!EXTRA_CLASSES.isEmpty() && isRegisteredClassOrNested(className)) {
             return true;
         }
 
@@ -98,6 +98,20 @@ public final class AnchorCoreWhitelist {
             }
         }
 
+        return false;
+    }
+
+    /** 类名本身或其任一外层类（{@code a.b.Outer$Inner$1} 依次查 {@code Outer$Inner$1}、{@code Outer$Inner}、{@code Outer}）已注册。 */
+    private static boolean isRegisteredClassOrNested(String className) {
+        if (EXTRA_CLASSES.contains(className)) {
+            return true;
+        }
+        int simpleNameStart = className.lastIndexOf('.') + 1;
+        for (int i = className.lastIndexOf('$'); i > simpleNameStart; i = className.lastIndexOf('$', i - 1)) {
+            if (EXTRA_CLASSES.contains(className.substring(0, i))) {
+                return true;
+            }
+        }
         return false;
     }
 
