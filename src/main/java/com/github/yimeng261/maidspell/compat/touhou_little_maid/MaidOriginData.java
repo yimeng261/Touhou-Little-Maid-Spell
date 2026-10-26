@@ -1,16 +1,12 @@
 package com.github.yimeng261.maidspell.compat.touhou_little_maid;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import com.mojang.serialization.Codec;
-import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
@@ -198,17 +194,17 @@ public final class MaidOriginData {
         return isHiddenRetreatMaid(maid.getPersistentData());
     }
 
-    /** 只升级星之魔女女仆身上的铁魔法法术书。 */
-    public static void upgradeStarWitchSpellBooks(EntityMaid maid) {
-        if (!isStarWitchVictoryTamed(maid)) {
-            return;
-        }
-        for (int slot = 0; slot < maid.getMaidInv().getSlots(); slot++) {
-            upgradeSpellBook(maid.getMaidInv().getStackInSlot(slot));
-        }
-    }
-
-    /** 奖励魂符放出之前，升级其中序列化背包里的法术书。 */
+    /**
+     * 把出厂魂符序列化背包里的铁魔法法术书容量抬到 {@link #STAR_WITCH_SPELL_SLOTS}。
+     *
+     * <p><b>只在出厂时调用一次</b>（{@link StellarWitchStarterMaid#createSoulCharm}），
+     * 不参与女仆入世流程：出厂之后玩家再往她背包里塞的法术书保持物品原本的容量，
+     * 不会被这条逻辑顺手升级。书里的法术列表、等级与其它容器字段一概不动，
+     * 只改 {@code irons_spellbooks:spell_container} 组件里的 {@code maxSpells}，
+     * 因为铁魔法解码时槽位数组长度完全取自这个值。
+     *
+     * <p>模板本身已经写着 20；这条逻辑是给被数据包覆盖的模板、以及未来改版兜底。
+     */
     public static void upgradeStarWitchSpellBookData(CompoundTag maidData) {
         CompoundTag inventory = maidData.getCompound(EntityMaid.MAID_INVENTORY_TAG);
         if (!inventory.contains("Items", Tag.TAG_LIST)) {
@@ -344,36 +340,5 @@ public final class MaidOriginData {
         if (source.getBoolean(key)) {
             target.putBoolean(key, true);
         }
-    }
-
-    private static void upgradeSpellBook(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) {
-            return;
-        }
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        if (!"irons_spellbooks".equals(id.getNamespace()) || !id.getPath().contains("spell_book")) {
-            return;
-        }
-        DataComponentType<?> type = BuiltInRegistries.DATA_COMPONENT_TYPE.get(SPELL_CONTAINER);
-        if (type != null) {
-            upgradeContainer(stack, type);
-        }
-    }
-
-    /** 经组件编解码器改写 maxSpells，不直接引用铁魔法的类。 */
-    private static <T> void upgradeContainer(ItemStack stack, DataComponentType<T> type) {
-        T container = stack.get(type);
-        Codec<T> codec = type.codec();
-        if (container == null || codec == null) {
-            return;
-        }
-        codec.encodeStart(NbtOps.INSTANCE, container).result()
-                .filter(CompoundTag.class::isInstance)
-                .map(CompoundTag.class::cast)
-                .filter(tag -> tag.getInt(MAX_SPELLS) != STAR_WITCH_SPELL_SLOTS)
-                .ifPresent(tag -> {
-                    tag.putInt(MAX_SPELLS, STAR_WITCH_SPELL_SLOTS);
-                    codec.parse(NbtOps.INSTANCE, tag).result().ifPresent(upgraded -> stack.set(type, upgraded));
-                });
     }
 }

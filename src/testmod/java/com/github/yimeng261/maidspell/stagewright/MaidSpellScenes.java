@@ -16,6 +16,7 @@ import com.github.yimeng261.maidspell.stagewright.scenes.SpellLifecycleScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.UsefulMagicSpellScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.ConfigFileScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StateMigrationScenes;
+import com.github.yimeng261.maidspell.stagewright.scenes.StarWitchSpellBookScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StellarContentScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StellarDiscGuardScenes;
 import com.github.yimeng261.maidspell.stagewright.scenes.StellarStructureScenes;
@@ -96,6 +97,7 @@ public final class MaidSpellScenes implements SceneProvider {
                 scenes.addAll(UpstreamSyncScenes.dedicatedServer());
                 scenes.addAll(MusicDiscScenes.dedicatedServer());
                 scenes.addAll(StellarDiscGuardScenes.dedicatedServer());
+                scenes.addAll(StarWitchSpellBookScenes.dedicatedServer());
             }
             case INTEGRATED_SERVER -> {
                 scenes.addAll(OwnerScenes.integratedServer());

@@ -110,7 +110,6 @@ public class MaidSpellEventHandler {
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
             // 区块加载时这个事件可能不在服务端主线程上触发，效果补回交给主线程做。
             maid.getServer().execute(() -> MaidOriginData.maintainPresetEffects(maid));
-            MaidOriginData.upgradeStarWitchSpellBooks(maid);
 
             SpellBookManager manager = SpellBookManager.getOrCreateManager(maid);
             manager.onMaidJoin(maid);
