@@ -205,7 +205,6 @@ public final class StarfallGardenRetrofit {
                                   StarfallGardenStructure garden, List<ChunkPos> candidates) {
         var chunkGenerator = overworld.getChunkSource().getGenerator();
         var randomState = overworld.getChunkSource().randomState();
-        var structureState = overworld.getChunkSource().getGeneratorState();
         long seed = overworld.getSeed();
 
         int tried = 0;
@@ -215,23 +214,14 @@ public final class StarfallGardenRetrofit {
             }
             tried++;
 
-            // 先查落点计划，连尚未生成、最终可能失败的其他结构也要避让。
-            if (StarfallGardenPlacementGuard.hasNearbyStructureAttempt(structureState, garden, candidate)) {
-                continue;
-            }
-
             // 每个候选都要重开一次窗口：上一个候选可能已经把闸门关回去了。
             if (!StarfallGardenData.unlockForRetrofit()) {
                 return;
             }
             StructureStart start;
             try {
-                // 此时闸门已预约，读邻区块不会意外触发另一座庭院的正常生成。
-                // 先查完存档中的旧结构再计算拼图，避免写入任何庭院方块后才发现冲突。
-                if (StarfallGardenPlacementGuard.hasExistingNearbyStructure(overworld, garden, candidate)) {
-                    StarfallGardenData.relockAfterRetrofit();
-                    continue;
-                }
+                // 先生成 StructureStart（只计算、不写方块），拿到庭院的真实包围盒，
+                // 之后才能按高度判断和存档里其他结构是否真的冲突。
                 StarfallGardenData.enterRetrofitGeneration();
                 start = garden.generate(overworld.registryAccess(), chunkGenerator,
                         chunkGenerator.getBiomeSource(), randomState, overworld.getStructureManager(),
@@ -245,6 +235,22 @@ public final class StarfallGardenRetrofit {
             }
             if (start == null || !start.isValid()) {
                 // 距离带 / 高度夹取不通过，或者这个候选本来就不该长。正常情况，换下一个。
+                StarfallGardenData.relockAfterRetrofit();
+                continue;
+            }
+
+            // 此时闸门是 GENERATING：下面加载邻区块不会触发另一座庭院。
+            // 只和竖直范围真正重叠的已保存结构算冲突（矿井、古城等地下结构不再拦）。
+            boolean conflicted;
+            try {
+                conflicted = StarfallGardenPlacementGuard.hasExistingNearbyStructure(
+                        overworld, garden, candidate, start.getBoundingBox());
+            } catch (RuntimeException e) {
+                MaidSpellMod.LOGGER.warn("星落之庭补生成：检查候选 {} 附近结构失败，换下一个", candidate, e);
+                StarfallGardenData.relockAfterRetrofit();
+                continue;
+            }
+            if (conflicted) {
                 StarfallGardenData.relockAfterRetrofit();
                 continue;
             }

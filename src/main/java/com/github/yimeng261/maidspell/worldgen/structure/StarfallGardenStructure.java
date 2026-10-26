@@ -3,7 +3,6 @@ package com.github.yimeng261.maidspell.worldgen.structure;
 import com.github.yimeng261.maidspell.Config;
 import com.github.yimeng261.maidspell.worldgen.MaidSpellStructures;
 import com.github.yimeng261.maidspell.worldgen.StarfallGardenData;
-import com.github.yimeng261.maidspell.worldgen.StarfallGardenPlacementGuard;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
@@ -183,13 +182,10 @@ public class StarfallGardenStructure extends Structure {
             return Optional.empty();
         }
 
-        // 只读结构集的落点计划，不能在 worldgen 线程请求邻区块，否则可能互相等待。
-        var server = ServerLifecycleHooks.getCurrentServer();
-        if (server != null && server.overworld() != null
-                && StarfallGardenPlacementGuard.hasNearbyStructureAttempt(
-                        server.overworld().getChunkSource().getGeneratorState(), this, context.chunkPos())) {
-            return Optional.empty();
-        }
+        // 刻意不避让其他结构的“计划落点”。庭院悬空在地表之上 heightOffset 格、terrain_adaptation=none，
+        // 和地面结构只会在水平投影上重叠，不会真的撞在一起；而在结构集密集的整合包里（例如 spacing=2
+        // 的洞穴结构），3×3 区块内几乎必然存在别的结构的候选点，按落点计划避让会让庭院在所有存档里都
+        // 落不下来。唯一性仍由 StarfallGardenData 的闸门保证，补生成阶段另有针对存档中已存在结构的检查。
 
         // 区块中心的地表高度。和观星塔那种多采样取中位数的做法不同：这里只锚定一格。
         // WORLD_SURFACE_WG 走的是噪声高度图（不是区块里的 heightmap），所以 STRUCTURE_STARTS 阶段就能算，
