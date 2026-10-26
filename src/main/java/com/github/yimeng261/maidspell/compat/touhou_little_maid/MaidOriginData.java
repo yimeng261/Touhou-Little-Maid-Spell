@@ -6,7 +6,6 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
@@ -190,17 +189,17 @@ public final class MaidOriginData {
         return isHiddenRetreatMaid(maid.getPersistentData());
     }
 
-    /** Upgrade only Iron's Spellbooks spell-book items carried by a Star Witch maid. */
-    public static void upgradeStarWitchSpellBooks(EntityMaid maid) {
-        if (!isStarWitchVictoryTamed(maid)) {
-            return;
-        }
-        for (int slot = 0; slot < maid.getMaidInv().getSlots(); slot++) {
-            upgradeSpellBook(maid.getMaidInv().getStackInSlot(slot));
-        }
-    }
-
-    /** Upgrade the serialized inventory in a reward soul charm before it is spawned. */
+    /**
+     * 把出厂魂符序列化背包里的铁魔法法术书容量抬到 {@link #STAR_WITCH_SPELL_SLOTS}。
+     *
+     * <p><b>只在出厂时调用一次</b>（{@link StellarWitchStarterMaid#createSoulCharm}），
+     * 不参与女仆入世流程：出厂之后玩家再往她背包里塞的法术书保持物品原本的容量，
+     * 不会被这条逻辑顺手升级。书里的法术列表、等级与其它容器字段一概不动，只写 {@code maxSpells}；
+     * 现代键 {@code irons_spellbooks:spell_container} 与旧版 {@code ISB_Spells} 是两个键都写，
+     * 因为上游解析时槽位数组长度完全取自这个值（旧版解码还会静默丢弃越界条目）。
+     *
+     * <p>模板本身已经写着 20；这条逻辑是给被数据包覆盖的模板、以及未来改版兜底。
+     */
     public static void upgradeStarWitchSpellBookData(CompoundTag maidData) {
         CompoundTag inventory = maidData.getCompound(EntityMaid.MAID_INVENTORY_TAG);
         if (!inventory.contains("Items", Tag.TAG_LIST)) {
@@ -332,23 +331,6 @@ public final class MaidOriginData {
         if (source.getBoolean(key)) {
             target.putBoolean(key, true);
         }
-    }
-
-    private static void upgradeSpellBook(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) {
-            return;
-        }
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
-        if (id == null || !"irons_spellbooks".equals(id.getNamespace())
-                || !id.getPath().contains("spell_book")) {
-            return;
-        }
-        CompoundTag itemTag = stack.getTag();
-        if (itemTag == null) {
-            return;
-        }
-        upgradeContainer(itemTag, MODERN_SPELL_CONTAINER);
-        upgradeContainer(itemTag, LEGACY_SPELL_CONTAINER);
     }
 
     private static void upgradeContainer(CompoundTag itemTag, String key) {

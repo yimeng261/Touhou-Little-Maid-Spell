@@ -101,7 +101,6 @@ public class MaidSpellEventHandler {
         if (entity instanceof EntityMaid maid && !event.getLevel().isClientSide()) {
             // Chunk loading may post this event off the server thread.
             maid.getServer().execute(() -> MaidOriginData.maintainPresetEffects(maid));
-            MaidOriginData.upgradeStarWitchSpellBooks(maid);
 
             if (BaubleStateManager.hasBauble(maid, MaidSpellItems.ANCHOR_CORE)) {
                 ChunkLoadingManager.getCurrentServer().execute(()->{
