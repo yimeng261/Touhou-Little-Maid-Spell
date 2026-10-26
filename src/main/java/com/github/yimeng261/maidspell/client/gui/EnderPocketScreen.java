@@ -108,7 +108,7 @@ public class EnderPocketScreen extends Screen {
                     rowX, buttonY, maidInfo.maidUUID));
             Button maidButton = new TransparentButton(
                 nameButtonX, buttonY, nameButtonRight - nameButtonX, ROW_HEIGHT,
-                Component.literal(maidInfo.maidName),
+                maidInfo.maidName,
                 button -> openMaidInventory(maidInfo.maidUUID)
             );
 

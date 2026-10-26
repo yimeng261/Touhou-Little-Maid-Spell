@@ -21,12 +21,12 @@ import com.github.yimeng261.maidspell.stagewright.support.Packets;
 import com.github.yimeng261.maidspell.stagewright.support.Players;
 import com.github.yimeng261.maidspell.stagewright.support.Reflect;
 import com.github.yimeng261.maidspell.task.SpellCombatFarTask;
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.magicterra.stagewright.scene.Scene;
 import net.magicterra.stagewright.scene.SceneContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -226,25 +226,26 @@ public final class EnderPocketScenes {
         }
         List<EnderPocketService.EnderPocketMaidInfo> infos = EnderPocketService.getPlayerEnderPocketMaids(owner);
         ctx.check(infos.size()).as("服务端收集到的女仆数").isEqualTo(70);
-        S2CEnderPocketMaidList list = roundTrip(S2CEnderPocketMaidList.STREAM_CODEC, new S2CEnderPocketMaidList(infos, false));
+        S2CEnderPocketMaidList list = roundTrip(ctx, S2CEnderPocketMaidList.STREAM_CODEC, new S2CEnderPocketMaidList(infos, false));
         ctx.check(list.maidInfos().size()).as("列表消息解码后的条数").isEqualTo(64);
-        S2CEnderPocketHudUpdate hud = roundTrip(S2CEnderPocketHudUpdate.STREAM_CODEC, new S2CEnderPocketHudUpdate(infos));
+        S2CEnderPocketHudUpdate hud = roundTrip(ctx, S2CEnderPocketHudUpdate.STREAM_CODEC, new S2CEnderPocketHudUpdate(infos));
         ctx.check(hud.maidInfos().size()).as("状态栏消息解码后的条数").isEqualTo(64);
     }
 
-    /** 名字超过 64 个字符：列表里截到 64 个字符，编码解码不出错。 */
+    /** 名字超过 64 个字符：编码解码不出错，名字原样保留。 */
     private static void longName(SceneContext ctx) {
         ServerPlayer owner = Owners.visitor(ctx, "TlmsPocketName", 0, 0, -3);
         EntityMaid maid = pocketMaid(ctx, owner, 0, 0, 3);
         maid.setCustomName(Component.literal("名".repeat(100)));
-        S2CEnderPocketMaidList list = roundTrip(S2CEnderPocketMaidList.STREAM_CODEC,
+        S2CEnderPocketMaidList list = roundTrip(ctx, S2CEnderPocketMaidList.STREAM_CODEC,
                 new S2CEnderPocketMaidList(EnderPocketService.getPlayerEnderPocketMaids(owner), false));
         ctx.check(list.maidInfos().size()).as("解码后的条数").isEqualTo(1);
-        ctx.check(list.maidInfos().getFirst().maidName.length()).as("解码后的名字长度").isEqualTo(64);
+        ctx.check(list.maidInfos().getFirst().maidName.getString()).as("解码后的名字").isEqualTo("名".repeat(100));
     }
 
-    private static <T> T roundTrip(net.minecraft.network.codec.StreamCodec<ByteBuf, T> codec, T value) {
-        ByteBuf buffer = Unpooled.buffer();
+    private static <T> T roundTrip(SceneContext ctx, net.minecraft.network.codec.StreamCodec<RegistryFriendlyByteBuf, T> codec,
+                                   T value) {
+        RegistryFriendlyByteBuf buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), ctx.level().registryAccess());
         try {
             codec.encode(buffer, value);
             return codec.decode(buffer);

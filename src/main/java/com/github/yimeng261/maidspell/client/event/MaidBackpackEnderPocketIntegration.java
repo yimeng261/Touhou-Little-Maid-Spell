@@ -152,7 +152,7 @@ public class MaidBackpackEnderPocketIntegration {
 
             Button maidButton = new TransparentButton(
                 buttonX, buttonY, buttonWidth, buttonHeight,
-                Component.literal(maidInfo.maidName),
+                maidInfo.maidName,
                 button -> handleMaidButtonClick(maidInfo.maidUUID)
             );
 
@@ -295,8 +295,8 @@ public class MaidBackpackEnderPocketIntegration {
                 graphics.renderOutline(buttonX, buttonY, buttonWidth, buttonHeight, 0xFFFFFFFF);
             }
 
-            // 渲染女仆名称
-            Component maidName = Component.literal(maidInfo.maidName);
+            // 渲染女仆名称（组件由客户端按当前语言解析）
+            Component maidName = maidInfo.maidName;
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
             // 当前女仆使用不同的文字颜色
             int textColor = isCurrentMaid ? 0xFFFF00 : 0xFFFFFF;

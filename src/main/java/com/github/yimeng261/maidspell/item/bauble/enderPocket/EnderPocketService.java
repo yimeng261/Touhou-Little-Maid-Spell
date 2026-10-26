@@ -15,6 +15,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -48,7 +51,7 @@ public class EnderPocketService {
      */
     public static class EnderPocketMaidInfo {
         public final UUID maidUUID;
-        public final String maidName;
+        public final Component maidName;
         public final ResourceKey<Level> levelKey;
         public final int maidEntityId;
         public final float health;
@@ -60,17 +63,16 @@ public class EnderPocketService {
         public final boolean hasAnchorCore;
         public final String modelId;
 
-        public static final int MAX_MAID_NAME_LENGTH = 64;
         public static final int MAX_RESOURCE_ID_LENGTH = 256;
 
-        private static final StreamCodec<ByteBuf, String> NAME_CODEC = ByteBufCodecs.stringUtf8(MAX_MAID_NAME_LENGTH);
         private static final StreamCodec<ByteBuf, String> RESOURCE_ID_CODEC = ByteBufCodecs.stringUtf8(MAX_RESOURCE_ID_LENGTH);
         private static final StreamCodec<ByteBuf, ResourceKey<Level>> LEVEL_KEY_CODEC = ResourceKey.streamCodec(Registries.DIMENSION);
 
-        public static final StreamCodec<ByteBuf, EnderPocketMaidInfo> STREAM_CODEC = StreamCodec.of(
+        public static final StreamCodec<RegistryFriendlyByteBuf, EnderPocketMaidInfo> STREAM_CODEC = StreamCodec.of(
                 (buf, info) -> {
                     UUIDUtil.STREAM_CODEC.encode(buf, info.maidUUID);
-                    NAME_CODEC.encode(buf, info.maidName);
+                    // 名称以翻译组件传输，客户端按自身语言渲染，避免专用服务端把翻译键当文本发出去。
+                    ComponentSerialization.STREAM_CODEC.encode(buf, info.maidName);
                     LEVEL_KEY_CODEC.encode(buf, info.levelKey);
                     buf.writeInt(info.maidEntityId);
                     buf.writeFloat(info.health);
@@ -84,7 +86,7 @@ public class EnderPocketService {
                 },
                 buf -> new EnderPocketMaidInfo(
                         UUIDUtil.STREAM_CODEC.decode(buf),
-                        NAME_CODEC.decode(buf),
+                        ComponentSerialization.STREAM_CODEC.decode(buf),
                         LEVEL_KEY_CODEC.decode(buf),
                         buf.readInt(),
                         buf.readFloat(),
@@ -98,7 +100,7 @@ public class EnderPocketService {
                 )
         );
 
-        public static final StreamCodec<ByteBuf, List<EnderPocketMaidInfo>> LIST_STREAM_CODEC =
+        public static final StreamCodec<RegistryFriendlyByteBuf, List<EnderPocketMaidInfo>> LIST_STREAM_CODEC =
                 ByteBufCodecs.collection(ArrayList::new, STREAM_CODEC, MAX_MAID_INFOS);
 
         /**
@@ -108,11 +110,11 @@ public class EnderPocketService {
             return List.copyOf(infos.subList(0, Math.min(infos.size(), MAX_MAID_INFOS)));
         }
 
-        public EnderPocketMaidInfo(UUID maidUUID, String maidName, ResourceKey<Level> levelKey, int maidEntityId,
+        public EnderPocketMaidInfo(UUID maidUUID, Component maidName, ResourceKey<Level> levelKey, int maidEntityId,
                                    float health, float maxHealth, int armor, double x, double y, double z,
                                    boolean hasAnchorCore, String modelId) {
             this.maidUUID = maidUUID;
-            this.maidName = truncate(maidName, MAX_MAID_NAME_LENGTH);
+            this.maidName = maidName;
             this.levelKey = levelKey;
             this.maidEntityId = maidEntityId;
             this.health = health;
@@ -155,7 +157,9 @@ public class EnderPocketService {
                     && isRegisteredServerEntity(maid, player.getServer())) {
                 enderPocketMaids.add(new EnderPocketMaidInfo(
                         maid.getUUID(),
-                        maid.getName().getString(),
+                        // 保留翻译组件而不是服务端解析后的纯文本：专用服务端没有客户端的模组/模型语言文件，
+                        // getString() 只会得到原始翻译键（如 model.geckolib.xxx.name），必须由客户端自行解析。
+                        maid.getName().copy(),
                         maid.level().dimension(),
                         maid.getId(),
                         maid.getHealth(),

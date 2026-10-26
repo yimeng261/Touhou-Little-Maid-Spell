@@ -18,6 +18,7 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.language.ClientLanguage;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.neoforged.fml.loading.FMLPaths;
@@ -62,7 +63,7 @@ public final class EnderPocketClientScenes {
     }
 
     private static EnderPocketService.EnderPocketMaidInfo info(String name, boolean anchor) {
-        return new EnderPocketService.EnderPocketMaidInfo(UUID.nameUUIDFromBytes(name.getBytes()), name, Level.OVERWORLD, -1,
+        return new EnderPocketService.EnderPocketMaidInfo(UUID.nameUUIDFromBytes(name.getBytes()), Component.literal(name), Level.OVERWORLD, -1,
                 20, 20, 0, 0, 64, 0, anchor, "touhou_little_maid:hakurei_reimu");
     }
 

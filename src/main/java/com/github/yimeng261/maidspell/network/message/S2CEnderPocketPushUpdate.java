@@ -6,7 +6,7 @@ import com.github.yimeng261.maidspell.client.event.MaidBackpackEnderPocketIntegr
 import com.github.yimeng261.maidspell.client.gui.EnderPocketScreen;
 import com.github.yimeng261.maidspell.client.overlay.EnderPocketHudOverlay;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
-import io.netty.buffer.ByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -31,7 +31,7 @@ public record S2CEnderPocketPushUpdate(List<EnderPocketService.EnderPocketMaidIn
     public static final Type<S2CEnderPocketPushUpdate> TYPE
             = new Type<>(ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, "ender_pocket_server_push_update"));
 
-    public static final StreamCodec<ByteBuf, S2CEnderPocketPushUpdate> STREAM_CODEC = StreamCodec.composite(
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CEnderPocketPushUpdate> STREAM_CODEC = StreamCodec.composite(
             EnderPocketService.EnderPocketMaidInfo.LIST_STREAM_CODEC,
             S2CEnderPocketPushUpdate::maidInfos,
             ByteBufCodecs.BOOL,
