@@ -152,13 +152,13 @@ public final class AnchorCoreProtection {
         }
         if (reason == Entity.RemovalReason.CHANGED_DIMENSION) {
             // 跨维是正常行为（原版/TARDIS 等），取消反而会让目标维度副本与原实体并存。
-            logUntrustedRemoval(stackTrace, reason, false);
+            logUntrustedRemoval(firstIllegalCaller(stackTrace), reason, false);
             return true;
         }
 
         String illegalCaller = firstIllegalCaller(stackTrace);
         if (illegalCaller != null && isUnloadReason(reason)) {
-            logUntrustedRemoval(stackTrace, reason, true);
+            logUntrustedRemoval(illegalCaller, reason, true);
         }
         return illegalCaller == null;
     }
@@ -185,9 +185,7 @@ public final class AnchorCoreProtection {
         return null;
     }
 
-    private static void logUntrustedRemoval(StackTraceElement[] stackTrace, Entity.RemovalReason reason,
-                                            boolean blocked) {
-        String illegalCaller = firstIllegalCaller(stackTrace);
+    private static void logUntrustedRemoval(String illegalCaller, Entity.RemovalReason reason, boolean blocked) {
         if (illegalCaller == null) {
             return;
         }
