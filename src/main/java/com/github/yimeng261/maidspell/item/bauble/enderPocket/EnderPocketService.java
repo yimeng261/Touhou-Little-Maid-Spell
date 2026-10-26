@@ -13,6 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -35,7 +36,7 @@ public class EnderPocketService {
     /**
      * 末影腰包女仆信息
      */
-    public record EnderPocketMaidInfo(UUID maidUUID, String maidName, int maidEntityId,
+    public record EnderPocketMaidInfo(UUID maidUUID, Component maidName, int maidEntityId,
                                       float health, float maxHealth, int armor,
                                       double x, double y, double z, String dimension,
                                       boolean hasAnchorCore, String modelId) {}
@@ -67,7 +68,9 @@ public class EnderPocketService {
                     && BaubleStateManager.hasBauble(maid, MaidSpellItems.ENDER_POCKET)) {
                 enderPocketMaids.add(new EnderPocketMaidInfo(
                         maid.getUUID(),
-                        maid.getName().getString(),
+                        // 保留翻译组件而不是服务端解析后的纯文本：专用服务端没有客户端的模组/模型语言文件，
+                        // getString() 只会得到原始翻译键（如 model.geckolib.xxx.name），必须由客户端自行解析。
+                        maid.getName().copy(),
                         maid.getId(),
                         maid.getHealth(),
                         maid.getMaxHealth(),

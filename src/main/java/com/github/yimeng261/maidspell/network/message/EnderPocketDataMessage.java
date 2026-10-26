@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell.network.message;
 import com.github.yimeng261.maidspell.item.bauble.enderPocket.EnderPocketService;
 import io.netty.handler.codec.DecoderException;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
@@ -15,7 +16,6 @@ import java.util.function.Supplier;
 /** Server-to-client Ender Pocket list data. */
 public final class EnderPocketDataMessage {
     public static final int MAX_MAID_INFOS = 64;
-    public static final int MAX_MAID_NAME_LENGTH = 64;
     public static final int MAX_RESOURCE_ID_LENGTH = 256;
 
     public enum Type {
@@ -58,7 +58,8 @@ public final class EnderPocketDataMessage {
         buf.writeVarInt(message.maidInfos.size());
         for (EnderPocketService.EnderPocketMaidInfo info : message.maidInfos) {
             buf.writeUUID(info.maidUUID());
-            buf.writeUtf(truncate(info.maidName(), MAX_MAID_NAME_LENGTH), MAX_MAID_NAME_LENGTH);
+            // 名称以翻译组件传输，客户端按自身语言渲染，避免专用服务端把翻译键当文本发出去。
+            buf.writeComponent(info.maidName());
             buf.writeVarInt(info.maidEntityId());
             buf.writeFloat(info.health());
             buf.writeFloat(info.maxHealth());
@@ -83,7 +84,7 @@ public final class EnderPocketDataMessage {
         List<EnderPocketService.EnderPocketMaidInfo> maidInfos = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             UUID maidUuid = buf.readUUID();
-            String maidName = buf.readUtf(MAX_MAID_NAME_LENGTH);
+            Component maidName = buf.readComponent();
             int entityId = buf.readVarInt();
             float health = buf.readFloat();
             float maxHealth = buf.readFloat();

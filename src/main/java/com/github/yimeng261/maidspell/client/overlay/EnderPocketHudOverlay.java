@@ -170,7 +170,8 @@ public final class EnderPocketHudOverlay implements IGuiOverlay {
 
         renderAvatar(graphics, mc, info, x + 2, y + 2);
 
-        String name = trimToWidth(mc, info.maidName(), 92);
+        // 在客户端解析翻译组件（服务端只传组件，不传已解析文本）。
+        String name = trimToWidth(mc, info.maidName().getString(), 92);
         graphics.drawString(mc.font, name, x + 42, y + 4, 0xFFFFFFFF, true);
         graphics.pose().pushPose();
         graphics.pose().translate(x + ROW_WIDTH - 13, y + 2, 0);
