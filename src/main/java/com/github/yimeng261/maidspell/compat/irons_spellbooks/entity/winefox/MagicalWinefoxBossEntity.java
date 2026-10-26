@@ -38,6 +38,7 @@ import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.registries.MobEffectRegistry;
 import io.redspace.ironsspellbooks.capabilities.magic.PlayerRecasts;
 import io.redspace.ironsspellbooks.capabilities.magic.SummonManager;
+import io.redspace.ironsspellbooks.capabilities.magic.SyncedSpellData;
 import io.redspace.ironsspellbooks.entity.mobs.IMagicSummon;
 import io.redspace.ironsspellbooks.entity.mobs.abstract_spell_casting_mob.AbstractSpellCastingMob;
 import io.redspace.ironsspellbooks.network.casting.SyncEntityDataPacket;
@@ -436,6 +437,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     private boolean expectedExternalHealthWrite;
     private int expectedExternalHealthWriteTick = Integer.MIN_VALUE;
     private boolean loadingLifecycle;
+    /** 清理幻影吟唱的计数，仅诊断用。 */
+    private int staleCastClears;
     private UUID encounterId = UUID.randomUUID();
     private UUID rewardTransaction;
     private float unattributedDamage;
@@ -564,6 +567,10 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         // 遭遇结束或施法数据被外部重置时，施法回调可能被跳过；
         // 绝不能把旧仪式的原点带进下一次施法。
         if (!this.level().isClientSide) {
+            // 这三种状态下 serverAiStep 不跑，残留标志没人消费。
+            if (this.isSeated() || this.isDefeated() || this.returnHomeTicks > 0) {
+                this.maidspell$clearStaleCastingFlag("immobile");
+            }
             if (this.isCastingPalmBlackHole()) {
                 this.ensurePalmBlackHoleShroud();
             } else if (Double.isFinite(this.palmBlackHoleBaseY) || this.palmBlackHoleShroud != null) {
@@ -1650,6 +1657,22 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     public void cancelCast() {
         super.cancelCast();
         if (this.spellController != null) this.spellController.clear();
+        // ISS 只在 castingSpell 非空时复位；读档残影没有 castingSpell。
+        this.maidspell$clearStaleCastingFlag("cancel");
+    }
+
+    /** 只清 isCasting，保留 spell id/level/slot：ISS 读档重建仍要用它们定位法术。 */
+    private void maidspell$clearStaleCastingFlag(String reason) {
+        if (this.level().isClientSide || !this.isCasting()) {
+            return;
+        }
+        SyncedSpellData synced = this.getMagicData().getSyncedData();
+        synced.setIsCasting(false, synced.getCastingSpellId(), synced.getCastingSpellLevel(),
+            synced.getCastingEquipmentSlot());
+        ++this.staleCastClears;
+        com.github.yimeng261.maidspell.Global.LOGGER.warn(
+            "Cleared stale Winefox cast ({}): {} level={} entity={}",
+            reason, synced.getCastingSpellId(), synced.getCastingSpellLevel(), this.getUUID());
     }
 
     /**
@@ -4189,7 +4212,22 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
     public void readAdditionalSaveData(CompoundTag tag) {
         this.loadingLifecycle = true;
         try {
+        // 读档不续吟唱：先清掉存档里的施法键，ISS 就不会走 recreateSpell 重建
+        // （重建会撞上本类 initiateCastSpell 的 isCasting 守卫，形成永久"吟唱中"）。
+        if (!this.level().isClientSide && tag.getBoolean("isCasting")) {
+            ++this.staleCastClears;
+            com.github.yimeng261.maidspell.Global.LOGGER.warn(
+                "Discarded in-flight Winefox cast from save: {} level={}",
+                tag.getString("castingSpellId"), tag.getInt("castingSpellLevel"));
+            tag.putBoolean("isCasting", false);
+            tag.putString("castingSpellId", "");
+            tag.putInt("castingSpellLevel", 0);
+        }
         super.readAdditionalSaveData(tag);
+        // 兜底：施法状态若不经上面这几个 NBT 键恢复，这里一并复位。
+        if (!this.level().isClientSide && this.isCasting()) {
+            this.getMagicData().resetCastingState();
+        }
         this.entityData.set(PHASE_TWO, tag.getBoolean("WinefoxPhaseTwo"));
         this.highDamageGuard.setPending(tag.getBoolean("WinefoxHighDamageGuard"), this.tickCount);
         NbtUtils.readBlockPos(tag, "WinefoxHomePos").ifPresent(pos -> this.homePos = pos);
@@ -4488,6 +4526,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             return;
         }
         this.clearDefeatLesson();
+        this.maidspell$clearStaleCastingFlag("repair");
         if (this.maidspell$encounterState() != WinefoxEncounterState.RETURNING) {
             this.maidspell$forceReturningForRepair();
         }
@@ -4580,6 +4619,8 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
             + " health=" + this.maidspell$authoritativeHealth() + "/" + this.maidspell$bossMaxHealth()
             + " phase=" + (this.isPhaseTwo() ? 2 : 1)
             + " spell=" + (this.isCasting() ? this.getMagicData().getCastingSpellId() : "none")
+            + " castRemaining=" + this.getMagicData().getCastDurationRemaining()
+            + " staleClears=" + this.staleCastClears
             + " reward=" + this.maidspell$rewardState() + " unattributed=" + this.unattributedDamage
             + " home=" + (this.homePos == null ? "unset" : this.homePos.toShortString())
             // 驯服那几项也报出来：胜利进度是攒在实体上的暗账，出了"为什么点她没反应"的疑问时，
