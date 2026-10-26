@@ -3,12 +3,19 @@ package com.github.yimeng261.maidspell.worldgen;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
-import net.minecraft.world.level.levelgen.structure.StructureSet;
 
-/** 星落之庭让出其他结构的起始区块，以及四边和四角相邻的区块。 */
+/**
+ * 星落之庭补生成时检查存档里已经存在的其他结构，避免把庭院放进别的结构里。
+ *
+ * <p>冲突判定带高度：只有结构包围盒和庭院包围盒在竖直方向真正重叠才算冲突。矿井、古城等
+ * 结构虽然在同一批区块里留有起点，但整体在庭院下方，不拦补生成。
+ *
+ * <p>轻量版刻意不解析 {@code References}：那属于「起点在远处、结构片段伸进候选区块」的情况，
+ * 需要额外加载起始区块才能拿到高度，留待后续再做。
+ */
 public final class StarfallGardenPlacementGuard {
     private static final int CHUNK_RADIUS = 1;
 
@@ -16,35 +23,18 @@ public final class StarfallGardenPlacementGuard {
     }
 
     /**
-     * 检查当前维度的结构集落点，而不是等其他结构生成成功后再查起点。
-     * 因此不受结构集遍历顺序或相邻区块生成先后影响，也不会加载区块或递归调用 generate。
-     * 即使其他结构最后因地形或生物群系不合适而失败，也保留它的尝试空间。
-     */
-    public static boolean hasNearbyStructureAttempt(ChunkGeneratorStructureState state, Structure garden,
-                                                    ChunkPos candidate) {
-        for (var holder : state.possibleStructureSets()) {
-            StructureSet set = holder.value();
-            // 仅包含庭院自身的结构集不能把自己挡住；混合结构集仍需避让其他候选。
-            if (set.structures().stream().noneMatch(entry -> entry.structure().value() != garden)) {
-                continue;
-            }
-            if (state.hasStructureChunkInRange(holder, candidate.x, candidate.z, CHUNK_RADIUS)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * 仅供补生成在服务器主线程、已预约庭院名额后调用。
-     * 旧区块可能来自不同的种子落点配置，必须同时检查保存的起点及已有引用。
-     * 只请求 STRUCTURE_STARTS，不为避让检查生成地形或方块。
+     * 只请求 {@code STRUCTURE_STARTS}，不为避让检查生成地形或方块。
+     *
+     * @param gardenBox 庭院自己的包围盒，由已经算好的 {@code StructureStart} 提供；
+     *                  没有它就做不了高度判定，所以必须由调用方传入
      */
-    public static boolean hasExistingNearbyStructure(ServerLevel level, Structure garden, ChunkPos candidate) {
+    public static boolean hasExistingNearbyStructure(ServerLevel level, Structure garden, ChunkPos candidate,
+                                                     BoundingBox gardenBox) {
         for (int x = candidate.x - CHUNK_RADIUS; x <= candidate.x + CHUNK_RADIUS; x++) {
             for (int z = candidate.z - CHUNK_RADIUS; z <= candidate.z + CHUNK_RADIUS; z++) {
                 ChunkAccess chunk = level.getChunk(x, z, ChunkStatus.STRUCTURE_STARTS, true);
-                if (hasOtherStructure(chunk, garden)) {
+                if (hasOtherStructure(chunk, garden, gardenBox)) {
                     return true;
                 }
             }
@@ -52,10 +42,10 @@ public final class StarfallGardenPlacementGuard {
         return false;
     }
 
-    static boolean hasOtherStructure(ChunkAccess chunk, Structure garden) {
+    static boolean hasOtherStructure(ChunkAccess chunk, Structure garden, BoundingBox gardenBox) {
         return chunk.getAllStarts().entrySet().stream()
-                .anyMatch(entry -> entry.getKey() != garden && entry.getValue().isValid())
-                || chunk.getAllReferences().entrySet().stream()
-                .anyMatch(entry -> entry.getKey() != garden && !entry.getValue().isEmpty());
+                .anyMatch(entry -> entry.getKey() != garden
+                        && entry.getValue().isValid()
+                        && entry.getValue().getBoundingBox().intersects(gardenBox));
     }
 }

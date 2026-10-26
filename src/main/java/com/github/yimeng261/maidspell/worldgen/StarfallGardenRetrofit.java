@@ -225,7 +225,6 @@ public final class StarfallGardenRetrofit {
                                      List<ChunkPos> candidates) {
         var chunkGenerator = overworld.getChunkSource().getGenerator();
         var randomState = overworld.getChunkSource().randomState();
-        var structureState = overworld.getChunkSource().getGeneratorState();
         long seed = overworld.getSeed();
 
         int tried = 0;
@@ -239,12 +238,10 @@ public final class StarfallGardenRetrofit {
                 MaidSpellMod.LOGGER.info("星落之庭补生成：世界生成已放下一座，放弃补生成");
                 return false;
             }
-            // 先查落点计划，连尚未生成、最终可能失败的其他结构也要避让。
-            if (StarfallGardenPlacementGuard.hasNearbyStructureAttempt(structureState, garden, candidate)) {
-                continue;
-            }
             StructureStart start;
             try {
+                // 先算出 StructureStart（只计算、不写方块），拿到庭院的真实包围盒，
+                // 之后才能按高度判断和存档里其他结构是否真的冲突。
                 start = garden.computeStart(overworld.registryAccess(), chunkGenerator,
                         chunkGenerator.getBiomeSource(), randomState, overworld.getStructureManager(),
                         seed, candidate, 0, overworld, holder -> true);
@@ -277,8 +274,9 @@ public final class StarfallGardenRetrofit {
                 return false;
             }
             // 名额已预约，读邻区块不会意外触发另一座庭院的正常生成。
-            // 旧区块里保存的起点和引用要在写任何方块、记放置次数之前查完，发现冲突就退还名额换下一个候选。
-            if (hasExistingNearbyStructure(overworld, garden, candidate)) {
+            // 旧区块里保存的起点要在写任何方块、记放置次数之前查完，只和竖直范围真正重叠的才算冲突
+            // （矿井、古城等地下结构不拦），发现冲突就退还名额换下一个候选。
+            if (hasExistingNearbyStructure(overworld, garden, candidate, box)) {
                 StarfallGardenData.releaseReserve();
                 continue;
             }
@@ -347,9 +345,9 @@ public final class StarfallGardenRetrofit {
 
     /** 读取邻区块失败时按有冲突处理：宁可换下一个候选，也不在结构旁边硬放。 */
     private static boolean hasExistingNearbyStructure(ServerLevel overworld, StarfallGardenStructure garden,
-                                                      ChunkPos candidate) {
+                                                      ChunkPos candidate, BoundingBox gardenBox) {
         try {
-            return StarfallGardenPlacementGuard.hasExistingNearbyStructure(overworld, garden, candidate);
+            return StarfallGardenPlacementGuard.hasExistingNearbyStructure(overworld, garden, candidate, gardenBox);
         } catch (RuntimeException e) {
             MaidSpellMod.LOGGER.warn("星落之庭补生成：检查候选 {} 周围已有结构失败，换下一个", candidate, e);
             return true;
