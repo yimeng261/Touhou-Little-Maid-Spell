@@ -1661,7 +1661,7 @@ public class MagicalWinefoxBossEntity extends AbstractSpellCastingMob
         this.maidspell$clearStaleCastingFlag("cancel");
     }
 
-    /** 只清 isCasting，保留 spell id/level/slot：ISS 读档重建仍要用它们定位法术。 */
+    /** 只清 isCasting，spell id/level/slot 原样写回，下面的日志据此报出残留的是哪个法术。 */
     private void maidspell$clearStaleCastingFlag(String reason) {
         if (this.level().isClientSide || !this.isCasting()) {
             return;
