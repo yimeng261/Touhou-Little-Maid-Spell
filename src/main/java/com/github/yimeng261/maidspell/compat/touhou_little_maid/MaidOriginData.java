@@ -20,7 +20,7 @@ public final class MaidOriginData {
     public static final String HIDDEN_RETREAT_SOURCE = "touhou_little_maid_spell:hidden_retreat";
     public static final String STAR_WITCH_VICTORY_TAMED = "MaidSpellStarWitchVictoryTamed";
     public static final String HIDDEN_RETREAT_MAID = "MaidSpellHiddenRetreatMaid";
-    private static final ResourceLocation SPELL_CONTAINER = ResourceLocation.fromNamespaceAndPath("irons_spellbooks", "spell_container");
+    private static final String SPELL_CONTAINER = "irons_spellbooks:spell_container";
     private static final String PERSISTENT_DATA = "NeoForgeData";
     private static final String ACTIVE_EFFECTS = "active_effects";
     private static final String EFFECT_DURATION = "duration";
@@ -218,9 +218,8 @@ public final class MaidOriginData {
                 continue;
             }
             CompoundTag components = item.getCompound("components");
-            String key = SPELL_CONTAINER.toString();
-            if (components.contains(key, Tag.TAG_COMPOUND)) {
-                components.getCompound(key).putInt(MAX_SPELLS, STAR_WITCH_SPELL_SLOTS);
+            if (components.contains(SPELL_CONTAINER, Tag.TAG_COMPOUND)) {
+                components.getCompound(SPELL_CONTAINER).putInt(MAX_SPELLS, STAR_WITCH_SPELL_SLOTS);
             }
         }
     }
