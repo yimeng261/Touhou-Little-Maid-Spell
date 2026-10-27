@@ -203,6 +203,9 @@ public final class MaidOriginData {
      * 只改 {@code irons_spellbooks:spell_container} 组件里的 {@code maxSpells}，
      * 因为铁魔法解码时槽位数组长度完全取自这个值。
      *
+     * <p>只抬不降：原容量已超过 20 时保持原值。铁魔法解码不检查 {@code index} 越界，
+     * 把容量压回 20 会让 {@code index >= 20} 的法术在放出魂符时抛数组越界。
+     *
      * <p>模板本身已经写着 20；这条逻辑是给被数据包覆盖的模板、以及未来改版兜底。
      */
     public static void upgradeStarWitchSpellBookData(CompoundTag maidData) {
@@ -219,7 +222,8 @@ public final class MaidOriginData {
             }
             CompoundTag components = item.getCompound("components");
             if (components.contains(SPELL_CONTAINER, Tag.TAG_COMPOUND)) {
-                components.getCompound(SPELL_CONTAINER).putInt(MAX_SPELLS, STAR_WITCH_SPELL_SLOTS);
+                CompoundTag container = components.getCompound(SPELL_CONTAINER);
+                container.putInt(MAX_SPELLS, Math.max(container.getInt(MAX_SPELLS), STAR_WITCH_SPELL_SLOTS));
             }
         }
     }

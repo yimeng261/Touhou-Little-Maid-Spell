@@ -40,6 +40,7 @@ public final class StarWitchSpellBookScenes {
     public static List<Scene> dedicatedServer() {
         return List.of(
                 Checks.scene("star_witch.spellBook.containerRaisedKeepsSpells", 5, StarWitchSpellBookScenes::containerRaised),
+                Checks.scene("star_witch.spellBook.largerContainerNotLowered", 5, StarWitchSpellBookScenes::largerContainer),
                 Checks.scene("star_witch.spellBook.nonSpellBooksUntouched", 5, StarWitchSpellBookScenes::nonSpellBooks),
                 Checks.scene("star_witch.spellBook.otherNamespacesUntouched", 5, StarWitchSpellBookScenes::otherNamespaces),
                 Checks.scene("star_witch.spellBook.brokenDataTolerated", 5, StarWitchSpellBookScenes::brokenData),
@@ -61,6 +62,17 @@ public final class StarWitchSpellBookScenes {
         ctx.check(upgraded.getBoolean("spellWheel")).as("spellWheel 保留").isTrue();
         ctx.check(spells.getCompound(3).getString("id")).as("第 4 条法术 id").isEqualTo("irons_spellbooks:magic_missile");
         ctx.check(spells.getCompound(3).getInt("level")).as("第 4 条法术等级").isEqualTo(10);
+    }
+
+    /** 数据包把模板容量写到 20 以上时保持原值，index >= 20 的法术仍在槽位内。 */
+    private static void largerContainer(SceneContext ctx) {
+        CompoundTag maidData = maidWith(item(BOOK_ID, container(25, 25)));
+
+        MaidOriginData.upgradeStarWitchSpellBookData(maidData);
+
+        CompoundTag upgraded = containerOf(firstItem(maidData));
+        ctx.check(upgraded.getInt("maxSpells")).as("超出出厂值的容量保持不变").isEqualTo(25);
+        ctx.check(upgraded.getList("data", Tag.TAG_COMPOUND).size()).as("法术条目保留").isEqualTo(25);
     }
 
     /** 出厂长剑自带 1 格容器（虚空相位），它不是 spell_book 物品，容量不该被改。 */
