@@ -28,6 +28,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -71,7 +72,8 @@ public final class EnderPocketScenes {
         scenes.add(Checks.superflat("ender_pocket.sessionExpires", 20, EnderPocketScenes::sessionExpires));
         scenes.add(Checks.superflat("ender_pocket.openRequestsRateLimited", 20, EnderPocketScenes::openRateLimited));
         scenes.add(Checks.superflat("ender_pocket.listCappedAt64", 40, EnderPocketScenes::listCapped));
-        scenes.add(Checks.superflat("ender_pocket.longNameTruncated", 20, EnderPocketScenes::longName));
+        scenes.add(Checks.superflat("ender_pocket.longNameKept", 20, EnderPocketScenes::longName));
+        scenes.add(Checks.superflat("ender_pocket.translatableNameStaysTranslatable", 20, EnderPocketScenes::translatableName));
         scenes.add(Checks.superflat("ender_pocket.remoteOperationsApplyAcrossDimensions", 40, EnderPocketScenes::remoteOperations));
         scenes.add(Checks.superflat("ender_pocket.forgedEntityIdMissesOthersSession", 40, EnderPocketScenes::forgedPacket));
         return scenes;
@@ -241,6 +243,19 @@ public final class EnderPocketScenes {
                 new S2CEnderPocketMaidList(EnderPocketService.getPlayerEnderPocketMaids(owner), false));
         ctx.check(list.maidInfos().size()).as("解码后的条数").isEqualTo(1);
         ctx.check(list.maidInfos().getFirst().maidName.getString()).as("解码后的名字").isEqualTo("名".repeat(100));
+    }
+
+    /** 名字是翻译组件：编码解码后仍是同一个翻译键，由客户端按自身语言解析，而不是服务端解析好的文本。 */
+    private static void translatableName(SceneContext ctx) {
+        ServerPlayer owner = Owners.visitor(ctx, "TlmsPocketI18n", 0, 0, -3);
+        EntityMaid maid = pocketMaid(ctx, owner, 0, 0, 3);
+        String key = "model.touhou_little_maid_spell.test_only.name";
+        maid.setCustomName(Component.translatable(key));
+        S2CEnderPocketMaidList list = roundTrip(ctx, S2CEnderPocketMaidList.STREAM_CODEC,
+                new S2CEnderPocketMaidList(EnderPocketService.getPlayerEnderPocketMaids(owner), false));
+        ctx.check(list.maidInfos().size()).as("解码后的条数").isEqualTo(1);
+        ctx.check(list.maidInfos().getFirst().maidName.getContents() instanceof TranslatableContents contents
+                && contents.getKey().equals(key)).as("解码后的名字仍是翻译键 " + key).isTrue();
     }
 
     private static <T> T roundTrip(SceneContext ctx, net.minecraft.network.codec.StreamCodec<RegistryFriendlyByteBuf, T> codec,
