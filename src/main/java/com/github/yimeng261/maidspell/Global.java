@@ -3,6 +3,7 @@ package com.github.yimeng261.maidspell;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.yimeng261.maidspell.api.IMaidSpellData;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
+import com.github.yimeng261.maidspell.task.SpellCombatMeleeTask;
 import com.github.yimeng261.maidspell.utils.DataItem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Holder;
@@ -20,6 +21,8 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,11 +59,15 @@ public class Global {
     // 内层 Map: 女仆UUID -> 女仆实体
     public static final Map<UUID, Map<UUID, EntityMaid>> ownerMaidRegistry = new ConcurrentHashMap<>();
     public static final Set<EntityMaid> activeMaids = ConcurrentHashMap.newKeySet();
+    // 女仆UUID -> 登记时的主人UUID，主人变更时据此从旧主人的表里移除
+    private static final Map<UUID, UUID> maidOwnerIndex = new ConcurrentHashMap<>();
 
     // 饰品层handler,按触发阶段顺序排列
     public static final List<BaubleHurtHeadHandler> baubleHurtHeadHandlers = new CopyOnWriteArrayList<>();
     public static final Map<Item, BiFunction<LivingIncomingDamageEvent, EntityMaid, Void>> baubleHurtHandlers = new ConcurrentHashMap<>();
     public static final Map<Item, BiFunction<LivingIncomingDamageEvent, EntityMaid, Void>> baubleHurtEventHandlers = new ConcurrentHashMap<>();
+    // 按注册顺序执行：春之环的增伤要先于混沌之书的拆分
+    public static final Map<Item, BiFunction<LivingDamageEvent.Pre, EntityMaid, Void>> baubleDamagePreHandlers = Collections.synchronizedMap(new LinkedHashMap<>());
     public static final Map<Item, BiFunction<LivingDamageEvent.Post, EntityMaid, Void>> baubleDamageHandlers = new ConcurrentHashMap<>();
     public static final Map<Item, Function<DataItem, Void>> baubleSetHealthHandlers = new ConcurrentHashMap<>();
     public static final Map<Item, Function<DataItem, Void>> baubleSetHealthFinalHandlers = new ConcurrentHashMap<>();
@@ -217,15 +224,13 @@ public class Global {
         commonHurtHandlers.clear();
         commonHurtHandlers.add((event, maid) -> {
             LivingEntity entity = event.getEntity();
-            if (entity instanceof EntityMaid) {
-                event.setCanceled(true);
-            } else if (entity instanceof Player) {
+            if (com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver.areFriendly(maid, entity)) {
                 event.setCanceled(true);
             }
             return null;
         });
         commonHurtHandlers.add((hurtEvent, maid) -> {
-            if (maid.getTask().getUid().toString().startsWith("maidspell")) {
+            if (SpellCombatMeleeTask.UID.getNamespace().equals(maid.getTask().getUid().getNamespace())) {
                 hurtEvent.setAmount((float) (hurtEvent.getAmount() * Config.spellDamageMultiplier));
             }
             return null;
@@ -250,16 +255,38 @@ public class Global {
 
     public static void updateMaidInfo(EntityMaid maid, Boolean add) {
         UUID ownerUUID = maid.getOwnerUUID();
+        UUID maidUUID = maid.getUUID();
         if(add){
             activeMaids.add(maid);
+            UUID previousOwner = ownerUUID != null ? maidOwnerIndex.put(maidUUID, ownerUUID) : maidOwnerIndex.remove(maidUUID);
+            if (previousOwner != null && !previousOwner.equals(ownerUUID)) {
+                removeFromOwnerMap(previousOwner, maidUUID);
+            }
             if(ownerUUID != null){
-                getOrCreatePlayerMaidMap(ownerUUID).put(maid.getUUID(),maid);
+                getOrCreatePlayerMaidMap(ownerUUID).put(maidUUID, maid);
             }
         }else{
             activeMaids.remove(maid);
+            UUID indexedOwner = maidOwnerIndex.remove(maidUUID);
+            if (indexedOwner != null && !indexedOwner.equals(ownerUUID)) {
+                removeFromOwnerMap(indexedOwner, maidUUID);
+            }
             if(ownerUUID != null){
-                getOrCreatePlayerMaidMap(ownerUUID).remove(maid.getUUID());
+                removeFromOwnerMap(ownerUUID, maidUUID);
             }
         }
+    }
+
+    private static void removeFromOwnerMap(UUID ownerUUID, UUID maidUUID) {
+        ownerMaidRegistry.computeIfPresent(ownerUUID, (ignored, maids) -> {
+            maids.remove(maidUUID);
+            return maids.isEmpty() ? null : maids;
+        });
+    }
+
+    public static void clearMaidRegistry() {
+        activeMaids.clear();
+        ownerMaidRegistry.clear();
+        maidOwnerIndex.clear();
     }
 }

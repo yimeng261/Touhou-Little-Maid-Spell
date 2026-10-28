@@ -73,7 +73,8 @@ public class ISSCastingAnimationProvider implements IMagicCastingAnimationProvid
         Optional<RawAnimation> opRawAnimation = spell.getCastStartAnimation().getForMob();
         if (opRawAnimation.isPresent()) {
             RawAnimation rawAnimation = opRawAnimation.get();
-            AnimationBuilder builder = toTlmAnimation(animationFile, rawAnimation);
+            AnimationBuilder builder = toTlmAnimation(animationFile, rawAnimation,
+                fallbackTrack(spell.getCastType(), false));
             animateState.setCancelled(false);
             if (spell.getCastType() == CastType.INSTANT) {
                 animateState.clearInstantCastSpellType();
@@ -94,7 +95,8 @@ public class ISSCastingAnimationProvider implements IMagicCastingAnimationProvid
         Optional<RawAnimation> opRawAnimation = spell.getCastFinishAnimation().getForMob();
         if (opRawAnimation.isPresent()) {
             RawAnimation rawAnimation = opRawAnimation.get();
-            AnimationBuilder builder = toTlmAnimation(animationFile, rawAnimation);
+            AnimationBuilder builder = toTlmAnimation(animationFile, rawAnimation,
+                fallbackTrack(spell.getCastType(), true));
             animateState.setCancelled(false);
             return builder;
         } else {
@@ -103,15 +105,32 @@ public class ISSCastingAnimationProvider implements IMagicCastingAnimationProvid
         }
     }
 
-    private static AnimationBuilder toTlmAnimation(AnimationFile animationFile, RawAnimation rawAnimation) {
+    /** 缺少专属轨道时按施法类型选通用轨道；仍缺失则返回 null。 */
+    @Nullable
+    private static String fallbackTrack(CastType castType, boolean finishAnimation) {
+        return switch (castType) {
+            case LONG -> finishAnimation ? "long_cast_finish" : "long_cast";
+            case CONTINUOUS -> finishAnimation ? null : "continuous_thrust";
+            case INSTANT -> finishAnimation ? null : "instant_projectile";
+            default -> null;
+        };
+    }
+
+    private static AnimationBuilder toTlmAnimation(AnimationFile animationFile, RawAnimation rawAnimation,
+                                                   @Nullable String fallbackTrack) {
         AnimationBuilder builder = new AnimationBuilder();
         for (RawAnimation.Stage animationStage : rawAnimation.getAnimationStages()) {
             String animationName = ANIMATION_NAME_PREFIX + animationStage.animationName();
-            com.github.tartaricacid.touhoulittlemaid.geckolib3.core.builder.Animation customAnimation = animationFile.getAnimation(animationName);
             ILoopType loopType = null;
+            com.github.tartaricacid.touhoulittlemaid.geckolib3.core.builder.Animation customAnimation =
+                animationFile == null ? null : animationFile.getAnimation(animationName);
             if (customAnimation != null) {
                 loopType = customAnimation.loop;
             } else {
+                if (fallbackTrack != null && animationFile != null
+                    && animationFile.getAnimation(ANIMATION_NAME_PREFIX + fallbackTrack) != null) {
+                    animationName = ANIMATION_NAME_PREFIX + fallbackTrack;
+                }
                 if (animationStage.loopType() == Animation.LoopType.LOOP) {
                     loopType = ILoopType.EDefaultLoopTypes.LOOP;
                 } else if (animationStage.loopType() == Animation.LoopType.PLAY_ONCE) {

@@ -2,9 +2,16 @@ package com.github.yimeng261.maidspell.item;
 
 import com.github.yimeng261.maidspell.MaidSpellMod;
 import com.github.yimeng261.maidspell.block.MaidSpellBlocks;
+import com.github.yimeng261.maidspell.item.bauble.staranchorPearl.StaranchorPearl;
+import com.github.yimeng261.maidspell.item.common.StarwatchCompassItem;
+import com.github.yimeng261.maidspell.item.common.NebulaCoreItem;
+import com.github.yimeng261.maidspell.item.common.StarglintMaterialItem;
 import com.github.yimeng261.maidspell.item.bauble.anchorCore.AnchorCore;
 import com.github.yimeng261.maidspell.item.bauble.arcCross.ArcCross;
 import com.github.yimeng261.maidspell.item.bauble.bleedingHeart.BleedingHeart;
+import com.github.yimeng261.maidspell.item.block.StarGlowFlowerClusterItem;
+import com.github.yimeng261.maidspell.item.common.StarglintDaggerItem;
+import com.github.yimeng261.maidspell.item.block.SuppressionStoneItem;
 import com.github.yimeng261.maidspell.item.block.JingxuYoulanItem;
 import com.github.yimeng261.maidspell.item.block.ScarletZhuhuaItem;
 import com.github.yimeng261.maidspell.item.block.YueLinglanItem;
@@ -24,6 +31,7 @@ import com.github.yimeng261.maidspell.item.bauble.silverCercis.SilverCercis;
 import com.github.yimeng261.maidspell.item.bauble.soulBook.SoulBook;
 import com.github.yimeng261.maidspell.item.bauble.spellCore.SpellEnhancementCore;
 import com.github.yimeng261.maidspell.item.bauble.spellOverlimitCore.SpellOverlimitCore;
+import com.github.yimeng261.maidspell.item.bauble.spellRangeTable.SpellRangeTable;
 import com.github.yimeng261.maidspell.item.bauble.springBloomReturn.SpringBloomReturn;
 import com.github.yimeng261.maidspell.item.bauble.springRing.SpringRing;
 import com.github.yimeng261.maidspell.item.bauble.transmogNecklace.TransmogNecklace;
@@ -33,8 +41,13 @@ import com.github.yimeng261.maidspell.item.common.WindSeekingBell.WindSeekingBel
 import com.github.yimeng261.maidspell.item.taskIcon.FarTaskIcon;
 import com.github.yimeng261.maidspell.item.taskIcon.MeleeTaskIcon;
 import net.minecraft.Util;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Rarity;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -68,14 +81,37 @@ public class MaidSpellItems {
     public static final DeferredItem<Item> WOUND_RIME_BLADE = ITEMS.register("wound_rime_blade", WoundRimeBlade::new);
     public static final DeferredItem<Item> ANCHOR_CORE = ITEMS.register("anchor_core", AnchorCore::new);
     public static final DeferredItem<Item> SPELL_OVERLIMIT_CORE = ITEMS.register("spell_overlimit_core", SpellOverlimitCore::new);
+    public static final DeferredItem<Item> SPELL_RANGE_TABLE = ITEMS.register("spell_range_table", SpellRangeTable::new);
     public static final DeferredItem<Item> SPRING_BLOOM_RETURN = ITEMS.register("spring_bloom_return", SpringBloomReturn::new);
     public static final DeferredItem<Item> FRAGRANT_INGENUITY = ITEMS.register("fragrant_ingenuity", FragrantIngenuity::new);
 
     // 梦云水晶
     public static final DeferredItem<Item> DREAM_CAT_CRYSTAL = ITEMS.register("dream_cat_crystal", DreamCatCrystal::new);
 
+    // 星锚珍珠：玩家右键获得 35 秒虚空漫步，女仆佩戴可代挡虚空伤害并消耗耐久
+    public static final DeferredItem<Item> STARANCHOR_PEARL = ITEMS.register("staranchor_pearl", StaranchorPearl::new);
+
+    // 星云核心仅由合格的魔女挑战发放。
+    public static final DeferredItem<Item> NEBULA_CORE = ITEMS.register("nebula_core", NebulaCoreItem::new);
+    public static final DeferredItem<Item> STAR_METEORITE = ITEMS.register("star_meteorite",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.star_meteorite.desc"));
+    public static final DeferredItem<Item> RITUAL_HILT = ITEMS.register("ritual_hilt",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.ritual_hilt.desc"));
+    // 归星：星之魔女的誓约信物，配方要秘银锭，挂在铁魔法条件下
+    public static final DeferredItem<Item> RETURNING_STAR = ITEMS.register("returning_star",
+        () -> new StarglintMaterialItem("item.touhou_little_maid_spell.returning_star.desc"));
+
     // 寻风之铃
     public static final DeferredItem<Item> WIND_SEEKING_BELL = ITEMS.register("wind_seeking_bell", WindSeekingBell::new);
+
+    // 观星罗盘：观星术士的战利品，在末地指向星途终岸
+    public static final DeferredItem<Item> STARWATCH_COMPASS = ITEMS.register("starwatch_compass", StarwatchCompassItem::new);
+
+    // 星途终岸与星之魔女战斗曲的音乐唱片，曲目由 jukebox_song 数据定义。
+    public static final DeferredItem<Item> MUSIC_DISC_STELLAR_ENDSHORE =
+        ITEMS.register("music_disc_stellar_endshore", () -> new Item(musicDiscProperties("stellar_endshore")));
+    public static final DeferredItem<Item> MUSIC_DISC_CONCERTO_NO_10_B_MINOR =
+        ITEMS.register("music_disc_concerto_no_10_b_minor", () -> new Item(musicDiscProperties("concerto_no_10_b_minor")));
 
     public static final DeferredItem<Item> SCARLET_ZHUHUA = ITEMS.register("scarlet_zhuhua",
         () -> new ScarletZhuhuaItem(MaidSpellBlocks.SCARLET_ZHUHUA.get()));
@@ -83,8 +119,12 @@ public class MaidSpellItems {
         () -> new YueLinglanItem(MaidSpellBlocks.YUE_LINGLAN.get()));
     public static final DeferredItem<Item> JINGXU_YOULAN = ITEMS.register("jingxu_youlan",
         () -> new JingxuYoulanItem(MaidSpellBlocks.JINGXU_YOULAN.get()));
+    public static final DeferredItem<Item> STAR_GLOW_FLOWER_CLUSTER = ITEMS.register("star_glow_flower_cluster",
+        () -> new StarGlowFlowerClusterItem(MaidSpellBlocks.STAR_GLOW_FLOWER_CLUSTER.get()));
+    public static final DeferredItem<Item> STARGLINT_DAGGER = ITEMS.register("starglint_dagger",
+        StarglintDaggerItem::new);
     public static final DeferredItem<Item> SUPPRESSION_STONE = ITEMS.register("suppression_stone",
-        () -> new BlockItem(MaidSpellBlocks.SUPPRESSION_STONE.get(), new Item.Properties()));
+        () -> new SuppressionStoneItem(MaidSpellBlocks.SUPPRESSION_STONE.get()));
 
     // 管理员工具
     public static final DeferredItem<Item> OWNER_CLEAR_TOOL = ITEMS.register("owner_clear_tool", OwnerClearTool::new);
@@ -100,22 +140,49 @@ public class MaidSpellItems {
         ITEMS.register(eventBus);
     }
 
+    private static Item.Properties musicDiscProperties(String song) {
+        return new Item.Properties().stacksTo(1).rarity(Rarity.RARE)
+            .jukeboxPlayable(ResourceKey.create(Registries.JUKEBOX_SONG,
+                ResourceLocation.fromNamespaceAndPath(MaidSpellMod.MOD_ID, song)));
+    }
+
     public static String itemDesc(DeferredItem<Item> item) {
         return Util.makeDescriptionId("item", item.getId());
     }
+
+    // 查到后缓存，fireImmune 和光环渲染每 tick 都会取
+    private static Item unholyHat;
+    private static Item unholyHatHalo;
 
     /**
      * 获取原版 Goety 模组的不洁圣冠
      * 如果模组未加载，返回 null
      */
     public static Item getUnholyHat() {
-        if (ModList.get().isLoaded("goety")) {
-            try {
-                return za.co.infernos.goety.common.items.ModItems.UNHOLY_HAT.get();
-            } catch (Exception e) {
-                return null;
-            }
+        if (unholyHat == null) {
+            unholyHat = getGoetyItem("unholy_hat");
         }
-        return null;
+        return unholyHat;
+    }
+
+    /**
+     * 获取原版 Goety 模组的不洁圣冠光环版（同一顶冠冕的另一种外观）
+     * 如果模组未加载，返回 null
+     */
+    public static Item getUnholyHatHalo() {
+        if (unholyHatHalo == null) {
+            unholyHatHalo = getGoetyItem("unholy_hat_halo");
+        }
+        return unholyHatHalo;
+    }
+
+    /**
+     * 按注册名取 Goety 的物品，模组未加载或没有该物品时返回 null
+     */
+    public static Item getGoetyItem(String path) {
+        if (!ModList.get().isLoaded("goety")) {
+            return null;
+        }
+        return BuiltInRegistries.ITEM.getOptional(ResourceLocation.fromNamespaceAndPath("goety", path)).orElse(null);
     }
 }

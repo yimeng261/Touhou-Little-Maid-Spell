@@ -1,0 +1,13 @@
+{
+  "type": "touhou_little_maid_spell:optional_mod_template",
+  "start_pool": "touhou_little_maid_spell:enchantress_footsteps_warped_perch",
+  "required_mod": "irons_spellbooks",
+  "nether": true,
+  "surface_offset": -2,
+  "fill_foundation": false,
+  "max_terrain_step": 3,
+  "biomes": "#touhou_little_maid_spell:has_structure/enchantress_footsteps_warped_perch",
+  "spawn_overrides": {},
+  "step": "surface_structures",
+  "terrain_adaptation": "beard_thin"
+}

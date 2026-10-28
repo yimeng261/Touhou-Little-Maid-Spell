@@ -125,7 +125,11 @@ public class WindSeekingBellEntity extends Entity {
         }
 
         this.life = 0;
-        // 同步目标坐标给客户端，使客户端能独立计算速度
+        syncTargetData();
+    }
+
+    /** 同步目标坐标给客户端，使客户端能独立计算速度；tick 也按同步值计算。 */
+    private void syncTargetData() {
         this.getEntityData().set(DATA_TARGET_X, (float) this.targetX);
         this.getEntityData().set(DATA_TARGET_Y, (float) this.targetY);
         this.getEntityData().set(DATA_TARGET_Z, (float) this.targetZ);
@@ -294,6 +298,7 @@ public class WindSeekingBellEntity extends Entity {
         this.aY = compound.getDouble("AY");
         this.aZ = compound.getDouble("AZ");
         this.life = compound.getInt("Life");
+        syncTargetData();
 
         // 加载玩家UUID
         if (compound.hasUUID("PlayerUUID")) {

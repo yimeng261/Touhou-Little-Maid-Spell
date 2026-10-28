@@ -19,6 +19,7 @@ import net.minecraft.world.level.timers.TimerQueue;
  */
 public class RetreatLevelData extends DerivedLevelData {
 
+    private final long generationSeed;
     private long gameTime;
     private long dayTime;
     private final TimerQueue<MinecraftServer> scheduledEvents = new TimerQueue<>(TimerCallbacks.SERVER_CALLBACKS);
@@ -35,8 +36,9 @@ public class RetreatLevelData extends DerivedLevelData {
     private int thunderTime;
     private Runnable dirtyListener = () -> {};
 
-    public RetreatLevelData(WorldData worldData, ServerLevelData wrapped) {
+    public RetreatLevelData(WorldData worldData, ServerLevelData wrapped, long generationSeed) {
         super(worldData, wrapped);
+        this.generationSeed = generationSeed;
         // 初始化时从主世界复制当前时间
         this.gameTime = wrapped.getGameTime();
         this.dayTime = wrapped.getDayTime();
@@ -49,6 +51,10 @@ public class RetreatLevelData extends DerivedLevelData {
         this.rainTime = wrapped.getRainTime();
         this.isThundering = wrapped.isThundering();
         this.thunderTime = wrapped.getThunderTime();
+    }
+
+    public long getGenerationSeed() {
+        return generationSeed;
     }
 
     // ========== 出生点 ==========

@@ -1,0 +1,24 @@
+{
+  "structures": [
+    {
+      "structure": "touhou_little_maid_spell:enchantress_footsteps_crimson_cabin",
+      "weight": 1
+    }
+  ],
+  "placement": {
+    "type": "touhou_little_maid_spell:multi_exclusion_spread",
+    "exclusion_zones": [
+      {
+        "chunk_count": 8,
+        "other_set": "minecraft:nether_complexes"
+      },
+      {
+        "chunk_count": 7,
+        "other_set": "touhou_little_maid_spell:fallen_sanctum_set"
+      }
+    ],
+    "spacing": 32,
+    "separation": 12,
+    "salt": 1735687962
+  }
+}

@@ -1,0 +1,2 @@
+# StageWright 集成拓扑：关闭 FML 早期加载窗口（该窗口在本机桌面上会卡在 glfwShowWindow）
+earlyWindowControl = false

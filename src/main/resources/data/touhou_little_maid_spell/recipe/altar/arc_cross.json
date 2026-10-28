@@ -1,4 +1,10 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "irons_spellbooks"
+    }
+  ],
   "type": "touhou_little_maid:altar_recipe_serializers",
   "category": "misc",
   "entity": "minecraft:item",

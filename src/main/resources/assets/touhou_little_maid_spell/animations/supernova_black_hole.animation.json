@@ -1,0 +1,130 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.supernova_black_hole.idle": {
+      "loop": true,
+      "animation_length": 0.08333,
+      "bones": {
+        "ysmGlowZUCC3": {
+          "rotation": {
+            "0": [
+              -0.0,
+              -0.0,
+              0.0
+            ],
+            "0.08333": [
+              360.0,
+              -0.0,
+              0.0
+            ]
+          }
+        },
+        "ysmGlowFUCC3": {
+          "rotation": {
+            "0": [
+              -0.0,
+              -0.0,
+              0.0
+            ],
+            "0.08333": [
+              -0.0,
+              -0.0,
+              360.0
+            ]
+          }
+        },
+        "ysmGlowFUCC4": {
+          "rotation": {
+            "0": [
+              -0.0,
+              -0.0,
+              0.0
+            ],
+            "0.08333": [
+              -0.0,
+              -0.0,
+              360.0
+            ]
+          }
+        },
+        "ysmGlowFUCC8": {
+          "rotation": {
+            "0": [
+              -0.0,
+              -0.0,
+              0.0
+            ],
+            "0.08333": [
+              -0.0,
+              360.0,
+              0.0
+            ]
+          }
+        },
+        "ysmGlowFUCC14": {
+          "rotation": {
+            "0": [
+              -0.0,
+              -0.0,
+              0.0
+            ],
+            "0.08333": [
+              360.0,
+              -0.0,
+              0.0
+            ]
+          }
+        },
+        "ysmGlowFUCC16": {
+          "rotation": {
+            "0": [
+              -0.0,
+              -0.0,
+              0.0
+            ],
+            "0.08333": [
+              360.0,
+              -0.0,
+              0.0
+            ]
+          }
+        },
+        "Mblackhole": {
+          "rotation": {
+            "0": [
+              -0.0,
+              -0.0,
+              0.0
+            ],
+            "0.08333": [
+              -0.0,
+              -0.0,
+              0.0
+            ]
+          }
+        },
+        "blackholeclaub": {
+          "rotation": {
+            "0": [
+              "0-(1.4 * math.sin(query.life_time * 2520) + 0.6 * math.sin(query.life_time * 3960))",
+              0,
+              "1.4 * math.sin(query.life_time * 1800 + 90) + 0.6 * math.sin(query.life_time * 3240)"
+            ],
+            "0.08333": [
+              "0-(1.4 * math.sin(query.life_time * 2520) + 0.6 * math.sin(query.life_time * 3960))",
+              -360.0,
+              "1.4 * math.sin(query.life_time * 1800 + 90) + 0.6 * math.sin(query.life_time * 3240)"
+            ]
+          },
+          "scale": {
+            "0": [
+              "1 + 0.06 * math.sin(query.life_time * 2160) + 0.02 * math.sin(query.life_time * 3600)",
+              "1 + 0.06 * math.sin(query.life_time * 2160) + 0.02 * math.sin(query.life_time * 3600)",
+              "1 + 0.06 * math.sin(query.life_time * 2160) + 0.02 * math.sin(query.life_time * 3600)"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -21,6 +21,10 @@ public class ChaosBookBauble implements IMaidBauble {
             ThreadLocal.withInitial(IdentityHashMap::new);
 
     public static void chaosBookProcess(EntityMaid maid, LivingEntity target) {
+        // 已排队真伤折回 hurt 时仍带女仆来源，不能再次排队。
+        if (TrueDamageUtil.isApplyingQueuedDamage()) {
+            return;
+        }
         if (BaubleStateManager.hasBauble(maid, MaidSpellItems.CHAOS_BOOK)) {
             float multiplier = BaubleStateManager.hasBauble(maid, MaidSpellItems.DREAM_CAT_CRYSTAL) ? 2.0f : 1.0f;
             float damage = (float) Math.max(Config.chaosBookTrueDamageMin,
@@ -66,10 +70,10 @@ public class ChaosBookBauble implements IMaidBauble {
             }
         });
 
-        Global.baubleDamageHandlers.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
+        Global.baubleDamagePreHandlers.put(MaidSpellItems.CHAOS_BOOK.get(), (event, maid) -> {
             LivingEntity target = event.getEntity();
             DamageSource source = event.getSource();
-            float amount = event.getOriginalDamage();
+            float amount = event.getNewDamage();
 
             if (isApplyingChaosDamage(target)) {
                 return null;
@@ -83,6 +87,7 @@ public class ChaosBookBauble implements IMaidBauble {
                         target.setInvulnerable(false);
                         target.invulnerableTime = 0;
                         target.hurt(newDamageSource, amount);
+                        event.setNewDamage(0);
                     } finally {
                         target.invulnerableTime = 0;
                         target.setInvulnerable(false);
@@ -100,6 +105,7 @@ public class ChaosBookBauble implements IMaidBauble {
                         target.invulnerableTime = 0;
                         target.hurt(newDamageSource, finalAmount);
                     }
+                    event.setNewDamage(0);
                 } finally {
                     target.setInvulnerable(false);
                     target.invulnerableTime = 0;

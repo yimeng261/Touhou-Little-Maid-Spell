@@ -1,8 +1,17 @@
 {
   "neoforge:conditions": [
     {
-      "type": "neoforge:mod_loaded",
-      "modid": "youkaishomecoming"
+      "type": "neoforge:or",
+      "values": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaishomecoming"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "youkaisfeasts"
+        }
+      ]
     }
   ],
   "pools": [
@@ -10,9 +19,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:oyaki",
-          "weight": 50
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:oyaki",
+              "weight": 50
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:oyaki",
+              "weight": 50
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -24,9 +43,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:candy_apple",
-          "weight": 50
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:candy_apple",
+              "weight": 50
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:candy_apple",
+              "weight": 50
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -38,9 +67,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:assorted_dango",
-          "weight": 25
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:assorted_dango",
+              "weight": 25
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:assorted_dango",
+              "weight": 25
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -52,9 +91,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:mitarashi_dango",
-          "weight": 25
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:mitarashi_dango",
+              "weight": 25
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:mitarashi_dango",
+              "weight": 25
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -66,9 +115,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:sakura_mochi",
-          "weight": 50
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:sakura_mochi",
+              "weight": 50
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:sakura_mochi",
+              "weight": 50
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -80,9 +139,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:mochi",
-          "weight": 50
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:mochi",
+              "weight": 50
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:mochi",
+              "weight": 50
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -94,9 +163,19 @@
       "rolls": 2,
       "entries": [
         {
-          "type": "minecraft:item",
-          "name": "youkaishomecoming:matcha_mochi",
-          "weight": 50
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaishomecoming:matcha_mochi",
+              "weight": 50
+            },
+            {
+              "type": "touhou_little_maid_spell:optional_mod_item",
+              "name": "youkaisfeasts:matcha_mochi",
+              "weight": 50
+            }
+          ]
         },
         {
           "type": "minecraft:empty",
@@ -134,4 +213,3 @@
     }
   ]
 }
-

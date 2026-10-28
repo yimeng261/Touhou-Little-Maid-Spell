@@ -1,6 +1,7 @@
 package com.github.yimeng261.maidspell.spell.providers.slashblade;
 
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.item.MaidSpellItems;
 import com.github.yimeng261.maidspell.spell.data.MaidSlashBladeData;
 import com.github.yimeng261.maidspell.spell.manager.BaubleStateManager;
@@ -136,7 +137,7 @@ public final class SlashBladeDirectSkillHandler {
     // ==================== 共享工具方法 ====================
 
     public static boolean isValidTarget(LivingEntity target) {
-        return target != null && target.isAlive() && !target.isDeadOrDying() && !target.isRemoved();
+        return IAuthoritativeHealth.validCombatTarget(target);
     }
 
     public static String describeTarget(LivingEntity target) {

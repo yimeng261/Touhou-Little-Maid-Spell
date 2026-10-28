@@ -1,0 +1,33 @@
+{
+  "skill_name": "migrate-structure-nbt-1.20-to-1.21",
+  "evals": [
+    {
+      "id": 1,
+      "name": "single-file-grass-rename",
+      "prompt": "I'm porting my Minecraft mod from 1.20.1 (Forge) to 1.21.1 (NeoForge). I have a single 1.20-era structure file at /home/coder/Touhou-Little-Maid-Spell/.claude/skills/migrate-structure-nbt-1.20-to-1.21-workspace/fixtures/eval-1-simple.nbt that I need converted to 1.21.1 format. Save the migrated file to ${OUTPUT_DIR}/eval-1-simple.nbt. The 1.21 datapack convention uses 'structure' (singular) instead of 'structures' but for this single file just write to the output dir. nbtlib is already installed in /tmp/nbtcmp/bin/python (or you can install it yourself).",
+      "expected_output": "Migrated NBT file with DataVersion=3955, palette grass renamed to short_grass, all 1.21 schema applied.",
+      "files": ["fixtures/eval-1-simple.nbt"]
+    },
+    {
+      "id": 2,
+      "name": "complex-dir-fallen-sanctum",
+      "prompt": "Port these 1.20.1 Forge structure NBT files to 1.21.1 NeoForge format. Source dir: /home/coder/Touhou-Little-Maid-Spell/.claude/skills/migrate-structure-nbt-1.20-to-1.21-workspace/fixtures/eval-2-complex/ (11 files). Output dir: ${OUTPUT_DIR}/. The structures contain entities with old-format Attributes/ActiveEffects, items with old `tag` blocks, FluidStacks (irons_spellbooks ink), goety blocks, mob_spawners with nested entity NBT, and equipped goety:cursed_paladin armor on a citadel_keeper that crashes the geckolib renderer in 1.21. The migration should produce 11 files that all load cleanly under 1.21.1 NeoForge. nbtlib is already installed in /tmp/nbtcmp/bin/python.",
+      "expected_output": "11 migrated files. No `forge:` prefixes, no old `Count: <N>b`, no `tag: {}`, no `ForgeData`/`ForgeCaps` at entity scope (block-entity ForgeData should be renamed to NeoForgeData), no `caelus:fall_flying` attribute, no `goety:cursed_paladin_*` items in HandItems/ArmorItems on entities (chest contents preserved), all DataVersion=3955.",
+      "files": ["fixtures/eval-2-complex/"]
+    },
+    {
+      "id": 3,
+      "name": "symptom-driven-fix-runtime-errors",
+      "prompt": "I copied a 1.20.1 mod's structure NBT file into my 1.21.1 NeoForge project and the world crashes when generating chunks containing it. The error log shows: java.lang.NullPointerException: Cannot invoke \"net.minecraft.core.BlockPos.getX()\" because \"pos\" is null at SchedulePos.save(SchedulePos.java:87) — and there's also lectern books that show empty when right-clicked, AND `Tried to load invalid fluid: 'No key amount in MapLike[{Amount:250,FluidName:\"irons_spellbooks:uncommon_ink\"}]'`. The file is at /home/coder/Touhou-Little-Maid-Spell/.claude/skills/migrate-structure-nbt-1.20-to-1.21-workspace/fixtures/eval-3-symptoms.nbt. Fix it and save the corrected file to ${OUTPUT_DIR}/eval-3-symptoms.nbt. nbtlib is in /tmp/nbtcmp/bin/python.",
+      "expected_output": "Fixed NBT file with: MaidSchedulePos.{Work,Sleep,Idle} as IntArrays, FluidStack converted to {id, amount, components}, writable_book content under minecraft:writable_book_content, DataVersion=3955.",
+      "files": ["fixtures/eval-3-symptoms.nbt"]
+    },
+    {
+      "id": 4,
+      "name": "round-trip-idempotent",
+      "prompt": "I'm running the migration twice as a sanity check (e.g. CI re-runs against an already-migrated tree). Migrate /home/coder/Touhou-Little-Maid-Spell/.claude/skills/migrate-structure-nbt-1.20-to-1.21-workspace/fixtures/eval-2-complex/ to ${OUTPUT_DIR}/round1/, then migrate ${OUTPUT_DIR}/round1/ again into ${OUTPUT_DIR}/round2/. The two output directories must be semantically identical — re-running migrate.py on already-migrated NBT must be a no-op. nbtlib is in /tmp/nbtcmp/bin/python.",
+      "expected_output": "round1/ and round2/ contain the same 11 files; each pair (round1/X, round2/X) has zero semantic diff after SNBT serialisation. No item loses its components, no DataVersion drift, no spurious key changes.",
+      "files": ["fixtures/eval-2-complex/"]
+    }
+  ]
+}
