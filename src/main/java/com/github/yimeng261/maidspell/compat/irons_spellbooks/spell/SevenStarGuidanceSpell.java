@@ -35,6 +35,21 @@ public class SevenStarGuidanceSpell extends AbstractSpell implements BossExclusi
 
     private static final int TARGET_RANGE = 32;
 
+    /** 收束一击在 0 次命中时的基础倍率（法强 × 该值即 {@link #getBaseFinalDamage}）。 */
+    private static final float FINAL_DAMAGE_RATIO = 0.325F;
+
+    /**
+     * 收束一击每被前七次落击命中一次就提高这么多。
+     *
+     * <p>加成只能在实体侧结算 —— 只有它知道锁定目标吃了几发。所以这里给出的是唯一来源：
+     * 实体收束时调 {@link #finalBeamDamage}，tooltip 报 0 次命中的基础值，两边不再各抄一份数字。
+     */
+    public static final float FINAL_HIT_BONUS = 0.20F;
+
+    /** 碎裂补刀的基础倍率与每次命中的追加，见 {@link #shatterDamage}。 */
+    public static final float SHATTER_BASE_RATIO = 0.75F;
+    public static final float SHATTER_HIT_BONUS = 0.10F;
+
     private final DefaultConfig defaultConfig = new DefaultConfig()
             .setMinRarity(SpellRarity.EPIC)
             .setSchoolResource(SchoolRegistry.ENDER_RESOURCE)
@@ -104,7 +119,7 @@ public class SevenStarGuidanceSpell extends AbstractSpell implements BossExclusi
             }
             SevenStarGuidanceEntity ritual = new SevenStarGuidanceEntity(
                     serverLevel, caster, target, getStarDamage(spellLevel, caster),
-                    getFinalDamage(spellLevel, caster, 0));
+                    getBaseFinalDamage(spellLevel, caster));
             ritual.setPos(target != null ? target.getX() : caster.getX(),
                     target != null ? target.getY() : caster.getY(),
                     target != null ? target.getZ() : caster.getZ());
@@ -119,9 +134,29 @@ public class SevenStarGuidanceSpell extends AbstractSpell implements BossExclusi
         return getSpellPower(spellLevel, caster) * 0.18F;
     }
 
-    /** 0 次命中时的基础收束伤害；实体按命中次数每次增加 25%。 */
+    /** 0 次命中时的收束伤害；落进实体后由实体按命中次数加成。 */
+    public float getBaseFinalDamage(int spellLevel, LivingEntity caster) {
+        return getSpellPower(spellLevel, caster) * FINAL_DAMAGE_RATIO;
+    }
+
+    /**
+     * 收束一击的最终伤害：{@code 基础 × (1 + 命中次数 × 20%)}。
+     *
+     * <p>实体持有的只是基础值，所以它调这个静态方法；这里刻意不接受法术等级/施法者，
+     * 避免同一份公式在实体里再写一遍。
+     */
+    public static float finalBeamDamage(float baseFinalDamage, int hitCount) {
+        return baseFinalDamage * (1.0F + Math.max(0, hitCount) * FINAL_HIT_BONUS);
+    }
+
+    /** 碎裂补刀的最终伤害：{@code 基础 × (75% + 命中次数 × 10%)}。 */
+    public static float shatterDamage(float baseFinalDamage, int hitCount) {
+        return baseFinalDamage * (SHATTER_BASE_RATIO + Math.max(0, hitCount) * SHATTER_HIT_BONUS);
+    }
+
+    /** 保留旧签名：{@code hitCount} 只是想看「吃到几发」时的预期值，实际伤害仍由实体调上面的静态方法。 */
     public float getFinalDamage(int spellLevel, LivingEntity caster, int hitCount) {
-        return getSpellPower(spellLevel, caster) * 0.325F * (1.0F + hitCount * 0.25F);
+        return finalBeamDamage(getBaseFinalDamage(spellLevel, caster), hitCount);
     }
 
     @Override

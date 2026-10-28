@@ -11,6 +11,7 @@ import com.github.yimeng261.maidspell.api.IAuthoritativeHealth;
 import com.github.yimeng261.maidspell.compat.MaidSpellAllyResolver;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatEntities;
 import com.github.yimeng261.maidspell.compat.irons_spellbooks.registry.IronsSpellbooksCompatSpells;
+import com.github.yimeng261.maidspell.compat.irons_spellbooks.spell.SevenStarGuidanceSpell;
 import com.github.yimeng261.maidspell.sound.MaidSpellSounds;
 
 import io.redspace.ironsspellbooks.damage.DamageSources;
@@ -200,7 +201,7 @@ public class SevenStarGuidanceEntity extends Entity {
         }
         if (isEnemy(caster, target)) {
             int hits = hitCounts.getOrDefault(target.getUUID(), 0);
-            float damage = baseFinalDamage * (1.0F + hits * 0.2F);
+            float damage = SevenStarGuidanceSpell.finalBeamDamage(baseFinalDamage, hits);
             targetHitMask = targetUuid != null && target.getUUID().equals(targetUuid) ? targetHitMask : 0;
             entityData.set(DATA_FINALE_MASK, targetHitMask);
             entityData.set(DATA_FINALE_STAGE, 1);
@@ -232,7 +233,7 @@ public class SevenStarGuidanceEntity extends Entity {
         LivingEntity target = getLiving(targetUuid, level);
         if (!isEnemy(caster, target)) return;
         int hits = hitCounts.getOrDefault(target.getUUID(), 0);
-        float damage = baseFinalDamage * (0.75F + hits * 0.1F);
+        float damage = SevenStarGuidanceSpell.shatterDamage(baseFinalDamage, hits);
         DamageSources.applyDamage(target, damage,
                 IronsSpellbooksCompatSpells.SEVEN_STAR_GUIDANCE.get().getDamageSource(this, caster));
     }
